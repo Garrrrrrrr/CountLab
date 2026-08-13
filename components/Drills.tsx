@@ -552,6 +552,7 @@ export function StrategyDrill() {
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
+      hand: string;
       chosen: Action;
       correct: Action;
       explanation: string;
@@ -593,7 +594,7 @@ export function StrategyDrill() {
         : "Hard totals";
   const choose = useCallback(
     (a: Action) => {
-      if (feedback || session) return;
+      if (session) return;
       const ok = a === decision.action;
       const duration = Date.now() - started;
       const nextCorrect = correctCount + (ok ? 1 : 0);
@@ -615,6 +616,7 @@ export function StrategyDrill() {
         },
       };
       setFeedback({
+        hand: `${data.player.map((card) => card.rank).join(", ")} vs ${data.dealer.rank}`,
         chosen: a,
         correct: decision.action,
         explanation: decision.explanation,
@@ -629,13 +631,16 @@ export function StrategyDrill() {
       feedbackTone(ok, settings.sound);
       if (q === 9) {
         setSession(record("Basic Strategy", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+      } else {
+        setQ((current) => current + 1);
+        setStarted(Date.now());
       }
     },
-    [best, categories, category, correctCount, data, decision, feedback, mistakes, q, session, settings.sound, started, streak, totalMs],
+    [best, categories, category, correctCount, data, decision, mistakes, q, session, settings.sound, started, streak, totalMs],
   );
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
-      if (e.repeat || !settings.shortcuts || feedback) return;
+      if (e.repeat || !settings.shortcuts || session) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, Action> = {
         h: "H",
@@ -648,20 +653,8 @@ export function StrategyDrill() {
     };
     addEventListener("keydown", fn);
     return () => removeEventListener("keydown", fn);
-  }, [choose, feedback, settings.shortcuts]);
-  useEffect(() => {
-    if (!feedback) return;
-    const delay = feedback.chosen === feedback.correct ? 900 : 2200;
-    const timer = window.setTimeout(() => {
-      setFeedback(undefined);
-      if (!session) {
-        setQ((current) => current + 1);
-        setStarted(Date.now());
-      }
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [feedback, session]);
-  if (session && !feedback) {
+  }, [choose, session, settings.shortcuts]);
+  if (session) {
     return (
       <SessionSummary
         session={session}
@@ -673,6 +666,7 @@ export function StrategyDrill() {
           setTotalMs(0);
           setMistakes([]);
           setCategories({});
+          setFeedback(undefined);
           setSession(undefined);
           setStarted(Date.now());
         }}
@@ -692,6 +686,16 @@ export function StrategyDrill() {
           <option value="adaptive">Adaptive to weak categories</option>
         </Select>
       </div>
+      {feedback && (
+        <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+            {feedback.chosen === feedback.correct ? `Correct — ${names[feedback.correct]}` : `You chose ${names[feedback.chosen]} · Correct: ${names[feedback.correct]}`}
+          </b>
+          <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
+          <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
+        </div>
+      )}
       <Panel>
         <div className="grid gap-10 py-6 md:grid-cols-2">
           <div>
@@ -713,7 +717,6 @@ export function StrategyDrill() {
               key={a}
               aria-keyshortcuts={a}
               className="flex items-center gap-2"
-              disabled={Boolean(feedback)}
               onClick={() => choose(a)}
             >
               <span>{names[a]}</span>
@@ -728,23 +731,6 @@ export function StrategyDrill() {
             ? "Keyboard shortcuts are shown on each action."
             : "Keyboard shortcuts are shown above but disabled in Settings."}
         </p>
-        {feedback && (
-          <div
-            aria-live="polite"
-            className={`mt-5 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}
-          >
-            <b>
-              {feedback.chosen === feedback.correct
-                ? "Correct"
-                : `Correct: ${names[feedback.correct]}`}
-            </b>
-            <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
-            <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
-            <p className="mt-2 text-xs text-zinc-500">
-              {session ? "Opening session summary…" : "Next hand loading…"}
-            </p>
-          </div>
-        )}
       </Panel>
     </>
   );
@@ -762,6 +748,7 @@ export function DeviationDrill() {
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
+      hand: string;
       chosen: DeviationAction;
       correct: DeviationAction;
       normalAction: DeviationAction;
@@ -804,7 +791,7 @@ export function DeviationDrill() {
     );
   const chooseDeviation = useCallback(
     (chosen: DeviationAction) => {
-      if (feedback || session) return;
+      if (session) return;
       const ok = chosen === correct;
       const duration = Date.now() - started;
       const nextCorrect = correctCount + (ok ? 1 : 0);
@@ -827,6 +814,7 @@ export function DeviationDrill() {
         },
       };
       setFeedback({
+        hand: `${playerCards.map((card) => card.rank).join(", ")} vs ${dealerCard.rank}`,
         chosen,
         correct,
         normalAction: d.normalAction,
@@ -844,13 +832,16 @@ export function DeviationDrill() {
       feedbackTone(ok, settings.sound);
       if (q === 9) {
         setSession(record("Deviations", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+      } else {
+        setQ((current) => current + 1);
+        setStarted(Date.now());
       }
     },
-    [best, categories, correct, correctCount, d, feedback, mistakes, q, session, settings.sound, started, streak, tc, totalMs],
+    [best, categories, correct, correctCount, d, dealerCard.rank, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.repeat || !settings.shortcuts || feedback) return;
+      if (event.repeat || !settings.shortcuts || session) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, DeviationAction> = {
         h: "H",
@@ -866,15 +857,8 @@ export function DeviationDrill() {
     };
     addEventListener("keydown", handleKey);
     return () => removeEventListener("keydown", handleKey);
-  }, [availableActions, chooseDeviation, feedback, settings.shortcuts]);
-  const next = () => {
-    setFeedback(undefined);
-    if (!session) {
-      setQ((current) => current + 1);
-      setStarted(Date.now());
-    }
-  };
-  if (session && !feedback) {
+  }, [availableActions, chooseDeviation, session, settings.shortcuts]);
+  if (session) {
     return (
       <SessionSummary
         session={session}
@@ -886,6 +870,7 @@ export function DeviationDrill() {
           setTotalMs(0);
           setMistakes([]);
           setCategories({});
+          setFeedback(undefined);
           setSession(undefined);
           setStarted(Date.now());
         }}
@@ -899,6 +884,21 @@ export function DeviationDrill() {
         title="Hi-Lo Deviations"
         description="Decide whether the current true count activates the index play."
       />
+      {feedback && (
+        <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+            {feedback.chosen === feedback.correct ? `Correct — ${DEVIATION_ACTION_NAMES[feedback.correct]}` : `You chose ${DEVIATION_ACTION_NAMES[feedback.chosen]} · Correct: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
+          </b>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
+            <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>
+            <span>Index: {signed(feedback.index)}</span>
+          </div>
+          <p className="mt-2 text-sm text-zinc-400">
+            {DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC {signed(feedback.index)} {feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count {feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.
+          </p>
+        </div>
+      )}
       <Panel>
         <div className="grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr]">
           <div className="text-center">
@@ -937,7 +937,7 @@ export function DeviationDrill() {
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
           {availableActions.map((a) => (
-            <GhostButton key={a} disabled={Boolean(feedback)} onClick={() => chooseDeviation(a)}>
+            <GhostButton key={a} onClick={() => chooseDeviation(a)}>
               {a === "I" ? (
                 <><u>I</u>nsurance</>
               ) : a === "N" ? (
@@ -948,36 +948,6 @@ export function DeviationDrill() {
             </GhostButton>
           ))}
         </div>
-        {feedback && (
-          <div aria-live="polite" className="mt-5 rounded-xl bg-black/20 p-5">
-            <b
-              className={
-                feedback.chosen === feedback.correct
-                  ? "text-emerald-400"
-                  : "text-red-400"
-              }
-            >
-              {feedback.chosen === feedback.correct
-                ? "Correct"
-                : `Correct action: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
-            </b>
-            <div className="mt-3 grid gap-2 text-sm text-zinc-300 md:grid-cols-3">
-              <p>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</p>
-              <p>Index: {signed(feedback.index)}</p>
-              <p>Current TC: {signed(feedback.tc)}</p>
-            </div>
-            <p className="mt-3 text-zinc-400">
-              {DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC {signed(feedback.index)}{" "}
-              {feedback.direction === "atOrBelow" ? "or lower" : "or higher"}.
-              The current count{" "}
-              {feedback.correct === feedback.deviationAction
-                ? "triggers"
-                : "does not trigger"}{" "}
-              the deviation.
-            </p>
-            <Button className="mt-4" onClick={next}>{session ? "View summary" : "Next hand"}</Button>
-          </div>
-        )}
       </Panel>
     </>
   );

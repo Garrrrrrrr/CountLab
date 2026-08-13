@@ -84,6 +84,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
+  useEffect(() => {
+    const activateVisiblePrimaryAction = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" || event.repeat || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const target = event.target;
+      if (target instanceof Element) {
+        if (target.closest("input, select, textarea, a, [contenteditable='true']")) return;
+        const focusedButton = target.closest("button") as HTMLButtonElement | null;
+        if (focusedButton && !focusedButton.disabled) return;
+      }
+      const actions = Array.from(document.querySelectorAll<HTMLButtonElement>("main button[data-enter-action='true']:not(:disabled)"))
+        .filter((button) => button.getClientRects().length > 0 && getComputedStyle(button).visibility !== "hidden");
+      if (actions.length !== 1) return;
+      event.preventDefault();
+      actions[0].click();
+    };
+    addEventListener("keydown", activateVisiblePrimaryAction);
+    return () => removeEventListener("keydown", activateVisiblePrimaryAction);
+  }, []);
   return (
     <div className="min-h-screen text-zinc-100">
       <button

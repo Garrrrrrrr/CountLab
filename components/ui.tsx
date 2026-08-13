@@ -16,6 +16,7 @@ export const Button = ({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
+    data-enter-action="true"
     {...props}
     className={`pressable rounded-xl bg-[#a8ee72] px-4 py-2.5 font-semibold text-[#10200f] shadow-[0_8px_24px_rgba(95,210,105,.16)] hover:bg-[#b8f584] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
   />

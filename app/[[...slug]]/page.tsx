@@ -13,6 +13,7 @@ const routes = [
   ["training", "full-shoe"],
   ["training", "missing-card"],
   ["training", "deck-estimation"],
+  ["training", "benchmark"],
   ["reference"],
   ["reference", "basic-strategy"],
   ["reference", "deviations"],
