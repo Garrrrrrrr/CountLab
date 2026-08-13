@@ -21,7 +21,7 @@ import {
   RunningCountDrill,
   StrategyDrill,
 } from "@/components/Drills";
-import { DEVIATIONS } from "@/lib/blackjack/deviations";
+import { DEVIATIONS, DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
   DEFAULT_SETTINGS,
   Session,
@@ -32,6 +32,7 @@ import { Action, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { AdvantageCalculator } from "@/components/AdvantageCalculator";
 import { BankrollRecommender } from "@/components/BankrollRecommender";
+import { ChaseFlushLab } from "@/components/ChaseFlushLab";
 const actionNames: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -475,8 +476,8 @@ function DeviationReference() {
                 <td className="text-emerald-400">
                   {d.index > 0 ? `+${d.index}` : d.index}
                 </td>
-                <td>{actionNames[d.normalAction]}</td>
-                <td>{actionNames[d.deviationAction]}</td>
+                <td>{DEVIATION_ACTION_NAMES[d.normalAction]}</td>
+                <td>{DEVIATION_ACTION_NAMES[d.deviationAction]}</td>
               </tr>
             ))}
           </tbody>
@@ -740,6 +741,7 @@ export default function DynamicPage() {
     dashboard: <Dashboard />,
     analysis: <AdvantageCalculator />,
     bankroll: <BankrollRecommender />,
+    "chase-flush": <ChaseFlushLab />,
     "training/running-count": <RunningCountDrill />,
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,

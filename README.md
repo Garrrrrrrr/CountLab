@@ -8,3 +8,7 @@ npm run dev
 ```
 
 Run `npm test`, `npm run lint`, and `npm run build` before release. The production build is a static export in `out/` and is deployed with the parent website's GitHub Pages workflow.
+
+The Chase the Flush tab includes an in-browser conditional-EV hand analyzer. Its
+auditable Python research engine, CLIs, tests, and machine-readable results live
+in [`../chase-flush-solver`](../chase-flush-solver/README.md).

@@ -5,6 +5,7 @@ const routes = [
   ["dashboard"],
   ["analysis"],
   ["bankroll"],
+  ["chase-flush"],
   ["training", "running-count"],
   ["training", "basic-strategy"],
   ["training", "deviations"],

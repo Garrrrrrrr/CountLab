@@ -11,7 +11,12 @@ import {
 } from "@/lib/blackjack/types";
 import { runningCount, signed, trueCount } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { DEVIATIONS, deviationDecision } from "@/lib/blackjack/deviations";
+import {
+  DEVIATIONS,
+  DEVIATION_ACTION_NAMES,
+  DeviationAction,
+  deviationDecision,
+} from "@/lib/blackjack/deviations";
 import {
   makeSession,
   Mistake,
@@ -535,10 +540,10 @@ export function StrategyDrill() {
 export function DeviationDrill() {
   const [q, setQ] = useState(0),
     [feedback, setFeedback] = useState<{
-      chosen: Action;
-      correct: Action;
-      normalAction: Action;
-      deviationAction: Action;
+      chosen: DeviationAction;
+      correct: DeviationAction;
+      normalAction: DeviationAction;
+      deviationAction: DeviationAction;
       index: number;
       tc: number;
       direction?: "atOrAbove" | "atOrBelow";
@@ -550,8 +555,33 @@ export function DeviationDrill() {
   const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
     rc = tc * 3,
     correct = deviationDecision(d, tc);
+  const playerCards = useMemo(() => {
+      const hands: Record<string, [Card["rank"], Card["rank"]]> = {
+        Insurance: ["10", "6"],
+        "16": ["10", "6"],
+        "15": ["10", "5"],
+        "13": ["10", "3"],
+        "12": ["10", "2"],
+        "11": ["6", "5"],
+        "10": ["6", "4"],
+        "9": ["5", "4"],
+      };
+      const ranks = hands[d.hand] ?? ["10", "6"];
+      return [
+        { rank: ranks[0], suit: "spades" },
+        { rank: ranks[1], suit: "hearts" },
+      ] satisfies Card[];
+    }, [d]),
+    dealerCard = useMemo(
+      () => ({ rank: d.dealer as Card["rank"], suit: "diamonds" }) satisfies Card,
+      [d],
+    ),
+    availableActions = useMemo<DeviationAction[]>(
+      () => (d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"]),
+      [d.hand],
+    );
   const chooseDeviation = useCallback(
-    (chosen: Action) => {
+    (chosen: DeviationAction) => {
       setFeedback({
         chosen,
         correct,
@@ -568,19 +598,21 @@ export function DeviationDrill() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.repeat) return;
-      const map: Record<string, Action> = {
+      const map: Record<string, DeviationAction> = {
         h: "H",
         s: "S",
         d: "D",
         p: "P",
         r: "R",
+        i: "I",
+        n: "N",
       };
       const action = map[event.key.toLowerCase()];
-      if (action) chooseDeviation(action);
+      if (action && availableActions.includes(action)) chooseDeviation(action);
     };
     addEventListener("keydown", handleKey);
     return () => removeEventListener("keydown", handleKey);
-  }, [chooseDeviation]);
+  }, [availableActions, chooseDeviation]);
   return (
     <>
       <Title
@@ -589,10 +621,31 @@ export function DeviationDrill() {
         description="Decide whether the current true count activates the index play."
       />
       <Panel>
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid items-center gap-6 lg:grid-cols-[1fr_auto_1fr]">
+          <div className="text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+              Player
+            </p>
+            <div className="flex justify-center gap-3">
+              {playerCards.map((card, index) => (
+                <PlayingCard key={`${card.rank}-${index}`} card={card} size="sm" />
+              ))}
+            </div>
+          </div>
+          <div className="text-center text-xs font-bold uppercase tracking-[.18em] text-zinc-600">
+            versus
+          </div>
+          <div className="text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+              Dealer
+            </p>
+            <div className="flex justify-center">
+              <PlayingCard card={dealerCard} size="sm" />
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
           {[
-            ["Player", d.hand],
-            ["Dealer", d.dealer],
             ["Running count", signed(rc)],
             ["Decks remaining", "3"],
             ["True count", signed(tc)],
@@ -604,10 +657,15 @@ export function DeviationDrill() {
           ))}
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
-          {(Object.keys(names) as Action[]).map((a) => (
+          {availableActions.map((a) => (
             <GhostButton key={a} onClick={() => chooseDeviation(a)}>
-              <u>{names[a][0]}</u>
-              {names[a].slice(1)}
+              {a === "I" ? (
+                <><u>I</u>nsurance</>
+              ) : a === "N" ? (
+                <><u>N</u>o insurance</>
+              ) : (
+                <><u>{DEVIATION_ACTION_NAMES[a][0]}</u>{DEVIATION_ACTION_NAMES[a].slice(1)}</>
+              )}
             </GhostButton>
           ))}
         </div>
@@ -622,15 +680,15 @@ export function DeviationDrill() {
             >
               {feedback.chosen === feedback.correct
                 ? "Correct"
-                : `Correct action: ${names[feedback.correct]}`}
+                : `Correct action: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
             </b>
             <div className="mt-3 grid gap-2 text-sm text-zinc-300 md:grid-cols-3">
-              <p>Basic strategy: {names[feedback.normalAction]}</p>
+              <p>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</p>
               <p>Index: {signed(feedback.index)}</p>
               <p>Current TC: {signed(feedback.tc)}</p>
             </div>
             <p className="mt-3 text-zinc-400">
-              {names[feedback.deviationAction]} at TC {signed(feedback.index)}{" "}
+              {DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC {signed(feedback.index)}{" "}
               {feedback.direction === "atOrBelow" ? "or lower" : "or higher"}.
               The current count{" "}
               {feedback.correct === feedback.deviationAction

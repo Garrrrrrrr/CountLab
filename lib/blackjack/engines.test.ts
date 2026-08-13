@@ -78,6 +78,18 @@ describe("strategy", () => {
         rules: DEFAULT_RULES,
       }).action,
     ).toBe("P"));
+  it.each([
+    ["9", "P"],
+    ["10", "P"],
+    ["A", "R"],
+  ] as const)("plays 8,8 vs %s as %s", (dealer, action) =>
+    expect(
+      getBasicStrategyDecision({
+        playerCards: [c("8"), c("8", "hearts")],
+        dealerUpcard: c(dealer),
+        rules: DEFAULT_RULES,
+      }).action,
+    ).toBe(action));
   it("doubles eleven", () =>
     expect(
       getBasicStrategyDecision({
@@ -92,6 +104,11 @@ describe("deviations", () => {
     const d = DEVIATIONS.find((x) => x.hand === "16" && x.dealer === "10")!;
     expect(deviationDecision(d, -1)).toBe("H");
     expect(deviationDecision(d, 0)).toBe("S");
+  });
+  it("models insurance as its own decision", () => {
+    const insurance = DEVIATIONS.find((x) => x.hand === "Insurance")!;
+    expect(deviationDecision(insurance, 2)).toBe("N");
+    expect(deviationDecision(insurance, 3)).toBe("I");
   });
 });
 describe("advantage model", () => {

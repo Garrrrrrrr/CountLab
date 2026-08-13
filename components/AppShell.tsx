@@ -9,6 +9,7 @@ const groups = [
       ["Dashboard", "/dashboard", "fa-house"],
       ["EV & Risk Lab", "/analysis", "fa-calculator"],
       ["Bankroll Recommender", "/bankroll", "fa-sack-dollar"],
+      ["Chase the Flush", "/chase-flush", "fa-diamond"],
     ],
   },
   {
