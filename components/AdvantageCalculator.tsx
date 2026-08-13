@@ -9,7 +9,10 @@ import {
   recommendUnit,
   unitsAt,
 } from "@/lib/blackjack/advantage";
-import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import {
+  COEFFICIENT_METADATA,
+  GAME_OPTIONS,
+} from "@/lib/blackjack/coefficients";
 import { GhostButton, Metric, NumberField, Panel, Select } from "./ui";
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -72,10 +75,10 @@ export function AdvantageCalculator() {
           EV, Variance & Risk of Ruin
         </h1>
         <p className="mt-2 max-w-4xl text-zinc-400">
-          Instant bankroll analysis from a high-volume per-count coefficient
-          table. Changing a dollar bet re-aggregates the same stable frequency,
-          advantage, and standard-deviation data, with no browser simulation or
-          sampling noise.
+          Reproducible per-count simulation coefficients from 100 million shoes
+          per penetration profile. Changing a dollar bet re-aggregates the same
+          frequency, advantage, and standard-deviation observations without
+          rerunning the simulation in your browser.
         </p>
       </div>
       <div className="grid gap-5 xl:grid-cols-2">
@@ -94,7 +97,7 @@ export function AdvantageCalculator() {
             </div>
             <div className="rounded-xl bg-white/[.04] p-4">
               <p className="text-xs text-zinc-500">Play</p>
-              <b>Hi-Lo · I18 + Fab 4</b>
+              <b>Hi-Lo · documented H17 index policy</b>
             </div>
             <div className="rounded-xl bg-white/[.04] p-4">
               <p className="text-xs text-zinc-500">Table</p>
@@ -187,18 +190,20 @@ export function AdvantageCalculator() {
           <div>
             <h2 className="font-semibold">True-count bet ramp</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Edit any dollar bet. All other columns are fixed high-volume
-              coefficients for this exact ruleset.
+              Edit any dollar bet. The fixed coefficients include their sample
+              counts and 95% Monte Carlo uncertainty.
             </p>
           </div>
         </div>
-        <table className="w-full min-w-[760px] text-right text-sm">
+        <table className="w-full min-w-[940px] text-right text-sm">
           <thead className="text-zinc-500">
             <tr>
               <th className="pb-3 text-left">True count</th>
               <th className="pb-3">Frequency</th>
               <th className="pb-3">Advantage</th>
+              <th className="pb-3">95% error</th>
               <th className="pb-3">SD units</th>
+              <th className="pb-3">Samples</th>
               <th className="pb-3">Bet</th>
             </tr>
           </thead>
@@ -214,7 +219,9 @@ export function AdvantageCalculator() {
                 >
                   {pct(row.advantage)}
                 </td>
+                <td>±{(1.95996398454 * row.standardError * 100).toFixed(3)}%</td>
                 <td>{row.sdUnits.toFixed(3)}</td>
+                <td>{(row.samples / 1_000_000).toFixed(1)}M</td>
                 <td className="py-2.5">
                   <div className="ml-auto flex w-fit items-center justify-end gap-2">
                     <NumberField
@@ -295,9 +302,20 @@ export function AdvantageCalculator() {
         </Panel>
       </div>
       <p className="mt-5 text-xs leading-5 text-zinc-500">
-        Method: EV = Σ(frequency × advantage × bet); variance = Σ(frequency ×
-        (SD units × bet)²); lifetime RoR = exp(−2 × bankroll × EV / variance).
-        Coefficients are for the displayed rules only.
+        Method: EV is the frequency-weighted conditional return. Variance uses
+        both within-count variance and between-count mean differences. Lifetime
+        RoR uses the standard diffusion approximation exp(−2 × bankroll × EV /
+        variance), not an exact finite-bankroll simulation. Generated from{" "}
+        {COEFFICIENT_METADATA.totalRounds.toLocaleString()} resolved rounds for
+        the displayed rules. {" "}
+        <a
+          className="text-emerald-400 hover:underline"
+          href={COEFFICIENT_METADATA.dataUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Download audit data ↗
+        </a>
       </p>
     </>
   );

@@ -27,6 +27,9 @@ export interface CountRow {
   frequency: number;
   advantage: number;
   sdUnits: number;
+  standardError: number;
+  ci95: [number, number];
+  samples: number;
   bet: number;
   units: number;
 }
@@ -84,12 +87,15 @@ export function getCountProfile(rules: AdvantageRules) {
     raw =
       RAW_COEFFICIENTS[`${rules.decks}-${selected.dealt}`] ??
       RAW_COEFFICIENTS["6-4.5"];
-  return raw.map(([p, adv, sd], index) => ({
+  return raw.map(([p, adv, sd, samples, standardError], index) => ({
     tc: index - 8,
     label: TC_LABELS[index],
     p,
     adv,
     sd,
+    samples,
+    standardError,
+    ci95: [adv - 1.95996398454 * standardError, adv + 1.95996398454 * standardError] as [number, number],
   }));
 }
 export const COUNT_PROFILE = getCountProfile(DEFAULT_ADVANTAGE_RULES);
@@ -121,6 +127,9 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
       frequency: row.p,
       advantage: row.adv,
       sdUnits: row.sd,
+      standardError: row.standardError,
+      ci95: row.ci95,
+      samples: row.samples,
       bet: unit * units,
       units,
     };
@@ -130,13 +139,17 @@ export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
   const rows = calculateCountRows(input);
   let averageBet = 0,
     evPerRound = 0,
-    variance = 0;
+    secondMoment = 0;
   for (const row of rows) {
     averageBet += row.frequency * row.bet;
     evPerRound += row.frequency * row.advantage * row.bet;
-    variance += row.frequency * Math.pow(row.sdUnits * row.bet, 2);
+    secondMoment +=
+      row.frequency *
+      (Math.pow(row.sdUnits * row.bet, 2) +
+        Math.pow(row.advantage * row.bet, 2));
   }
-  const sdPerRound = Math.sqrt(variance),
+  const variance = Math.max(0, secondMoment - evPerRound * evPerRound),
+    sdPerRound = Math.sqrt(variance),
     sdPerHour = sdPerRound * Math.sqrt(input.handsPerHour),
     riskOfRuin =
       evPerRound > 0

@@ -332,6 +332,12 @@ export function BankrollRecommender() {
           )}
         </div>
       </div>
+      <p className="mt-5 text-xs leading-5 text-zinc-500">
+        EV and variance use the audited fixed-strategy simulation coefficients.
+        Lifetime risk of ruin is a diffusion approximation; it is not a guarantee
+        and does not model bankroll resizing, playing errors, table limits, heat,
+        or backoffs.
+      </p>
     </>
   );
 }
