@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
 import {
   cardName,
@@ -15,7 +15,7 @@ type Target = "player" | "dealer" | "board";
 type Policy = "none" | "final" | "from2" | "all";
 type Result = {
   informed: Decision;
-  normal: Decision;
+  normal?: Decision;
   stability: number;
   stableAction: boolean;
 };
@@ -34,15 +34,40 @@ const rankResearch = [
   ["A", -0.337492, 0.194436],
 ] as const;
 
-function CardChip({ card, onRemove }: { card: number; onRemove: () => void }) {
+const CARD_DRAG_TYPE = "application/x-chase-flush-card";
+type DraggedCard = { card: number; source?: Target };
+
+function writeDraggedCard(event: DragEvent, payload: DraggedCard) {
+  const serialized = JSON.stringify(payload);
+  event.dataTransfer.setData(CARD_DRAG_TYPE, serialized);
+  event.dataTransfer.setData("text/plain", serialized);
+  event.dataTransfer.effectAllowed = payload.source ? "move" : "copy";
+}
+
+function readDraggedCard(event: DragEvent): DraggedCard | undefined {
+  const raw = event.dataTransfer.getData(CARD_DRAG_TYPE) || event.dataTransfer.getData("text/plain");
+  try {
+    const parsed = JSON.parse(raw) as DraggedCard;
+    if (!Number.isInteger(parsed.card) || parsed.card < 0 || parsed.card > 51) return undefined;
+    if (parsed.source && !(["player", "dealer", "board"] as Target[]).includes(parsed.source)) return undefined;
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function CardChip({ card, source, onRemove }: { card: number; source: Target; onRemove: () => void }) {
   const name = cardName(card);
   const red = name[1] === "d" || name[1] === "h";
   return (
     <button
       type="button"
+      draggable
+      onDragStart={(event) => writeDraggedCard(event, { card, source })}
       onClick={onRemove}
       aria-label={`Remove ${rankLabel(name[0])} of ${name[1]}`}
-      className={`rounded-lg border border-white/10 bg-white px-3 py-2 font-semibold ${red ? "text-red-600" : "text-zinc-950"}`}
+      title="Drag to another box or click to remove"
+      className={`cursor-grab rounded-lg border border-white/10 bg-white px-3 py-2 font-semibold active:cursor-grabbing ${red ? "text-red-600" : "text-zinc-950"}`}
     >
       {rankLabel(name[0])}{suitGlyph[name[1]]} <span aria-hidden="true">×</span>
     </button>
@@ -57,7 +82,6 @@ export function ChaseFlushLab() {
     [dealer, setDealer] = useState<number[]>(() => [parseCard("Kh")]),
     [board, setBoard] = useState(() => [parseCard("2h"), parseCard("7s")]),
     [policy, setPolicy] = useState<Policy>("all"),
-    [quality, setQuality] = useState<"fast" | "balanced" | "accurate">("balanced"),
     [sixCardPayout, setSixCardPayout] = useState(50),
     [result, setResult] = useState<Result>(),
     [error, setError] = useState(""),
@@ -126,6 +150,23 @@ export function ChaseFlushLab() {
     }
     clearResult();
   };
+  const placeCard = (card: number, destination: Target, source?: Target) => {
+    if (source === destination) return;
+    if (!source && selected.has(card)) return;
+
+    const withoutMoved = (cards: number[]) => source ? cards.filter((item) => item !== card) : cards;
+    const nextPlayer = withoutMoved(player);
+    const nextDealer = withoutMoved(dealer);
+    const nextBoard = withoutMoved(board);
+    if (destination === "player" && nextPlayer.length >= 3) return;
+    if (destination === "board" && nextBoard.length >= stage) return;
+
+    setPlayer(destination === "player" ? [...nextPlayer, card] : nextPlayer);
+    setDealer(destination === "dealer" ? [card] : nextDealer);
+    setBoard(destination === "board" ? [...nextBoard, card] : nextBoard);
+    setTarget(destination);
+    clearResult();
+  };
   const randomize = () => {
     const cards = Array.from({ length: 52 }, (_, index) => index);
     for (let index = cards.length - 1; index > 0; index--) {
@@ -144,7 +185,7 @@ export function ChaseFlushLab() {
     if (informationActive && dealer.length !== 1) return setError("Select the exposed dealer card for this information policy.");
     if (!worker.current) return setError("The calculation worker is not ready yet.");
     const id = ++requestId.current;
-    const samples = quality === "fast" ? 16 : quality === "balanced" ? 32 : 64;
+    const samples = 1; // Direct UI decisions are exhaustive; retained for worker API compatibility.
     const base = { player, board };
     setLoading(true);
     setResult(undefined);
@@ -155,7 +196,7 @@ export function ChaseFlushLab() {
       samples,
       sixCardPayout,
     });
-  }, [board, dealer, informationActive, player, quality, sixCardPayout, stage]);
+  }, [board, dealer, informationActive, player, sixCardPayout, stage]);
 
   const choosePractice = (action: string) => {
     if (loading || practiceChoice) return;
@@ -201,11 +242,7 @@ export function ChaseFlushLab() {
                 <option value="final">Visible at final decision</option>
                 <option value="none">No dealer information</option>
               </Select>
-              <Select label="Estimate quality" value={quality} onChange={(event) => { setQuality(event.target.value as typeof quality); clearResult(); }}>
-                <option value="fast">Fast</option>
-                <option value="balanced">Balanced</option>
-                <option value="accurate">Accurate</option>
-              </Select>
+              <div className="rounded-xl bg-sky-500/10 p-3 text-sm text-sky-200"><b className="block">Exact decision solver</b><span className="mt-1 block text-xs text-sky-200/70">Compiled-style bit-mask enumeration; no Monte Carlo recommendation noise.</span></div>
               <div className="rounded-xl bg-emerald-500/10 p-3 text-sm text-emerald-200">
                 EVs use Ante units. Multiply by your Ante to estimate currency value.
               </div>
@@ -217,7 +254,7 @@ export function ChaseFlushLab() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold">Build the information state</h2>
-                  <p className="mt-1 text-sm text-zinc-500">Choose the decision stage, then select cards visually.</p>
+                  <p className="mt-1 text-sm text-zinc-500">Choose the decision stage, then click cards or drag them into a box.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <GhostButton onClick={randomize}>Random valid hand</GhostButton>
@@ -231,15 +268,15 @@ export function ChaseFlushLab() {
                 ))}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
-                <CardGroup label="Player cards" active={target === "player"} onActivate={() => setTarget("player")} cards={player} onRemove={(card) => { setPlayer((items) => items.filter((item) => item !== card)); clearResult(); }} />
-                <CardGroup label={informationActive ? "Exposed dealer card" : "Dealer card ignored"} active={target === "dealer"} onActivate={() => setTarget("dealer")} cards={dealer} onRemove={() => { setDealer([]); clearResult(); }} />
-                <CardGroup label={`Community cards (${board.length}/${stage})`} active={target === "board"} onActivate={() => setTarget("board")} cards={board} onRemove={(card) => { setBoard((items) => items.filter((item) => item !== card)); clearResult(); }} />
+                <CardGroup target="player" label={`Player cards (${player.length}/3)`} active={target === "player"} onActivate={() => setTarget("player")} cards={player} capacity={3} onDropCard={placeCard} onRemove={(card) => { setPlayer((items) => items.filter((item) => item !== card)); clearResult(); }} />
+                <CardGroup target="dealer" label={informationActive ? "Exposed dealer card" : "Dealer card ignored"} active={target === "dealer"} onActivate={() => setTarget("dealer")} cards={dealer} capacity={1} onDropCard={placeCard} onRemove={() => { setDealer([]); clearResult(); }} />
+                <CardGroup target="board" label={`Community cards (${board.length}/${stage})`} active={target === "board"} onActivate={() => setTarget("board")} cards={board} capacity={stage} onDropCard={placeCard} onRemove={(card) => { setBoard((items) => items.filter((item) => item !== card)); clearResult(); }} />
               </div>
               <div className="mt-5 grid grid-cols-7 gap-1 sm:[grid-template-columns:repeat(13,minmax(0,1fr))]" aria-label={`Card picker for ${target}`}>
                 {SUITS.split("").flatMap((suit, suitIndex) => RANKS.split("").map((rank, rankIndex) => {
                   const card = suitIndex * 13 + rankIndex;
                   const red = suit === "d" || suit === "h";
-                  return <button key={card} type="button" disabled={selected.has(card)} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${suit}`} className={`min-h-10 rounded border border-white/10 bg-white text-xs font-bold disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[suit]}</span></button>;
+                  return <button key={card} type="button" draggable={!selected.has(card)} disabled={selected.has(card)} onDragStart={(event) => writeDraggedCard(event, { card })} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${suit}`} title="Click to add to the active box or drag into any box" className={`min-h-10 cursor-grab rounded border border-white/10 bg-white text-xs font-bold active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[suit]}</span></button>;
                 }))}
               </div>
               {mode === "analyze" ? (
@@ -255,7 +292,7 @@ export function ChaseFlushLab() {
 
             <Panel>
               {!result && !loading && <div className="grid min-h-80 place-items-center text-center text-zinc-500">Complete the cards and request a calculation.</div>}
-              {loading && <div className="grid min-h-80 place-items-center text-center"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Sampling legal future deals off the main thread.</p></div></div>}
+              {loading && <div className="grid min-h-80 place-items-center text-center"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion off the main thread.</p><p className="mt-2 text-xs text-zinc-600">Opening calculations inspect over one billion terminal assignments and can take about 30 seconds.</p></div></div>}
               {result && <DecisionPanel result={result} closeDecision={Boolean(closeDecision)} practiceChoice={practiceChoice} informationActive={informationActive} />}
             </Panel>
           </div>
@@ -379,11 +416,37 @@ function PracticalStrategy() {
   );
 }
 
-function CardGroup({ label, active, onActivate, cards, onRemove }: { label: string; active: boolean; onActivate: () => void; cards: number[]; onRemove: (card: number) => void }) {
+function CardGroup({ target, label, active, onActivate, cards, capacity, onDropCard, onRemove }: {
+  target: Target;
+  label: string;
+  active: boolean;
+  onActivate: () => void;
+  cards: number[];
+  capacity: number;
+  onDropCard: (card: number, destination: Target, source?: Target) => void;
+  onRemove: (card: number) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const drop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setDragOver(false);
+    const payload = readDraggedCard(event);
+    if (payload) onDropCard(payload.card, target, payload.source);
+  };
   return (
-    <section className={`rounded-xl border p-3 ${active ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}>
+    <section
+      onDragEnter={(event) => { event.preventDefault(); setDragOver(true); }}
+      onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragOver(true); }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOver(false); }}
+      onDrop={drop}
+      className={`rounded-xl border p-3 transition ${dragOver ? "scale-[1.02] border-emerald-300 bg-emerald-400/20 ring-2 ring-emerald-400/30" : active ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}
+      aria-label={`${label} drop zone`}
+    >
       <button type="button" onClick={onActivate} className="w-full text-left text-xs font-semibold uppercase tracking-wide text-zinc-400">{label}</button>
-      <div className="mt-3 flex min-h-11 flex-wrap gap-2">{cards.map((card) => <CardChip key={card} card={card} onRemove={() => onRemove(card)} />)}</div>
+      <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2">
+        {cards.map((card) => <CardChip key={card} card={card} source={target} onRemove={() => onRemove(card)} />)}
+        {cards.length < capacity && <span className={`pointer-events-none text-xs ${dragOver ? "text-emerald-100" : "text-zinc-600"}`}>{capacity === 0 ? "No cards at this stage" : "Drop card here"}</span>}
+      </div>
     </section>
   );
 }
@@ -391,19 +454,24 @@ function CardGroup({ label, active, onActivate, cards, onRemove }: { label: stri
 function DecisionPanel({ result, closeDecision, practiceChoice, informationActive }: { result: Result; closeDecision: boolean; practiceChoice?: string; informationActive: boolean }) {
   const exact = result.informed.exact;
   const best = Math.max(...Object.values(result.informed.evs));
-  const normalBest = Math.max(...Object.values(result.normal.evs));
+  const normalBest = result.normal ? Math.max(...Object.values(result.normal.evs)) : undefined;
   return (
     <div aria-live="polite">
       {practiceChoice && <div className={`mb-4 rounded-xl p-4 ${practiceChoice === result.informed.action ? "bg-emerald-500/10 text-emerald-200" : "bg-red-500/10 text-red-200"}`}><b>{practiceChoice === result.informed.action ? "Correct" : `Recommended: ${result.informed.action.toUpperCase()}`}</b></div>}
       <p className="text-xs font-bold uppercase tracking-[.18em] text-zinc-500">Recommended decision</p>
       <div className="mt-3 text-4xl font-semibold text-emerald-300">{result.informed.action.toUpperCase()}</div>
-      <div className="mt-5 space-y-3">{Object.entries(result.informed.evs).map(([action, value]) => <div key={action} className="flex justify-between rounded-xl bg-black/20 p-3"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-emerald-300" : "text-red-300"}>{fmt(value, exact)}</b></div>)}</div>
+      <div className="mt-5 space-y-3">{Object.entries(result.informed.evs).map(([action, value]) => {
+        const statistics=result.informed.statistics?.[action];
+        return <div key={action} className="rounded-xl bg-black/20 p-3"><div className="flex justify-between"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-emerald-300" : "text-red-300"}>{fmt(value, exact)}</b></div>{statistics&&<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-500"><span>Standard error</span><span className="text-right">{statistics.standardError.toFixed(6)}</span><span>99.9% CI</span><span className="text-right">[{fmt(statistics.ci999[0],true)}, {fmt(statistics.ci999[1],true)}]</span></div>}</div>;
+      })}</div>
       <div className="mt-5 border-t border-white/[.07] pt-4 text-sm text-zinc-400">
         <p>Best action EV: <b className="text-white">{fmt(best, exact)} Ante units</b></p>
         <p className="mt-2">Decision margin: <b className="text-white">{result.informed.difference.toFixed(exact ? 4 : 3)} Ante units</b></p>
-        {informationActive && <p className="mt-2">Without dealer information: <b className="text-white">{result.normal.action.toUpperCase()}</b> ({fmt(normalBest, result.normal.exact)})</p>}
-        {informationActive && <p className="mt-2 text-emerald-200">The exposed card {result.normal.action === result.informed.action ? "keeps the same action" : `changes the action from ${result.normal.action.toUpperCase()} to ${result.informed.action.toUpperCase()}`} and changes modeled value by {fmt(best - normalBest, exact)} Ante units.</p>}
-        {exact ? <p className="mt-3 text-xs text-emerald-300">Exact enumeration of every legal hidden dealer hand and required future board.</p> : <p className="mt-3 text-xs">Sampled backward induction. Independent runs differed by up to {result.stability.toFixed(3)} units.</p>}
+        {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-emerald-200">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} exact terminal assignments · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
+        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2">Without dealer information: <b className="text-white">{result.normal.action.toUpperCase()}</b> ({fmt(normalBest, result.normal.exact)})</p>}
+        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2 text-emerald-200">The exposed card {result.normal.action === result.informed.action ? "keeps the same action" : `changes the action from ${result.normal.action.toUpperCase()} to ${result.informed.action.toUpperCase()}`} and changes modeled value by {fmt(best - normalBest, exact)} Ante units.</p>}
+        {informationActive && !result.normal && <p className="mt-2 text-zinc-500">The exposed recommendation is exact. The optional uninformed opening comparison has over 18 billion terminals and is available in the desktop analyzer.</p>}
+        {exact ? <p className="mt-3 text-xs text-emerald-300">Calculation method: EXACT. Every legal hidden dealer hand and required future board was enumerated; statistical uncertainty is zero.</p> : <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-amber-200">Decision not yet resolved. The current calculation does not meet the required confidence threshold.</p>}
         {closeDecision && <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-amber-200">Close or unstable estimate. Increase estimate quality before relying on the recommended action.</p>}
       </div>
     </div>
@@ -423,7 +491,7 @@ function ResearchPanel({ sixCardPayout, setSixCardPayout }: { sixCardPayout: num
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-13">{rankResearch.map(([rank, ev, delta]) => <div key={rank} className={`rounded-xl p-3 text-center ${ev >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}><b>{rank}</b><p className={`mt-2 text-xs ${ev >= 0 ? "text-emerald-300" : "text-red-300"}`}>EV {(ev * 100).toFixed(1)}%</p><p className="mt-1 text-[.65rem] text-zinc-500">Info +{(delta * 100).toFixed(1)}%</p></div>)}</div>
       </Panel>
       <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-zinc-400"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-black/20 p-3" key={label}><span className="text-zinc-400">{label}</span><b className="text-emerald-300">{value}</b></div>)}</div></Panel></div>
-      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-zinc-400"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result within 0.0524 percentage points. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>River decisions enumerate every legal hidden dealer hand. Exposed-card 2x decisions also enumerate every future board and hidden dealer pair exactly. Opening decisions and uninformed earlier decisions use reproducible conditional Monte Carlo and retain policy-approximation uncertainty.</p></div></details>
+      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-zinc-400"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions now use exhaustive integer-mask backward induction at every stage. The exposed opening enumerates 1,104,436,080 legal terminal assignments; river and 2x states are smaller. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
     </div>
   );
 }

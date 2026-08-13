@@ -8,9 +8,10 @@ import {
   RampPoint,
   recommendUnit,
   unitsAt,
+  zeroNegativeCountBets,
 } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { Metric, NumberField, Panel, Select } from "./ui";
+import { GhostButton, Metric, NumberField, Panel, Select } from "./ui";
 const money = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -62,6 +63,13 @@ export function AdvantageCalculator() {
       ),
     );
   };
+  const zeroNegativeBets = () => {
+    setSpread("Custom");
+    setRamp((current) => zeroNegativeCountBets(current));
+  };
+  const negativeBetsAreZero = ramp
+    .filter((point) => point.trueCount < 0)
+    .every((point) => point.units === 0);
   return (
     <>
       <div className="mb-7">
@@ -183,12 +191,22 @@ export function AdvantageCalculator() {
         </Panel>
       </div>
       <Panel className="mt-5 overflow-x-auto">
-        <div className="mb-5">
-          <h2 className="font-semibold">True-count bet ramp</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Edit any dollar bet. All other columns are fixed high-volume
-            coefficients for this exact ruleset.
-          </p>
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="font-semibold">True-count bet ramp</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Edit any dollar bet. All other columns are fixed high-volume
+              coefficients for this exact ruleset.
+            </p>
+          </div>
+          <GhostButton
+            disabled={negativeBetsAreZero}
+            onClick={zeroNegativeBets}
+          >
+            {negativeBetsAreZero
+              ? "Negative-count bets are $0"
+              : "Set negative-count bets to $0"}
+          </GhostButton>
         </div>
         <table className="w-full min-w-[760px] text-right text-sm">
           <thead className="text-zinc-500">

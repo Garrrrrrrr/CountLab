@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {dealerQualifies,exactSecondDecision,flushRank,foldBreakdown,parseCard,parseCards,settle,settleBreakdown,solve} from "./engine";
+import {dealerQualifies,exactOpeningDecision,exactSecondDecision,flushRank,foldBreakdown,parseCard,parseCards,settle,settleBreakdown,solve} from "./engine";
 describe("Chase the Flush engine",()=>{
   it("round trips cards",()=>expect(parseCard("Ah")).toBe(38));
   it("ranks by flush length then kickers",()=>{
@@ -28,6 +28,13 @@ describe("Chase the Flush engine",()=>{
     expect(d.evs["2x"]).toBeCloseTo(27.644914258867747,10);
     expect(d.evs.check).toBeCloseTo(26.64547190816148,10);
   });
+  it("exactly solves the exposed opening regression",()=>{
+    const d=exactOpeningDecision({player:parseCards("Ks Js Ts"),dealerVisible:parseCard("9s"),board:[]});
+    expect(d.action).toBe("3x");
+    expect(d.evs["3x"]).toBeCloseTo(4.467089548541369,10);
+    expect(d.evs.check).toBeCloseTo(3.773906393930919,10);
+    expect(d.differenceStatistics?.standardError).toBe(0);
+  },120_000);
   it("uses net profit and never scales X-Tra by All-In",()=>{
     const player=parseCards("As Ks Js Ts 9s 2c 3d"),dealer=parseCards("Qh Jh 8h 2d 3c 4d 5c");
     const one=settleBreakdown(player,dealer,1),three=settleBreakdown(player,dealer,3);

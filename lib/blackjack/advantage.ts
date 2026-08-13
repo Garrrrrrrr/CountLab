@@ -106,6 +106,11 @@ export function unitsAt(tc: number, ramp: RampPoint[]) {
       ramp[0]?.units ?? 1,
     );
 }
+export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
+  return ramp.map((point) =>
+    point.trueCount < 0 ? { ...point, units: 0 } : point,
+  );
+}
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   return getCountProfile(input.rules).map((row) => {

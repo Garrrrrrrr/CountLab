@@ -1,7 +1,8 @@
 export const RANKS = "23456789TJQKA";
 export const SUITS = "cdhs";
 export type InfoState = { player: number[]; board: number[]; dealerVisible?: number };
-export type Decision = { action: string; evs: Record<string, number>; difference: number; exact: boolean };
+export type ActionStatistics = {ev:number;standardError:number;ci95:[number,number];ci99:[number,number];ci999:[number,number];ci9999:[number,number];samples:number;runtimeSeconds:number;samplesPerSecond:number};
+export type Decision = { action: string; evs: Record<string, number>; difference: number; exact: boolean; method?:"EXACT"|"MONTE_CARLO"; resolved?:boolean; statistics?:Record<string,ActionStatistics>; differenceStatistics?:ActionStatistics };
 export type PayoffBreakdown = { ante: number; xtra: number; allIn: number; total: number };
 
 export function parseCard(raw: string): number {
@@ -54,30 +55,105 @@ function rng(seed:number){ return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.
 function sample(values:number[], n:number, random:()=>number){const a=values.slice();for(let i=0;i<n;i++){const j=i+Math.floor(random()*(a.length-i));[a[i],a[j]]=[a[j],a[i]];}return a.slice(0,n);}
 const remaining=(s:InfoState)=>Array.from({length:52},(_,i)=>i).filter(c=>![...s.player,...s.board,...(s.dealerVisible===undefined?[]:[s.dealerVisible])].includes(c));
 
+function packedScore7(c0:number,c1:number,c2:number,c3:number,c4:number,c5:number,c6:number):number{
+  let m0=0,m1=0,m2=0,m3=0;
+  for(const card of [c0,c1,c2,c3,c4,c5,c6]){
+    const bit=1<<(card%13);
+    switch(Math.floor(card/13)){case 0:m0|=bit;break;case 1:m1|=bit;break;case 2:m2|=bit;break;default:m3|=bit;}
+  }
+  const score=(mask:number)=>((popcount(mask)<<13)|mask);
+  return Math.max(score(m0),score(m1),score(m2),score(m3));
+}
+function popcount(value:number):number{let count=0;while(value){value&=value-1;count++;}return count;}
+function fastProfit(playerScore:number,dealerScore:number,wager:number,sixCardPayout:number):number{
+  if(playerScore===dealerScore)return 0;
+  const dealerLength=dealerScore>>>13,dealerMask=dealerScore&8191,qualifies=dealerLength>3||(dealerLength===3&&dealerMask>=(1<<7));
+  if(playerScore<dealerScore)return-(qualifies?1:0)-wager-1;
+  const length=playerScore>>>13,xtra=length===4?1:length===5?5:length===6?sixCardPayout:length===7?250:0;
+  return(qualifies?1:0)+wager+xtra;
+}
+function exactStats(ev:number,samples:number,runtimeSeconds:number):ActionStatistics{return{ev,standardError:0,ci95:[ev,ev],ci99:[ev,ev],ci999:[ev,ev],ci9999:[ev,ev],samples,runtimeSeconds,samplesPerSecond:samples/runtimeSeconds};}
+
 /** Exact second-decision value, grouped by future board before choosing 1x/fold. */
 export function exactSecondDecision(state:InfoState,sixCardPayout=50):Decision{
-  if(state.board.length!==2||state.dealerVisible===undefined)throw new Error("Exact second-decision mode requires two board cards and one exposed dealer card");
+  const started=performance.now();
+  if(state.board.length!==2)throw new Error("Exact second-decision mode requires two board cards");
   const rem=remaining(state),visible=state.dealerVisible;
-  let betTotal=0,checkTotal=0,boardCount=0;
+  let betTotal=0,checkTotal=0,boardCount=0,totalTerminals=0;
   for(let bi=0;bi<rem.length-1;bi++)for(let bj=bi+1;bj<rem.length;bj++){
     const future=[rem[bi],rem[bj]],board=[...state.board,...future];
     let betBoard=0,callBoard=0,dealerCount=0;
-    for(let di=0;di<rem.length-1;di++){
-      if(di===bi||di===bj)continue;
-      for(let dj=di+1;dj<rem.length;dj++){
-        if(dj===bi||dj===bj)continue;
-        const dealer=[visible,rem[di],rem[dj]],player=[...state.player,...board];
-        betBoard+=settle(player,[...dealer,...board],2,sixCardPayout);
-        callBoard+=settle(player,[...dealer,...board],1,sixCardPayout);
-        dealerCount++;
+    const playerScore=packedScore7(state.player[0],state.player[1],state.player[2],board[0],board[1],board[2],board[3]);
+    if(visible!==undefined){
+      for(let di=0;di<rem.length-1;di++){
+        if(di===bi||di===bj)continue;
+        for(let dj=di+1;dj<rem.length;dj++){
+          if(dj===bi||dj===bj)continue;
+          const dealerScore=packedScore7(visible,rem[di],rem[dj],board[0],board[1],board[2],board[3]);
+          betBoard+=fastProfit(playerScore,dealerScore,2,sixCardPayout);callBoard+=fastProfit(playerScore,dealerScore,1,sixCardPayout);dealerCount++;
+        }
+      }
+    }else{
+      for(let di=0;di<rem.length-2;di++){
+        if(di===bi||di===bj)continue;
+        for(let dj=di+1;dj<rem.length-1;dj++){
+          if(dj===bi||dj===bj)continue;
+          for(let dk=dj+1;dk<rem.length;dk++){
+            if(dk===bi||dk===bj)continue;
+            const dealerScore=packedScore7(rem[di],rem[dj],rem[dk],board[0],board[1],board[2],board[3]);
+            betBoard+=fastProfit(playerScore,dealerScore,2,sixCardPayout);callBoard+=fastProfit(playerScore,dealerScore,1,sixCardPayout);dealerCount++;
+          }
+        }
       }
     }
     betTotal+=betBoard/dealerCount;
     checkTotal+=Math.max(callBoard/dealerCount,foldBreakdown().total);
-    boardCount++;
+    boardCount++;totalTerminals+=dealerCount;
   }
-  const bet=betTotal/boardCount,check=checkTotal/boardCount,evs={"2x":bet,check},action=bet>=check?"2x":"check";
-  return{action,evs,difference:Math.abs(bet-check),exact:true};
+  const runtimeSeconds=(performance.now()-started)/1000,samples=totalTerminals;
+  const bet=betTotal/boardCount,check=checkTotal/boardCount,difference=bet-check,evs={"2x":bet,check},action=difference>=0?"2x":"check";
+  return{action,evs,difference:Math.abs(difference),exact:true,method:"EXACT",resolved:true,statistics:{"2x":exactStats(bet,samples,runtimeSeconds),check:exactStats(check,samples,runtimeSeconds)},differenceStatistics:exactStats(difference,samples,runtimeSeconds)};
+}
+
+/** Complete exposed-card opening backward induction (1,104,436,080 terminals). */
+export function exactOpeningDecision(state:InfoState,sixCardPayout=50):Decision{
+  if(state.board.length!==0)throw new Error("Exact opening mode requires no board cards");
+  const started=performance.now(),rem=remaining(state),visible=state.dealerVisible;
+  let openingBetSum=0,openingCheckSum=0,firstBoards=0,totalTerminals=0;
+  for(let fi=0;fi<rem.length-1;fi++)for(let fj=fi+1;fj<rem.length;fj++){
+    const f0=rem[fi],f1=rem[fj],rest=rem.filter((_,index)=>index!==fi&&index!==fj);
+    let bet3=0,bet2=0,check2=0,secondBoards=0,terminals=0;
+    for(let bi=0;bi<rest.length-1;bi++)for(let bj=bi+1;bj<rest.length;bj++){
+      const b0=rest[bi],b1=rest[bj],playerScore=packedScore7(state.player[0],state.player[1],state.player[2],f0,f1,b0,b1);
+      let call=0,hidden=0;
+      if(visible!==undefined){
+        for(let di=0;di<rest.length-1;di++){
+          if(di===bi||di===bj)continue;
+          for(let dj=di+1;dj<rest.length;dj++){
+            if(dj===bi||dj===bj)continue;
+            const dealerScore=packedScore7(visible,rest[di],rest[dj],f0,f1,b0,b1);
+            bet3+=fastProfit(playerScore,dealerScore,3,sixCardPayout);bet2+=fastProfit(playerScore,dealerScore,2,sixCardPayout);call+=fastProfit(playerScore,dealerScore,1,sixCardPayout);hidden++;
+          }
+        }
+      }else{
+        for(let di=0;di<rest.length-2;di++){
+          if(di===bi||di===bj)continue;
+          for(let dj=di+1;dj<rest.length-1;dj++){
+            if(dj===bi||dj===bj)continue;
+            for(let dk=dj+1;dk<rest.length;dk++){
+              if(dk===bi||dk===bj)continue;
+              const dealerScore=packedScore7(rest[di],rest[dj],rest[dk],f0,f1,b0,b1);
+              bet3+=fastProfit(playerScore,dealerScore,3,sixCardPayout);bet2+=fastProfit(playerScore,dealerScore,2,sixCardPayout);call+=fastProfit(playerScore,dealerScore,1,sixCardPayout);hidden++;
+            }
+          }
+        }
+      }
+      check2+=Math.max(call/hidden,-2);terminals+=hidden;secondBoards++;
+    }
+    openingBetSum+=bet3;openingCheckSum+=Math.max(bet2/terminals,check2/secondBoards);totalTerminals+=terminals;firstBoards++;
+  }
+  const runtimeSeconds=(performance.now()-started)/1000,bet=openingBetSum/totalTerminals,check=openingCheckSum/firstBoards,difference=bet-check,evs={"3x":bet,check},action=difference>=0?"3x":"check";
+  return{action,evs,difference:Math.abs(difference),exact:true,method:"EXACT",resolved:true,statistics:{"3x":exactStats(bet,totalTerminals,runtimeSeconds),check:exactStats(check,totalTerminals,runtimeSeconds)},differenceStatistics:exactStats(difference,totalTerminals,runtimeSeconds)};
 }
 
 function wagerEV(state:InfoState,wager:number,samples:number,forceExact=false,seedOffset=0,sixCardPayout=50):[number,boolean]{
@@ -90,7 +166,8 @@ function wagerEV(state:InfoState,wager:number,samples:number,forceExact=false,se
 }
 function solveInternal(state:InfoState,samples:number,direct:boolean,seedOffset:number,sixCardPayout:number):Decision{
   const stage=state.board.length===0?1:state.board.length===2?2:3;
-  if(stage===2&&direct&&state.dealerVisible!==undefined)return exactSecondDecision(state,sixCardPayout);
+  if(stage===1&&direct)return exactOpeningDecision(state,sixCardPayout);
+  if(stage===2&&direct)return exactSecondDecision(state,sixCardPayout);
   if(stage===3){const fold=foldBreakdown().total,[bet,exact]=wagerEV(state,1,samples,direct,seedOffset,sixCardPayout),evs={"1x":bet,fold},action=bet>=fold?"1x":"fold";return{action,evs,difference:Math.abs(bet-fold),exact};}
   const wager=stage===1?3:2,[bet]=wagerEV(state,wager,samples,false,seedOffset,sixCardPayout),random=rng(hashState(state,77+seedOffset)),rem=remaining(state);let check=0;
   for(let i=0;i<samples;i++){const board=[...state.board,...sample(rem,2,random)];check+=Math.max(...Object.values(solveInternal({...state,board},samples,false,seedOffset,sixCardPayout).evs));}

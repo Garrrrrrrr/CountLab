@@ -17,13 +17,16 @@ import {
 import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
 import {
   DeviationDrill,
+  MissingCardDrill,
+  StrategyDrill,
+} from "@/components/Drills";
+import {
+  CountingBenchmark,
   DeckEstimationDrill,
   FullShoeDrill,
-  MissingCardDrill,
   RunningCountDrill,
-  StrategyDrill,
   TrueCountDrill,
-} from "@/components/Drills";
+} from "@/components/CountingDrills";
 import { DEVIATIONS, DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
   DEFAULT_SETTINGS,
@@ -33,6 +36,7 @@ import {
 } from "@/lib/statistics/storage";
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
+import { countingMastery } from "@/lib/blackjack/countingTraining";
 import { AdvantageCalculator } from "@/components/AdvantageCalculator";
 import { BankrollRecommender } from "@/components/BankrollRecommender";
 import { ChaseFlushLab } from "@/components/ChaseFlushLab";
@@ -558,6 +562,21 @@ function Statistics() {
       total: result.total,
     }))
     .sort((a, b) => a.accuracy - b.accuracy);
+  const accuracySince = (days: number) => {
+    const cutoff = Date.now() - days * 86400000;
+    const recent = sessions.filter((session) => new Date(session.date).getTime() >= cutoff);
+    const total = recent.reduce((sum, session) => sum + session.questions, 0);
+    return total ? Math.round(recent.reduce((sum, session) => sum + session.correct, 0) / total * 100) : 0;
+  };
+  const counting = sessions.filter((session) => ["Running Count", "True Count", "Deck Estimation", "Full Shoe"].includes(session.drill));
+  const numericMetric = (key: string) => counting.map((session) => Number(session.metrics?.[key])).filter(Number.isFinite);
+  const cardSpeeds = numericMetric("cardsPerSecond"), deckErrors = numericMetric("meanAbsoluteDeckError"), mastery = countingMastery(sessions);
+  const perfectShoes = counting.filter((session) => session.drill === "Full Shoe" && session.accuracy === 100).length;
+  const errorCounts = Object.entries(counting.flatMap((session) => session.mistakes).reduce<Record<string, number>>((all, mistake) => {
+    const key = mistake.category ?? "uncategorized";
+    all[key] = (all[key] ?? 0) + 1;
+    return all;
+  }, {})).sort((a, b) => b[1] - a[1]);
   return (
     <>
       <h1 className="text-3xl font-semibold">Statistics</h1>
@@ -575,6 +594,13 @@ function Statistics() {
         </Panel>
       ) : (
         <div className="mt-7 grid gap-5 lg:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-5">
+            <Metric label="7-day accuracy" value={`${accuracySince(7)}%`} />
+            <Metric label="30-day accuracy" value={`${accuracySince(30)}%`} />
+            <Metric label="Best card speed" value={`${Math.max(0, ...cardSpeeds).toFixed(1)}/s`} />
+            <Metric label="Latest deck MAE" value={`${(deckErrors[0] ?? 0).toFixed(2)} decks`} />
+            <Metric label="Counting mastery" value={`${mastery.score}%`} sub={`${perfectShoes} perfect shoes`} />
+          </div>
           <Panel>
             <h2 className="mb-5 font-semibold">Accuracy over time</h2>
             <div className="h-64">
@@ -668,6 +694,7 @@ function Statistics() {
               </div>
             </Panel>
           )}
+          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-zinc-500">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-black/25 px-3 py-2 text-sm"><b className="text-amber-300">{count}</b> {name}</span>)}</div></Panel>}
           <section className="sr-only" aria-label="Statistics text summary">
             <h2>Performance summary</h2>
             <ul>
@@ -793,20 +820,29 @@ function SettingsPage() {
           </div>
         </Panel>
         <Panel>
-          <h2 className="mb-5 font-semibold">Counting system</h2>
+          <h2 className="mb-5 font-semibold">Counting defaults</h2>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
             <b>Hi-Lo ✓</b>
             <p className="text-sm text-zinc-400">Balanced level-one system</p>
           </div>
-          {["KO", "Omega II", "Hi-Opt I", "Hi-Opt II"].map((x) => (
-            <div
-              key={x}
-              className="mt-2 flex justify-between rounded-xl bg-black/20 p-3 text-zinc-600"
-            >
-              <span>{x}</span>
-              <span className="text-xs">Coming soon</span>
-            </div>
-          ))}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Select label="Running-count preset" value={s.countingPreset} onChange={(e) => update("countingPreset", e.target.value as Settings["countingPreset"])}>
+              <option value="one-deck-speed">One-deck speed</option>
+              <option value="two-card-cancellation">Two-card cancellation</option>
+              <option value="six-deck-casino">Six-deck casino</option>
+              <option value="recovery">Interruption recovery</option>
+            </Select>
+            <Select label="Feedback timing" value={s.countingFeedback} onChange={(e) => update("countingFeedback", e.target.value as Settings["countingFeedback"])}>
+              <option value="immediate">Immediate</option><option value="end">End of session</option>
+            </Select>
+            <Select label="Questions per session" value={s.countingSessionQuestions} onChange={(e) => update("countingSessionQuestions", +e.target.value as Settings["countingSessionQuestions"])}>
+              {[5, 10, 20].map((value) => <option key={value}>{value}</option>)}
+            </Select>
+            <Select label="Default penetration" value={s.penetration} onChange={(e) => update("penetration", +e.target.value)}>
+              {[0.5, 0.6, 0.7, 0.75, 0.8, 0.85].map((value) => <option key={value} value={value}>{Math.round(value * 100)}%</option>)}
+            </Select>
+          </div>
+          <p className="mt-4 text-xs leading-5 text-zinc-500">Floor rounds toward negative infinity: -1.2 becomes -2. Truncate rounds toward zero: -1.2 becomes -1. Pick the method that matches the indices you train.</p>
         </Panel>
         <Panel className="lg:col-span-2">
           <h2 className="mb-4 font-semibold">Experience</h2>
@@ -921,6 +957,7 @@ export default function DynamicPage() {
     "training/full-shoe": <FullShoeDrill />,
     "training/missing-card": <MissingCardDrill />,
     "training/deck-estimation": <DeckEstimationDrill />,
+    "training/benchmark": <CountingBenchmark />,
     reference: <HiLoReference />,
     "reference/basic-strategy": <StrategyReference />,
     "reference/deviations": <DeviationReference />,

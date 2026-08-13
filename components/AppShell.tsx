@@ -23,6 +23,7 @@ const groups = [
       ["Full Shoe", "/training/full-shoe", "fa-shoe-prints"],
       ["Missing Card", "/training/missing-card", "fa-eye"],
       ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
+      ["Counting Benchmark", "/training/benchmark", "fa-medal"],
     ],
   },
   {

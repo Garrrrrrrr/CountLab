@@ -6,12 +6,26 @@ export type DrillType =
   | "True Count"
   | "Deck Estimation"
   | "Full Shoe"
+  | "Counting Benchmark"
   | "Chase the Flush";
+export type CountingErrorCategory =
+  | "missed cancellation"
+  | "negative arithmetic"
+  | "zero crossing"
+  | "deck estimate"
+  | "true-count division"
+  | "true-count rounding"
+  | "interruption recovery"
+  | "hole-card reveal"
+  | "bet sizing"
+  | "playing decision";
 export interface Mistake {
   question: string;
   userAnswer: string;
   correctAnswer: string;
   explanation: string;
+  category?: CountingErrorCategory;
+  context?: Record<string, string | number | boolean>;
 }
 export interface Session {
   id: string;
@@ -24,6 +38,8 @@ export interface Session {
   date: string;
   mistakes: Mistake[];
   categories?: Record<string, { correct: number; total: number }>;
+  metrics?: Record<string, string | number | boolean>;
+  tags?: string[];
 }
 export interface Settings {
   decks: number;
@@ -36,6 +52,10 @@ export interface Settings {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  countingPreset: "one-deck-speed" | "two-card-cancellation" | "six-deck-casino" | "recovery";
+  countingFeedback: "immediate" | "end";
+  countingSessionQuestions: 5 | 10 | 20;
+  penetration: number;
 }
 export const DEFAULT_SETTINGS: Settings = {
   decks: 6,
@@ -48,6 +68,10 @@ export const DEFAULT_SETTINGS: Settings = {
   doubleAfterSplit: true,
   resplitAces: true,
   lateSurrender: true,
+  countingPreset: "six-deck-casino",
+  countingFeedback: "immediate",
+  countingSessionQuestions: 10,
+  penetration: 0.75,
 };
 const SESSION_KEY = "hilo:sessions",
   SETTINGS_KEY = "hilo:settings";
@@ -113,6 +137,8 @@ export function makeSession(
   bestStreak: number,
   mistakes: Mistake[],
   categories?: Record<string, { correct: number; total: number }>,
+  metrics?: Record<string, string | number | boolean>,
+  tags?: string[],
 ): Session {
   return {
     id: crypto.randomUUID(),
@@ -125,5 +151,7 @@ export function makeSession(
     date: new Date().toISOString(),
     mistakes,
     categories,
+    metrics,
+    tags,
   };
 }

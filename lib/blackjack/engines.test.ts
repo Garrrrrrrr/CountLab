@@ -12,6 +12,7 @@ import {
   RAMPS,
   recommendUnit,
   unitsAt,
+  zeroNegativeCountBets,
 } from "./advantage";
 const c = (rank: Card["rank"], suit: Card["suit"] = "spades"): Card => ({
   rank,
@@ -129,6 +130,18 @@ describe("advantage model", () => {
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);
     expect(unitsAt(3, RAMPS["1-8"])).toBe(6);
+  });
+  it("can zero every negative-count wager without changing nonnegative bets", () => {
+    const ramp = zeroNegativeCountBets([
+      { trueCount: -8, units: 1 },
+      { trueCount: -1, units: 1 },
+      { trueCount: 0, units: 1 },
+      { trueCount: 1, units: 2 },
+    ]);
+    expect(unitsAt(-8, ramp)).toBe(0);
+    expect(unitsAt(-1, ramp)).toBe(0);
+    expect(unitsAt(0, ramp)).toBe(1);
+    expect(unitsAt(1, ramp)).toBe(2);
   });
   it("returns finite risk and scales units with risk tolerance", () => {
     const result = calculateAdvantage({
