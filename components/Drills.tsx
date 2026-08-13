@@ -649,13 +649,18 @@ export function StrategyDrill() {
     addEventListener("keydown", fn);
     return () => removeEventListener("keydown", fn);
   }, [choose, feedback, settings.shortcuts]);
-  const next = () => {
-    setFeedback(undefined);
-    if (!session) {
-      setQ((current) => current + 1);
-      setStarted(Date.now());
-    }
-  };
+  useEffect(() => {
+    if (!feedback) return;
+    const delay = feedback.chosen === feedback.correct ? 900 : 2200;
+    const timer = window.setTimeout(() => {
+      setFeedback(undefined);
+      if (!session) {
+        setQ((current) => current + 1);
+        setStarted(Date.now());
+      }
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [feedback, session]);
   if (session && !feedback) {
     return (
       <SessionSummary
@@ -704,12 +709,25 @@ export function StrategyDrill() {
         </div>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(names) as Action[]).map((a) => (
-            <GhostButton key={a} disabled={Boolean(feedback)} onClick={() => choose(a)}>
-              <u>{names[a][0]}</u>
-              {names[a].slice(1)}
+            <GhostButton
+              key={a}
+              aria-keyshortcuts={a}
+              className="flex items-center gap-2"
+              disabled={Boolean(feedback)}
+              onClick={() => choose(a)}
+            >
+              <span>{names[a]}</span>
+              <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">
+                {a}
+              </kbd>
             </GhostButton>
           ))}
         </div>
+        <p className="mt-3 text-xs text-zinc-500">
+          {settings.shortcuts
+            ? "Keyboard shortcuts are shown on each action."
+            : "Keyboard shortcuts are shown above but disabled in Settings."}
+        </p>
         {feedback && (
           <div
             aria-live="polite"
@@ -722,7 +740,9 @@ export function StrategyDrill() {
             </b>
             <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
             <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
-            <Button className="mt-4" onClick={next}>{session ? "View summary" : "Next hand"}</Button>
+            <p className="mt-2 text-xs text-zinc-500">
+              {session ? "Opening session summary…" : "Next hand loading…"}
+            </p>
           </div>
         )}
       </Panel>

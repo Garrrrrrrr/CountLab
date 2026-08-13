@@ -8,7 +8,6 @@ import {
   RampPoint,
   recommendUnit,
   unitsAt,
-  zeroNegativeCountBets,
 } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { GhostButton, Metric, NumberField, Panel, Select } from "./ui";
@@ -63,13 +62,6 @@ export function AdvantageCalculator() {
       ),
     );
   };
-  const zeroNegativeBets = () => {
-    setSpread("Custom");
-    setRamp((current) => zeroNegativeCountBets(current));
-  };
-  const negativeBetsAreZero = ramp
-    .filter((point) => point.trueCount < 0)
-    .every((point) => point.units === 0);
   return (
     <>
       <div className="mb-7">
@@ -191,7 +183,7 @@ export function AdvantageCalculator() {
         </Panel>
       </div>
       <Panel className="mt-5 overflow-x-auto">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div className="mb-5">
           <div>
             <h2 className="font-semibold">True-count bet ramp</h2>
             <p className="mt-1 text-sm text-zinc-500">
@@ -199,14 +191,6 @@ export function AdvantageCalculator() {
               coefficients for this exact ruleset.
             </p>
           </div>
-          <GhostButton
-            disabled={negativeBetsAreZero}
-            onClick={zeroNegativeBets}
-          >
-            {negativeBetsAreZero
-              ? "Negative-count bets are $0"
-              : "Set negative-count bets to $0"}
-          </GhostButton>
         </div>
         <table className="w-full min-w-[760px] text-right text-sm">
           <thead className="text-zinc-500">
@@ -231,15 +215,27 @@ export function AdvantageCalculator() {
                   {pct(row.advantage)}
                 </td>
                 <td>{row.sdUnits.toFixed(3)}</td>
-                <td>
-                  <NumberField
-                    ariaLabel={`Bet at true count ${row.label}`}
-                    value={Math.round(row.bet * 100) / 100}
-                    min={0}
-                    prefix="$"
-                    className="ml-auto w-32"
-                    onValueChange={(value) => updateBet(row.trueCount, value)}
-                  />
+                <td className="py-2.5">
+                  <div className="ml-auto flex w-fit items-center justify-end gap-2">
+                    <NumberField
+                      ariaLabel={`Bet at true count ${row.label}`}
+                      value={Math.round(row.bet * 100) / 100}
+                      min={0}
+                      prefix="$"
+                      className="w-32"
+                      onValueChange={(value) => updateBet(row.trueCount, value)}
+                    />
+                    {row.trueCount < 0 && (
+                      <GhostButton
+                        aria-label={`Set bet at true count ${row.label} to zero`}
+                        className="min-h-11 whitespace-nowrap px-3 text-xs"
+                        disabled={row.bet === 0}
+                        onClick={() => updateBet(row.trueCount, 0)}
+                      >
+                        {row.bet === 0 ? "$0 set" : "Set $0"}
+                      </GhostButton>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
