@@ -7,7 +7,7 @@ strictly backward on independent datasets, preventing hidden-card leakage.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from math import sqrt
 from pathlib import Path
 from time import perf_counter
@@ -113,6 +113,7 @@ class PolicySet:
     d3_normal: Any; d3_exposed: Any
     d2_baseline: Any; d2_final_only: Any; d2_exposed: Any
     d1_baseline: Any; d1_final_only: Any; d1_from2: Any; d1_exposed: Any
+    thresholds: dict[str, float] = field(default_factory=dict)
 
     def save(self, path: str | Path) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True); joblib.dump(self, path, compress=3)
@@ -128,14 +129,15 @@ def _predict(model: Any, deals: np.ndarray, stage: int, exposed: bool) -> np.nda
     return np.maximum(prediction, {1:-3.0, 2:-2.0, 3:-1.0}[stage])
 
 
-def _continuation_d3(deals: np.ndarray, model: Any, exposed: bool) -> np.ndarray:
-    bet = _predict(model, deals, 3, exposed) >= 0
+def _continuation_d3(deals: np.ndarray, model: Any, exposed: bool, threshold: float = 0.0) -> np.ndarray:
+    bet = _predict(model, deals, 3, exposed) >= threshold
     return np.where(bet, terminal_profit(deals, 1), -2.0)
 
 
-def _continuation_d2(deals: np.ndarray, d2: Any, d2_exposed: bool, d3: Any, d3_exposed: bool) -> np.ndarray:
-    bet2 = _predict(d2, deals, 2, d2_exposed) >= 0
-    return np.where(bet2, terminal_profit(deals, 2), _continuation_d3(deals, d3, d3_exposed))
+def _continuation_d2(deals: np.ndarray, d2: Any, d2_exposed: bool, d3: Any, d3_exposed: bool,
+                     d2_threshold: float = 0.0, d3_threshold: float = 0.0) -> np.ndarray:
+    bet2 = _predict(d2, deals, 2, d2_exposed) >= d2_threshold
+    return np.where(bet2, terminal_profit(deals, 2), _continuation_d3(deals, d3, d3_exposed, d3_threshold))
 
 
 def _fit(name: str, deals: np.ndarray, stage: int, exposed: bool, regret: np.ndarray, seed: int):
@@ -164,15 +166,53 @@ def train_policies(n: int, seed: int = 12345) -> PolicySet:
 
 
 def play_variant(deals: np.ndarray, p: PolicySet, variant: str) -> tuple[np.ndarray,np.ndarray,np.ndarray]:
-    if variant == "baseline": d1,d2,d3,e1,e2,e3=p.d1_baseline,p.d2_baseline,p.d3_normal,False,False,False
-    elif variant == "final_only": d1,d2,d3,e1,e2,e3=p.d1_final_only,p.d2_final_only,p.d3_exposed,False,False,True
-    elif variant == "from_2x": d1,d2,d3,e1,e2,e3=p.d1_from2,p.d2_exposed,p.d3_exposed,False,True,True
-    elif variant == "full_exposed": d1,d2,d3,e1,e2,e3=p.d1_exposed,p.d2_exposed,p.d3_exposed,True,True,True
+    if variant == "baseline": d1,d2,d3,e1,e2,e3,k1,k2,k3=p.d1_baseline,p.d2_baseline,p.d3_normal,False,False,False,"d1_baseline","d2_baseline","d3_normal"
+    elif variant == "final_only": d1,d2,d3,e1,e2,e3,k1,k2,k3=p.d1_final_only,p.d2_final_only,p.d3_exposed,False,False,True,"d1_final_only","d2_final_only","d3_exposed"
+    elif variant == "from_2x": d1,d2,d3,e1,e2,e3,k1,k2,k3=p.d1_from2,p.d2_exposed,p.d3_exposed,False,True,True,"d1_from2","d2_exposed","d3_exposed"
+    elif variant == "full_exposed": d1,d2,d3,e1,e2,e3,k1,k2,k3=p.d1_exposed,p.d2_exposed,p.d3_exposed,True,True,True,"d1_exposed","d2_exposed","d3_exposed"
     else: raise ValueError(variant)
-    a1=_predict(d1,deals,1,e1)>=0; a2=_predict(d2,deals,2,e2)>=0; a3=_predict(d3,deals,3,e3)>=0
+    thresholds=getattr(p,"thresholds",{})
+    a1=_predict(d1,deals,1,e1)>=thresholds.get(k1,0.0);a2=_predict(d2,deals,2,e2)>=thresholds.get(k2,0.0);a3=_predict(d3,deals,3,e3)>=thresholds.get(k3,0.0)
     action=np.where(a1,3,np.where(a2,2,np.where(a3,1,0))).astype(np.int8)
     profits=np.where(action==3,terminal_profit(deals,3),np.where(action==2,terminal_profit(deals,2),np.where(action==1,terminal_profit(deals,1),-2.0)))
     return profits, 2+action, action
+
+
+def _optimal_threshold(prediction: np.ndarray, regret: np.ndarray) -> float:
+    """Choose the out-of-sample cutoff maximizing realized paired improvement."""
+    order = np.argsort(prediction)[::-1]
+    cumulative = np.cumsum(regret[order], dtype=np.float64)
+    best_count = int(np.argmax(np.concatenate(([0.0], cumulative))))
+    if best_count == 0:
+        return float(np.nextafter(prediction.max(), np.inf))
+    if best_count == len(prediction):
+        return float(np.nextafter(prediction.min(), -np.inf))
+    high = prediction[order[best_count - 1]]
+    low = prediction[order[best_count]]
+    return float((high + low) / 2)
+
+
+def calibrate_policies(p: PolicySet, n: int = 2_000_000, seed: int = 987654) -> PolicySet:
+    """Calibrate nine action cutoffs on independent paired outcomes, backward."""
+    ss = np.random.SeedSequence(seed).spawn(9)
+    thresholds: dict[str, float] = {}
+    def deal(i): return random_deals(np.random.default_rng(ss[i]), n)
+    def fit_threshold(key, model, deals, stage, exposed, regret):
+        threshold = _optimal_threshold(_predict(model, deals, stage, exposed), regret)
+        thresholds[key] = threshold
+        print(f"calibrated {key:14s} threshold={threshold:+.6f}")
+
+    d=deal(0);fit_threshold("d3_normal",p.d3_normal,d,3,False,terminal_profit(d,1)+2)
+    d=deal(1);fit_threshold("d3_exposed",p.d3_exposed,d,3,True,terminal_profit(d,1)+2)
+    d=deal(2);c=_continuation_d3(d,p.d3_normal,False,thresholds["d3_normal"]);fit_threshold("d2_baseline",p.d2_baseline,d,2,False,terminal_profit(d,2)-c)
+    d=deal(3);c=_continuation_d3(d,p.d3_exposed,True,thresholds["d3_exposed"]);fit_threshold("d2_final_only",p.d2_final_only,d,2,False,terminal_profit(d,2)-c)
+    d=deal(4);c=_continuation_d3(d,p.d3_exposed,True,thresholds["d3_exposed"]);fit_threshold("d2_exposed",p.d2_exposed,d,2,True,terminal_profit(d,2)-c)
+    d=deal(5);c=_continuation_d2(d,p.d2_baseline,False,p.d3_normal,False,thresholds["d2_baseline"],thresholds["d3_normal"]);fit_threshold("d1_baseline",p.d1_baseline,d,1,False,terminal_profit(d,3)-c)
+    d=deal(6);c=_continuation_d2(d,p.d2_final_only,False,p.d3_exposed,True,thresholds["d2_final_only"],thresholds["d3_exposed"]);fit_threshold("d1_final_only",p.d1_final_only,d,1,False,terminal_profit(d,3)-c)
+    d=deal(7);c=_continuation_d2(d,p.d2_exposed,True,p.d3_exposed,True,thresholds["d2_exposed"],thresholds["d3_exposed"]);fit_threshold("d1_from2",p.d1_from2,d,1,False,terminal_profit(d,3)-c)
+    d=deal(8);c=_continuation_d2(d,p.d2_exposed,True,p.d3_exposed,True,thresholds["d2_exposed"],thresholds["d3_exposed"]);fit_threshold("d1_exposed",p.d1_exposed,d,1,True,terminal_profit(d,3)-c)
+    p.thresholds = thresholds
+    return p
 
 
 def summary(values: np.ndarray, wagers: np.ndarray) -> dict[str, Any]:

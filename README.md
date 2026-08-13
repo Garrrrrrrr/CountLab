@@ -29,12 +29,17 @@ tested.
 
 ## Methods
 
-The final 1x/fold decision is exact: 946 possible hidden dealer pairs with an
-exposed card, or 14,190 dealer triples without one. The exposed-card 2x/check
-decision is also exact when requested. It enumerates future boards first and
-then all hidden dealer pairs for each board, so the later action can depend on
-the visible board but cannot leak either hidden dealer card. Other early
-decisions use reproducible conditional Monte Carlo backward induction.
+Interactive decisions are now exact at every stage. A Numba nopython kernel
+uses four 13-bit suit masks and exhaustive board-conditioned backward induction:
+
+- river: 946 exposed or 14,190 unexposed dealer completions;
+- 2x stage: 979,110 exposed or 15,340,290 unexposed terminal assignments;
+- exposed opening: 1,104,436,080 terminal assignments;
+- unexposed opening: more than 18 billion terminal assignments.
+
+Future actions are chosen only after averaging over every hidden dealer hand
+for the corresponding visible board. Thus neither the exact solver nor its
+optimized loop can condition an action on hidden cards.
 
 Every decision value has one convention: **expected final net profit for the
 whole hand in Ante units**. Returned stakes are not profit. Terminal children
@@ -50,10 +55,12 @@ The simulator plays the same terminal deal under four information policies:
 - from 2x: visible at the 2x and final decisions;
 - full exposed: visible from the initial 3x decision.
 
-This common-random-number design produces a paired confidence interval for the
-information value. JSON includes seed, sample count, Git SHA, UTC date, rules,
-paytable, runtime, CPU count, variance, standard error, confidence intervals,
-average wager, and action counts.
+Full-game policy evaluation uses common random numbers and stores integer
+`count`, `sum`, and `sum_squares` aggregates instead of individual outcomes.
+The paired information-value variance is calculated directly from deal-level
+differences. PCG64DXSM streams are split by NumPy `SeedSequence` batch keys, so
+runs are reproducible and resumable across different worker counts. Stopping is
+based on the paired confidence interval, not merely the sign of its sample mean.
 
 ## Commands
 
@@ -63,15 +70,19 @@ python -m pytest -q
 python analyze_hand.py --player "Ah 8h 4c" --dealer-visible "Kh" --board "2h 7s"
 python analyze_hand.py --player "As Ks Js" --dealer-visible "Kh" --board "Ts 9s" --exact --debug-payoff
 python interactive.py
-python simulate.py --hands 10000000 --seed 12345 --decision-samples 8
+python simulate.py --mode paired --hands 1000000000 --workers auto --seed 12345
+python simulate.py --mode paired --until-converged --precision 0.0001 --confidence 0.999 --max-hands 100000000000 --resume
+python simulate.py --mode paired --quality near-exact --until-converged --workers auto
 python fitted_simulate.py --train-hands 2000000 --hands 20000000 --six-payout 50
+python benchmark.py --workers auto
 python extract_strategy.py
 python -m cProfile -o profile.out simulate.py --hands 1000 --seed 12345
 ```
 
-`--hands` accepts large runs, but runtime grows with both hands and the cube of
-`--decision-samples` at the opening decision. Parallelism and compiled/vectorized
-kernels are not implemented in this version.
+`near-exact` requires at least 100 million full-game evaluation hands and targets
+a 99.9% paired half-width of 0.001. `extreme` targets a 99.99% half-width of
+0.0001. These presets apply to fixed-policy full-game evaluation; individual
+hands use exact enumeration and therefore have zero sampling error.
 
 ## Validation and final result
 
@@ -81,12 +92,23 @@ calculated at **20:1**: for example, a qualified 3x six-card win is shown as +24
 not the +54 implied by 50:1. Its published −0.023907 EV, 3.564878 average wager,
 and action frequencies therefore describe the older 20:1 game.
 
-The solver was validated on that legacy 20:1 game using two million independent
-training deals per policy and five million fresh holdout deals. The audit rerun
-returned **-0.026063** (95% CI [-0.029602, -0.022524]) versus Wizard's
-**-0.023907**. Wizard's value lies inside the interval; the difference is
--0.002156 against a 0.003539 sampling tolerance, so validation passed. The
-machine-readable audit is `results/legacy20-validation-audit.json`.
+The fresh high-precision legacy validation used 20 million holdout deals. It
+returned **-0.0267002**, SE **0.0008975**, and a 99.9% interval of
+**[-0.0296534, -0.0237470]** versus Wizard's **-0.023907**. The z-score is
+**-3.112**, within the prespecified two-sided 99.9% boundary of 3.291, so the
+validation passes. The nonzero difference is policy approximation, not Monte
+Carlo noise, and is retained as a stated systematic limitation.
+
+The new paired current-50 run also used 20 million fresh deals:
+
+- baseline EV +0.03498685, SE 0.00101749;
+- exposed EV +0.12140385, SE 0.00101032;
+- paired information value **+0.08641700**, SE **0.00018455**;
+- paired 99.9% CI **[+0.08580973, +0.08702427]**;
+- exposed average action 3.52708285 and edge/action 3.44205%.
+
+The exact aggregate files are `results/high-precision-baseline20.json` and
+`results/high-precision-current50-paired.json`.
 
 The final calculation then retrained at the requested current 50:1 paytable and
 used 20,000,000 independent paired holdout deals:
@@ -125,11 +147,12 @@ figures are +0.223343 and +0.039179. Matching the player's dominant initial suit
 has +0.039147 total EV versus +0.146486 for another suit. These categories are
 descriptive conditional results, not an additive decomposition.
 
-This is an extremely high-confidence simulation estimate, not a literal exact
-enumeration of the roughly 398.7 trillion complete game outcomes. Remaining
-systematic uncertainty is policy approximation. Its observed scale is indicated,
-but not formally bounded, by the legacy validation error (0.000524 units) and
-convergence from 500,000 to 2,000,000 training deals.
+The measured all-core fixed-policy rate on this machine is 118,349 hands/second
+in the isolated benchmark (121,362/second during the 20-million paired run).
+At the conservative benchmark rate, 1B / 10B / 100B / 1T / 4T hands require
+about 2.35 / 23.47 / 234.71 / 2,347.11 / 9,388.43 hours. Improving or replacing
+the fitted policy inference has far better return than blindly running trillions
+of samples: Monte Carlo error is already much smaller than observed policy error.
 
 ## Project map
 
@@ -138,6 +161,9 @@ convergence from 500,000 to 2,000,000 training deals.
 - `chase_flush/payouts.py`: centralized net settlement
 - `chase_flush/state.py`: hidden/visible state separation
 - `chase_flush/solver.py`: conditional EV and backward induction
-- `chase_flush/monte_carlo.py`: paired simulation and statistics
+- `chase_flush/compiled_exact.py`: Numba exact decision enumeration
+- `chase_flush/high_precision.py`: paired multicore/resumable evaluation
+- `chase_flush/statistics.py`: exact integer aggregates and confidence intervals
+- `benchmark.py`: compiled and full-policy throughput benchmark
 - `analyze_hand.py`, `interactive.py`, `simulate.py`: CLIs
 - `tests/`: evaluator, qualifier, payouts, reveal cadence, and leakage tests

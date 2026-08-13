@@ -83,19 +83,16 @@ class Solver:
             yield InformationState(state.player, state.board + future, state.dealer_visible)
 
     def _decision(self, state: InformationState, exact_requested: bool) -> Decision:
-        if state.stage == 3: return self._final(state, exact_requested)
-        if state.stage == 2 and exact_requested and state.dealer_visible is not None:
-            # Enumerate by future board first.  That grouping is essential: the
-            # later 1x/fold choice may depend on the board, but never on either
-            # hidden dealer card.
-            from .exact_analysis import exact_second_decision
-            result = exact_second_decision(state)
-            evs = {"2x": result.bet_2x.total, "check": result.check.total}
+        if exact_requested:
+            from .compiled_exact import exact_opening_compiled, exact_river_compiled, exact_stage2_compiled
+            result = exact_opening_compiled(state) if state.stage == 1 else exact_stage2_compiled(state) if state.stage == 2 else exact_river_compiled(state)
+            evs = {result.action_a: result.ev_a, result.action_b: result.ev_b}
             best = result.best_action
-            other = "check" if best == "2x" else "2x"
+            other = result.action_b if best == result.action_a else result.action_a
             return Decision(
-                state, best, evs[best], evs[other], result.margin, evs, True
+                state, best, evs[best], evs[other], abs(result.difference), evs, True
             )
+        if state.stage == 3: return self._final(state, exact_requested)
         wager = 3 if state.stage == 1 else 2
         bet, bet_exact = self.wager_ev(state, wager)
         child_values = [self._decision(child, False).ev_best for child in self._sample_future_states(state, 2)]
