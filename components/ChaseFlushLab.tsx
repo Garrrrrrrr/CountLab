@@ -4,6 +4,9 @@ import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
 import {
   cardName,
   Decision,
+  ExactOpeningChunk,
+  finalizeExactOpening,
+  InfoState,
   parseCard,
   RANKS,
   SUITS,
@@ -19,6 +22,7 @@ type Result = {
   normal?: Decision;
   stability: number;
   stableAction: boolean;
+  source?: "computed" | "cache";
 };
 
 const suitGlyph: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
@@ -37,6 +41,41 @@ const rankResearch = [
 
 const CARD_DRAG_TYPE = "application/x-chase-flush-card";
 type DraggedCard = { card: number; source?: Target };
+type OpeningJob = {id:number;started:number;state:InfoState;chunks:Array<ExactOpeningChunk|undefined>;cacheKey:string};
+type SolveJob = {id:number;informed:InfoState;normal:InfoState;omitNormal:boolean;sixCardPayout:number};
+type WorkerResponse = (Result & {id:number;error?:string}) | {id:number;kind:"opening-chunk";chunkIndex:number;chunk:ExactOpeningChunk;error?:string} | {id:number;kind:"provisional";decision:Decision;error?:string};
+
+const exactMemoryCache=new Map<string,Decision>();
+let exactDatabase:Promise<IDBDatabase|undefined>|undefined;
+const canonicalCards=(cards:number[])=>[...cards].sort((a,b)=>a-b).join(",");
+const exactKey=(state:InfoState,sixCardPayout:number)=>`v4|${canonicalCards(state.player)}|${canonicalCards(state.board)}|${state.dealerVisible??"none"}|${sixCardPayout}`;
+const sameInfoState=(first:InfoState,second:InfoState)=>exactKey(first,0)===exactKey(second,0);
+function openExactDatabase():Promise<IDBDatabase|undefined>{
+  if(exactDatabase)return exactDatabase;
+  exactDatabase=new Promise((resolve)=>{
+    if(typeof indexedDB==="undefined")return resolve(undefined);
+    const request=indexedDB.open("countlab-chase-flush",1);
+    request.onupgradeneeded=()=>{if(!request.result.objectStoreNames.contains("exact-decisions"))request.result.createObjectStore("exact-decisions");};
+    request.onsuccess=()=>resolve(request.result);
+    request.onerror=()=>resolve(undefined);
+  });
+  return exactDatabase;
+}
+async function readExactDecision(key:string):Promise<Decision|undefined>{
+  const memory=exactMemoryCache.get(key);if(memory)return memory;
+  const database=await openExactDatabase();if(!database)return undefined;
+  try{return await new Promise((resolve)=>{
+      const request=database.transaction("exact-decisions","readonly").objectStore("exact-decisions").get(key);
+      request.onsuccess=()=>{const value=request.result as Decision|undefined;if(value?.exact)exactMemoryCache.set(key,value);resolve(value?.exact?value:undefined);};
+      request.onerror=()=>resolve(undefined);
+    });}catch{return undefined;}
+}
+async function writeExactDecision(key:string,decision:Decision):Promise<void>{
+  if(!decision.exact)return;
+  exactMemoryCache.set(key,decision);
+  const database=await openExactDatabase();if(!database)return;
+  try{await new Promise<void>((resolve)=>{const request=database.transaction("exact-decisions","readwrite").objectStore("exact-decisions").put(decision,key);request.onsuccess=()=>resolve();request.onerror=()=>resolve();});}catch{/* Cache failures must never block an exact solve. */}
+}
 
 function writeDraggedCard(event: DragEvent, payload: DraggedCard) {
   const serialized = JSON.stringify(payload);
@@ -86,27 +125,47 @@ export function ChaseFlushLab() {
     [policy, setPolicy] = useState<Policy>("all"),
     [sixCardPayout, setSixCardPayout] = useState(50),
     [result, setResult] = useState<Result>(),
+    [provisional, setProvisional] = useState<Decision>(),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false),
     [practiceChoice, setPracticeChoice] = useState<string>(),
     [started, setStarted] = useState(Date.now());
-  const worker = useRef<Worker | null>(null), requestId = useRef(0), recorded = useRef("");
+  const workers = useRef<Worker[]>([]), requestId = useRef(0), recorded = useRef(""), openingJob=useRef<OpeningJob|undefined>(undefined),solveJob=useRef<SolveJob|undefined>(undefined);
   const selected = useMemo(() => new Set([...player, ...dealer, ...board]), [player, dealer, board]);
   const informationActive = policyAllowsCard(policy, stage);
 
   useEffect(() => {
-    const instance = new Worker(new URL("../workers/chaseFlush.worker.ts", import.meta.url));
-    worker.current = instance;
-    instance.onmessage = (event: MessageEvent<Result & { id: number; error?: string }>) => {
-      if (event.data.id !== requestId.current) return;
-      setLoading(false);
-      if (event.data.error) {
-        setError(event.data.error);
+    const workerCount=window.innerWidth<768?2:Math.min(4,Math.max(2,navigator.hardwareConcurrency||2));
+    const instances=Array.from({length:workerCount},()=>new Worker(new URL("../workers/chaseFlush.worker.ts",import.meta.url)));
+    workers.current=instances;
+    for(const instance of instances)instance.onmessage=(event:MessageEvent<WorkerResponse>)=>{
+      const data=event.data;
+      if(data.id!==requestId.current)return;
+      if(data.error){setLoading(false);setError(data.error);return;}
+      if("kind" in data&&data.kind==="provisional"){
+        setProvisional(data.decision);
         return;
       }
-      setResult(event.data);
+      if("kind" in data&&data.kind==="opening-chunk"){
+        const job=openingJob.current;
+        if(!job||job.id!==data.id)return;
+        job.chunks[data.chunkIndex]=data.chunk;
+        if(job.chunks.every((chunk)=>chunk!==undefined)){
+          try{
+            const decision=finalizeExactOpening(job.state,job.chunks as ExactOpeningChunk[],(performance.now()-job.started)/1000);
+            const completed:Result={informed:decision,stability:0,stableAction:true,source:"computed"};
+            setResult(completed);setProvisional(undefined);setLoading(false);
+            void writeExactDecision(job.cacheKey,decision);
+          }catch(error){setLoading(false);setError(error instanceof Error?error.message:String(error));}
+        }
+        return;
+      }
+      const completed={...(data as Result),source:"computed" as const};
+      setResult(completed);setProvisional(undefined);setLoading(false);
+      const job=solveJob.current;
+      if(job?.id===data.id){void writeExactDecision(exactKey(job.informed,job.sixCardPayout),completed.informed);if(completed.normal)void writeExactDecision(exactKey(job.normal,job.sixCardPayout),completed.normal);}
     };
-    return () => instance.terminate();
+    return()=>{for(const instance of instances)instance.terminate();workers.current=[];};
   }, []);
 
   useEffect(() => {
@@ -128,7 +187,12 @@ export function ChaseFlushLab() {
   }, [board, dealer, player, practiceChoice, result, stage, started]);
 
   const clearResult = () => {
+    requestId.current++;
+    openingJob.current=undefined;
+    solveJob.current=undefined;
     setResult(undefined);
+    setProvisional(undefined);
+    setLoading(false);
     setError("");
     setPracticeChoice(undefined);
     setStarted(Date.now());
@@ -180,24 +244,36 @@ export function ChaseFlushLab() {
     setBoard(cards.slice(4, 4 + stage));
     clearResult();
   };
-  const calculate = useCallback(() => {
+  const calculate = useCallback(async () => {
     setError("");
     if (player.length !== 3) return setError("Select exactly three player cards.");
     if (board.length !== stage) return setError(`Select exactly ${stage} community cards for this stage.`);
     if (informationActive && dealer.length !== 1) return setError("Select the exposed dealer card for this information policy.");
-    if (!worker.current) return setError("The calculation worker is not ready yet.");
+    if (!workers.current.length) return setError("The calculation workers are not ready yet.");
     const id = ++requestId.current;
     const samples = 1; // Direct UI decisions are exhaustive; retained for worker API compatibility.
-    const base = { player, board };
+    const base:InfoState = { player, board };
+    const informed:InfoState=informationActive?{...base,dealerVisible:dealer[0]}:base;
+    const normal=base,omitNormal=stage===0&&informed.dealerVisible!==undefined;
     setLoading(true);
     setResult(undefined);
-    worker.current.postMessage({
-      id,
-      informed: informationActive ? { ...base, dealerVisible: dealer[0] } : base,
-      normal: base,
-      samples,
-      sixCardPayout,
-    });
+    setProvisional(undefined);
+    const informedCacheKey=exactKey(informed,sixCardPayout),informedCached=await readExactDecision(informedCacheKey);
+    if(id!==requestId.current)return;
+    const normalCached=omitNormal||sameInfoState(informed,normal)?informedCached:await readExactDecision(exactKey(normal,sixCardPayout));
+    if(id!==requestId.current)return;
+    if(informedCached&&(omitNormal||normalCached)){
+      setResult({informed:informedCached,normal:omitNormal?undefined:normalCached,stability:0,stableAction:true,source:"cache"});setLoading(false);return;
+    }
+    if(stage===0){
+      const pool=workers.current,totalRemaining=52-player.length-(informed.dealerVisible===undefined?0:1),totalBoards=totalRemaining*(totalRemaining-1)*(totalRemaining-2)*(totalRemaining-3)/24;
+      openingJob.current={id,started:performance.now(),state:informed,chunks:Array(pool.length),cacheKey:informedCacheKey};
+      pool[0].postMessage({id,kind:"provisional",state:informed,samples:24,sixCardPayout});
+      pool.forEach((instance,chunkIndex)=>instance.postMessage({id,kind:"opening-chunk",state:informed,chunkIndex,startBoard:Math.floor(totalBoards*chunkIndex/pool.length),endBoard:Math.floor(totalBoards*(chunkIndex+1)/pool.length),sixCardPayout}));
+      return;
+    }
+    solveJob.current={id,informed,normal,omitNormal,sixCardPayout};
+    workers.current[0].postMessage({id,kind:"solve",informed,normal,samples,sixCardPayout});
   }, [board, dealer, informationActive, player, sixCardPayout, stage]);
 
   const choosePractice = (action: string) => {
@@ -306,7 +382,8 @@ export function ChaseFlushLab() {
 
             <Panel>
               {!result && !loading && <div className="grid min-h-48 place-items-center text-center text-zinc-500 md:min-h-80">Complete the cards and request a calculation.</div>}
-              {loading && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion off the main thread.</p><p className="mt-2 text-xs text-zinc-600">Opening calculations inspect over one billion terminal assignments and can take about 30 seconds.</p></div></div>}
+              {loading && provisional && <ProvisionalPanel decision={provisional} />}
+              {loading && !provisional && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion in parallel.</p><p className="mt-2 text-xs text-zinc-600">The exact result replaces the provisional estimate automatically.</p></div></div>}
               {result && <DecisionPanel result={result} closeDecision={Boolean(closeDecision)} practiceChoice={practiceChoice} informationActive={informationActive} />}
             </Panel>
           </div>
@@ -315,6 +392,16 @@ export function ChaseFlushLab() {
       <p className="mt-6 text-xs leading-5 text-zinc-500">Educational probability model only. Casino rules, procedures, and outcomes vary; a modeled edge does not guarantee profit and gambling can result in financial loss.</p>
     </>
   );
+}
+
+function ProvisionalPanel({decision}:{decision:Decision}){
+  return <div aria-live="polite" className="min-h-48">
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-amber-100"><b>Provisional Monte Carlo estimate</b><p className="mt-1 text-sm text-amber-100/70">Do not rely on this preview yet. The exact enumerator is still running and will replace it automatically.</p></div>
+    <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-zinc-500">Estimated decision</p>
+    <div className="mt-2 text-3xl font-semibold text-amber-200">{decision.action.toUpperCase()}</div>
+    <div className="mt-4 space-y-2">{Object.entries(decision.evs).map(([action,value])=><div key={action} className="flex justify-between rounded-xl bg-black/20 p-3"><span>{action.toUpperCase()}</span><b>{fmt(value,false)}</b></div>)}</div>
+    <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><i className="fa-solid fa-spinner fa-spin text-emerald-300" /> Exact solve in progress</p>
+  </div>;
 }
 
 function PracticalStrategy() {
@@ -471,6 +558,7 @@ function DecisionPanel({ result, closeDecision, practiceChoice, informationActiv
   const normalBest = result.normal ? Math.max(...Object.values(result.normal.evs)) : undefined;
   return (
     <div aria-live="polite">
+      {result.source==="cache"&&<div className="mb-4 rounded-xl bg-sky-500/10 p-3 text-sm text-sky-200"><b>Instant exact cache hit.</b> This state was fully enumerated previously on this device.</div>}
       {practiceChoice && <div className={`mb-4 rounded-xl p-4 ${practiceChoice === result.informed.action ? "bg-emerald-500/10 text-emerald-200" : "bg-red-500/10 text-red-200"}`}><b>{practiceChoice === result.informed.action ? "Correct" : `Recommended: ${result.informed.action.toUpperCase()}`}</b></div>}
       <p className="text-xs font-bold uppercase tracking-[.18em] text-zinc-500">Recommended decision</p>
       <div className="mt-3 text-4xl font-semibold text-emerald-300">{result.informed.action.toUpperCase()}</div>
@@ -481,7 +569,7 @@ function DecisionPanel({ result, closeDecision, practiceChoice, informationActiv
       <div className="mt-5 border-t border-white/[.07] pt-4 text-sm text-zinc-400">
         <p>Best action EV: <b className="text-white">{fmt(best, exact)} Ante units</b></p>
         <p className="mt-2">Decision margin: <b className="text-white">{result.informed.difference.toFixed(exact ? 4 : 3)} Ante units</b></p>
-        {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-emerald-200">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} exact terminal assignments · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
+        {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-emerald-200">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} decision-path terminal assignments represented{result.informed.differenceStatistics.evaluations&&result.informed.differenceStatistics.evaluations!==result.informed.differenceStatistics.samples?` · ${result.informed.differenceStatistics.evaluations.toLocaleString()} unique states evaluated`:""} · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
         {informationActive && result.normal && normalBest !== undefined && <p className="mt-2">Without dealer information: <b className="text-white">{result.normal.action.toUpperCase()}</b> ({fmt(normalBest, result.normal.exact)})</p>}
         {informationActive && result.normal && normalBest !== undefined && <p className="mt-2 text-emerald-200">The exposed card {result.normal.action === result.informed.action ? "keeps the same action" : `changes the action from ${result.normal.action.toUpperCase()} to ${result.informed.action.toUpperCase()}`} and changes modeled value by {fmt(best - normalBest, exact)} Ante units.</p>}
         {informationActive && !result.normal && <p className="mt-2 text-zinc-500">The exposed recommendation is exact. The optional uninformed opening comparison has over 18 billion terminals and is available in the desktop analyzer.</p>}
@@ -505,7 +593,7 @@ function ResearchPanel({ sixCardPayout, setSixCardPayout }: { sixCardPayout: num
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-13">{rankResearch.map(([rank, ev, delta]) => <div key={rank} className={`rounded-xl p-3 text-center ${ev >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}><b>{rank}</b><p className={`mt-2 text-xs ${ev >= 0 ? "text-emerald-300" : "text-red-300"}`}>EV {(ev * 100).toFixed(1)}%</p><p className="mt-1 text-[.65rem] text-zinc-500">Info +{(delta * 100).toFixed(1)}%</p></div>)}</div>
       </Panel>
       <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-zinc-400"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-black/20 p-3" key={label}><span className="text-zinc-400">{label}</span><b className="text-emerald-300">{value}</b></div>)}</div></Panel></div>
-      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-zinc-400"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions now use exhaustive integer-mask backward induction at every stage. The exposed opening enumerates 1,104,436,080 legal terminal assignments; river and 2x states are smaller. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
+      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-zinc-400"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions use exhaustive integer-mask backward induction at every stage. The exposed opening represents 1,104,436,080 legal decision-path terminal assignments by evaluating each of the 184,072,680 unique completed-board and dealer states once, then attributing it exactly to all six board-reveal orders. This is algebraic reuse, not sampling; statistical uncertainty remains zero. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
     </div>
   );
 }

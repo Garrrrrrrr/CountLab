@@ -6,6 +6,7 @@ const routes = [
   ["analysis"],
   ["bankroll"],
   ["chase-flush"],
+  ["ultimate-texas-holdem"],
   ["training", "running-count"],
   ["training", "true-count"],
   ["training", "basic-strategy"],

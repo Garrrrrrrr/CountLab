@@ -40,6 +40,7 @@ import { countingMastery } from "@/lib/blackjack/countingTraining";
 import { AdvantageCalculator } from "@/components/AdvantageCalculator";
 import { BankrollRecommender } from "@/components/BankrollRecommender";
 import { ChaseFlushLab } from "@/components/ChaseFlushLab";
+import { UTHLab } from "@/components/UTHLab";
 const actionNames: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -970,6 +971,7 @@ export default function DynamicPage() {
     analysis: <AdvantageCalculator />,
     bankroll: <BankrollRecommender />,
     "chase-flush": <ChaseFlushLab />,
+    "ultimate-texas-holdem": <UTHLab />,
     "training/running-count": <RunningCountDrill />,
     "training/true-count": <TrueCountDrill />,
     "training/basic-strategy": <StrategyDrill />,

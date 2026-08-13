@@ -11,6 +11,7 @@ const groups = [
       ["EV & Risk Lab", "/analysis", "fa-calculator"],
       ["Bankroll Recommender", "/bankroll", "fa-sack-dollar"],
       ["Chase the Flush", "/chase-flush", "fa-diamond"],
+      ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"],
     ],
   },
   {

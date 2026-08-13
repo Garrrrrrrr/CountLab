@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {dealerQualifies,exactOpeningDecision,exactSecondDecision,flushRank,foldBreakdown,parseCard,parseCards,settle,settleBreakdown,solve} from "./engine";
+import {dealerQualifies,exactOpeningChunk,exactOpeningDecision,exactSecondDecision,finalizeExactOpening,flushRank,foldBreakdown,parseCard,parseCards,settle,settleBreakdown,solve} from "./engine";
 describe("Chase the Flush engine",()=>{
   it("round trips cards",()=>expect(parseCard("Ah")).toBe(38));
   it("ranks by flush length then kickers",()=>{
@@ -29,11 +29,27 @@ describe("Chase the Flush engine",()=>{
     expect(d.evs.check).toBeCloseTo(26.64547190816148,10);
   });
   it("exactly solves the exposed opening regression",()=>{
-    const d=exactOpeningDecision({player:parseCards("Ks Js Ts"),dealerVisible:parseCard("9s"),board:[]});
+    const state={player:parseCards("Ks Js Ts"),dealerVisible:parseCard("9s"),board:[]};
+    const d=exactOpeningDecision(state);
     expect(d.action).toBe("3x");
     expect(d.evs["3x"]).toBeCloseTo(4.467089548541369,10);
     expect(d.evs.check).toBeCloseTo(3.773906393930919,10);
     expect(d.differenceStatistics?.standardError).toBe(0);
+  },120_000);
+  it("merges parallel opening chunks without changing the exact result",()=>{
+    const state={player:parseCards("Ks Js Ts"),dealerVisible:parseCard("9s"),board:[]},boards=194580;
+    const chunks=Array.from({length:4},(_,index)=>exactOpeningChunk(state,Math.floor(boards*index/4),Math.floor(boards*(index+1)/4)));
+    const d=finalizeExactOpening(state,chunks,1);
+    expect(d.evs["3x"]).toBeCloseTo(4.467089548541369,12);
+    expect(d.evs.check).toBeCloseTo(3.773906393930919,12);
+    expect(d.differenceStatistics?.samples).toBe(1_104_436_080);
+  },120_000);
+  it("matches the independent legacy opening result for a check decision",()=>{
+    const d=exactOpeningDecision({player:parseCards("2c 7d Qs"),dealerVisible:parseCard("Ah"),board:[]});
+    expect(d.action).toBe("check");
+    expect(d.evs["3x"]).toBe(-1.9148272139026823);
+    expect(d.evs.check).toBe(-0.9479454772973354);
+    expect(d.difference).toBe(0.9668817366053469);
   },120_000);
   it("uses net profit and never scales X-Tra by All-In",()=>{
     const player=parseCards("As Ks Js Ts 9s 2c 3d"),dealer=parseCards("Qh Jh 8h 2d 3c 4d 5c");
