@@ -207,9 +207,24 @@ export function BankrollRecommender() {
           </div>
         </Panel>
         <div className="space-y-5">
-          <Panel className="overflow-x-auto">
+          <Panel className="md:overflow-x-auto">
             <h2 className="mb-4 font-semibold">Candidate spreads</h2>
-            <table className="w-full min-w-[650px] text-right text-sm">
+            <div className="space-y-3 md:hidden">
+              {candidates.map((candidate) => (
+                <article key={candidate.name} className="rounded-2xl bg-black/20 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div><p className="text-xs text-zinc-500">Spread</p><b className="text-xl">{candidate.name}</b></div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
+                  </div>
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div><dt className="text-xs text-zinc-500">Bet range</dt><dd className="mt-1 font-semibold">{money(candidate.baseBet, 0)}–{money(candidate.maxBet, 0)}</dd></div>
+                    <div className="text-right"><dt className="text-xs text-zinc-500">Hourly EV</dt><dd className="mt-1 font-semibold text-emerald-300">{money(candidate.hourlyEv)}</dd></div>
+                    <div><dt className="text-xs text-zinc-500">Risk of ruin</dt><dd className="mt-1 font-semibold">{(candidate.risk * 100).toFixed(2)}%</dd></div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+            <table className="hidden w-full min-w-[650px] text-right text-sm md:table">
               <thead className="text-zinc-500">
                 <tr>
                   <th className="pb-3 text-left">Spread</th>
@@ -271,7 +286,7 @@ export function BankrollRecommender() {
                   value={money(recommendation.hourlyEv)}
                 />
               </div>
-              <Panel className="overflow-x-auto">
+              <Panel>
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
                   <div>
                     <h2 className="font-semibold">
@@ -286,7 +301,15 @@ export function BankrollRecommender() {
                     RoR {(recommendation.risk * 100).toFixed(2)}%
                   </span>
                 </div>
-                <table className="w-full min-w-[420px] text-right text-sm">
+                <div className="grid grid-cols-2 gap-2 sm:hidden">
+                  {recommendation.bets.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between rounded-xl bg-black/20 p-3">
+                      <span className="text-sm text-zinc-400">TC {item.label}</span>
+                      <b>{money(item.bet, 0)}</b>
+                    </div>
+                  ))}
+                </div>
+                <table className="hidden w-full min-w-[420px] text-right text-sm sm:table">
                   <thead className="text-zinc-500">
                     <tr>
                       <th className="pb-3 text-left">True count</th>

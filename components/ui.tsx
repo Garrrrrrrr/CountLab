@@ -7,7 +7,7 @@ export const Panel = ({
   children: ReactNode;
   className?: string;
 }) => (
-  <section className={`surface rounded-[1.35rem] p-5 md:p-6 ${className}`}>
+  <section className={`surface rounded-[1.35rem] p-4 sm:p-5 md:p-6 ${className}`}>
     {children}
   </section>
 );
@@ -18,7 +18,7 @@ export const Button = ({
   <button
     data-enter-action="true"
     {...props}
-    className={`pressable rounded-xl bg-[#a8ee72] px-4 py-2.5 font-semibold text-[#10200f] shadow-[0_8px_24px_rgba(95,210,105,.16)] hover:bg-[#b8f584] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    className={`pressable min-h-11 rounded-xl bg-[#a8ee72] px-4 py-2.5 font-semibold text-[#10200f] shadow-[0_8px_24px_rgba(95,210,105,.16)] hover:bg-[#b8f584] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
   />
 );
 export const GhostButton = ({
@@ -27,7 +27,7 @@ export const GhostButton = ({
 }: ButtonHTMLAttributes<HTMLButtonElement>) => (
   <button
     {...props}
-    className={`pressable rounded-xl border border-white/[.09] bg-white/[.055] px-4 py-2.5 font-medium text-zinc-100 shadow-sm backdrop-blur-xl hover:bg-white/[.1] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    className={`pressable min-h-11 rounded-xl border border-white/[.09] bg-white/[.055] px-4 py-2.5 font-medium text-zinc-100 shadow-sm backdrop-blur-xl hover:bg-white/[.1] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
   />
 );
 export const Select = ({

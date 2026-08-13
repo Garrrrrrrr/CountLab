@@ -248,14 +248,15 @@ function LegacyStrategyReference() {
     <>
       <h1 className="text-3xl font-semibold">Basic Strategy Reference</h1>
       <p className="mt-2 text-zinc-400">
-        6-deck · H17 · DAS · RSA · Late surrender. Hover a cell for its full
-        action.
+        6-deck · H17 · DAS · RSA · Late surrender. Use the legend below for
+        each action.
       </p>
       <Panel className="mt-7 overflow-x-auto">
+        <p className="mb-3 text-xs text-zinc-500 md:hidden">Swipe horizontally to compare every dealer upcard.</p>
         <table className="w-full min-w-[700px] text-center text-sm">
           <thead>
             <tr>
-              <th className="p-2 text-left text-zinc-500">Hard total</th>
+              <th className="sticky left-0 z-10 bg-[#171c18] p-2 text-left text-zinc-500">Hard total</th>
               {dealers.map((d) => (
                 <th key={d}>{d}</th>
               ))}
@@ -264,7 +265,7 @@ function LegacyStrategyReference() {
           <tbody>
             {hardRows.map((t) => (
               <tr className="border-t border-white/[.05]" key={t}>
-                <th className="p-3 text-left">{t}</th>
+                <th className="sticky left-0 z-10 bg-[#171c18] p-3 text-left">{t}</th>
                 {dealers.map((d) => {
                   const a = decision(t, d);
                   return (
@@ -358,10 +359,11 @@ function StrategyTable({
   return (
     <Panel className="overflow-x-auto">
       <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+      <p className="mb-3 text-xs text-zinc-500 md:hidden">Swipe horizontally to compare every dealer upcard.</p>
       <table className="w-full min-w-[700px] text-center text-sm">
         <thead>
           <tr>
-            <th className="p-2 text-left text-zinc-500">Player</th>
+            <th className="sticky left-0 z-10 bg-[#171c18] p-2 text-left text-zinc-500">Player</th>
             {strategyDealers.map((dealer) => (
               <th className="p-2" key={dealer}>
                 {dealer}
@@ -372,7 +374,7 @@ function StrategyTable({
         <tbody>
           {hands.map((hand) => (
             <tr className="border-t border-white/[.05]" key={hand.label}>
-              <th className="p-3 text-left">{hand.label}</th>
+              <th className="sticky left-0 z-10 bg-[#171c18] p-3 text-left">{hand.label}</th>
               {strategyDealers.map((dealer) => {
                 const action = getBasicStrategyDecision({
                   playerCards: hand.cards,
@@ -461,24 +463,42 @@ function DeviationReference() {
         A starter set of common Hi-Lo index plays.
       </p>
       <Panel className="mt-7">
-        <div className="mb-5 flex gap-3">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row">
           <input
             placeholder="Search hand or dealer…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
+            className="min-h-11 flex-1 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
           />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
+            className="min-h-11 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
           >
             <option value="index">Sort: Index</option>
             <option value="hand">Sort: Hand</option>
             <option value="dealer">Sort: Dealer</option>
           </select>
         </div>
-        <table className="w-full text-left text-sm">
+        <div className="space-y-3 md:hidden">
+          {rows.map((deviation, index) => (
+            <article key={index} className="rounded-2xl bg-black/20 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="text-xs text-zinc-500">Player hand</p><b className="mt-1 block text-lg">{deviation.hand}</b></div>
+                <div className="text-right"><p className="text-xs text-zinc-500">Dealer</p><b className="mt-1 block text-lg">{deviation.dealer}</b></div>
+              </div>
+              <div className="mt-4 rounded-xl bg-white/[.04] p-3">
+                <p className="text-xs text-zinc-500">Index</p>
+                <b className="text-xl text-emerald-400">{deviation.index > 0 ? `+${deviation.index}` : deviation.index}</b>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div><dt className="text-xs text-zinc-500">Basic strategy</dt><dd className="mt-1 font-medium">{DEVIATION_ACTION_NAMES[deviation.normalAction]}</dd></div>
+                <div className="text-right"><dt className="text-xs text-zinc-500">Deviation</dt><dd className="mt-1 font-medium text-emerald-300">{DEVIATION_ACTION_NAMES[deviation.deviationAction]}</dd></div>
+              </dl>
+            </article>
+          ))}
+        </div>
+        <table className="hidden w-full text-left text-sm md:table">
           <thead className="text-zinc-500">
             <tr>
               {[

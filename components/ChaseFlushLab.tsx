@@ -13,6 +13,7 @@ import { makeSession, storage } from "@/lib/statistics/storage";
 type Stage = 0 | 2 | 4;
 type Target = "player" | "dealer" | "board";
 type Policy = "none" | "final" | "from2" | "all";
+type SuitCode = keyof typeof suitGlyph;
 type Result = {
   informed: Decision;
   normal?: Decision;
@@ -67,7 +68,7 @@ function CardChip({ card, source, onRemove }: { card: number; source: Target; on
       onClick={onRemove}
       aria-label={`Remove ${rankLabel(name[0])} of ${name[1]}`}
       title="Drag to another box or click to remove"
-      className={`cursor-grab rounded-lg border border-white/10 bg-white px-3 py-2 font-semibold active:cursor-grabbing ${red ? "text-red-600" : "text-zinc-950"}`}
+      className={`min-h-11 cursor-grab rounded-lg border border-white/10 bg-white px-3 py-2 font-semibold active:cursor-grabbing ${red ? "text-red-600" : "text-zinc-950"}`}
     >
       {rankLabel(name[0])}{suitGlyph[name[1]]} <span aria-hidden="true">×</span>
     </button>
@@ -78,6 +79,7 @@ export function ChaseFlushLab() {
   const [mode, setMode] = useState<"analyze" | "practice" | "strategy" | "research">("analyze"),
     [stage, setStage] = useState<Stage>(2),
     [target, setTarget] = useState<Target>("player"),
+    [pickerSuit, setPickerSuit] = useState<SuitCode>("s"),
     [player, setPlayer] = useState(() => [parseCard("Ah"), parseCard("8h"), parseCard("4c")]),
     [dealer, setDealer] = useState<number[]>(() => [parseCard("Kh")]),
     [board, setBoard] = useState(() => [parseCard("2h"), parseCard("7s")]),
@@ -213,12 +215,12 @@ export function ChaseFlushLab() {
           <h1 className="mt-2 text-3xl font-semibold">Chase the Flush Lab</h1>
           <p className="mt-2 max-w-3xl text-zinc-400">Practice or analyze decisions with one exposed dealer card. Hidden dealer cards are never entered or passed to the solver.</p>
         </div>
-        <a className="text-sm text-emerald-400 hover:underline" href="https://wizardofodds.com/games/chase-the-flush/" target="_blank" rel="noreferrer">Rules source ↗</a>
+        <a className="inline-flex min-h-11 items-center text-sm text-emerald-400 hover:underline" href="https://wizardofodds.com/games/chase-the-flush/" target="_blank" rel="noreferrer">Rules source ↗</a>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="Chase the Flush mode">
+      <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Chase the Flush mode">
         {(["analyze", "practice", "strategy", "research"] as const).map((item) => (
-          <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}>
+          <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={`w-full sm:w-auto ${mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>
             {item[0].toUpperCase() + item.slice(1)}
           </GhostButton>
         ))}
@@ -256,15 +258,15 @@ export function ChaseFlushLab() {
                   <h2 className="text-lg font-semibold">Build the information state</h2>
                   <p className="mt-1 text-sm text-zinc-500">Choose the decision stage, then click cards or drag them into a box.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <GhostButton onClick={randomize}>Random valid hand</GhostButton>
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                  <GhostButton className="col-span-2 sm:col-auto" onClick={randomize}>Random valid hand</GhostButton>
                   <GhostButton onClick={() => { setStage(2); setPlayer([parseCard("Ah"), parseCard("8h"), parseCard("4c")]); setDealer([parseCard("Kh")]); setBoard([parseCard("2h"), parseCard("7s")]); clearResult(); }}>Load example</GhostButton>
                   <GhostButton onClick={() => { setPlayer([]); setDealer([]); setBoard([]); clearResult(); }}>Reset</GhostButton>
                 </div>
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="Decision stage">
-                {([[0, "Opening 3x"], [2, "After first board"], [4, "River 1x"]] as const).map(([value, label]) => (
-                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`rounded-xl border p-3 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-black/20 text-zinc-400"}`}>{label}</button>
+                {([[0, "Opening", "3x or check"], [2, "Board", "2x or check"], [4, "River", "1x or fold"]] as const).map(([value, label, detail]) => (
+                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`min-h-14 rounded-xl border px-2 py-2 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-black/20 text-zinc-400"}`}><b className="block">{label}</b><span className="mt-0.5 block text-[.65rem] opacity-70">{detail}</span></button>
                 ))}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -272,27 +274,39 @@ export function ChaseFlushLab() {
                 <CardGroup target="dealer" label={informationActive ? "Exposed dealer card" : "Dealer card ignored"} active={target === "dealer"} onActivate={() => setTarget("dealer")} cards={dealer} capacity={1} onDropCard={placeCard} onRemove={() => { setDealer([]); clearResult(); }} />
                 <CardGroup target="board" label={`Community cards (${board.length}/${stage})`} active={target === "board"} onActivate={() => setTarget("board")} cards={board} capacity={stage} onDropCard={placeCard} onRemove={(card) => { setBoard((items) => items.filter((item) => item !== card)); clearResult(); }} />
               </div>
-              <div className="mt-5 grid grid-cols-7 gap-1 sm:[grid-template-columns:repeat(13,minmax(0,1fr))]" aria-label={`Card picker for ${target}`}>
-                {SUITS.split("").flatMap((suit, suitIndex) => RANKS.split("").map((rank, rankIndex) => {
-                  const card = suitIndex * 13 + rankIndex;
-                  const red = suit === "d" || suit === "h";
-                  return <button key={card} type="button" draggable={!selected.has(card)} disabled={selected.has(card)} onDragStart={(event) => writeDraggedCard(event, { card })} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${suit}`} title="Click to add to the active box or drag into any box" className={`min-h-10 cursor-grab rounded border border-white/10 bg-white text-xs font-bold active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[suit]}</span></button>;
-                }))}
+              <div className="mt-5 rounded-2xl bg-black/20 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-zinc-400">Adding to: <b className="text-emerald-300">{target === "player" ? "Player" : target === "dealer" ? "Dealer" : "Community"}</b></p>
+                  <span className="text-xs text-zinc-600">Tap to add</span>
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-2" role="tablist" aria-label="Card suit">
+                  {(SUITS.split("") as SuitCode[]).map((suit) => (
+                    <button key={suit} type="button" role="tab" aria-selected={pickerSuit === suit} aria-label={`Show ${suit} cards`} onClick={() => setPickerSuit(suit)} className={`min-h-12 rounded-xl border text-xl ${pickerSuit === suit ? "border-emerald-400 bg-emerald-500/15" : "border-white/10 bg-white/[.04]"} ${suit === "d" || suit === "h" ? "text-red-400" : "text-zinc-100"}`}>{suitGlyph[suit]}</button>
+                  ))}
+                </div>
+                <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7 lg:grid-cols-13" aria-label={`${pickerSuit} card picker for ${target}`}>
+                  {RANKS.split("").map((rank, rankIndex) => {
+                    const suitIndex = SUITS.indexOf(pickerSuit);
+                    const card = suitIndex * 13 + rankIndex;
+                    const red = pickerSuit === "d" || pickerSuit === "h";
+                    return <button key={card} type="button" draggable={!selected.has(card)} disabled={selected.has(card)} onDragStart={(event) => writeDraggedCard(event, { card })} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${pickerSuit}`} title="Tap to add to the active box or drag into any box" className={`min-h-12 cursor-grab rounded-lg border border-white/10 bg-white text-sm font-bold active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[pickerSuit]}</span></button>;
+                  })}
+                </div>
               </div>
               {mode === "analyze" ? (
-                <Button className="mt-5" disabled={loading} onClick={calculate}>{loading ? "Calculating in background..." : "Calculate optimal action"}</Button>
+                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[#151916]/95 p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none"><Button className="w-full sm:w-auto" disabled={loading} onClick={calculate}>{loading ? "Calculating in background..." : "Calculate optimal action"}</Button></div>
               ) : (
-                <div className="mt-5">
+                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[#151916]/95 p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none">
                   <p className="mb-3 text-sm text-zinc-400">Choose before revealing the model:</p>
-                  <div className="flex gap-2">{availableActions(stage).map((action) => <GhostButton key={action} disabled={loading || Boolean(practiceChoice)} onClick={() => choosePractice(action)}>{action.toUpperCase()}</GhostButton>)}</div>
+                  <div className="grid grid-cols-2 gap-2">{availableActions(stage).map((action) => <GhostButton className="w-full" key={action} disabled={loading || Boolean(practiceChoice)} onClick={() => choosePractice(action)}>{action.toUpperCase()}</GhostButton>)}</div>
                 </div>
               )}
               {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">{error}</p>}
             </Panel>
 
             <Panel>
-              {!result && !loading && <div className="grid min-h-80 place-items-center text-center text-zinc-500">Complete the cards and request a calculation.</div>}
-              {loading && <div className="grid min-h-80 place-items-center text-center"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion off the main thread.</p><p className="mt-2 text-xs text-zinc-600">Opening calculations inspect over one billion terminal assignments and can take about 30 seconds.</p></div></div>}
+              {!result && !loading && <div className="grid min-h-48 place-items-center text-center text-zinc-500 md:min-h-80">Complete the cards and request a calculation.</div>}
+              {loading && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion off the main thread.</p><p className="mt-2 text-xs text-zinc-600">Opening calculations inspect over one billion terminal assignments and can take about 30 seconds.</p></div></div>}
               {result && <DecisionPanel result={result} closeDecision={Boolean(closeDecision)} practiceChoice={practiceChoice} informationActive={informationActive} />}
             </Panel>
           </div>
@@ -442,10 +456,10 @@ function CardGroup({ target, label, active, onActivate, cards, capacity, onDropC
       className={`rounded-xl border p-3 transition ${dragOver ? "scale-[1.02] border-emerald-300 bg-emerald-400/20 ring-2 ring-emerald-400/30" : active ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}
       aria-label={`${label} drop zone`}
     >
-      <button type="button" onClick={onActivate} className="w-full text-left text-xs font-semibold uppercase tracking-wide text-zinc-400">{label}</button>
+      <button type="button" aria-pressed={active} onClick={onActivate} className="flex min-h-11 w-full items-center justify-between rounded-lg px-1 text-left text-xs font-semibold uppercase tracking-wide text-zinc-400"><span>{label}</span>{active && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[.62rem] text-emerald-300">Adding here</span>}</button>
       <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2">
         {cards.map((card) => <CardChip key={card} card={card} source={target} onRemove={() => onRemove(card)} />)}
-        {cards.length < capacity && <span className={`pointer-events-none text-xs ${dragOver ? "text-emerald-100" : "text-zinc-600"}`}>{capacity === 0 ? "No cards at this stage" : "Drop card here"}</span>}
+        {cards.length < capacity && <span className={`pointer-events-none text-xs ${dragOver ? "text-emerald-100" : "text-zinc-600"}`}>{capacity === 0 ? "No cards at this stage" : active ? "Choose a card below" : "Tap to select"}</span>}
       </div>
     </section>
   );

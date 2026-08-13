@@ -185,7 +185,7 @@ export function AdvantageCalculator() {
           </div>
         </Panel>
       </div>
-      <Panel className="mt-5 overflow-x-auto">
+      <Panel className="mt-5 md:overflow-x-auto">
         <div className="mb-5">
           <div>
             <h2 className="font-semibold">True-count bet ramp</h2>
@@ -195,7 +195,39 @@ export function AdvantageCalculator() {
             </p>
           </div>
         </div>
-        <table className="w-full min-w-[940px] text-right text-sm">
+        <div className="space-y-3 md:hidden">
+          {result.rows.map((row) => (
+            <article key={row.trueCount} className="rounded-2xl bg-black/20 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">True count</p>
+                  <b className="mt-1 block text-xl">{row.label}</b>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-zinc-500">Advantage</p>
+                  <b className={row.advantage >= 0 ? "text-emerald-400" : "text-red-300"}>{pct(row.advantage)}</b>
+                  <p className="mt-1 text-xs text-zinc-500">{(row.frequency * 100).toFixed(3)}% frequency</p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-2 text-xs font-medium text-zinc-400">Dollar bet</p>
+                  <NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" onValueChange={(value) => updateBet(row.trueCount, value)} />
+                </div>
+                {row.trueCount < 0 && <GhostButton aria-label={`Set bet at true count ${row.label} to zero`} className="shrink-0 px-3 text-xs" disabled={row.bet === 0} onClick={() => updateBet(row.trueCount, 0)}>{row.bet === 0 ? "$0 set" : "Set $0"}</GhostButton>}
+              </div>
+              <details className="mt-3 border-t border-white/[.06] pt-3 text-xs text-zinc-500">
+                <summary className="min-h-11 cursor-pointer py-3 font-medium text-zinc-400">Simulation details</summary>
+                <dl className="grid grid-cols-2 gap-2 pb-1">
+                  <dt>95% error</dt><dd className="text-right">±{(1.95996398454 * row.standardError * 100).toFixed(3)}%</dd>
+                  <dt>SD units</dt><dd className="text-right">{row.sdUnits.toFixed(3)}</dd>
+                  <dt>Samples</dt><dd className="text-right">{(row.samples / 1_000_000).toFixed(1)}M</dd>
+                </dl>
+              </details>
+            </article>
+          ))}
+        </div>
+        <table className="hidden w-full min-w-[940px] text-right text-sm md:table">
           <thead className="text-zinc-500">
             <tr>
               <th className="pb-3 text-left">True count</th>

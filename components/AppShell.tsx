@@ -103,7 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => removeEventListener("keydown", activateVisiblePrimaryAction);
   }, []);
   return (
-    <div className="min-h-screen text-zinc-100">
+    <div className="min-h-dvh overflow-x-clip text-zinc-100">
       <button
         ref={toggle}
         type="button"
@@ -111,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-controls="primary-navigation"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="pressable fixed left-4 top-3.5 z-50 grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-black/45 text-sm shadow-xl backdrop-blur-2xl lg:hidden"
+        className="pressable fixed left-3 top-[calc(.625rem+env(safe-area-inset-top))] z-50 grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-black/55 text-sm shadow-xl backdrop-blur-2xl lg:hidden"
       >
         <i className="fa-solid fa-bars" />
       </button>
@@ -127,7 +127,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         id="primary-navigation"
         ref={navigation}
         aria-label="Primary navigation"
-        className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 w-[17rem] overflow-y-auto border-r border-white/[.07] bg-[#101411]/90 p-5 shadow-[20px_0_70px_rgba(0,0,0,.18)] backdrop-blur-2xl transition-transform duration-300 ease-out lg:translate-x-0`}
+        className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 w-[min(17rem,86vw)] overflow-y-auto border-r border-white/[.07] bg-[#101411]/95 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] shadow-[20px_0_70px_rgba(0,0,0,.18)] backdrop-blur-2xl transition-transform duration-300 ease-out lg:w-[17rem] lg:translate-x-0`}
       >
         <Link href="/dashboard" className="mb-8 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-[.9rem] bg-gradient-to-br from-[#b4f27d] to-[#65c875] text-lg font-bold text-[#112010] shadow-[0_8px_24px_rgba(81,190,102,.22)]">
@@ -152,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => setOpen(false)}
                     key={href}
                     href={href}
-                    className={`pressable flex items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-white shadow-[0_1px_0_rgba(255,255,255,.05)_inset]" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}
+                    className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-white shadow-[0_1px_0_rgba(255,255,255,.05)_inset]" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}
                   >
                     <i
                       className={`fa-solid ${icon} w-4 text-center text-[.78rem]`}
@@ -165,24 +165,66 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
       </aside>
-      <main className="min-h-screen lg:pl-[17rem]">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-end gap-3 bg-[#0c100d]/65 px-5 backdrop-blur-2xl [mask-image:linear-gradient(to_bottom,black_78%,transparent)] md:px-8">
+      <main className="min-h-dvh min-w-0 lg:pl-[17rem]">
+        <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center justify-end gap-2 bg-[#0c100d]/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-2xl [mask-image:linear-gradient(to_bottom,black_82%,transparent)] sm:gap-3 sm:px-5 md:px-8">
           {/* This deliberately leaves the Next.js base path to return to the portfolio. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
-            className="rounded-full border border-white/[.07] bg-white/[.05] px-3 py-1 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
+            aria-label="Return to Garrick Tse portfolio"
+            className="pressable grid min-h-11 min-w-11 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
           >
-            Garrick Tse
+            <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
+            <span className="hidden sm:inline">Garrick Tse</span>
           </a>
-          <span className="rounded-full border border-white/[.07] bg-white/[.05] px-3 py-1 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300">
-            {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
-          </span>
+          <Link
+            href="/settings"
+            aria-label={`Current rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}. Open settings.`}
+            className="pressable grid min-h-11 shrink-0 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
+          >
+            <span className="sm:hidden">{rules.dealerHitsSoft17 ? "H17" : "S17"}</span>
+            <span className="hidden sm:inline">
+              {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
+            </span>
+          </Link>
         </header>
-        <div className="mx-auto max-w-[90rem] p-5 pb-16 md:p-8 md:pb-20">
+        <div className="mx-auto max-w-[90rem] p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20">
           {children}
         </div>
       </main>
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-white/[.08] bg-[#0c100d]/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.3)] backdrop-blur-2xl lg:hidden"
+      >
+        {[
+          ["Dashboard", "/dashboard", "fa-house"],
+          ["Train", "/training/running-count", "fa-bolt"],
+          ["Analyze", "/analysis", "fa-calculator"],
+        ].map(([name, href, icon]) => {
+          const active = path === href || (name === "Train" && path.startsWith("/training/"));
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`pressable flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.68rem] font-medium ${active ? "text-emerald-300" : "text-zinc-500"}`}
+            >
+              <i className={`fa-solid ${icon} text-sm`} aria-hidden="true" />
+              {name}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          aria-label="Open all navigation"
+          aria-expanded={open}
+          onClick={() => setOpen(true)}
+          className={`pressable flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.68rem] font-medium ${open ? "text-emerald-300" : "text-zinc-500"}`}
+        >
+          <i className="fa-solid fa-ellipsis text-sm" aria-hidden="true" />
+          More
+        </button>
+      </nav>
     </div>
   );
 }

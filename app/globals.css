@@ -17,6 +17,7 @@
 }
 html {
   background: #090c0a;
+  overflow-x: clip;
 }
 body {
   margin: 0;
@@ -30,6 +31,7 @@ body {
     linear-gradient(180deg, #0c100d 0%, #090c0a 100%);
   color: #f4f4f5;
   font-optical-sizing: auto;
+  overflow-x: clip;
 }
 button,
 input,
