@@ -5,7 +5,8 @@ export type DrillType =
   | "Deviations"
   | "True Count"
   | "Deck Estimation"
-  | "Full Shoe";
+  | "Full Shoe"
+  | "Chase the Flush";
 export interface Mistake {
   question: string;
   userAnswer: string;
@@ -22,6 +23,7 @@ export interface Session {
   bestStreak: number;
   date: string;
   mistakes: Mistake[];
+  categories?: Record<string, { correct: number; total: number }>;
 }
 export interface Settings {
   decks: number;
@@ -71,26 +73,35 @@ export const storage = {
         ...(JSON.parse(
           localStorage.getItem(SETTINGS_KEY) || "{}",
         ) as Partial<Settings>),
-        dealerHitsSoft17: true,
-        doubleAfterSplit: true,
-        resplitAces: true,
-        lateSurrender: true,
       };
     } catch {
       return DEFAULT_SETTINGS;
     }
   },
   saveSettings(s: Settings) {
-    localStorage.setItem(
-      SETTINGS_KEY,
-      JSON.stringify({
-        ...s,
-        dealerHitsSoft17: true,
-        doubleAfterSplit: true,
-        resplitAces: true,
-        lateSurrender: true,
-      }),
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    window.dispatchEvent(new Event("hilo-storage"));
+  },
+  exportData() {
+    return JSON.stringify(
+      { version: 1, exportedAt: new Date().toISOString(), settings: this.settings(), sessions: this.sessions() },
+      null,
+      2,
     );
+  },
+  importData(raw: string) {
+    const parsed = JSON.parse(raw) as { settings?: Partial<Settings>; sessions?: Session[] };
+    if (!Array.isArray(parsed.sessions)) throw new Error("The backup does not contain a session list");
+    const valid = parsed.sessions.every(
+      (session) => session && typeof session.id === "string" && typeof session.drill === "string" && Number.isFinite(session.questions),
+    );
+    if (!valid) throw new Error("The backup contains invalid sessions");
+    localStorage.setItem(SESSION_KEY, JSON.stringify(parsed.sessions.slice(0, 500)));
+    if (parsed.settings) this.saveSettings({ ...DEFAULT_SETTINGS, ...parsed.settings });
+    window.dispatchEvent(new Event("hilo-storage"));
+  },
+  clearSessions() {
+    localStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new Event("hilo-storage"));
   },
 };
@@ -101,6 +112,7 @@ export function makeSession(
   totalMs: number,
   bestStreak: number,
   mistakes: Mistake[],
+  categories?: Record<string, { correct: number; total: number }>,
 ): Session {
   return {
     id: crypto.randomUUID(),
@@ -112,5 +124,6 @@ export function makeSession(
     bestStreak,
     date: new Date().toISOString(),
     mistakes,
+    categories,
   };
 }

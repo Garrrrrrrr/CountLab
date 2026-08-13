@@ -7,7 +7,6 @@ import {
   RANKS,
   SUITS,
   Action,
-  DEFAULT_RULES,
 } from "@/lib/blackjack/types";
 import { runningCount, signed, trueCount } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
@@ -18,9 +17,11 @@ import {
   deviationDecision,
 } from "@/lib/blackjack/deviations";
 import {
+  DEFAULT_SETTINGS,
   makeSession,
   Mistake,
   Session,
+  Settings,
   storage,
   DrillType,
 } from "@/lib/statistics/storage";
@@ -60,11 +61,48 @@ function record(
   ms: number,
   streak: number,
   m: Mistake[],
+  categories?: Record<string, { correct: number; total: number }>,
 ) {
-  const s = makeSession(drill, q, c, ms, streak, m);
+  const s = makeSession(drill, q, c, ms, streak, m, categories);
   storage.addSession(s);
   return s;
 }
+function useSavedSettings() {
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  useEffect(() => {
+    const load = () => setSettings(storage.settings());
+    load();
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
+  return settings;
+}
+function feedbackTone(correct: boolean, enabled: boolean) {
+  if (!enabled) return;
+  try {
+    const AudioContextClass = window.AudioContext;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.frequency.value = correct ? 660 : 220;
+    gain.gain.setValueAtTime(0.08, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.12);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.12);
+    oscillator.addEventListener("ended", () => void context.close());
+  } catch {
+    // Sound is optional, so unsupported audio must never interrupt a drill.
+  }
+}
+const rulesFromSettings = (settings: Settings) => ({
+  decks: settings.decks,
+  dealerHitsSoft17: settings.dealerHitsSoft17,
+  doubleAfterSplit: settings.doubleAfterSplit,
+  resplitAces: settings.resplitAces,
+  lateSurrender: settings.lateSurrender,
+  doubleRule: "any" as const,
+});
 export function RunningCountDrill() {
   const [decks, setDecks] = useState(1),
     [amount, setAmount] = useState(20),
@@ -78,7 +116,14 @@ export function RunningCountDrill() {
     [answer, setAnswer] = useState(""),
     [start, setStart] = useState(0),
     [elapsed, setElapsed] = useState(0);
+  const settings = useSavedSettings();
   const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (phase === "setup") {
+      setDecks(settings.decks);
+      setSpeed(settings.speed);
+    }
+  }, [settings.decks, settings.speed, phase]);
   const begin = () => {
     const shoe = new BlackjackShoe(decks),
       arr: Card[] = [];
@@ -106,10 +151,40 @@ export function RunningCountDrill() {
     );
     return () => clearTimeout(t);
   }, [phase, shown, cards.length, speed, group]);
+  useEffect(() => {
+    if (phase !== "show" || speed !== 0 || !settings.shortcuts) return;
+    const advance = (event: KeyboardEvent) => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        setShown((value) => Math.min(cards.length, value + group));
+      }
+    };
+    addEventListener("keydown", advance);
+    return () => removeEventListener("keydown", advance);
+  }, [cards.length, group, phase, settings.shortcuts, speed]);
   const submit = () => {
-    if (answer === "") return;
-    setElapsed(Date.now() - start);
+    if (answer === "" || phase !== "answer") return;
+    const duration = Date.now() - start;
+    const ok = +answer === runningCount(cards);
+    setElapsed(duration);
     setPhase("result");
+    feedbackTone(ok, settings.sound);
+    record(
+      "Running Count",
+      1,
+      ok ? 1 : 0,
+      duration,
+      ok ? 1 : 0,
+      ok
+        ? []
+        : [{
+            question: `${cards.length} cards from a ${decks}-deck shoe`,
+            userAnswer: signed(+answer),
+            correctAnswer: signed(runningCount(cards)),
+            explanation: "Add +1 for 2 through 6, 0 for 7 through 9, and -1 for ten through Ace.",
+          }],
+      { [`${cards.length} cards`]: { correct: ok ? 1 : 0, total: 1 } },
+    );
   };
   const correct = runningCount(cards),
     progress = cards.reduce<number[]>(
@@ -188,7 +263,7 @@ export function RunningCountDrill() {
             cards
               .slice(shown, shown + group)
               .map((c, i) => (
-                <PlayingCard key={`${shown}-${i}`} card={c} animated />
+                <PlayingCard key={`${shown}-${i}`} card={c} animated={settings.animations} />
               ))}
           {phase === "answer" && (
             <form
@@ -201,6 +276,7 @@ export function RunningCountDrill() {
               <p className="mb-4 text-xl">What is the running count?</p>
               <input
                 ref={input}
+                aria-label="Final running count"
                 type="number"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
@@ -258,6 +334,7 @@ export function RunningCountDrill() {
 }
 
 export function TrueCountDrill() {
+  const settings = useSavedSettings();
   const [range, setRange] = useState(20),
     [increment, setIncrement] = useState(0.5),
     [q, setQ] = useState(0),
@@ -314,6 +391,7 @@ export function TrueCountDrill() {
     setTotal(total + ms);
     setMistakes(newMistakes);
     setResult(ok ? "Correct" : `Correct answer: ${signed(expected)}`);
+    feedbackTone(ok, settings.sound);
     if (q === 9)
       setSession(
         record("True Count", 10, newCorrect, total + ms, newBest, newMistakes),
@@ -327,8 +405,11 @@ export function TrueCountDrill() {
           setSession(undefined);
           setQ(0);
           setCorrect(0);
+          setStreak(0);
+          setBest(0);
           setMistakes([]);
           setTotal(0);
+          setResult(undefined);
         }}
       />
     );
@@ -358,6 +439,7 @@ export function TrueCountDrill() {
           >
             <input
               autoFocus
+              aria-label="True count answer"
               type="number"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
@@ -367,6 +449,7 @@ export function TrueCountDrill() {
           </form>
           {result && (
             <p
+              aria-live="polite"
               className={`mt-4 text-center ${result === "Correct" ? "text-emerald-400" : "text-red-400"}`}
             >
               {result}
@@ -422,16 +505,21 @@ const strategyHardHands: Array<[Card["rank"], Card["rank"]]> = [
   ["9", "10"],
   ["10", "K"],
 ];
-function randomStrategyQuestion() {
-  const category = Math.floor(Math.random() * 3);
+type StrategyCategory = "Hard totals" | "Soft totals" | "Pairs" | "Surrender";
+function randomStrategyQuestion(preferred?: StrategyCategory) {
+  const category = preferred ?? (["Pairs", "Soft totals", "Hard totals"] as StrategyCategory[])[Math.floor(Math.random() * 3)];
   let player: Card[];
-  if (category === 0) {
+  if (category === "Surrender") {
+    player = Math.random() < 0.5
+      ? [{ rank: "10", suit: "spades" }, { rank: "6", suit: "hearts" }]
+      : [{ rank: "10", suit: "spades" }, { rank: "5", suit: "hearts" }];
+  } else if (category === "Pairs") {
     const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
     player = [
       { rank, suit: "spades" },
       { rank, suit: "hearts" },
     ];
-  } else if (category === 1) {
+  } else if (category === "Soft totals") {
     const softRanks: Card["rank"][] = ["2", "3", "4", "5", "6", "7", "8", "9"];
     const rank = softRanks[Math.floor(Math.random() * softRanks.length)];
     player = [
@@ -446,35 +534,109 @@ function randomStrategyQuestion() {
       { rank: second, suit: "hearts" },
     ];
   }
-  return { player, dealer: randomCard() };
+  const dealer = category === "Surrender"
+    ? { rank: (["9", "10", "A"] as Card["rank"][])[Math.floor(Math.random() * 3)], suit: "diamonds" as const }
+    : randomCard();
+  return { player, dealer };
 }
 export function StrategyDrill() {
+  const settings = useSavedSettings();
   const [q, setQ] = useState(0),
+    [mode, setMode] = useState<"standard" | "adaptive">("standard"),
+    [correctCount, setCorrectCount] = useState(0),
+    [streak, setStreak] = useState(0),
+    [best, setBest] = useState(0),
+    [totalMs, setTotalMs] = useState(0),
+    [mistakes, setMistakes] = useState<Mistake[]>([]),
+    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}),
+    [started, setStarted] = useState(Date.now()),
+    [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
       chosen: Action;
       correct: Action;
       explanation: string;
+      category: StrategyCategory;
     }>();
-  const data = useMemo(randomStrategyQuestion, [q]);
+  const weakest = useMemo<StrategyCategory | undefined>(() => {
+    if (mode !== "adaptive") return undefined;
+    const totals = storage.sessions()
+      .filter((item) => item.drill === "Basic Strategy")
+      .reduce<Record<string, { correct: number; total: number }>>((all, item) => {
+        for (const [name, value] of Object.entries(item.categories ?? {})) {
+          all[name] ??= { correct: 0, total: 0 };
+          all[name].correct += value.correct;
+          all[name].total += value.total;
+        }
+        return all;
+      }, {});
+    const ranked = Object.entries(totals)
+      .filter((entry): entry is [StrategyCategory, { correct: number; total: number }] => entry[1].total > 0)
+      .sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total);
+    return ranked[0]?.[0];
+  }, [mode, q]);
+  const data = useMemo(
+    () => randomStrategyQuestion(weakest && Math.random() < 0.65 ? weakest : undefined),
+    [q, weakest],
+  );
+  const rules = rulesFromSettings(settings);
   const decision = getBasicStrategyDecision({
     playerCards: data.player,
     dealerUpcard: data.dealer,
-    rules: DEFAULT_RULES,
+    rules,
   });
+  const category: StrategyCategory = decision.action === "R"
+    ? "Surrender"
+    : data.player[0].rank === data.player[1].rank
+      ? "Pairs"
+      : data.player.some((card) => card.rank === "A")
+        ? "Soft totals"
+        : "Hard totals";
   const choose = useCallback(
     (a: Action) => {
+      if (feedback || session) return;
+      const ok = a === decision.action;
+      const duration = Date.now() - started;
+      const nextCorrect = correctCount + (ok ? 1 : 0);
+      const nextStreak = ok ? streak + 1 : 0;
+      const nextBest = Math.max(best, nextStreak);
+      const nextMistakes = ok
+        ? mistakes
+        : [...mistakes, {
+            question: `${data.player.map((card) => card.rank).join(",")} vs ${data.dealer.rank}`,
+            userAnswer: names[a],
+            correctAnswer: names[decision.action],
+            explanation: decision.explanation,
+          }];
+      const nextCategories = {
+        ...categories,
+        [category]: {
+          correct: (categories[category]?.correct ?? 0) + (ok ? 1 : 0),
+          total: (categories[category]?.total ?? 0) + 1,
+        },
+      };
       setFeedback({
         chosen: a,
         correct: decision.action,
         explanation: decision.explanation,
+        category,
       });
-      setQ((current) => current + 1);
+      setCorrectCount(nextCorrect);
+      setStreak(nextStreak);
+      setBest(nextBest);
+      setTotalMs((value) => value + duration);
+      setMistakes(nextMistakes);
+      setCategories(nextCategories);
+      feedbackTone(ok, settings.sound);
+      if (q === 9) {
+        setSession(record("Basic Strategy", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+      }
     },
-    [decision],
+    [best, categories, category, correctCount, data, decision, feedback, mistakes, q, session, settings.sound, started, streak, totalMs],
   );
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || !settings.shortcuts || feedback) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, Action> = {
         h: "H",
         s: "S",
@@ -486,32 +648,63 @@ export function StrategyDrill() {
     };
     addEventListener("keydown", fn);
     return () => removeEventListener("keydown", fn);
-  }, [choose]);
+  }, [choose, feedback, settings.shortcuts]);
+  const next = () => {
+    setFeedback(undefined);
+    if (!session) {
+      setQ((current) => current + 1);
+      setStarted(Date.now());
+    }
+  };
+  if (session && !feedback) {
+    return (
+      <SessionSummary
+        session={session}
+        onNew={() => {
+          setQ(0);
+          setCorrectCount(0);
+          setStreak(0);
+          setBest(0);
+          setTotalMs(0);
+          setMistakes([]);
+          setCategories({});
+          setSession(undefined);
+          setStarted(Date.now());
+        }}
+      />
+    );
+  }
   return (
     <>
       <Title
         eyebrow={`Hand ${q + 1}`}
         title="Basic Strategy"
-        description="6-deck, H17, DAS, RSA, late surrender and double on any two cards."
+        description={`${rules.decks}-deck, ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "no DAS"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}.`}
       />
+      <div className="mb-4 max-w-xs">
+        <Select label="Practice mode" value={mode} onChange={(event) => setMode(event.target.value as "standard" | "adaptive")}>
+          <option value="standard">Balanced</option>
+          <option value="adaptive">Adaptive to weak categories</option>
+        </Select>
+      </div>
       <Panel>
         <div className="grid gap-10 py-6 md:grid-cols-2">
           <div>
             <p className="mb-4 text-sm text-zinc-500">Player hand</p>
             <div className="flex gap-3">
               {data.player.map((c, i) => (
-                <PlayingCard key={i} card={c} />
+              <PlayingCard key={i} card={c} animated={settings.animations} />
               ))}
             </div>
           </div>
           <div>
             <p className="mb-4 text-sm text-zinc-500">Dealer upcard</p>
-            <PlayingCard card={data.dealer} />
+            <PlayingCard card={data.dealer} animated={settings.animations} />
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {(Object.keys(names) as Action[]).map((a) => (
-            <GhostButton key={a} onClick={() => choose(a)}>
+            <GhostButton key={a} disabled={Boolean(feedback)} onClick={() => choose(a)}>
               <u>{names[a][0]}</u>
               {names[a].slice(1)}
             </GhostButton>
@@ -519,6 +712,7 @@ export function StrategyDrill() {
         </div>
         {feedback && (
           <div
+            aria-live="polite"
             className={`mt-5 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}
           >
             <b>
@@ -527,9 +721,8 @@ export function StrategyDrill() {
                 : `Correct: ${names[feedback.correct]}`}
             </b>
             <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
-            <p className="mt-2 text-xs font-medium text-zinc-500">
-              Next hand dealt automatically
-            </p>
+            <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
+            <Button className="mt-4" onClick={next}>{session ? "View summary" : "Next hand"}</Button>
           </div>
         )}
       </Panel>
@@ -538,7 +731,16 @@ export function StrategyDrill() {
 }
 
 export function DeviationDrill() {
+  const settings = useSavedSettings();
   const [q, setQ] = useState(0),
+    [correctCount, setCorrectCount] = useState(0),
+    [streak, setStreak] = useState(0),
+    [best, setBest] = useState(0),
+    [totalMs, setTotalMs] = useState(0),
+    [mistakes, setMistakes] = useState<Mistake[]>([]),
+    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}),
+    [started, setStarted] = useState(Date.now()),
+    [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
       chosen: DeviationAction;
       correct: DeviationAction;
@@ -582,6 +784,28 @@ export function DeviationDrill() {
     );
   const chooseDeviation = useCallback(
     (chosen: DeviationAction) => {
+      if (feedback || session) return;
+      const ok = chosen === correct;
+      const duration = Date.now() - started;
+      const nextCorrect = correctCount + (ok ? 1 : 0);
+      const nextStreak = ok ? streak + 1 : 0;
+      const nextBest = Math.max(best, nextStreak);
+      const category = d.hand === "Insurance" ? "Insurance" : `${d.hand} vs ${d.dealer}`;
+      const nextMistakes = ok
+        ? mistakes
+        : [...mistakes, {
+            question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
+            userAnswer: DEVIATION_ACTION_NAMES[chosen],
+            correctAnswer: DEVIATION_ACTION_NAMES[correct],
+            explanation: `${DEVIATION_ACTION_NAMES[d.deviationAction]} at ${signed(d.index)} ${d.direction === "atOrBelow" ? "or lower" : "or higher"}.`,
+          }];
+      const nextCategories = {
+        ...categories,
+        [category]: {
+          correct: (categories[category]?.correct ?? 0) + (ok ? 1 : 0),
+          total: (categories[category]?.total ?? 0) + 1,
+        },
+      };
       setFeedback({
         chosen,
         correct,
@@ -591,13 +815,23 @@ export function DeviationDrill() {
         tc,
         direction: d.direction,
       });
-      setQ((current) => current + 1);
+      setCorrectCount(nextCorrect);
+      setStreak(nextStreak);
+      setBest(nextBest);
+      setTotalMs((value) => value + duration);
+      setMistakes(nextMistakes);
+      setCategories(nextCategories);
+      feedbackTone(ok, settings.sound);
+      if (q === 9) {
+        setSession(record("Deviations", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+      }
     },
-    [correct, d, tc],
+    [best, categories, correct, correctCount, d, feedback, mistakes, q, session, settings.sound, started, streak, tc, totalMs],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.repeat) return;
+      if (event.repeat || !settings.shortcuts || feedback) return;
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, DeviationAction> = {
         h: "H",
         s: "S",
@@ -612,7 +846,32 @@ export function DeviationDrill() {
     };
     addEventListener("keydown", handleKey);
     return () => removeEventListener("keydown", handleKey);
-  }, [availableActions, chooseDeviation]);
+  }, [availableActions, chooseDeviation, feedback, settings.shortcuts]);
+  const next = () => {
+    setFeedback(undefined);
+    if (!session) {
+      setQ((current) => current + 1);
+      setStarted(Date.now());
+    }
+  };
+  if (session && !feedback) {
+    return (
+      <SessionSummary
+        session={session}
+        onNew={() => {
+          setQ(0);
+          setCorrectCount(0);
+          setStreak(0);
+          setBest(0);
+          setTotalMs(0);
+          setMistakes([]);
+          setCategories({});
+          setSession(undefined);
+          setStarted(Date.now());
+        }}
+      />
+    );
+  }
   return (
     <>
       <Title
@@ -658,7 +917,7 @@ export function DeviationDrill() {
         </div>
         <div className="mt-6 flex flex-wrap gap-2">
           {availableActions.map((a) => (
-            <GhostButton key={a} onClick={() => chooseDeviation(a)}>
+            <GhostButton key={a} disabled={Boolean(feedback)} onClick={() => chooseDeviation(a)}>
               {a === "I" ? (
                 <><u>I</u>nsurance</>
               ) : a === "N" ? (
@@ -670,7 +929,7 @@ export function DeviationDrill() {
           ))}
         </div>
         {feedback && (
-          <div className="mt-5 rounded-xl bg-black/20 p-5">
+          <div aria-live="polite" className="mt-5 rounded-xl bg-black/20 p-5">
             <b
               className={
                 feedback.chosen === feedback.correct
@@ -696,9 +955,7 @@ export function DeviationDrill() {
                 : "does not trigger"}{" "}
               the deviation.
             </p>
-            <p className="mt-3 text-xs font-medium text-zinc-500">
-              Next hand dealt automatically
-            </p>
+            <Button className="mt-4" onClick={next}>{session ? "View summary" : "Next hand"}</Button>
           </div>
         )}
       </Panel>
@@ -707,11 +964,13 @@ export function DeviationDrill() {
 }
 
 export function MissingCardDrill() {
+  const settings = useSavedSettings();
   const [mode, setMode] = useState<"rank" | "exact">("rank"),
     [count, setCount] = useState(1),
     [q, setQ] = useState(0),
     [selected, setSelected] = useState<string[]>([]),
-    [result, setResult] = useState<string>();
+    [result, setResult] = useState<string>(),
+    [started, setStarted] = useState(Date.now());
   const missing = useMemo(() => {
     const shoe = new BlackjackShoe(1),
       arr: Card[] = [];
@@ -737,11 +996,19 @@ export function MissingCardDrill() {
   );
   const submit = () => {
     const a = [...selected].sort(),
-      b = [...expected].sort();
-    setResult(
-      JSON.stringify(a) === JSON.stringify(b)
-        ? "Correct!"
-        : `Missing: ${expected.join(", ")}`,
+      b = [...expected].sort(),
+      ok = JSON.stringify(a) === JSON.stringify(b),
+      duration = Date.now() - started;
+    setResult(ok ? "Correct!" : `Missing: ${expected.join(", ")}`);
+    feedbackTone(ok, settings.sound);
+    record(
+      "Missing Card",
+      1,
+      ok ? 1 : 0,
+      duration,
+      ok ? 1 : 0,
+      ok ? [] : [{ question: `${count} missing ${mode === "rank" ? "ranks" : "cards"}`, userAnswer: selected.join(", "), correctAnswer: expected.join(", "), explanation: "Compare the selection with the cards removed from the complete deck." }],
+      { [mode === "rank" ? "Rank recall" : "Exact-card recall"]: { correct: ok ? 1 : 0, total: 1 } },
     );
   };
   return (
@@ -759,6 +1026,8 @@ export function MissingCardDrill() {
           <div className="grid grid-cols-7 gap-2 md:grid-cols-13">
             {options.map((o) => (
               <button
+                type="button"
+                aria-pressed={selected.includes(o)}
                 key={o}
                 onClick={() =>
                   setSelected((s) =>
@@ -776,7 +1045,7 @@ export function MissingCardDrill() {
             ))}
           </div>
           <div className="mt-5 flex gap-3">
-            <Button disabled={selected.length !== count} onClick={submit}>
+            <Button disabled={selected.length !== count || Boolean(result)} onClick={submit}>
               Check answer
             </Button>
             {result && (
@@ -785,6 +1054,7 @@ export function MissingCardDrill() {
                   setQ((x) => x + 1);
                   setSelected([]);
                   setResult(undefined);
+                  setStarted(Date.now());
                 }}
               >
                 Next
@@ -793,6 +1063,7 @@ export function MissingCardDrill() {
           </div>
           {result && (
             <p
+              aria-live="polite"
               className={`mt-4 ${result === "Correct!" ? "text-emerald-400" : "text-red-400"}`}
             >
               {result}
@@ -835,15 +1106,34 @@ export function MissingCardDrill() {
 }
 
 export function DeckEstimationDrill() {
+  const settings = useSavedSettings();
   const [level, setLevel] = useState("intermediate"),
     [q, setQ] = useState(0),
     [answer, setAnswer] = useState(3),
-    [result, setResult] = useState<string>();
+    [result, setResult] = useState<string>(),
+    [started, setStarted] = useState(Date.now());
   const actual = useMemo(
     () => Math.round((Math.random() * 5.5 + 0.5) * 4) / 4,
     [q],
   );
   const percent = (actual / 6) * 100;
+  const submit = () => {
+    const error = Math.round((answer - actual) * 100) / 100;
+    const tolerance = level === "beginner" ? 0.5 : level === "intermediate" ? 0.25 : 0.1;
+    const ok = Math.abs(error) <= tolerance;
+    const duration = Date.now() - started;
+    setResult(`Actual: ${actual} decks · Error: ${signed(error)} decks · ${ok ? "Within target" : "Outside target"}`);
+    feedbackTone(ok, settings.sound);
+    record(
+      "Deck Estimation",
+      1,
+      ok ? 1 : 0,
+      duration,
+      ok ? 1 : 0,
+      ok ? [] : [{ question: `${level} discard-tray estimate`, userAnswer: `${answer} decks`, correctAnswer: `${actual} decks`, explanation: `Target tolerance: ±${tolerance} decks.` }],
+      { [level]: { correct: ok ? 1 : 0, total: 1 } },
+    );
+  };
   return (
     <>
       <Title
@@ -878,24 +1168,19 @@ export function DeckEstimationDrill() {
             />
             <div className="mt-2 flex items-center justify-between">
               <b>{answer} decks</b>
-              <Button
-                onClick={() =>
-                  setResult(
-                    `Actual: ${actual} decks · Error: ${signed(Math.round((answer - actual) * 100) / 100)} decks`,
-                  )
-                }
-              >
+              <Button disabled={Boolean(result)} onClick={submit}>
                 Submit
               </Button>
             </div>
             {result && (
-              <div className="mt-4 rounded-xl bg-black/20 p-4">
+              <div aria-live="polite" className="mt-4 rounded-xl bg-black/20 p-4">
                 {result}
                 <Button
                   className="ml-4"
                   onClick={() => {
                     setQ((x) => x + 1);
                     setResult(undefined);
+                    setStarted(Date.now());
                   }}
                 >
                   Next
@@ -921,38 +1206,68 @@ export function DeckEstimationDrill() {
 }
 
 export function FullShoeDrill() {
-  const [decks, setDecks] = useState(6),
+  const settings = useSavedSettings();
+  const [decks, setDecks] = useState(settings.decks),
     [players, setPlayers] = useState(2),
-    [shoe, setShoe] = useState(() => new BlackjackShoe(6)),
+    [shoe, setShoe] = useState(() => new BlackjackShoe(settings.decks)),
     [round, setRound] = useState(0),
     [table, setTable] = useState<Card[][]>([]),
     [answer, setAnswer] = useState(""),
-    [feedback, setFeedback] = useState<string>();
+    [feedback, setFeedback] = useState<string>(),
+    [visibleCount, setVisibleCount] = useState(0),
+    [revealed, setRevealed] = useState(false),
+    [started, setStarted] = useState(Date.now());
   const reset = () => {
     setShoe(new BlackjackShoe(decks));
     setRound(0);
     setTable([]);
     setFeedback(undefined);
+    setVisibleCount(0);
+    setRevealed(false);
+    setStarted(Date.now());
   };
-  useEffect(reset, [decks]);
+  useEffect(() => {
+    if (round === 0) setDecks(settings.decks);
+  }, [settings.decks]);
+  useEffect(reset, [decks, players]);
   const deal = () => {
+    if (shoe.cardsRemaining() < (players + 1) * 2) return;
     const hands = Array.from({ length: players + 1 }, () => [] as Card[]);
     for (let pass = 0; pass < 2; pass++)
       for (const hand of hands) {
         const c = shoe.deal();
         if (c) hand.push(c);
       }
+    const exposed = [hands[0][0], ...hands.slice(1).flat()].filter(Boolean);
+    setVisibleCount((count) => count + runningCount(exposed));
     setTable(hands);
     setRound((r) => r + 1);
     setFeedback(undefined);
     setAnswer("");
+    setRevealed(false);
+    setStarted(Date.now());
   };
-  const submit = () =>
-    setFeedback(
-      +answer === shoe.runningCount()
-        ? "Correct"
-        : `Correct running count: ${signed(shoe.runningCount())}`,
+  const submit = () => {
+    if (answer === "" || feedback) return;
+    const expected = visibleCount;
+    const ok = +answer === expected;
+    const duration = Date.now() - started;
+    const holeValue = table[0]?.[1] ? runningCount([table[0][1]]) : 0;
+    setFeedback(ok ? "Correct" : `Correct visible count: ${signed(expected)}`);
+    setVisibleCount((count) => count + holeValue);
+    setRevealed(true);
+    feedbackTone(ok, settings.sound);
+    record(
+      "Full Shoe",
+      1,
+      ok ? 1 : 0,
+      duration,
+      ok ? 1 : 0,
+      ok ? [] : [{ question: `Round ${round} visible running count`, userAnswer: signed(+answer), correctAnswer: signed(expected), explanation: "Count only exposed cards. Add the dealer hole card after it is revealed." }],
+      { "Round count": { correct: ok ? 1 : 0, total: 1 } },
     );
+  };
+  const cutReached = shoe.cardsRemaining() <= decks * 52 * 0.25;
   return (
     <>
       <Title
@@ -969,7 +1284,7 @@ export function FullShoeDrill() {
               </p>
               <div className="flex justify-center gap-2">
                 {table[0]?.map((c, i) => (
-                  <PlayingCard key={i} card={c} size="sm" />
+                  <PlayingCard key={i} card={c} hidden={i === 1 && !revealed} size="sm" animated={settings.animations} />
                 ))}
               </div>
             </div>
@@ -979,7 +1294,7 @@ export function FullShoeDrill() {
                   <p className="mb-2 text-xs text-zinc-400">Player {i + 1}</p>
                   <div className="flex gap-1">
                     {h.map((c, j) => (
-                      <PlayingCard key={j} card={c} size="sm" />
+                      <PlayingCard key={j} card={c} size="sm" animated={settings.animations} />
                     ))}
                   </div>
                 </div>
@@ -988,27 +1303,29 @@ export function FullShoeDrill() {
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             {table.length === 0 ? (
-              <Button onClick={deal}>Deal round</Button>
+              cutReached ? <Button onClick={reset}>Shuffle new shoe</Button> : <Button onClick={deal}>Deal round</Button>
             ) : (
               <>
                 <input
                   placeholder="Running count"
+                  aria-label="Running count"
                   type="number"
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   className="w-40 rounded-lg bg-black/30 px-3 outline-none ring-1 ring-white/10"
                 />
-                <Button onClick={submit}>Check count</Button>
-                {feedback && <Button onClick={deal}>Continue</Button>}
+                <Button disabled={Boolean(feedback)} onClick={submit}>Check count</Button>
+                {feedback && (cutReached ? <Button onClick={reset}>Shuffle at cut card</Button> : <Button onClick={deal}>Continue</Button>)}
               </>
             )}
           </div>
           {feedback && (
             <p
+              aria-live="polite"
               className={`mt-4 text-center ${feedback === "Correct" ? "text-emerald-400" : "text-red-400"}`}
             >
-              {feedback} · True count{" "}
-              {signed(trueCount(shoe.runningCount(), shoe.decksRemaining()))}
+              {feedback}. Hole card revealed. Running count {signed(visibleCount)}. True count{" "}
+              {signed(trueCount(visibleCount, shoe.decksRemaining(), settings.rounding))}
             </p>
           )}
         </Panel>
@@ -1036,6 +1353,9 @@ export function FullShoeDrill() {
           <GhostButton className="mt-6 w-full" onClick={reset}>
             New shoe
           </GhostButton>
+          <p className="mt-4 text-xs leading-5 text-zinc-500">
+            The dealer hole card stays hidden until your answer is checked. The shoe ends at 75% penetration.
+          </p>
         </Panel>
       </div>
     </>

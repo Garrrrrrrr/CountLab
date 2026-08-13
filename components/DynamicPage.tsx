@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Bar,
@@ -17,9 +17,12 @@ import {
 import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
 import {
   DeviationDrill,
+  DeckEstimationDrill,
   FullShoeDrill,
+  MissingCardDrill,
   RunningCountDrill,
   StrategyDrill,
+  TrueCountDrill,
 } from "@/components/Drills";
 import { DEVIATIONS, DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
@@ -28,7 +31,7 @@ import {
   Settings,
   storage,
 } from "@/lib/statistics/storage";
-import { Action, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
+import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { AdvantageCalculator } from "@/components/AdvantageCalculator";
 import { BankrollRecommender } from "@/components/BankrollRecommender";
@@ -80,7 +83,7 @@ function Dashboard() {
           </p>
           <h1 className="mt-2 text-3xl font-semibold">Dashboard</h1>
           <p className="mt-2 text-zinc-400">
-            Build speed, accuracy, and confidence—one shoe at a time.
+            Build speed, accuracy, and confidence, one shoe at a time.
           </p>
         </div>
         <Link href="/training/running-count">
@@ -93,7 +96,7 @@ function Dashboard() {
         <Metric label="Sessions completed" value={sessions.length} />
         <Metric label="Questions answered" value={totals.q} />
         <Metric label="Overall accuracy" value={`${totals.avg}%`} />
-        <Metric label="Current streak" value={sessions[0]?.bestStreak || 0} />
+        <Metric label="Latest session best" value={sessions[0]?.bestStreak || 0} />
         <Metric label="Best streak" value={totals.best} />
         <Metric
           label="Average response"
@@ -342,9 +345,11 @@ const actionStyle: Record<Action, string> = {
 function StrategyTable({
   title,
   hands,
+  rules,
 }: {
   title: string;
   hands: Array<{ label: string; cards: Card[] }>;
+  rules: BlackjackRules;
 }) {
   return (
     <Panel className="overflow-x-auto">
@@ -368,7 +373,7 @@ function StrategyTable({
                 const action = getBasicStrategyDecision({
                   playerCards: hand.cards,
                   dealerUpcard: strategyCard(dealer),
-                  rules: DEFAULT_RULES,
+                  rules,
                 }).action;
                 return (
                   <td className="p-1" key={dealer}>
@@ -389,11 +394,28 @@ function StrategyTable({
   );
 }
 function StrategyReference() {
+  const [rules, setRules] = useState<BlackjackRules>(DEFAULT_RULES);
+  useEffect(() => {
+    const load = () => {
+      const settings = storage.settings();
+      setRules({
+        decks: settings.decks,
+        dealerHitsSoft17: settings.dealerHitsSoft17,
+        doubleAfterSplit: settings.doubleAfterSplit,
+        resplitAces: settings.resplitAces,
+        lateSurrender: settings.lateSurrender,
+        doubleRule: "any",
+      });
+    };
+    load();
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
   return (
     <>
       <h1 className="text-3xl font-semibold">Basic Strategy Reference</h1>
       <p className="mt-2 text-zinc-400">
-        6-deck · H17 · DAS · RSA · Late surrender. Every cell uses the same
+        {rules.decks}-deck · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "Late surrender" : "No surrender"}. Every cell uses the same
         decision engine as the trainer.
       </p>
       <div className="mt-5 flex flex-wrap gap-3 text-xs">
@@ -407,9 +429,9 @@ function StrategyReference() {
         ))}
       </div>
       <div className="mt-7 space-y-5">
-        <StrategyTable title="Hard totals" hands={hardStrategyHands} />
-        <StrategyTable title="Soft totals" hands={softStrategyHands} />
-        <StrategyTable title="Pairs & splits" hands={pairStrategyHands} />
+        <StrategyTable title="Hard totals" hands={hardStrategyHands} rules={rules} />
+        <StrategyTable title="Soft totals" hands={softStrategyHands} rules={rules} />
+        <StrategyTable title="Pairs & splits" hands={pairStrategyHands} rules={rules} />
       </div>
     </>
   );
@@ -488,7 +510,12 @@ function DeviationReference() {
 }
 function Statistics() {
   const [sessions, setSessions] = useState<Session[]>([]);
-  useEffect(() => setSessions(storage.sessions()), []);
+  useEffect(() => {
+    const load = () => setSessions(storage.sessions());
+    load();
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
   const chart = [...sessions]
     .reverse()
     .slice(-20)
@@ -511,6 +538,26 @@ function Statistics() {
     name,
     accuracy: Math.round((v.correct / v.total) * 100),
   }));
+  const byCategory = Object.entries(
+    sessions.reduce<Record<string, { total: number; correct: number }>>(
+      (all, session) => {
+        for (const [category, result] of Object.entries(session.categories ?? {})) {
+          const key = `${session.drill}: ${category}`;
+          all[key] ??= { total: 0, correct: 0 };
+          all[key].total += result.total;
+          all[key].correct += result.correct;
+        }
+        return all;
+      },
+      {},
+    ),
+  )
+    .map(([name, result]) => ({
+      name,
+      accuracy: Math.round((result.correct / result.total) * 100),
+      total: result.total,
+    }))
+    .sort((a, b) => a.accuracy - b.accuracy);
   return (
     <>
       <h1 className="text-3xl font-semibold">Statistics</h1>
@@ -599,6 +646,39 @@ function Statistics() {
               </ResponsiveContainer>
             </div>
           </Panel>
+          {byCategory.length > 0 && (
+            <Panel className="lg:col-span-2">
+              <h2 className="font-semibold">Accuracy by decision category</h2>
+              <p className="mb-5 mt-1 text-sm text-zinc-500">
+                Lowest-performing categories appear first.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {byCategory.map((row) => (
+                  <div key={row.name} className="rounded-xl bg-black/20 p-4">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span>{row.name}</span>
+                      <b>{row.accuracy}%</b>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-full bg-emerald-500" style={{ width: `${row.accuracy}%` }} />
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-500">{row.total} answers</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
+          <section className="sr-only" aria-label="Statistics text summary">
+            <h2>Performance summary</h2>
+            <ul>
+              {byDrill.map((row) => (
+                <li key={row.name}>{row.name}: {row.accuracy}% accuracy</li>
+              ))}
+              {byCategory.map((row) => (
+                <li key={row.name}>{row.name}: {row.accuracy}% across {row.total} answers</li>
+              ))}
+            </ul>
+          </section>
         </div>
       )}
     </>
@@ -606,12 +686,21 @@ function Statistics() {
 }
 function SettingsPage() {
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
-    [saved, setSaved] = useState(false);
+    [saved, setSaved] = useState(false),
+    [dataMessage, setDataMessage] = useState("");
+  const importInput = useRef<HTMLInputElement>(null);
   useEffect(() => setS(storage.settings()), []);
   const update = <K extends keyof Settings>(k: K, v: Settings[K]) => {
     setS((x) => ({ ...x, [k]: v }));
     setSaved(false);
   };
+  const preset = s.decks === 6 && s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.lateSurrender
+    ? "6d-h17"
+    : s.decks === 6 && !s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.lateSurrender
+      ? "6d-s17"
+      : s.decks === 8 && s.dealerHitsSoft17 && s.doubleAfterSplit && !s.resplitAces && !s.lateSurrender
+        ? "8d-h17"
+        : "custom";
   return (
     <>
       <h1 className="text-3xl font-semibold">Settings</h1>
@@ -623,6 +712,29 @@ function SettingsPage() {
           <h2 className="mb-5 font-semibold">Table rules</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
+              label="Rule preset"
+              className="sm:col-span-2"
+              value={preset}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "custom") return;
+                setS((current) => ({
+                  ...current,
+                  decks: value === "8d-h17" ? 8 : 6,
+                  dealerHitsSoft17: value !== "6d-s17",
+                  doubleAfterSplit: true,
+                  resplitAces: value !== "8d-h17",
+                  lateSurrender: value !== "8d-h17",
+                }));
+                setSaved(false);
+              }}
+            >
+              <option value="6d-h17">6-deck H17 liberal</option>
+              <option value="6d-s17">6-deck S17 liberal</option>
+              <option value="8d-h17">8-deck H17 common</option>
+              <option value="custom">Custom</option>
+            </Select>
+            <Select
               label="Default decks"
               value={s.decks}
               onChange={(e) => update("decks", +e.target.value)}
@@ -631,8 +743,13 @@ function SettingsPage() {
                 <option key={x}>{x}</option>
               ))}
             </Select>
-            <Select label="Dealer" value="h17" disabled>
+            <Select
+              label="Dealer"
+              value={s.dealerHitsSoft17 ? "h17" : "s17"}
+              onChange={(e) => update("dealerHitsSoft17", e.target.value === "h17")}
+            >
               <option value="h17">Hit soft 17</option>
+              <option value="s17">Stand soft 17</option>
             </Select>
             <Select
               label="True-count rounding"
@@ -657,16 +774,22 @@ function SettingsPage() {
               ))}
             </Select>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-            <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-300">
-              DAS enabled
-            </div>
-            <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-300">
-              RSA enabled
-            </div>
-            <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-300">
-              Late surrender
-            </div>
+          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+            {([
+              ["doubleAfterSplit", "Double after split"],
+              ["resplitAces", "Resplit aces"],
+              ["lateSurrender", "Late surrender"],
+            ] as const).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-3 rounded-lg bg-black/20 p-3">
+                <input
+                  type="checkbox"
+                  checked={s[key]}
+                  onChange={(e) => update(key, e.target.checked)}
+                  className="h-5 w-5 accent-emerald-500"
+                />
+                {label}
+              </label>
+            ))}
           </div>
         </Panel>
         <Panel>
@@ -720,6 +843,55 @@ function SettingsPage() {
             {saved ? "Saved ✓" : "Save settings"}
           </Button>
         </Panel>
+        <Panel className="lg:col-span-2">
+          <h2 className="font-semibold">Training data</h2>
+          <p className="mt-2 text-sm text-zinc-400">
+            Download a portable JSON backup or restore one on this device.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <GhostButton
+              onClick={() => {
+                const url = URL.createObjectURL(
+                  new Blob([storage.exportData()], { type: "application/json" }),
+                );
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `countlab-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                anchor.click();
+                URL.revokeObjectURL(url);
+                setDataMessage("Backup downloaded.");
+              }}
+            >
+              Export history
+            </GhostButton>
+            <GhostButton onClick={() => importInput.current?.click()}>
+              Import history
+            </GhostButton>
+            <input
+              ref={importInput}
+              className="hidden"
+              type="file"
+              accept="application/json,.json"
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                try {
+                  storage.importData(await file.text());
+                  setS(storage.settings());
+                  setDataMessage(`Imported ${storage.sessions().length} sessions.`);
+                } catch (error) {
+                  setDataMessage(error instanceof Error ? error.message : "Import failed");
+                }
+                event.target.value = "";
+              }}
+            />
+          </div>
+          {dataMessage && (
+            <p aria-live="polite" className="mt-3 text-sm text-emerald-300">
+              {dataMessage}
+            </p>
+          )}
+        </Panel>
       </div>
     </>
   );
@@ -743,9 +915,12 @@ export default function DynamicPage() {
     bankroll: <BankrollRecommender />,
     "chase-flush": <ChaseFlushLab />,
     "training/running-count": <RunningCountDrill />,
+    "training/true-count": <TrueCountDrill />,
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
     "training/full-shoe": <FullShoeDrill />,
+    "training/missing-card": <MissingCardDrill />,
+    "training/deck-estimation": <DeckEstimationDrill />,
     reference: <HiLoReference />,
     "reference/basic-strategy": <StrategyReference />,
     "reference/deviations": <DeviationReference />,

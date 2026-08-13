@@ -98,6 +98,11 @@ describe("strategy", () => {
         rules: DEFAULT_RULES,
       }).action,
     ).toBe("D"));
+  it("applies the H17-only 15 vs Ace surrender rule", () => {
+    const hand = [c("10"), c("5")];
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("H");
+  });
 });
 describe("deviations", () => {
   it("uses thresholds", () => {

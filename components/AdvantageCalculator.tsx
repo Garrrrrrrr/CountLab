@@ -74,7 +74,7 @@ export function AdvantageCalculator() {
         <p className="mt-2 max-w-4xl text-zinc-400">
           Instant bankroll analysis from a high-volume per-count coefficient
           table. Changing a dollar bet re-aggregates the same stable frequency,
-          advantage, and standard-deviation data—no browser simulation or
+          advantage, and standard-deviation data, with no browser simulation or
           sampling noise.
         </p>
       </div>
@@ -244,7 +244,7 @@ export function AdvantageCalculator() {
           value={
             Number.isFinite(result.nZeroHours)
               ? `${Math.round(result.nZeroHours).toLocaleString()} hr`
-              : "—"
+              : "Not available"
           }
         />
       </div>
@@ -274,7 +274,7 @@ export function AdvantageCalculator() {
                 ? "No limit"
                 : recommended > 0
                   ? money(recommended)
-                  : "—"}
+                  : "Not available"}
             </b>
             .
           </p>

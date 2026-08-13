@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 const groups = [
   {
     label: "",
@@ -16,9 +17,12 @@ const groups = [
     label: "Training",
     items: [
       ["Running Count", "/training/running-count", "fa-bolt"],
+      ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
       ["Deviations", "/training/deviations", "fa-code-branch"],
       ["Full Shoe", "/training/full-shoe", "fa-shoe-prints"],
+      ["Missing Card", "/training/missing-card", "fa-eye"],
+      ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
     ],
   },
   {
@@ -39,18 +43,72 @@ const groups = [
 ];
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "") || "/dashboard",
-    [open, setOpen] = useState(false);
+    [open, setOpen] = useState(false),
+    [rules, setRules] = useState(DEFAULT_SETTINGS),
+    toggle = useRef<HTMLButtonElement>(null),
+    navigation = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const navigationElement = navigation.current;
+    const toggleElement = toggle.current;
+    navigationElement?.querySelector<HTMLAnchorElement>("a")?.focus();
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        toggle.current?.focus();
+      }
+      if (event.key === "Tab") {
+        const focusable = Array.from(navigation.current?.querySelectorAll<HTMLElement>("a, button, [tabindex]:not([tabindex='-1'])") ?? []);
+        if (!focusable.length) return;
+        const first = focusable[0], last = focusable.at(-1)!;
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    addEventListener("keydown", close);
+    return () => {
+      removeEventListener("keydown", close);
+      if (navigationElement?.contains(document.activeElement)) (previous ?? toggleElement)?.focus();
+    };
+  }, [open]);
+  useEffect(() => {
+    const load = () => setRules(storage.settings());
+    load();
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
   return (
     <div className="min-h-screen text-zinc-100">
       <button
+        ref={toggle}
+        type="button"
         aria-label="Toggle navigation"
+        aria-controls="primary-navigation"
+        aria-expanded={open}
         onClick={() => setOpen(!open)}
         className="pressable fixed left-4 top-3.5 z-50 grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-black/45 text-sm shadow-xl backdrop-blur-2xl lg:hidden"
       >
         <i className="fa-solid fa-bars" />
       </button>
+      {open && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
       <aside
-        className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 w-[17rem] border-r border-white/[.07] bg-[#101411]/90 p-5 shadow-[20px_0_70px_rgba(0,0,0,.18)] backdrop-blur-2xl transition-transform duration-300 ease-out lg:translate-x-0`}
+        id="primary-navigation"
+        ref={navigation}
+        aria-label="Primary navigation"
+        className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 w-[17rem] overflow-y-auto border-r border-white/[.07] bg-[#101411]/90 p-5 shadow-[20px_0_70px_rgba(0,0,0,.18)] backdrop-blur-2xl transition-transform duration-300 ease-out lg:translate-x-0`}
       >
         <Link href="/dashboard" className="mb-8 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-[.9rem] bg-gradient-to-br from-[#b4f27d] to-[#65c875] text-lg font-bold text-[#112010] shadow-[0_8px_24px_rgba(81,190,102,.22)]">
@@ -99,7 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             Garrick Tse
           </a>
           <span className="rounded-full border border-white/[.07] bg-white/[.05] px-3 py-1 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300">
-            H17 · DAS · RSA · LS
+            {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
           </span>
         </header>
         <div className="mx-auto max-w-[90rem] p-5 pb-16 md:p-8 md:pb-20">
