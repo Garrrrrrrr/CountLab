@@ -170,6 +170,7 @@ export function exactOpeningChunk(state:InfoState,startBoard=0,endBoard=Infinity
 }
 
 export function finalizeExactOpening(state:InfoState,chunks:ExactOpeningChunk[],runtimeSeconds:number):Decision{
+  if(!chunks.length||chunks.some((chunk)=>chunk===undefined))throw new Error("Opening solve is still waiting for worker chunks");
   const rem=remaining(state),pairCount=choose2(rem.length),hiddenPerBoard=state.dealerVisible===undefined?choose3(rem.length-4):choose2(rem.length-4);
   const bet2ByFirst=new Float64Array(pairCount),riverByFirst=new Float64Array(pairCount),boardsByFirst=new Uint32Array(pairCount);
   let bet3Sum=0,completedBoards=0;

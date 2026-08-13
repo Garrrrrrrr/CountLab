@@ -267,7 +267,9 @@ export function ChaseFlushLab() {
     }
     if(stage===0){
       const pool=workers.current,totalRemaining=52-player.length-(informed.dealerVisible===undefined?0:1),totalBoards=totalRemaining*(totalRemaining-1)*(totalRemaining-2)*(totalRemaining-3)/24;
-      openingJob.current={id,started:performance.now(),state:informed,chunks:Array(pool.length),cacheKey:informedCacheKey};
+      // Array(length) is sparse, and Array.prototype.every skips empty slots.
+      // Use explicit undefined entries so finalization waits for every worker.
+      openingJob.current={id,started:performance.now(),state:informed,chunks:Array.from({length:pool.length},()=>undefined),cacheKey:informedCacheKey};
       pool[0].postMessage({id,kind:"provisional",state:informed,samples:24,sixCardPayout});
       pool.forEach((instance,chunkIndex)=>instance.postMessage({id,kind:"opening-chunk",state:informed,chunkIndex,startBoard:Math.floor(totalBoards*chunkIndex/pool.length),endBoard:Math.floor(totalBoards*(chunkIndex+1)/pool.length),sixCardPayout}));
       return;

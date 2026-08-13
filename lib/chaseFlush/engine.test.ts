@@ -44,6 +44,10 @@ describe("Chase the Flush engine",()=>{
     expect(d.evs.check).toBeCloseTo(3.773906393930919,12);
     expect(d.differenceStatistics?.samples).toBe(1_104_436_080);
   },120_000);
+  it("refuses to finalize a partial parallel opening result",()=>{
+    const state={player:parseCards("Ks Js Ts"),dealerVisible:parseCard("9s"),board:[]};
+    expect(()=>finalizeExactOpening(state,[undefined] as never,1)).toThrow("still waiting for worker chunks");
+  });
   it("matches the independent legacy opening result for a check decision",()=>{
     const d=exactOpeningDecision({player:parseCards("2c 7d Qs"),dealerVisible:parseCard("Ah"),board:[]});
     expect(d.action).toBe("check");
