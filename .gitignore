@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+profile.out
+results/*.joblib
+results/pilot-*.json
+results/preliminary.json
+results/legacy20-validation.json
