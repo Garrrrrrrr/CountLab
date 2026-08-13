@@ -6,7 +6,7 @@ does not include the optional Same Suit bet.
 
 ## Rules
 
-Source of truth: [Wizard of Odds — Chase the Flush](https://wizardofodds.com/games/chase-the-flush/),
+Source of truth: [Wizard of Odds: Chase the Flush](https://wizardofodds.com/games/chase-the-flush/),
 accessed 2026-08-13.
 
 - Ante and X-Tra Bonus are one unit each.
@@ -30,11 +30,18 @@ tested.
 ## Methods
 
 The final 1x/fold decision is exact: 946 possible hidden dealer pairs with an
-exposed card, or 14,190 dealer triples without one. Earlier decisions use
-reproducible conditional Monte Carlo backward induction. They compare the wager
-to the expected value of the *optimal later decision*, not to zero. Dealer cards
-and future board cards are sampled without replacement from the legal conditional
-deck.
+exposed card, or 14,190 dealer triples without one. The exposed-card 2x/check
+decision is also exact when requested. It enumerates future boards first and
+then all hidden dealer pairs for each board, so the later action can depend on
+the visible board but cannot leak either hidden dealer card. Other early
+decisions use reproducible conditional Monte Carlo backward induction.
+
+Every decision value has one convention: **expected final net profit for the
+whole hand in Ante units**. Returned stakes are not profit. Terminal children
+already include Ante, X-Tra, and All-In settlement, so a parent check branch is
+only the expectation of its optimal child values; it never adds a current-state
+payoff. The canonical settlement object exposes these three components
+separately, and X-Tra is independent of the All-In multiple.
 
 The simulator plays the same terminal deal under four information policies:
 
@@ -54,6 +61,7 @@ average wager, and action counts.
 python -m pip install -r requirements.txt
 python -m pytest -q
 python analyze_hand.py --player "Ah 8h 4c" --dealer-visible "Kh" --board "2h 7s"
+python analyze_hand.py --player "As Ks Js" --dealer-visible "Kh" --board "Ts 9s" --exact --debug-payoff
 python interactive.py
 python simulate.py --hands 10000000 --seed 12345 --decision-samples 8
 python fitted_simulate.py --train-hands 2000000 --hands 20000000 --six-payout 50
@@ -74,8 +82,11 @@ not the +54 implied by 50:1. Its published −0.023907 EV, 3.564878 average wage
 and action frequencies therefore describe the older 20:1 game.
 
 The solver was validated on that legacy 20:1 game using two million independent
-training deals per policy and five million new holdout deals. It returned
-**−0.024431**, only −0.000524 Ante units from Wizard, so validation passed.
+training deals per policy and five million fresh holdout deals. The audit rerun
+returned **-0.026063** (95% CI [-0.029602, -0.022524]) versus Wizard's
+**-0.023907**. Wizard's value lies inside the interval; the difference is
+-0.002156 against a 0.003539 sampling tolerance, so validation passed. The
+machine-readable audit is `results/legacy20-validation-audit.json`.
 
 The final calculation then retrained at the requested current 50:1 paytable and
 used 20,000,000 independent paired holdout deals:

@@ -1,0 +1,47 @@
+{
+  "state": {
+    "player": ["As", "Ks", "Js"],
+    "dealer_visible": "Kh",
+    "board": ["Ts", "9s"]
+  },
+  "rules": "Wizard of Odds Chase the Flush, accessed 2026-08-13",
+  "xtra_paytable": {"4": 1, "5": 5, "6": 50, "7": 250},
+  "value_convention": "expected final whole-hand net profit in Ante units",
+  "exact": {
+    "remaining_cards": 46,
+    "future_board_combinations": 1035,
+    "dealer_hidden_combinations_per_board": 946,
+    "terminal_states": 979110,
+    "2x": {
+      "ante": 0.8023041333455894,
+      "xtra": 24.84372542410965,
+      "all_in": 1.9988847014125073,
+      "total": 27.644914258867747
+    },
+    "check": {
+      "ante": 0.8023041333455913,
+      "xtra": 24.843725424109632,
+      "future_all_in": 0.9994423507062559,
+      "total": 26.64547190816148
+    },
+    "best_action": "2x",
+    "margin": 0.999442350706267,
+    "folded_future_boards": 0
+  },
+  "monte_carlo": {
+    "samples": 1000000,
+    "seed": 12345,
+    "2x": {
+      "mean": 27.6405,
+      "standard_error": 0.042807159497,
+      "difference_from_exact": -0.004414258868,
+      "z_score": -0.1031
+    },
+    "check": {
+      "mean": 26.641037,
+      "standard_error": 0.042806775527,
+      "difference_from_exact": -0.004434908161,
+      "z_score": -0.1036
+    }
+  }
+}

@@ -84,6 +84,18 @@ class Solver:
 
     def _decision(self, state: InformationState, exact_requested: bool) -> Decision:
         if state.stage == 3: return self._final(state, exact_requested)
+        if state.stage == 2 and exact_requested and state.dealer_visible is not None:
+            # Enumerate by future board first.  That grouping is essential: the
+            # later 1x/fold choice may depend on the board, but never on either
+            # hidden dealer card.
+            from .exact_analysis import exact_second_decision
+            result = exact_second_decision(state)
+            evs = {"2x": result.bet_2x.total, "check": result.check.total}
+            best = result.best_action
+            other = "check" if best == "2x" else "2x"
+            return Decision(
+                state, best, evs[best], evs[other], result.margin, evs, True
+            )
         wager = 3 if state.stage == 1 else 2
         bet, bet_exact = self.wager_ev(state, wager)
         child_values = [self._decision(child, False).ev_best for child in self._sample_future_states(state, 2)]
@@ -96,3 +108,7 @@ class Solver:
         return self._decision(state, True)
 
     get_decision = decision
+
+    def action(self, state: InformationState) -> str:
+        """Return an action using only the supplied information state."""
+        return self.decision(state).best_action

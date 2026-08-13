@@ -6,6 +6,23 @@ def test_fold_and_validation():
     assert settle((), (), None, folded=True).net == -2
     with pytest.raises(ValueError): settle((), (), 1, folded=True)
 
+def test_fold_settlement_components():
+    result = settle((), (), None, folded=True)
+    assert (result.ante, result.xtra, result.all_in, result.net) == (-1, -1, 0, -2)
+
+def test_net_profit_not_gross_return():
+    player = parse_cards("Ah Kh Qh 2c 3d 4s 5c")
+    dealer = parse_cards("Jh Th 9h 2d 3s 4c 5d")
+    result = settle(player, dealer, 1)
+    assert result.all_in == 1
+    assert result.net == 2
+
+def test_xtra_not_scaled_by_all_in():
+    player = parse_cards("Ah Kh Qh Jh Th 2c 3d")
+    dealer = parse_cards("9c 8c 7c 2d 3s 4d 5s")
+    assert settle(player, dealer, 1).xtra == 5
+    assert settle(player, dealer, 3).xtra == 5
+
 @pytest.mark.parametrize("n,pay", [(4,1),(5,5),(6,50),(7,250)])
 def test_player_win_xtra_paytable(n, pay):
     p = parse_cards("Ah Kh Qh Jh Th 9h 8h")[:n] + parse_cards("2c 3d 4s")[:7-n]
