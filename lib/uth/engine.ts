@@ -15,6 +15,7 @@ export type UTHDecision = {
   sampledStates?: number;
   populationStates?: number;
   decisionMarginAvailable?: boolean;
+  precisionTargetMet?: boolean;
 };
 
 export const parseCard = (text: string) => {
@@ -117,6 +118,7 @@ const exactDecision = (action: string, evs: Record<string, number>, difference: 
   standardError: 0,
   confidenceInterval: [difference, difference],
   status: "CONFIRMED",
+  precisionTargetMet: true,
 });
 
 export function solveRiver(state: UTHState): UTHDecision {
@@ -231,7 +233,7 @@ export function referenceOpening(state: UTHState): UTHDecision {
   if (state.board.length) throw new Error("Opening reference needs no board");
   return { action: openingBasic(state.player), evs: {}, difference: 0, exact: false,
     method: "PUBLISHED_OPTIMAL_STRATEGY", outcomes: 0, standardError: 0,
-    confidenceInterval: [0, 0], status: "CONFIRMED", decisionMarginAvailable: false };
+    confidenceInterval: [0, 0], status: "CONFIRMED", decisionMarginAvailable: false, precisionTargetMet: true };
 }
 function mulberry(seed: number) {
   return () => {
@@ -245,13 +247,33 @@ function mulberry(seed: number) {
 
 type Stratum = {
   population: number;
-  flops: number[][];
+  flops: Array<{cards:number[];proxy:number}>;
+  proxyMean: number;
   sample: number;
   four: number;
   check: number;
   mean: number;
   m2: number;
 };
+/**
+ * Cheap deterministic proxy used only as a control variate. Its mean is
+ * evaluated over the complete flop population, so it cannot bias the sampled
+ * exact result. Perfect-completion choices deliberately make it inexpensive
+ * and highly correlated; they are never used as the actual playing policy.
+ */
+function openingDeltaProxy(state:UTHState,flop:number[],completions=16):number{
+  const proxyState={player:state.player,board:flop,dealerVisible:state.dealerVisible},pool=remaining(proxyState);
+  let hash=[...state.player,...flop,state.dealerVisible??99].reduce((value,card)=>Math.imul(value^card,16777619),2166136261)>>>0,total=0;
+  for(let sampleIndex=0;sampleIndex<completions;sampleIndex++){
+    const needed=state.dealerVisible===undefined?4:3,picked:number[]=[];
+    while(picked.length<needed){hash=Math.imul(hash^hash>>>15,2246822519)>>>0;const index=hash%pool.length;if(!picked.includes(index))picked.push(index);}
+    const board=[...flop,pool[picked[0]],pool[picked[1]]],dealer=state.dealerVisible===undefined?[pool[picked[2]],pool[picked[3]]]:[state.dealerVisible,pool[picked[2]]];
+    const playerRank=evaluate([...state.player,...board]),dealerRank=evaluate([...dealer,...board]);
+    const four=settle(playerRank,dealerRank,4),two=settle(playerRank,dealerRank,2),one=settle(playerRank,dealerRank,1);
+    total+=four-Math.max(two,one,-2);
+  }
+  return total/completions;
+}
 function stratumKey(flop: number[]) {
   const ranks = new Map<number, number>();
   const suits = new Map<number, number>();
@@ -274,20 +296,27 @@ function allocate(strata: Stratum[], wanted: number) {
   }
 }
 
+export function classifyOpeningEstimate(mean:number,halfWidth:number,exact=false){
+  const signConfirmed=Number.isFinite(halfWidth)&&(mean-halfWidth>0||mean+halfWidth<0);
+  const precisionTargetMet=exact||(Number.isFinite(halfWidth)&&halfWidth<=0.001);
+  return{confirmed:exact||signConfirmed,precisionTargetMet};
+}
+
 /** Sample flop information states, then solve every sampled continuation exactly. */
 export function solveOpening(state: UTHState, samples = 64): UTHDecision {
   validate(state);
   if (state.board.length) throw new Error("Opening needs no board");
   const rem = remaining(state);
-  const groups = new Map<string, number[][]>();
+  const groups = new Map<string, Array<{cards:number[];proxy:number}>>();
   for (let i = 0; i < rem.length - 2; i++) for (let j = i + 1; j < rem.length - 1; j++) for (let k = j + 1; k < rem.length; k++) {
     const flop = [rem[i], rem[j], rem[k]];
     const key = stratumKey(flop);
     const group = groups.get(key);
-    if (group) group.push(flop);
-    else groups.set(key, [flop]);
+    const entry={cards:flop,proxy:openingDeltaProxy(state,flop)};
+    if (group) group.push(entry);
+    else groups.set(key, [entry]);
   }
-  const strata: Stratum[] = [...groups.values()].map(flops => ({ population: flops.length, flops, sample: 0, four: 0, check: 0, mean: 0, m2: 0 }));
+  const strata: Stratum[] = [...groups.values()].map(flops => ({ population: flops.length, flops, proxyMean:flops.reduce((sum,item)=>sum+item.proxy,0)/flops.length, sample: 0, four: 0, check: 0, mean: 0, m2: 0 }));
   const population = strata.reduce((sum, item) => sum + item.population, 0);
   // Every texture stratum must be represented or the weighted estimate is biased.
   const wanted = Math.max(strata.length, Math.min(Math.floor(samples), population));
@@ -298,16 +327,17 @@ export function solveOpening(state: UTHState, samples = 64): UTHDecision {
     for (let i = 0; i < item.sample; i++) {
       const selected = i + Math.floor(random() * (item.flops.length - i));
       [item.flops[i], item.flops[selected]] = [item.flops[selected], item.flops[i]];
-      const child = flopValues({ player: state.player, board: item.flops[i], dealerVisible: state.dealerVisible }, true);
+      const sampled=item.flops[i],child = flopValues({ player: state.player, board: sampled.cards, dealerVisible: state.dealerVisible }, true);
       const four = child.bet4!;
       const check = Math.max(child.bet2, child.check);
       const delta = four - check;
+      const residual=delta-sampled.proxy;
       const count = i + 1;
-      const difference = delta - item.mean;
+      const difference = residual - item.mean;
       item.four += four;
       item.check += check;
       item.mean += difference / count;
-      item.m2 += difference * (delta - item.mean);
+      item.m2 += difference * (residual - item.mean);
       outcomes += child.outcomes;
     }
   }
@@ -321,7 +351,7 @@ export function solveOpening(state: UTHState, samples = 64): UTHDecision {
     const weight = item.population / population;
     ev4 += weight * item.four / item.sample;
     check += weight * item.check / item.sample;
-    mean += weight * item.mean;
+    mean += weight * (item.proxyMean+item.mean);
     if (item.sample < item.population) {
       if (item.sample < 2) estimable = false;
       else {
@@ -334,7 +364,11 @@ export function solveOpening(state: UTHState, samples = 64): UTHDecision {
   const exact = wanted === population;
   const standardError = exact ? 0 : estimable ? Math.sqrt(varianceOfMean) : Number.POSITIVE_INFINITY;
   const halfWidth = 3.290526731 * standardError;
-  const confirmed = exact || (Number.isFinite(halfWidth) && halfWidth <= 0.001 && (mean - halfWidth > 0 || mean + halfWidth < 0));
+  // Action certainty and numerical EV precision are distinct. A paired 99.9%
+  // interval wholly on one side of zero is sufficient to identify the better
+  // action. The stricter 0.001-unit target remains visible independently and
+  // is still required before treating the displayed EV margin as high precision.
+  const {confirmed,precisionTargetMet}=classifyOpeningEstimate(mean,halfWidth,exact);
   const status = confirmed ? "CONFIRMED" : "INCONCLUSIVE — MORE COMPUTATION REQUIRED";
   return {
     action: confirmed ? mean >= 0 ? "4X" : "CHECK" : status,
@@ -349,6 +383,7 @@ export function solveOpening(state: UTHState, samples = 64): UTHDecision {
     sampledStates: wanted,
     populationStates: population,
     decisionMarginAvailable: true,
+    precisionTargetMet,
   };
 }
 

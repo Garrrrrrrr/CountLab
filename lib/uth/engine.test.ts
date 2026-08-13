@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {evaluate,parseCard,policyImprovement,settle,solveFlop,solveOpening,solveRiver} from "./engine";
+import {classifyOpeningEstimate,evaluate,parseCard,policyImprovement,settle,solveFlop,solveOpening,solveRiver} from "./engine";
 import golden from "./evaluator-golden.json";
 const cards=(text:string)=>text.split(" ").map(parseCard);
 describe("UTH engine",()=>{
@@ -10,4 +10,5 @@ describe("UTH engine",()=>{
   it("measures information under one conditional state and never reports it as negative",()=>{const player=cards("Jd Kd"),board=cards("Qd 6h Jc 4h 5c"),normal=solveRiver({player,board}),exposed=solveRiver({player,board,dealerVisible:parseCard("Qs")});expect(normal.action).toBe("1X");expect(exposed.action).toBe("FOLD");expect(policyImprovement(exposed,normal)).toBeCloseTo(1,12);});
   it("matches the Python reference evaluator corpus",()=>{for(const item of golden)expect(evaluate(item.cards.map(parseCard))).toEqual(item.rank);});
   it("samples flop information states with exact continuation values",()=>{const result=solveOpening({player:cards("As Qs"),dealerVisible:parseCard("Kh"),board:[]},6);expect(result.method).toBe("PAIRED_STRATIFIED_MONTE_CARLO+EXACT_CHILDREN");expect(result.sampledStates).toBe(6);expect(result.populationStates).toBe(18_424);expect(result.outcomes).toBe(6*45_540);expect(result.status).toContain("INCONCLUSIVE");});
+  it("separates confident action selection from numeric EV precision",()=>{expect(classifyOpeningEstimate(.2,.05)).toEqual({confirmed:true,precisionTargetMet:false});expect(classifyOpeningEstimate(.02,.05)).toEqual({confirmed:false,precisionTargetMet:false});expect(classifyOpeningEstimate(.002,.0009)).toEqual({confirmed:true,precisionTargetMet:true});});
 });

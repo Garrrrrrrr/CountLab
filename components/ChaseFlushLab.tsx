@@ -44,6 +44,17 @@ type DraggedCard = { card: number; source?: Target };
 type OpeningJob = {id:number;started:number;state:InfoState;chunks:Array<ExactOpeningChunk|undefined>;cacheKey:string};
 type SolveJob = {id:number;informed:InfoState;normal:InfoState;omitNormal:boolean;sixCardPayout:number};
 type WorkerResponse = (Result & {id:number;error?:string}) | {id:number;kind:"opening-chunk";chunkIndex:number;chunk:ExactOpeningChunk;error?:string} | {id:number;kind:"provisional";decision:Decision;error?:string};
+type SavedChaseSetup={mode:"analyze"|"practice"|"strategy"|"research";stage:Stage;target:Target;pickerSuit:SuitCode;player:number[];dealer:number[];board:number[];policy:Policy;sixCardPayout:number};
+const CHASE_SETUP_KEY="countlab:chase-flush:setup:v1";
+const validCards=(value:unknown,max:number):value is number[]=>Array.isArray(value)&&value.length<=max&&value.every(card=>Number.isInteger(card)&&card>=0&&card<52);
+function readChaseSetup():SavedChaseSetup|undefined{
+  try{
+    const value=JSON.parse(localStorage.getItem(CHASE_SETUP_KEY)??"null") as Partial<SavedChaseSetup>|null;
+    if(!value||![0,2,4].includes(value.stage as number)||!["player","dealer","board"].includes(value.target as string)||!["c","d","h","s"].includes(value.pickerSuit as string)||!["none","final","from2","all"].includes(value.policy as string)||!["analyze","practice","strategy","research"].includes(value.mode as string)||!validCards(value.player,3)||!validCards(value.dealer,1)||!validCards(value.board,4))return undefined;
+    const all=[...value.player,...value.dealer,...value.board];if(new Set(all).size!==all.length||value.board.length>(value.stage as number))return undefined;
+    return value as SavedChaseSetup;
+  }catch{return undefined;}
+}
 
 const exactMemoryCache=new Map<string,Decision>();
 let exactDatabase:Promise<IDBDatabase|undefined>|undefined;
@@ -129,10 +140,21 @@ export function ChaseFlushLab() {
     [error, setError] = useState(""),
     [loading, setLoading] = useState(false),
     [practiceChoice, setPracticeChoice] = useState<string>(),
-    [started, setStarted] = useState(Date.now());
+    [started, setStarted] = useState(Date.now()),
+    [setupLoaded,setSetupLoaded]=useState(false);
   const workers = useRef<Worker[]>([]), requestId = useRef(0), recorded = useRef(""), openingJob=useRef<OpeningJob|undefined>(undefined),solveJob=useRef<SolveJob|undefined>(undefined);
   const selected = useMemo(() => new Set([...player, ...dealer, ...board]), [player, dealer, board]);
   const informationActive = policyAllowsCard(policy, stage);
+
+  useEffect(()=>{
+    const saved=readChaseSetup();
+    if(saved){setMode(saved.mode);setStage(saved.stage);setTarget(saved.target);setPickerSuit(saved.pickerSuit);setPlayer(saved.player);setDealer(saved.dealer);setBoard(saved.board);setPolicy(saved.policy);setSixCardPayout(saved.sixCardPayout);}
+    setSetupLoaded(true);
+  },[]);
+  useEffect(()=>{
+    if(!setupLoaded)return;
+    try{localStorage.setItem(CHASE_SETUP_KEY,JSON.stringify({mode,stage,target,pickerSuit,player,dealer,board,policy,sixCardPayout} satisfies SavedChaseSetup));}catch{/* Persistence is optional when storage is unavailable. */}
+  },[board,dealer,mode,pickerSuit,player,policy,setupLoaded,sixCardPayout,stage,target]);
 
   useEffect(() => {
     const workerCount=window.innerWidth<768?2:Math.min(4,Math.max(2,navigator.hardwareConcurrency||2));
