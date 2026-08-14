@@ -20,6 +20,13 @@ const groups = [
     ],
   },
   {
+    label: "Casino Games",
+    items: [
+      ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"],
+      ["Chase the Flush", "/chase-flush", "fa-diamond"],
+    ],
+  },
+  {
     label: "Training",
     items: [
       ["Running Count", "/training/running-count", "fa-bolt"],
@@ -210,7 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ["Train", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/analysis", "/bankroll"].includes(path));
+          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/analysis", "/bankroll", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
           return (
             <Link
               key={href}
