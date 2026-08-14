@@ -1,0 +1,514 @@
+"use client";
+
+import { useMemo, useRef, useState } from "react";
+import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
+import { DEVIATIONS, DEVIATION_ACTION_NAMES, deviationDecision } from "@/lib/blackjack/deviations";
+import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
+import { signed, trueCount } from "@/lib/blackjack/hiLo";
+import { BlackjackShoe } from "@/lib/blackjack/shoe";
+import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
+import { PlayingCard } from "./PlayingCard";
+import { Button, GhostButton, NumberField, Panel, Select } from "./ui";
+
+type Phase = "setup" | "bet" | "insurance" | "play" | "result" | "shoe-end";
+type HandStatus = "playing" | "stood" | "busted" | "surrendered";
+type Spread = "flat" | "1-8" | "1-12";
+
+interface PlayerHand {
+  cards: Card[];
+  bet: number;
+  status: HandStatus;
+  fromSplit?: boolean;
+  splitAces?: boolean;
+}
+
+interface CoachNote {
+  ok: boolean;
+  title: string;
+  detail: string;
+}
+
+const ACTION_NAMES: Record<Action, string> = {
+  H: "Hit",
+  S: "Stand",
+  D: "Double",
+  P: "Split",
+  R: "Surrender",
+};
+
+const spreadUnits = (spread: Spread, tc: number) => {
+  if (spread === "flat") return 1;
+  if (spread === "1-8") return tc <= 0 ? 1 : [2, 4, 6, 8][Math.min(tc, 4) - 1];
+  return tc <= 0 ? 1 : [2, 4, 8, 12][Math.min(tc, 4) - 1];
+};
+
+const rankForIndex = (card: Card) => (["J", "Q", "K"].includes(card.rank) ? "10" : card.rank);
+
+function sound(kind: "deal" | "chip" | "good" | "bad" | "win", enabled: boolean) {
+  if (!enabled) return;
+  try {
+    const context = new AudioContext();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const frequencies = { deal: 330, chip: 440, good: 660, bad: 180, win: 880 };
+    oscillator.type = kind === "bad" ? "sawtooth" : "sine";
+    oscillator.frequency.setValueAtTime(frequencies[kind], context.currentTime);
+    gain.gain.setValueAtTime(0.055, context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.1);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start();
+    oscillator.stop(context.currentTime + 0.1);
+    oscillator.addEventListener("ended", () => void context.close());
+  } catch {
+    // Audio is enhancement-only.
+  }
+}
+
+function handLabel(cards: Card[]) {
+  const total = calculateHandValue(cards);
+  return `${isSoft(cards) ? "Soft " : ""}${total}`;
+}
+
+export function FullShoeGame() {
+  const [phase, setPhase] = useState<Phase>("setup");
+  const [rules, setRules] = useState<BlackjackRules>({
+    decks: 6,
+    dealerHitsSoft17: true,
+    doubleAfterSplit: true,
+    resplitAces: true,
+    lateSurrender: true,
+    doubleRule: "any",
+  });
+  const [penetration, setPenetration] = useState(0.75);
+  const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
+  const [spread, setSpread] = useState<Spread>("1-8");
+  const [unit, setUnit] = useState(10);
+  const [startingBankroll, setStartingBankroll] = useState(1000);
+  const [bankroll, setBankroll] = useState(1000);
+  const [wager, setWager] = useState(0);
+  const [dealer, setDealer] = useState<Card[]>([]);
+  const [hands, setHands] = useState<PlayerHand[]>([]);
+  const [activeHand, setActiveHand] = useState(0);
+  const [runningCount, setRunningCount] = useState(0);
+  const [discarded, setDiscarded] = useState(0);
+  const [round, setRound] = useState(1);
+  const [insuranceBet, setInsuranceBet] = useState(0);
+  const [note, setNote] = useState<CoachNote>();
+  const [roundMessage, setRoundMessage] = useState("Choose your wager to deal the next round.");
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [animations, setAnimations] = useState(true);
+  const [stats, setStats] = useState({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
+  const shoe = useRef<BlackjackShoe | undefined>(undefined);
+  const bankrollRef = useRef(1000);
+
+  const decksRemaining = shoe.current?.decksRemaining() ?? rules.decks;
+  const tc = trueCount(runningCount, Math.max(0.25, decksRemaining), "floor");
+  const expectedWager = Math.min(bankroll, unit * spreadUnits(spread, tc));
+  const cardsTotal = rules.decks * 52;
+  const cutReached = (shoe.current?.cardsRemaining() ?? cardsTotal) <= cardsTotal * (1 - penetration);
+  const accuracy = stats.total ? Math.round((stats.correct / stats.total) * 100) : 100;
+  const current = hands[activeHand];
+
+  const addVisible = (cards: Card[]) => {
+    const delta = cards.reduce((sum, card) => sum + (["2", "3", "4", "5", "6"].includes(card.rank) ? 1 : ["10", "J", "Q", "K", "A"].includes(card.rank) ? -1 : 0), 0);
+    setRunningCount((value) => value + delta);
+  };
+
+  const changeBankroll = (delta: number) => {
+    bankrollRef.current += delta;
+    setBankroll(bankrollRef.current);
+  };
+
+  const coach = (ok: boolean, title: string, detail: string, category: "bet" | "play") => {
+    setNote({ ok, title, detail });
+    setStats((value) => ({
+      ...value,
+      total: value.total + 1,
+      correct: value.correct + Number(ok),
+      betErrors: value.betErrors + Number(!ok && category === "bet"),
+      playErrors: value.playErrors + Number(!ok && category === "play"),
+    }));
+    sound(ok ? "good" : "bad", soundEnabled);
+  };
+
+  const startShoe = () => {
+    shoe.current = new BlackjackShoe(rules.decks);
+    bankrollRef.current = startingBankroll;
+    setBankroll(startingBankroll);
+    setRunningCount(0);
+    setDiscarded(0);
+    setRound(1);
+    setHands([]);
+    setDealer([]);
+    setWager(0);
+    setInsuranceBet(0);
+    setStats({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
+    setNote(undefined);
+    setRoundMessage("Choose your wager. The coach expects the highlighted amount.");
+    setPhase("bet");
+  };
+
+  const draw = () => shoe.current?.deal();
+
+  const settleRound = (settledHands: PlayerHand[], dealerCards: Card[], insurance = insuranceBet) => {
+    const dealerTotal = calculateHandValue(dealerCards);
+    const dealerBust = dealerTotal > 21;
+    const dealerNatural = isBlackjack(dealerCards);
+    let returned = dealerNatural && insurance ? insurance * 3 : 0;
+    const outcomes = settledHands.map((hand, index) => {
+      const total = calculateHandValue(hand.cards);
+      let label = "Loss";
+      if (hand.status === "surrendered") {
+        returned += hand.bet / 2;
+        label = "Surrender";
+      } else if (total > 21) label = "Bust";
+      else if (isBlackjack(hand.cards) && !hand.fromSplit && !dealerNatural) {
+        returned += hand.bet * (1 + blackjackPayout);
+        label = "Blackjack";
+      } else if (dealerNatural && isBlackjack(hand.cards) && !hand.fromSplit) {
+        returned += hand.bet;
+        label = "Push";
+      } else if (dealerNatural) label = "Dealer blackjack";
+      else if (dealerBust || total > dealerTotal) {
+        returned += hand.bet * 2;
+        label = "Win";
+      } else if (total === dealerTotal) {
+        returned += hand.bet;
+        label = "Push";
+      }
+      return `Hand ${index + 1}: ${label}`;
+    });
+    const finalBankroll = bankrollRef.current + returned;
+    bankrollRef.current = finalBankroll;
+    setBankroll(finalBankroll);
+    setHands(settledHands);
+    setDealer(dealerCards);
+    setDiscarded((value) => value + settledHands.reduce((sum, hand) => sum + hand.cards.length, 0) + dealerCards.length);
+    setRoundMessage(`${outcomes.join(" · ")} · Dealer ${dealerBust ? "busts with " : "has "}${dealerTotal}.`);
+    setPhase("result");
+    sound(returned > settledHands.reduce((sum, hand) => sum + hand.bet, 0) ? "win" : "deal", soundEnabled);
+  };
+
+  const playDealer = (settledHands = hands, dealerCards = dealer) => {
+    const nextDealer = [...dealerCards];
+    if (nextDealer[1]) addVisible([nextDealer[1]]);
+    const allDead = settledHands.every((hand) => hand.status === "busted" || hand.status === "surrendered" || (isBlackjack(hand.cards) && !hand.fromSplit));
+    while (!allDead) {
+      const value = calculateHandValue(nextDealer);
+      if (value > 17 || (value === 17 && !(rules.dealerHitsSoft17 && isSoft(nextDealer)))) break;
+      const card = draw();
+      if (!card) break;
+      nextDealer.push(card);
+      addVisible([card]);
+    }
+    settleRound(settledHands, nextDealer);
+  };
+
+  const beginRound = () => {
+    if (!shoe.current || wager <= 0 || wager > bankroll) return;
+    const betOk = wager === expectedWager;
+    coach(
+      betOk,
+      betOk ? "Bet sizing on target" : "Bet spread mismatch",
+      betOk
+        ? `${spread} calls for ${spreadUnits(spread, tc)} unit${spreadUnits(spread, tc) === 1 ? "" : "s"} at TC ${signed(tc)}.`
+        : `At TC ${signed(tc)}, your ${spread} ramp calls for $${expectedWager}. You wagered $${wager}.`,
+      "bet",
+    );
+    const p1 = draw(), d1 = draw(), p2 = draw(), d2 = draw();
+    if (!p1 || !d1 || !p2 || !d2) return;
+    const nextHands: PlayerHand[] = [{ cards: [p1, p2], bet: wager, status: "playing" }];
+    const nextDealer = [d1, d2];
+    changeBankroll(-wager);
+    setHands(nextHands);
+    setDealer(nextDealer);
+    setActiveHand(0);
+    setInsuranceBet(0);
+    addVisible([p1, d1, p2]);
+    sound("deal", soundEnabled);
+    if (d1.rank === "A") {
+      setRoundMessage("Dealer shows an Ace. Make the insurance decision before play.");
+      setPhase("insurance");
+    } else if (["10", "J", "Q", "K"].includes(d1.rank) && isBlackjack(nextDealer)) {
+      addVisible([d2]);
+      settleRound(nextHands, nextDealer, 0);
+    } else if (isBlackjack(nextHands[0].cards)) {
+      playDealer(nextHands, nextDealer);
+    } else {
+      setRoundMessage("Play hand 1. The coach checks basic strategy and Hi-Lo index deviations.");
+      setPhase("play");
+    }
+  };
+
+  const chooseInsurance = (take: boolean) => {
+    const correct = tc >= 3;
+    coach(
+      take === correct,
+      take === correct ? "Insurance decision correct" : "Insurance deviation missed",
+      `Hi-Lo insurance is taken at TC +3 or higher. Current TC is ${signed(tc)}.`,
+      "play",
+    );
+    const stake = take ? Math.min(hands[0].bet / 2, bankroll) : 0;
+    if (stake) changeBankroll(-stake);
+    setInsuranceBet(stake);
+    if (isBlackjack(dealer)) {
+      addVisible([dealer[1]]);
+      settleRound(hands, dealer, stake);
+    } else if (isBlackjack(hands[0].cards)) {
+      playDealer(hands, dealer);
+    } else {
+      setRoundMessage(take ? `Insurance placed: $${stake}. Dealer does not have blackjack.` : "No dealer blackjack. Play your hand.");
+      setPhase("play");
+    }
+  };
+
+  const legalActions = (hand: PlayerHand) => {
+    if (hand.splitAces) {
+      return isPair(hand.cards) && hand.cards[0].rank === "A" && rules.resplitAces && bankroll >= hand.bet && hands.length < 4 ? ["P" as Action] : [];
+    }
+    const actions: Action[] = ["H", "S"];
+    const total = calculateHandValue(hand.cards);
+    const doubleAllowed = rules.doubleRule === "any" || (rules.doubleRule === "9-11" && total >= 9 && total <= 11) || (rules.doubleRule === "10-11" && total >= 10 && total <= 11);
+    if (hand.cards.length === 2 && bankroll >= hand.bet && doubleAllowed && (!hand.fromSplit || rules.doubleAfterSplit)) actions.push("D");
+    if (isPair(hand.cards) && bankroll >= hand.bet && hands.length < 4 && (hand.cards[0].rank !== "A" || !hand.fromSplit || rules.resplitAces)) actions.push("P");
+    if (rules.lateSurrender && hand.cards.length === 2 && !hand.fromSplit && hands.length === 1) actions.push("R");
+    return actions;
+  };
+
+  const expectedAction = (hand: PlayerHand) => {
+    const legal = legalActions(hand);
+    const basic = getBasicStrategyDecision({ playerCards: hand.cards, dealerUpcard: dealer[0], rules });
+    const hardTotal = String(calculateHandValue(hand.cards));
+    const deviation = basic.action !== "R" && !isSoft(hand.cards) && !isPair(hand.cards)
+      ? DEVIATIONS.find((item) => item.hand === hardTotal && item.dealer === rankForIndex(dealer[0]))
+      : undefined;
+    const indexed = deviation ? deviationDecision(deviation, tc) : basic.action;
+    let action = indexed as Action;
+    if (!legal.includes(action)) action = action === "D" ? "H" : action === "R" ? "H" : basic.action;
+    if (!legal.includes(action)) action = "H";
+    const explanation = deviation
+      ? `${deviation.hand} vs ${deviation.dealer} changes from ${DEVIATION_ACTION_NAMES[deviation.normalAction]} to ${DEVIATION_ACTION_NAMES[deviation.deviationAction]} ${deviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(deviation.index)}. Current TC: ${signed(tc)}.`
+      : basic.explanation;
+    return { action, explanation };
+  };
+
+  const advance = (nextHands: PlayerHand[], from: number) => {
+    const next = nextHands.findIndex((hand, index) => index > from && hand.status === "playing");
+    setHands(nextHands);
+    if (next >= 0) {
+      setActiveHand(next);
+      setRoundMessage(`Play hand ${next + 1}.`);
+    } else playDealer(nextHands, dealer);
+  };
+
+  const act = (action: Action) => {
+    const hand = hands[activeHand];
+    if (!hand || phase !== "play" || !legalActions(hand).includes(action)) return;
+    const expected = expectedAction(hand);
+    const ok = action === expected.action;
+    coach(
+      ok,
+      ok ? `${ACTION_NAMES[action]} is correct` : `Strategy error: ${ACTION_NAMES[expected.action]}`,
+      ok ? expected.explanation : `You chose ${ACTION_NAMES[action]}. ${expected.explanation}`,
+      "play",
+    );
+    const nextHands = hands.map((item) => ({ ...item, cards: [...item.cards] }));
+    const next = nextHands[activeHand];
+    if (action === "H") {
+      const card = draw();
+      if (!card) return;
+      next.cards.push(card);
+      addVisible([card]);
+      if (calculateHandValue(next.cards) > 21) {
+        next.status = "busted";
+        advance(nextHands, activeHand);
+      } else {
+        setHands(nextHands);
+        setRoundMessage(`${handLabel(next.cards)}. Hit or stand?`);
+      }
+    } else if (action === "S") {
+      next.status = "stood";
+      advance(nextHands, activeHand);
+    } else if (action === "D") {
+      const card = draw();
+      if (!card) return;
+      changeBankroll(-next.bet);
+      next.bet *= 2;
+      next.cards.push(card);
+      next.status = calculateHandValue(next.cards) > 21 ? "busted" : "stood";
+      addVisible([card]);
+      sound("chip", soundEnabled);
+      advance(nextHands, activeHand);
+    } else if (action === "R") {
+      next.status = "surrendered";
+      advance(nextHands, activeHand);
+    } else {
+      const [first, second] = next.cards;
+      const leftCard = draw(), rightCard = draw();
+      if (!leftCard || !rightCard) return;
+      changeBankroll(-next.bet);
+      const splitAces = first.rank === "A";
+      const splitHands: PlayerHand[] = [
+        { cards: [first, leftCard], bet: next.bet, status: splitAces && !(leftCard.rank === "A" && rules.resplitAces) ? "stood" : "playing", fromSplit: true, splitAces },
+        { cards: [second, rightCard], bet: next.bet, status: splitAces && !(rightCard.rank === "A" && rules.resplitAces) ? "stood" : "playing", fromSplit: true, splitAces },
+      ];
+      nextHands.splice(activeHand, 1, ...splitHands);
+      addVisible([leftCard, rightCard]);
+      sound("chip", soundEnabled);
+      if (splitAces) advance(nextHands, activeHand - 1);
+      else {
+        setHands(nextHands);
+        setActiveHand(activeHand);
+        setRoundMessage(`Split complete. Play hand ${activeHand + 1}.`);
+      }
+    }
+  };
+
+  const nextRound = () => {
+    if (bankroll <= 0) {
+      setRoundMessage("Bankroll exhausted. Start a new shoe to try another session.");
+      setPhase("shoe-end");
+      return;
+    }
+    if (cutReached) {
+      setRoundMessage("Cut card reached. The shoe is complete.");
+      setPhase("shoe-end");
+      return;
+    }
+    setRound((value) => value + 1);
+    setHands([]);
+    setDealer([]);
+    setWager(0);
+    setInsuranceBet(0);
+    setNote(undefined);
+    setRoundMessage("Choose your wager for the new true count.");
+    setPhase("bet");
+  };
+
+  const chipValues = useMemo(() => Array.from(new Set([unit, unit * 2, unit * 4, unit * 8])).sort((a, b) => a - b), [unit]);
+
+  if (phase === "setup") return (
+    <>
+      <div className="mb-7">
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Casino session setup</p>
+        <h1 className="mt-2 text-3xl font-semibold">Full Shoe Blackjack</h1>
+        <p className="mt-2 max-w-3xl text-zinc-400">Choose the table, bankroll, and counting bet ramp. Then play every hand through the cut card with live strategy and deviation coaching.</p>
+      </div>
+      <div className="grid gap-5 xl:grid-cols-3">
+        <Panel>
+          <h2 className="mb-5 text-lg font-semibold">Table rules</h2>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <Select label="Decks" value={rules.decks} onChange={(event) => setRules({ ...rules, decks: +event.target.value })}>
+              {[1, 2, 4, 6, 8].map((value) => <option key={value}>{value}</option>)}
+            </Select>
+            <Select label="Dealer rule" value={rules.dealerHitsSoft17 ? "H17" : "S17"} onChange={(event) => setRules({ ...rules, dealerHitsSoft17: event.target.value === "H17" })}>
+              <option value="H17">Hits soft 17</option><option value="S17">Stands soft 17</option>
+            </Select>
+            <Select label="Blackjack pays" value={blackjackPayout} onChange={(event) => setBlackjackPayout(+event.target.value as 1.5 | 1.2)}>
+              <option value={1.5}>3 to 2</option><option value={1.2}>6 to 5</option>
+            </Select>
+            <Select label="Double rule" value={rules.doubleRule} onChange={(event) => setRules({ ...rules, doubleRule: event.target.value as BlackjackRules["doubleRule"] })}>
+              <option value="any">Any first two</option><option value="9-11">9 through 11</option><option value="10-11">10 and 11</option>
+            </Select>
+            <Select label="Penetration" value={penetration} onChange={(event) => setPenetration(+event.target.value)}>
+              <option value={0.65}>65%</option><option value={0.75}>75%</option><option value={0.8}>80%</option><option value={0.85}>85%</option>
+            </Select>
+          </div>
+        </Panel>
+        <Panel>
+          <h2 className="mb-5 text-lg font-semibold">Player options</h2>
+          <div className="space-y-3 text-sm">
+            {[
+              ["doubleAfterSplit", "Double after split"],
+              ["resplitAces", "Resplit aces"],
+              ["lateSurrender", "Late surrender"],
+            ].map(([key, label]) => <label key={key} className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>{label}</span><input type="checkbox" checked={Boolean(rules[key as keyof BlackjackRules])} onChange={(event) => setRules({ ...rules, [key]: event.target.checked })} className="h-5 w-5 accent-emerald-400" /></label>)}
+            <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Card animations</span><input type="checkbox" checked={animations} onChange={(event) => setAnimations(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
+            <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Sound effects</span><input type="checkbox" checked={soundEnabled} onChange={(event) => setSoundEnabled(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
+          </div>
+        </Panel>
+        <Panel>
+          <h2 className="mb-5 text-lg font-semibold">Bankroll & ramp</h2>
+          <div className="space-y-4">
+            <NumberField label="Starting bankroll" prefix="$" min={100} step={100} value={startingBankroll} onValueChange={setStartingBankroll} />
+            <NumberField label="One unit" prefix="$" min={1} step={5} value={unit} onValueChange={setUnit} />
+            <Select label="Bet spread" value={spread} onChange={(event) => setSpread(event.target.value as Spread)}>
+              <option value="flat">Flat bet · 1 unit</option><option value="1-8">1–8 · 1/2/4/6/8</option><option value="1-12">1–12 · 1/2/4/8/12</option>
+            </Select>
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">Ramp levels apply at TC ≤0, +1, +2, +3, and +4 or higher. The coach flags missed increases and oversized bets.</div>
+          </div>
+        </Panel>
+      </div>
+      <Button className="mt-5 w-full sm:w-auto" onClick={startShoe}>Buy in and shuffle</Button>
+    </>
+  );
+
+  const holeHidden = phase === "insurance" || phase === "play";
+  return (
+    <>
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread}</p>
+          <h1 className="mt-2 text-3xl font-semibold">Full Shoe Blackjack</h1>
+        </div>
+        <GhostButton onClick={() => setPhase("setup")}>End session</GhostButton>
+      </div>
+
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {[
+          ["Bankroll", `$${bankroll.toFixed(2)}`], ["Running count", signed(runningCount)], ["True count", signed(tc)],
+          ["Decks left", decksRemaining.toFixed(2)], ["Coach accuracy", `${accuracy}%`], ["Cards discarded", discarded],
+        ].map(([label, value]) => <div key={label} className="surface rounded-2xl p-3"><p className="text-[.67rem] uppercase tracking-wider text-zinc-500">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <Panel className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#176448_0%,#103d30_48%,#0b241e_100%)] ring-1 ring-emerald-300/10">
+          <div className="relative min-h-[510px]">
+            <div className="pointer-events-none absolute inset-6 rounded-[50%] border border-emerald-200/15" />
+            <div className="relative text-center">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-emerald-100/60">Dealer {dealer.length && !holeHidden ? `· ${calculateHandValue(dealer)}` : ""}</p>
+              <div className="flex min-h-24 justify-center -space-x-5">
+                {dealer.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} hidden={index === 1 && holeHidden} size="sm" animated={animations} />)}
+              </div>
+            </div>
+            <div className="relative mt-20 flex min-h-44 flex-wrap items-start justify-center gap-8">
+              {hands.map((hand, index) => <div key={index} className={`rounded-2xl p-3 text-center transition ${phase === "play" && index === activeHand ? "bg-emerald-300/10 ring-2 ring-emerald-300/60" : ""}`}>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-100/70">Hand {index + 1} · ${hand.bet} {hand.cards.length ? `· ${handLabel(hand.cards)}` : ""}</p>
+                <div className="flex justify-center -space-x-5">{hand.cards.map((card, cardIndex) => <PlayingCard key={`${card.rank}-${card.suit}-${cardIndex}`} card={card} size="sm" animated={animations} />)}</div>
+                {hand.status !== "playing" && <span className="mt-2 inline-block rounded-full bg-black/30 px-2 py-1 text-[.65rem] font-bold uppercase tracking-wider">{hand.status}</span>}
+              </div>)}
+              {!hands.length && <div className="grid h-36 place-items-center text-center text-emerald-50/55"><div><i className="fas fa-coins mb-3 block text-3xl" /><p>Place chips to begin the round</p></div></div>}
+            </div>
+          </div>
+          <div className="relative rounded-2xl border border-white/10 bg-black/25 p-4 backdrop-blur">
+            <p aria-live="polite" className="mb-4 text-center text-sm text-zinc-200">{roundMessage}</p>
+            {phase === "bet" && <div>
+              <div className="mb-4 flex items-center justify-center gap-3"><span className="text-sm text-zinc-400">Current bet</span><strong className="text-3xl">${wager}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-emerald-200">Coach target ${expectedWager}</span></div>
+              <div className="flex flex-wrap justify-center gap-3">{chipValues.map((value, index) => <button key={value} type="button" disabled={wager + value > bankroll} onClick={() => { setWager((amount) => amount + value); sound("chip", soundEnabled); }} className={`grid h-16 w-16 place-items-center rounded-full border-4 text-xs font-bold shadow-xl transition hover:-translate-y-1 disabled:opacity-30 ${["border-red-300 bg-red-600", "border-blue-300 bg-blue-600", "border-emerald-300 bg-emerald-600", "border-zinc-300 bg-zinc-800"][index]}`}>${value}</button>)}</div>
+              <div className="mt-4 flex justify-center gap-3"><GhostButton onClick={() => setWager(0)}>Clear</GhostButton><Button disabled={!wager || wager > bankroll} onClick={beginRound}>Deal</Button></div>
+            </div>}
+            {phase === "insurance" && <div className="flex flex-wrap justify-center gap-3"><GhostButton onClick={() => chooseInsurance(false)}>Decline insurance</GhostButton><Button disabled={bankroll < hands[0].bet / 2} onClick={() => chooseInsurance(true)}>Insure for ${hands[0].bet / 2}</Button></div>}
+            {phase === "play" && current && <div className="flex flex-wrap justify-center gap-2">{legalActions(current).map((action) => <Button key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}</div>}
+            {phase === "result" && <div className="text-center"><Button onClick={nextRound}>{cutReached ? "Finish shoe" : "Next round"}</Button></div>}
+            {phase === "shoe-end" && <div className="text-center"><p className="mb-4 text-2xl font-semibold">Session result: {bankroll >= startingBankroll ? "+" : ""}${(bankroll - startingBankroll).toFixed(2)}</p><Button onClick={startShoe}>Shuffle another shoe</Button></div>}
+          </div>
+        </Panel>
+
+        <div className="space-y-5">
+          <Panel>
+            <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Discard tray</p><p className="mt-1 text-sm text-zinc-300">{(discarded / 52).toFixed(2)} decks seen</p></div><span className="text-xs text-zinc-500">Cut at {Math.round(penetration * 100)}%</span></div>
+            <div className="mt-4 flex h-48 items-end rounded-b-2xl border-x-4 border-b-4 border-zinc-500/60 bg-black/25 p-2">
+              <div className="w-full rounded-sm bg-[repeating-linear-gradient(0deg,#f4f1e8,#f4f1e8_2px,#aaa_3px)] shadow-[0_0_25px_#0008] transition-[height] duration-500" style={{ height: `${Math.max(2, Math.min(100, (discarded / (cardsTotal * penetration)) * 100))}%` }} />
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full bg-emerald-400 transition-[width]" style={{ width: `${Math.min(100, (discarded / (cardsTotal * penetration)) * 100)}%` }} /></div>
+          </Panel>
+          <Panel>
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Live coach</p>
+            {note ? <div aria-live="polite" className={`mt-3 rounded-xl border p-4 ${note.ok ? "border-emerald-400/30 bg-emerald-400/[.07]" : "border-red-400/30 bg-red-400/[.07]"}`}><p className={`font-semibold ${note.ok ? "text-emerald-300" : "text-red-300"}`}>{note.ok ? "✓" : "!"} {note.title}</p><p className="mt-2 text-xs leading-5 text-zinc-300">{note.detail}</p></div> : <p className="mt-3 text-sm leading-6 text-zinc-400">Your bet sizing, basic strategy, insurance, and index deviations are checked as you play.</p>}
+            <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs"><div className="rounded-lg bg-black/20 p-2"><strong className="block text-lg text-red-300">{stats.betErrors}</strong>Bet errors</div><div className="rounded-lg bg-black/20 p-2"><strong className="block text-lg text-red-300">{stats.playErrors}</strong>Play errors</div></div>
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}

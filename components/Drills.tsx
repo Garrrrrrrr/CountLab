@@ -28,6 +28,7 @@ import {
 import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, Panel, Select } from "./ui";
 import { SessionSummary } from "./SessionSummary";
+import { FullShoeGame } from "./FullShoeGame";
 const names: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -1196,7 +1197,8 @@ export function DeckEstimationDrill() {
 }
 
 export function FullShoeDrill() {
-  const settings = useSavedSettings();
+  return <FullShoeGame />;
+  /* const settings = useSavedSettings();
   const [decks, setDecks] = useState(settings.decks),
     [players, setPlayers] = useState(2),
     [shoe, setShoe] = useState(() => new BlackjackShoe(settings.decks)),
@@ -1349,5 +1351,5 @@ export function FullShoeDrill() {
         </Panel>
       </div>
     </>
-  );
+  ); */
 }
