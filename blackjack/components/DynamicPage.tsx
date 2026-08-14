@@ -13,7 +13,7 @@ import {
 } from "@/lib/statistics/storage";
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { clearSession } from "@/lib/auth/passwordGate";
+import { useAuth } from "@/lib/supabase/AuthProvider";
 
 function PageLoading() {
   return (
@@ -487,6 +487,7 @@ function StrategyReference() {
   );
 }
 function SettingsPage() {
+  const { user, signOut } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
     [saved, setSaved] = useState(false),
     [dataMessage, setDataMessage] = useState("");
@@ -706,12 +707,11 @@ function SettingsPage() {
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Access</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Lock this device now instead of waiting for the session to
-            expire. You&apos;ll need the password again on your next visit.
+            {user ? <>Signed in as <span className="text-zinc-300">{user.email}</span>.</> : "Not signed in."}
           </p>
-          <GhostButton className="mt-4" onClick={() => clearSession()}>
-            <i className="fa-solid fa-lock mr-2" />
-            Lock CountLab
+          <GhostButton className="mt-4" onClick={() => signOut()}>
+            <i className="fa-solid fa-arrow-right-from-bracket mr-2" />
+            Sign out
           </GhostButton>
           <p className="mt-4 text-xs text-zinc-500">
             <Link href="/terms" className="hover:text-zinc-300">Terms of Service</Link>

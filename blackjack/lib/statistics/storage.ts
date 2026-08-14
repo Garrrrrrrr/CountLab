@@ -1,3 +1,6 @@
+import { supabase } from "../supabase/client";
+import { getCurrentUser } from "../supabase/currentUser";
+
 export type DrillType =
   | "Running Count"
   | "Missing Card"
@@ -75,6 +78,43 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 const SESSION_KEY = "hilo:sessions",
   SETTINGS_KEY = "hilo:settings";
+
+function pushSession(s: Session) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("drill_sessions")
+    .upsert({
+      id: s.id,
+      user_id: user.id,
+      drill: s.drill,
+      questions: s.questions,
+      correct: s.correct,
+      accuracy: s.accuracy,
+      average_response_time: s.averageResponseTime,
+      best_streak: s.bestStreak,
+      date: s.date,
+      mistakes: s.mistakes,
+      categories: s.categories ?? null,
+      metrics: s.metrics ?? null,
+      tags: s.tags ?? null,
+    })
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync drill session", error);
+    });
+}
+
+function pushSettings(s: Settings) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("settings")
+    .upsert({ user_id: user.id, data: s, updated_at: new Date().toISOString() })
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync settings", error);
+    });
+}
+
 export const storage = {
   sessions(): Session[] {
     if (typeof window === "undefined") return [];
@@ -88,6 +128,7 @@ export const storage = {
     const all = [s, ...this.sessions()].slice(0, 500);
     localStorage.setItem(SESSION_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("hilo-storage"));
+    pushSession(s);
   },
   settings(): Settings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
@@ -104,6 +145,26 @@ export const storage = {
   },
   saveSettings(s: Settings) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    window.dispatchEvent(new Event("hilo-storage"));
+    pushSettings(s);
+  },
+  /** Merge sessions pulled from Supabase into the local cache without re-pushing them. */
+  mergeRemoteSessions(remote: Session[]) {
+    const merged = [...remote, ...this.sessions()]
+      .filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 500);
+    localStorage.setItem(SESSION_KEY, JSON.stringify(merged));
+    window.dispatchEvent(new Event("hilo-storage"));
+  },
+  /** Apply settings pulled from Supabase to the local cache without re-pushing them. */
+  applyRemoteSettings(remote: Settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(remote));
+    window.dispatchEvent(new Event("hilo-storage"));
+  },
+  clearAll() {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SETTINGS_KEY);
     window.dispatchEvent(new Event("hilo-storage"));
   },
   exportData() {

@@ -1,4 +1,6 @@
 import type { AdvantageRules, RampPoint } from "./advantage";
+import { supabase } from "../supabase/client";
+import { getCurrentUser } from "../supabase/currentUser";
 
 export interface JournalSession {
   id: string;
@@ -102,6 +104,67 @@ const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+function pushJournalSession(session: JournalSession) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("journal_sessions")
+    .upsert({
+      id: session.id,
+      user_id: user.id,
+      created_at: session.createdAt,
+      date: session.date,
+      location: session.location ?? null,
+      hours: session.hours,
+      hands_per_hour: session.handsPerHour,
+      player_hands: session.playerHands,
+      betting_unit: session.bettingUnit,
+      rules: session.rules,
+      ramp: session.ramp,
+      net_result: session.netResult,
+      expenses: session.expenses,
+      notes: session.notes ?? null,
+    })
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync journal session", error);
+    });
+}
+
+function deleteRemoteJournalSession(id: string) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase.from("journal_sessions").delete().eq("id", id).eq("user_id", user.id).then(({ error }) => {
+    if (error) console.error("[countlab] failed to delete remote journal session", error);
+  });
+}
+
+function pushTransaction(transaction: BankrollTransaction) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("journal_transactions")
+    .upsert({
+      id: transaction.id,
+      user_id: user.id,
+      created_at: transaction.createdAt,
+      date: transaction.date,
+      type: transaction.type,
+      amount: transaction.amount,
+      note: transaction.note ?? null,
+    })
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync bankroll transaction", error);
+    });
+}
+
+function deleteRemoteTransaction(id: string) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase.from("journal_transactions").delete().eq("id", id).eq("user_id", user.id).then(({ error }) => {
+    if (error) console.error("[countlab] failed to delete remote bankroll transaction", error);
+  });
+}
+
 export const journalLibrary = {
   event: JOURNAL_EVENT,
   sessions(store?: StorageLike) {
@@ -114,19 +177,36 @@ export const journalLibrary = {
     const record: JournalSession = { ...session, id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.sessions(store)].slice(0, MAX_SESSIONS);
     write(SESSIONS_KEY, next, store);
+    pushJournalSession(record);
     return record;
   },
   deleteSession(id: string, store?: StorageLike) {
     write(SESSIONS_KEY, this.sessions(store).filter((session) => session.id !== id), store);
+    deleteRemoteJournalSession(id);
   },
   addTransaction(transaction: Omit<BankrollTransaction, "id" | "createdAt">, store?: StorageLike, now = new Date()) {
     const record: BankrollTransaction = { ...transaction, id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.transactions(store)].slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, next, store);
+    pushTransaction(record);
     return record;
   },
   deleteTransaction(id: string, store?: StorageLike) {
     write(TRANSACTIONS_KEY, this.transactions(store).filter((transaction) => transaction.id !== id), store);
+    deleteRemoteTransaction(id);
+  },
+  /** Merge rows pulled from Supabase into the local cache without re-pushing them. */
+  mergeRemoteSessions(remote: JournalSession[], store?: StorageLike) {
+    const merged = [...remote, ...this.sessions(store)]
+      .filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index)
+      .slice(0, MAX_SESSIONS);
+    write(SESSIONS_KEY, merged, store);
+  },
+  mergeRemoteTransactions(remote: BankrollTransaction[], store?: StorageLike) {
+    const merged = [...remote, ...this.transactions(store)]
+      .filter((transaction, index, all) => all.findIndex((candidate) => candidate.id === transaction.id) === index)
+      .slice(0, MAX_TRANSACTIONS);
+    write(TRANSACTIONS_KEY, merged, store);
   },
   exportData(store?: StorageLike) {
     return JSON.stringify({
