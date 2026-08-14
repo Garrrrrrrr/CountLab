@@ -29,6 +29,7 @@ export function AdvantageCalculator() {
     [unit, setUnit] = useState(10),
     [rph, setRph] = useState(100),
     [hours, setHours] = useState(4),
+    [playerHands, setPlayerHands] = useState(1),
     [targetRisk, setTargetRisk] = useState(0.05),
     [spread, setSpread] = useState("1-8"),
     [ramp, setRamp] = useState<RampPoint[]>(() => expand(RAMPS["1-8"])),
@@ -43,14 +44,15 @@ export function AdvantageCalculator() {
         calculateAdvantage({
           bankroll,
           bettingUnit: unit,
+          playerHands,
           handsPerHour: rph,
           hours,
           rules,
           ramp,
         }),
-      [bankroll, unit, rph, hours, rules, ramp],
+      [bankroll, unit, playerHands, rph, hours, rules, ramp],
     ),
-    recommended = recommendUnit(bankroll, targetRisk, rules, ramp);
+    recommended = recommendUnit(bankroll, targetRisk, rules, ramp, playerHands);
   const selectSpread = (name: string) => {
     setSpread(name);
     setRamp(expand(RAMPS[name]));
@@ -101,7 +103,7 @@ export function AdvantageCalculator() {
             </div>
             <div className="rounded-xl bg-white/[.04] p-4">
               <p className="text-xs text-zinc-500">Table</p>
-              <b>Peek · 3:2 · 4 hands</b>
+              <b>Peek · 3:2 · {playerHands} tracked hand{playerHands === 1 ? "" : "s"}</b>
             </div>
           </div>
         </Panel>
@@ -151,6 +153,9 @@ export function AdvantageCalculator() {
               min={1}
               onValueChange={setRph}
             />
+            <Select label="Simultaneous player hands" value={playerHands} onChange={(event) => setPlayerHands(+event.target.value)}>
+              {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}
+            </Select>
             <NumberField
               label="Session hours"
               value={hours}
@@ -211,8 +216,8 @@ export function AdvantageCalculator() {
               </div>
               <div className="mt-4 flex items-end gap-2">
                 <div className="min-w-0 flex-1">
-                  <p className="mb-2 text-xs font-medium text-zinc-400">Dollar bet</p>
-                  <NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" onValueChange={(value) => updateBet(row.trueCount, value)} />
+                  <p className="mb-2 text-xs font-medium text-zinc-400">Bet per hand · {money(row.totalBet)} total</p>
+                  <NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" onValueChange={(value) => updateBet(row.trueCount, value)} />
                 </div>
                 {row.trueCount < 0 && <GhostButton aria-label={`Set bet at true count ${row.label} to zero`} className="shrink-0 px-3 text-xs" disabled={row.bet === 0} onClick={() => updateBet(row.trueCount, 0)}>{row.bet === 0 ? "$0 set" : "Set $0"}</GhostButton>}
               </div>
@@ -237,6 +242,7 @@ export function AdvantageCalculator() {
               <th className="pb-3">SD units</th>
               <th className="pb-3">Samples</th>
               <th className="pb-3">Bet</th>
+              <th className="pb-3">Total action</th>
             </tr>
           </thead>
           <tbody>
@@ -257,7 +263,7 @@ export function AdvantageCalculator() {
                 <td className="py-2.5">
                   <div className="ml-auto flex w-fit items-center justify-end gap-2">
                     <NumberField
-                      ariaLabel={`Bet at true count ${row.label}`}
+                      ariaLabel={`Bet per hand at true count ${row.label}`}
                       value={Math.round(row.bet * 100) / 100}
                       min={0}
                       prefix="$"
@@ -276,13 +282,14 @@ export function AdvantageCalculator() {
                     )}
                   </div>
                 </td>
+                <td>{money(row.totalBet)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </Panel>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Average bet" value={money(result.averageBet)} />
+        <Metric label="Average total action" value={money(result.averageBet)} />
         <Metric label="Player edge" value={pct(result.playerEdge)} />
         <Metric label="EV / round" value={money(result.evPerRound)} />
         <Metric label="EV / hour" value={money(result.hourlyEv)} />
@@ -334,6 +341,7 @@ export function AdvantageCalculator() {
         </Panel>
       </div>
       <p className="mt-5 text-xs leading-5 text-zinc-500">
+        Multiple-hand variance treats hand outcomes as conditionally independent at the same true count; shared count-state variance is retained, while dealer-outcome covariance is not available in the current audit dataset. {" "}
         Method: EV is the frequency-weighted conditional return. Variance uses
         both within-count variance and between-count mean differences. Lifetime
         RoR uses the standard diffusion approximation exp(−2 × bankroll × EV /

@@ -16,6 +16,7 @@ export interface RampPoint {
 export interface AdvantageInput {
   bankroll: number;
   bettingUnit?: number;
+  playerHands?: number;
   handsPerHour: number;
   hours: number;
   rules: AdvantageRules;
@@ -31,6 +32,7 @@ export interface CountRow {
   ci95: [number, number];
   samples: number;
   bet: number;
+  totalBet: number;
   units: number;
 }
 export interface AdvantageResult {
@@ -119,6 +121,7 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
 }
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
+  const playerHands = Math.min(7, Math.max(1, Math.floor(input.playerHands ?? 1)));
   return getCountProfile(input.rules).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     return {
@@ -131,22 +134,24 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
       ci95: row.ci95,
       samples: row.samples,
       bet: unit * units,
+      totalBet: unit * units * playerHands,
       units,
     };
   });
 }
 export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
   const rows = calculateCountRows(input);
+  const playerHands = Math.min(7, Math.max(1, Math.floor(input.playerHands ?? 1)));
   let averageBet = 0,
     evPerRound = 0,
     secondMoment = 0;
   for (const row of rows) {
-    averageBet += row.frequency * row.bet;
-    evPerRound += row.frequency * row.advantage * row.bet;
+    averageBet += row.frequency * row.totalBet;
+    evPerRound += row.frequency * row.advantage * row.totalBet;
     secondMoment +=
       row.frequency *
-      (Math.pow(row.sdUnits * row.bet, 2) +
-        Math.pow(row.advantage * row.bet, 2));
+      (playerHands * Math.pow(row.sdUnits * row.bet, 2) +
+        Math.pow(row.advantage * row.totalBet, 2));
   }
   const variance = Math.max(0, secondMoment - evPerRound * evPerRound),
     sdPerRound = Math.sqrt(variance),
@@ -179,11 +184,13 @@ export function recommendUnit(
   targetRisk: number,
   rules: AdvantageRules,
   ramp: RampPoint[],
+  playerHands = 1,
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
     bankroll: 1,
     bettingUnit: 1,
+    playerHands,
     handsPerHour: 100,
     hours: 1,
     rules,

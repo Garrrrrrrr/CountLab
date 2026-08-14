@@ -176,6 +176,24 @@ describe("advantage model", () => {
       Infinity,
     );
   });
+  it("aggregates simultaneous player hands as total action", () => {
+    const base = {
+      bankroll: 10_000,
+      bettingUnit: 10,
+      handsPerHour: 80,
+      hours: 4,
+      rules: DEFAULT_ADVANTAGE_RULES,
+      ramp: RAMPS["1-8"],
+    };
+    const one = calculateAdvantage({ ...base, playerHands: 1 });
+    const three = calculateAdvantage({ ...base, playerHands: 3 });
+    expect(three.averageBet).toBeCloseTo(one.averageBet * 3, 10);
+    expect(three.evPerRound).toBeCloseTo(one.evPerRound * 3, 10);
+    expect(three.rows.find((row) => row.trueCount === 2)?.totalBet).toBe(120);
+    expect(three.sdPerRound).toBeGreaterThan(one.sdPerRound);
+    expect(three.riskOfRuin).toBeGreaterThanOrEqual(0);
+    expect(three.riskOfRuin).toBeLessThanOrEqual(1);
+  });
 });
 
 describe("CVCX-style analysis", () => {

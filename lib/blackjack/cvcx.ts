@@ -10,6 +10,7 @@ import {
 export interface CvcxScenario {
   bankroll: number;
   minimumBet: number;
+  playerHands?: number;
   handsPerHour: number;
   hours: number;
   targetRisk: number;
@@ -130,6 +131,7 @@ export function analyzeCvcx(
   const result = calculateAdvantage({
     bankroll: scenario.bankroll,
     bettingUnit,
+    playerHands: scenario.playerHands,
     handsPerHour: scenario.handsPerHour,
     hours: scenario.hours,
     rules: scenario.rules,
@@ -148,7 +150,8 @@ export function analyzeCvcx(
   return {
     ...result,
     playedFrequency,
-    handsPlayedPerHour: scenario.handsPerHour * playedFrequency,
+    handsPlayedPerHour:
+      scenario.handsPerHour * playedFrequency * (scenario.playerHands ?? 1),
     cScore,
     desirabilityIndex: Math.sqrt(cScore),
     requiredBankroll: requiredBankroll(
@@ -178,6 +181,7 @@ export function riskSizedUnit(
     scenario.targetRisk,
     scenario.rules,
     ramp,
+    scenario.playerHands,
   );
 }
 

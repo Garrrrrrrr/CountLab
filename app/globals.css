@@ -139,11 +139,19 @@ kbd {
   100% { transform: none; }
 }
 .casino-deal {
-  animation: casino-deal 0.68s cubic-bezier(.18,.8,.22,1) both;
+  animation: casino-deal 0.82s cubic-bezier(.18,.8,.22,1) both;
+  transform-origin: center;
+}
+.casino-deal-fast {
+  animation: casino-deal 0.36s cubic-bezier(.18,.8,.22,1) both;
   transform-origin: center;
 }
 .casino-card-flip {
-  animation: casino-card-flip 0.56s cubic-bezier(.2,.75,.25,1) both;
+  animation: casino-card-flip 0.68s cubic-bezier(.2,.75,.25,1) both;
+  backface-visibility: hidden;
+}
+.casino-card-flip-fast {
+  animation: casino-card-flip 0.3s cubic-bezier(.2,.75,.25,1) both;
   backface-visibility: hidden;
 }
 .casino-chip-drop {

@@ -93,7 +93,7 @@ const tutorials: Record<View, Tutorial> = {
       ["c-SCORE", "A bankroll-independent game-quality measure equal to 1,000,000 ÷ N₀. Higher is better for the same playing assumptions."],
       ["DI", "Desirability Index: the square root of c-SCORE. It expresses expectation relative to volatility."],
       ["N₀", "The number of rounds at which accumulated expected value equals one standard deviation. Lower is better."],
-      ["Average bet", "Frequency-weighted initial wager, including $0 during skipped counts when Wonging."],
+      ["Average total action", "Frequency-weighted initial wager across every simultaneous player hand, including $0 during skipped counts when Wonging."],
     ],
     caution:
       "EV is a long-run average, not a session forecast. The green path is the center of a wide distribution; it does not promise smooth bankroll growth.",
@@ -237,6 +237,7 @@ export function CvcxLab() {
     [helpTopic, setHelpTopic] = useState<View | null>(null),
     [bankroll, setBankroll] = useState(25000),
     [baseBet, setBaseBet] = useState(15),
+    [playerHands, setPlayerHands] = useState(1),
     [handsPerHour, setHandsPerHour] = useState(100),
     [hours, setHours] = useState(100),
     [targetRisk, setTargetRisk] = useState(0.05),
@@ -262,6 +263,7 @@ export function CvcxLab() {
       () => ({
         bankroll,
         minimumBet: baseBet,
+        playerHands,
         handsPerHour,
         hours,
         targetRisk,
@@ -269,7 +271,7 @@ export function CvcxLab() {
         wongInAt,
         rules,
       }),
-      [bankroll, baseBet, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules],
+      [bankroll, baseBet, playerHands, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules],
     ),
     optimalRamp = useMemo(
       () => createOptimalRamp(rules, maxSpread, wongInAt, simplify),
@@ -334,6 +336,7 @@ export function CvcxLab() {
       count: row.label,
       advantage: row.advantage * 100,
       bet: row.bet,
+      totalBet: row.totalBet,
       frequency: row.frequency * 100,
     })),
     goalChance = goalBeforeRuinProbability(
@@ -438,10 +441,10 @@ export function CvcxLab() {
             </p>
           </div>
           <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">
-            H17 · DAS · RSA · LS · peek · 3:2 · one spot
+            H17 · DAS · RSA · LS · peek · 3:2 · {playerHands} hand{playerHands === 1 ? "" : "s"}
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9">
           <Select
             label="Decks"
             value={decks}
@@ -461,6 +464,9 @@ export function CvcxLab() {
           </Select>
           <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
           <NumberField label="Base bet" value={baseBet} min={0.01} prefix="$" onValueChange={setBaseBet} />
+          <Select label="Player hands" value={playerHands} onChange={(event) => setPlayerHands(+event.target.value)}>
+            {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}
+          </Select>
           <NumberField label="Rounds / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
           <NumberField label="Hours" value={hours} min={0.1} step={1} onValueChange={setHours} />
           <Select label="Target RoR" value={targetRisk} onChange={(event) => setTargetRisk(+event.target.value)}>
@@ -483,7 +489,7 @@ export function CvcxLab() {
             <Metric label="Lifetime RoR" value={percent(custom.riskOfRuin)} sub={`${percent(custom.tripRiskOfRuin)} over this trip`} />
             <Metric label="c-SCORE" value={custom.cScore.toFixed(2)} sub={`DI ${custom.desirabilityIndex.toFixed(2)}`} />
             <Metric label="N₀" value={`${compact(custom.nZeroRounds)} rounds`} sub={`${compact(custom.nZeroHours)} observed hr`} />
-            <Metric label="Average bet" value={money(custom.averageBet, 2)} sub={`${percent(custom.playedFrequency, 1)} rounds played`} />
+            <Metric label="Average total action" value={money(custom.averageBet, 2)} sub={`${percent(custom.playedFrequency, 1)} rounds played · ${playerHands} hand${playerHands === 1 ? "" : "s"}`} />
             <Metric label="Trip EV" value={money(custom.tripEv, 0)} sub={`${percent(custom.chanceOfProfit)} chance of profit`} />
           </div>
           <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
@@ -537,18 +543,18 @@ export function CvcxLab() {
               <label className="flex min-h-11 items-center gap-3 rounded-xl border border-white/[.08] bg-black/20 px-3 text-sm text-zinc-300"><input type="checkbox" checked={simplify} onChange={(event) => setSimplify(event.target.checked)} className="accent-emerald-400" />Simplify to half units</label>
               <Button onClick={useOptimal}>Generate optimized ramp</Button>
             </div>
-            <div className="mt-5 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200"><b>{money(optimalUnit, 2)}</b> risk-sized base bet for a {percent(targetRisk)} lifetime RoR target.</div>
+            <div className="mt-5 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200"><b>{money(optimalUnit, 2)}</b> risk-sized base bet per hand for {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} at a {percent(targetRisk)} lifetime RoR target.</div>
           </Panel>
           <Panel className="overflow-x-auto">
             <div className="mb-4"><h2 className="font-semibold">Bets by true count</h2><p className="mt-1 text-sm text-zinc-500">Zero-dollar buckets are observed but not played.</p></div>
-            <table className="w-full min-w-[740px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Units</th><th className="pb-3">Dollar bet</th><th className="pb-3">EV contribution</th></tr></thead>
-              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td>{money(row.frequency * row.advantage * row.bet, 3)}</td></tr>)}</tbody>
+            <table className="w-full min-w-[860px] text-right text-sm">
+              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
+              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
             </table>
           </Panel>
           <Panel className="xl:col-span-2">
             <h2 className="mb-4 font-semibold">Count economics</h2>
-            <div className="h-72"><ResponsiveContainer><ComposedChart data={countChart}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false}/><XAxis dataKey="count" stroke="#71717a" tickLine={false} axisLine={false}/><YAxis yAxisId="edge" stroke="#71717a" tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false}/><YAxis yAxisId="bet" orientation="right" stroke="#71717a" tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false}/><Tooltip contentStyle={{ background: "#151916", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }}/><Legend/><Bar yAxisId="bet" dataKey="bet" name="Bet" fill="#3f6f4a" radius={[4,4,0,0]}/><Line yAxisId="edge" dataKey="advantage" name="Advantage %" stroke="#a8ee72" strokeWidth={2} dot={false}/></ComposedChart></ResponsiveContainer></div>
+            <div className="h-72"><ResponsiveContainer><ComposedChart data={countChart}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false}/><XAxis dataKey="count" stroke="#71717a" tickLine={false} axisLine={false}/><YAxis yAxisId="edge" stroke="#71717a" tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false}/><YAxis yAxisId="bet" orientation="right" stroke="#71717a" tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false}/><Tooltip contentStyle={{ background: "#151916", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }}/><Legend/><Bar yAxisId="bet" dataKey="totalBet" name="Total action" fill="#3f6f4a" radius={[4,4,0,0]}/><Line yAxisId="edge" dataKey="advantage" name="Advantage %" stroke="#a8ee72" strokeWidth={2} dot={false}/></ComposedChart></ResponsiveContainer></div>
           </Panel>
         </div>
       )}
@@ -598,7 +604,7 @@ export function CvcxLab() {
           </Panel>
           <Panel className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">Penetration</th><th className="pb-3">Play rate</th><th className="pb-3">Average bet</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">c-SCORE</th></tr></thead>
+              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">Penetration</th><th className="pb-3">Play rate</th><th className="pb-3">Average action</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">c-SCORE</th></tr></thead>
               <tbody>{[...comparisons].sort((a,b) => b.cScore - a.cScore).map((row, index) => <tr key={row.name} className="border-t border-white/[.06]"><td className="py-3 text-left"><span className="mr-2 text-xs text-zinc-600">#{index + 1}</span><b>{row.name}</b></td><td>{percent(row.penetration, 1)}</td><td>{percent(row.playedFrequency, 1)}</td><td>{money(row.averageBet, 2)}</td><td className="text-emerald-300">{money(row.hourlyEv, 2)}</td><td>{percent(row.riskOfRuin)}</td><td>{compact(row.nZeroRounds)}</td><td className="font-semibold">{row.cScore.toFixed(2)}</td></tr>)}</tbody>
             </table>
           </Panel>
@@ -606,7 +612,7 @@ export function CvcxLab() {
       )}
 
       <p className="mt-5 text-xs leading-5 text-zinc-500">
-        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, bankroll resizing, or correlated two-hand play.
+        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds. Multiple-hand results retain shared true-count-state variance and treat hand outcomes as conditionally independent; dealer-result covariance is unavailable. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
       </p>
       {helpTopic && (
         <TutorialDialog

@@ -33,6 +33,7 @@ export function BankrollRecommender() {
     [desiredEv, setDesiredEv] = useState(50),
     [targetRisk, setTargetRisk] = useState(0.05),
     [rph, setRph] = useState(100),
+    [playerHands, setPlayerHands] = useState(1),
     [decks, setDecks] = useState<6 | 8>(6),
     [dealt, setDealt] = useState(4.5);
   const rules = useMemo(
@@ -46,6 +47,7 @@ export function BankrollRecommender() {
           const oneDollar = calculateAdvantage({
               bankroll: 1,
               bettingUnit: 1,
+              playerHands,
               handsPerHour: rph,
               hours: 1,
               rules,
@@ -88,6 +90,7 @@ export function BankrollRecommender() {
           const actual = calculateAdvantage({
               bankroll,
               bettingUnit: baseBet,
+              playerHands,
               handsPerHour: rph,
               hours: 1,
               rules,
@@ -109,7 +112,7 @@ export function BankrollRecommender() {
             bets,
           };
         }),
-      [bankroll, minimumBet, desiredEv, targetRisk, rph, rules, profile],
+      [bankroll, minimumBet, desiredEv, targetRisk, rph, playerHands, rules, profile],
     ),
     recommendation = candidates
       .filter((candidate) => candidate.withinRisk)
@@ -177,6 +180,9 @@ export function BankrollRecommender() {
               step={1}
               onValueChange={setRph}
             />
+            <Select label="Simultaneous player hands" value={playerHands} onChange={(event) => setPlayerHands(+event.target.value)}>
+              {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}
+            </Select>
             <Select
               label="Number of decks"
               value={decks}
@@ -202,8 +208,7 @@ export function BankrollRecommender() {
             </Select>
           </div>
           <div className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-200">
-            {decks}D · {dealt}/{decks} penetration · H17 · DAS · RSA · LS · Peek
-            · 3:2 · Hi-Lo indices
+            {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · Hi-Lo indices
           </div>
         </Panel>
         <div className="space-y-5">
@@ -217,7 +222,7 @@ export function BankrollRecommender() {
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
                   </div>
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div><dt className="text-xs text-zinc-500">Bet range</dt><dd className="mt-1 font-semibold">{money(candidate.baseBet, 0)}–{money(candidate.maxBet, 0)}</dd></div>
+                    <div><dt className="text-xs text-zinc-500">Bet / hand</dt><dd className="mt-1 font-semibold">{money(candidate.baseBet, 0)}–{money(candidate.maxBet, 0)}</dd></div>
                     <div className="text-right"><dt className="text-xs text-zinc-500">Hourly EV</dt><dd className="mt-1 font-semibold text-emerald-300">{money(candidate.hourlyEv)}</dd></div>
                     <div><dt className="text-xs text-zinc-500">Risk of ruin</dt><dd className="mt-1 font-semibold">{(candidate.risk * 100).toFixed(2)}%</dd></div>
                   </dl>
@@ -228,8 +233,8 @@ export function BankrollRecommender() {
               <thead className="text-zinc-500">
                 <tr>
                   <th className="pb-3 text-left">Spread</th>
-                  <th className="pb-3">Minimum bet</th>
-                  <th className="pb-3">Maximum bet</th>
+                  <th className="pb-3">Minimum / hand</th>
+                  <th className="pb-3">Maximum / hand</th>
                   <th className="pb-3">Hourly EV</th>
                   <th className="pb-3">RoR</th>
                   <th className="pb-3">Constraints</th>
@@ -274,11 +279,11 @@ export function BankrollRecommender() {
                   value={recommendation.name}
                 />
                 <Metric
-                  label="Minimum bet"
+                  label="Minimum / hand"
                   value={money(recommendation.baseBet, 0)}
                 />
                 <Metric
-                  label="Maximum bet"
+                  label="Maximum / hand"
                   value={money(recommendation.maxBet, 0)}
                 />
                 <Metric
@@ -293,8 +298,7 @@ export function BankrollRecommender() {
                       Detailed whole-dollar spread
                     </h2>
                     <p className="mt-1 text-sm text-zinc-500">
-                      Every true-count bucket, including repeated minimum and
-                      maximum bets.
+                      Per-hand wager for every true-count bucket, including repeated minimum and maximum bets. Total action is {playerHands}× the displayed amount.
                     </p>
                   </div>
                   <span className="text-sm text-zinc-400">
@@ -313,7 +317,7 @@ export function BankrollRecommender() {
                   <thead className="text-zinc-500">
                     <tr>
                       <th className="pb-3 text-left">True count</th>
-                      <th className="pb-3">Bet</th>
+                      <th className="pb-3">Bet / hand</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -357,6 +361,7 @@ export function BankrollRecommender() {
       </div>
       <p className="mt-5 text-xs leading-5 text-zinc-500">
         EV and variance use the audited fixed-strategy simulation coefficients.
+        Multiple-hand results retain shared true-count-state variance and approximate hand outcomes as conditionally independent; dealer-result covariance is not present in the source coefficients. {" "}
         Lifetime risk of ruin is a diffusion approximation; it is not a guarantee
         and does not model bankroll resizing, playing errors, table limits, heat,
         or backoffs.
