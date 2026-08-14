@@ -1,0 +1,152 @@
+import { ReactNode } from "react";
+import { PlayingCard } from "@/components/PlayingCard";
+import { Card, Rank, Suit } from "@/lib/blackjack/types";
+
+const suits: Record<string, Suit> = {
+  c: "clubs",
+  d: "diamonds",
+  h: "hearts",
+  s: "spades",
+};
+const ranks: Record<string, Rank> = { T: "10" } as Record<string, Rank>;
+
+export function gameCard(card: number, name: (card: number) => string): Card {
+  const text = name(card);
+  return {
+    rank: ranks[text[0]] ?? (text[0] as Rank),
+    suit: suits[text[1]],
+  };
+}
+
+export const chipOptions = [1, 5, 25, 100, 500] as const;
+const chipColor: Record<number, string> = {
+  1: "border-zinc-300 bg-zinc-100 text-zinc-950",
+  5: "border-red-300 bg-red-600 text-white",
+  25: "border-emerald-300 bg-emerald-700 text-white",
+  100: "border-zinc-500 bg-zinc-950 text-white",
+  500: "border-violet-300 bg-violet-700 text-white",
+};
+
+export function CasinoChip({
+  value,
+  selected = false,
+  onClick,
+}: {
+  value: number;
+  selected?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Select $${value} chip`}
+      aria-pressed={selected}
+      onClick={onClick}
+      className={`pressable grid h-14 w-14 shrink-0 place-items-center rounded-full border-[5px] border-dashed text-xs font-black shadow-[0_7px_16px_#0008] ring-2 ring-black/30 ${chipColor[value] ?? chipColor[1]} ${selected ? "-translate-y-1 ring-4 ring-[#a8ee72]" : ""}`}
+    >
+      ${value}
+    </button>
+  );
+}
+
+export function ChipRack({
+  selected,
+  onSelect,
+  disabled = false,
+}: {
+  selected: number;
+  onSelect: (value: number) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className={`flex flex-wrap justify-center gap-3 ${disabled ? "pointer-events-none opacity-40" : ""}`} aria-label="Chip rack">
+      {chipOptions.map((value) => (
+        <CasinoChip key={value} value={value} selected={selected === value} onClick={() => onSelect(value)} />
+      ))}
+    </div>
+  );
+}
+
+export function BetSpot({
+  label,
+  amount,
+  onAdd,
+  onClear,
+  locked = false,
+  detail,
+}: {
+  label: string;
+  amount: number;
+  onAdd?: () => void;
+  onClear?: () => void;
+  locked?: boolean;
+  detail?: string;
+}) {
+  return (
+    <div className="text-center">
+      <button
+        type="button"
+        disabled={locked || !onAdd}
+        onClick={onAdd}
+        className={`pressable mx-auto grid h-24 w-24 place-items-center rounded-full border-2 text-center ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
+      >
+        <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount}</b></span>
+      </button>
+      {detail && <p className="mt-1 text-[.65rem] text-zinc-500">{detail}</p>}
+      {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-8 px-2 text-xs text-zinc-500 hover:text-white">Clear</button>}
+    </div>
+  );
+}
+
+export function CardRow({
+  cards,
+  hidden = 0,
+  label,
+  empty = 0,
+}: {
+  cards: Card[];
+  hidden?: number;
+  label: string;
+  empty?: number;
+}) {
+  return (
+    <div className="text-center">
+      <p className="mb-2 text-[.65rem] font-bold uppercase tracking-[.18em] text-emerald-100/55">{label}</p>
+      <div className="flex min-h-20 justify-start gap-1.5 overflow-x-auto pb-2 sm:justify-center sm:gap-2">
+        {cards.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} size="table" animated dealIndex={index} fast />)}
+        {Array.from({ length: hidden }, (_, index) => <PlayingCard key={`hidden-${index}`} hidden size="table" animated dealIndex={cards.length + index} fast />)}
+        {Array.from({ length: empty }, (_, index) => <div key={`empty-${index}`} className="h-20 w-14 rounded-xl border border-dashed border-white/10 lg:h-28 lg:w-20 2xl:h-32 2xl:w-24" />)}
+      </div>
+    </div>
+  );
+}
+
+export function CasinoTable({ children }: { children: ReactNode }) {
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_20%,#176144_0%,#0d3b2b_48%,#08271e_100%)] p-4 shadow-[inset_0_0_90px_#0007,0_24px_70px_#0006] sm:p-6 lg:p-8">
+      <div className="pointer-events-none absolute inset-3 rounded-[1.5rem] border border-amber-100/10" />
+      <div className="relative">{children}</div>
+    </section>
+  );
+}
+
+export type GameHistoryRow = {
+  id: number;
+  result: string;
+  net: number;
+  bankroll: number;
+  detail: string;
+};
+
+export function GameHistory({ rows }: { rows: GameHistoryRow[] }) {
+  return (
+    <div className="space-y-2">
+      {rows.length ? rows.slice(0, 8).map((row) => (
+        <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/20 p-3 text-sm">
+          <div><b>{row.result}</b><p className="mt-0.5 text-xs text-zinc-500">{row.detail}</p></div>
+          <div className="text-right"><b className={row.net >= 0 ? "text-emerald-300" : "text-red-300"}>{row.net >= 0 ? "+" : ""}${row.net.toFixed(2)}</b><p className="text-xs text-zinc-600">${row.bankroll.toFixed(2)}</p></div>
+        </div>
+      )) : <p className="py-8 text-center text-sm text-zinc-600">Completed rounds will appear here.</p>}
+    </div>
+  );
+}

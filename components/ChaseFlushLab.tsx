@@ -12,6 +12,7 @@ import {
   SUITS,
 } from "@/lib/chaseFlush/engine";
 import { makeSession, storage } from "@/lib/statistics/storage";
+import { ChaseFlushTableGame } from "@/components/ChaseFlushTableGame";
 
 type Stage = 0 | 2 | 4;
 type Target = "player" | "dealer" | "board";
@@ -44,13 +45,13 @@ type DraggedCard = { card: number; source?: Target };
 type OpeningJob = {id:number;started:number;state:InfoState;chunks:Array<ExactOpeningChunk|undefined>;cacheKey:string};
 type SolveJob = {id:number;informed:InfoState;normal:InfoState;omitNormal:boolean;sixCardPayout:number};
 type WorkerResponse = (Result & {id:number;error?:string}) | {id:number;kind:"opening-chunk";chunkIndex:number;chunk:ExactOpeningChunk;error?:string} | {id:number;kind:"provisional";decision:Decision;error?:string};
-type SavedChaseSetup={mode:"analyze"|"practice"|"strategy"|"research";stage:Stage;target:Target;pickerSuit:SuitCode;player:number[];dealer:number[];board:number[];policy:Policy;sixCardPayout:number};
+type SavedChaseSetup={mode:"game"|"analyze"|"practice"|"strategy"|"research";stage:Stage;target:Target;pickerSuit:SuitCode;player:number[];dealer:number[];board:number[];policy:Policy;sixCardPayout:number};
 const CHASE_SETUP_KEY="countlab:chase-flush:setup:v1";
 const validCards=(value:unknown,max:number):value is number[]=>Array.isArray(value)&&value.length<=max&&value.every(card=>Number.isInteger(card)&&card>=0&&card<52);
 function readChaseSetup():SavedChaseSetup|undefined{
   try{
     const value=JSON.parse(localStorage.getItem(CHASE_SETUP_KEY)??"null") as Partial<SavedChaseSetup>|null;
-    if(!value||![0,2,4].includes(value.stage as number)||!["player","dealer","board"].includes(value.target as string)||!["c","d","h","s"].includes(value.pickerSuit as string)||!["none","final","from2","all"].includes(value.policy as string)||!["analyze","practice","strategy","research"].includes(value.mode as string)||!validCards(value.player,3)||!validCards(value.dealer,1)||!validCards(value.board,4))return undefined;
+    if(!value||![0,2,4].includes(value.stage as number)||!["player","dealer","board"].includes(value.target as string)||!["c","d","h","s"].includes(value.pickerSuit as string)||!["none","final","from2","all"].includes(value.policy as string)||!["game","analyze","practice","strategy","research"].includes(value.mode as string)||!validCards(value.player,3)||!validCards(value.dealer,1)||!validCards(value.board,4))return undefined;
     const all=[...value.player,...value.dealer,...value.board];if(new Set(all).size!==all.length||value.board.length>(value.stage as number))return undefined;
     return value as SavedChaseSetup;
   }catch{return undefined;}
@@ -126,7 +127,7 @@ function CardChip({ card, source, onRemove }: { card: number; source: Target; on
 }
 
 export function ChaseFlushLab() {
-  const [mode, setMode] = useState<"analyze" | "practice" | "strategy" | "research">("analyze"),
+  const [mode, setMode] = useState<"game" | "analyze" | "practice" | "strategy" | "research">("game"),
     [stage, setStage] = useState<Stage>(2),
     [target, setTarget] = useState<Target>("player"),
     [pickerSuit, setPickerSuit] = useState<SuitCode>("s"),
@@ -319,14 +320,16 @@ export function ChaseFlushLab() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Chase the Flush mode">
-        {(["analyze", "practice", "strategy", "research"] as const).map((item) => (
+        {(["game", "analyze", "practice", "strategy", "research"] as const).map((item) => (
           <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={`w-full sm:w-auto ${mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>
-            {item[0].toUpperCase() + item.slice(1)}
+            {item === "game" ? "Play Game" : item[0].toUpperCase() + item.slice(1)}
           </GhostButton>
         ))}
       </div>
 
-      {mode === "research" ? (
+      {mode === "game" ? (
+        <ChaseFlushTableGame sixCardPayout={sixCardPayout} onPayoutChange={(value) => { setSixCardPayout(value); clearResult(); }} />
+      ) : mode === "research" ? (
         <ResearchPanel sixCardPayout={sixCardPayout} setSixCardPayout={(value) => { setSixCardPayout(value); clearResult(); }} />
       ) : mode === "strategy" ? (
         <PracticalStrategy />
