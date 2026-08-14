@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { PlayingCard } from "@/components/PlayingCard";
 import { Card, Rank, Suit } from "@/lib/blackjack/types";
+import { Metric, Panel } from "@/components/ui";
 
 const suits: Record<string, Suit> = {
   c: "clubs",
@@ -137,6 +138,67 @@ export type GameHistoryRow = {
   bankroll: number;
   detail: string;
 };
+
+export type CoachNote = { ok: boolean; title: string; detail: string };
+
+export function CoachPanel({
+  note,
+  pending,
+  accuracyLabel,
+  emptyHint,
+  children,
+}: {
+  note?: CoachNote;
+  pending?: boolean;
+  accuracyLabel?: string;
+  emptyHint: string;
+  children?: ReactNode;
+}) {
+  return (
+    <Panel>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Live coach</p>
+        {accuracyLabel && <span className="text-xs text-zinc-500">{accuracyLabel}</span>}
+      </div>
+      {note ? (
+        <div aria-live="polite" className={`mt-3 rounded-xl border p-4 ${note.ok ? "border-emerald-400/30 bg-emerald-400/[.07]" : "border-red-400/30 bg-red-400/[.07]"}`}>
+          <p className={`font-semibold ${note.ok ? "text-emerald-300" : "text-red-300"}`}>{note.ok ? "✓" : "!"} {note.title}</p>
+          <p className="mt-2 text-xs leading-5 text-zinc-300">{note.detail}</p>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-zinc-400">{emptyHint}</p>
+      )}
+      {pending && <p className="mt-2 text-xs text-amber-300">Coach is still calculating this decision…</p>}
+      {children}
+    </Panel>
+  );
+}
+
+export function EvMetrics({
+  evs,
+  loading,
+  note,
+}: {
+  evs?: Partial<Record<string, number>>;
+  loading?: boolean;
+  note?: string;
+}) {
+  const entries = evs ? (Object.entries(evs) as Array<[string, number | undefined]>).filter((entry): entry is [string, number] => entry[1] !== undefined) : [];
+  if (!loading && !entries.length) return null;
+  return (
+    <div className="mt-4">
+      {loading && !entries.length && <p className="text-sm text-zinc-400"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" /> Calculating EV…</p>}
+      {entries.length > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {entries.map(([action, ev]) => (
+            <Metric key={action} label={`${action} EV`} value={`${ev >= 0 ? "+" : ""}${ev.toFixed(3)}`} />
+          ))}
+        </div>
+      )}
+      {note && entries.length > 0 && <p className="mt-3 text-xs leading-5 text-zinc-500">{note}</p>}
+    </div>
+  );
+}
 
 export function GameHistory({ rows }: { rows: GameHistoryRow[] }) {
   return (

@@ -1,38 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
-import {
-  DeviationDrill,
-  MissingCardDrill,
-  StrategyDrill,
-} from "@/components/Drills";
-import {
-  CountingBenchmark,
-  DeckEstimationDrill,
-  RunningCountDrill,
-  TrueCountDrill,
-} from "@/components/CountingDrills";
-import { DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
-import {
-  FAB_4_DEVIATIONS,
-  FULL_HI_LO_DEVIATIONS,
-  FullHiLoDeviation,
-  ILLUSTRIOUS_18_DEVIATIONS,
-} from "@/lib/blackjack/fullHiLoIndices";
 import {
   DEFAULT_SETTINGS,
   Session,
@@ -41,11 +13,34 @@ import {
 } from "@/lib/statistics/storage";
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { countingMastery } from "@/lib/blackjack/countingTraining";
-import { CvcxLab } from "@/components/CvcxLab";
-import { SessionSimulator } from "@/components/SessionSimulator";
-import { ChaseFlushLab } from "@/components/ChaseFlushLab";
-import { UTHLab } from "@/components/UTHLab";
+
+function PageLoading() {
+  return (
+    <Panel className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex items-center gap-3 text-sm font-medium text-emerald-100/70">
+        <i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />
+        Loading…
+      </div>
+    </Panel>
+  );
+}
+const dynamicPage = (loader: () => Promise<{ default: ComponentType }>) =>
+  dynamic(loader, { loading: PageLoading });
+
+const CvcxLab = dynamicPage(() => import("@/components/CvcxLab").then((m) => ({ default: m.CvcxLab })));
+const SessionSimulator = dynamicPage(() => import("@/components/SessionSimulator").then((m) => ({ default: m.SessionSimulator })));
+const SessionJournal = dynamicPage(() => import("@/components/SessionJournal").then((m) => ({ default: m.SessionJournal })));
+const ChaseFlushLab = dynamicPage(() => import("@/components/ChaseFlushLab").then((m) => ({ default: m.ChaseFlushLab })));
+const UTHLab = dynamicPage(() => import("@/components/UTHLab").then((m) => ({ default: m.UTHLab })));
+const RunningCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.RunningCountDrill })));
+const TrueCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.TrueCountDrill })));
+const DeckEstimationDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.DeckEstimationDrill })));
+const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.CountingBenchmark })));
+const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
+const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
+const MissingCardDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.MissingCardDrill })));
+const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
+const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const actionNames: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -488,376 +483,6 @@ function StrategyReference() {
     </>
   );
 }
-function DeviationReference() {
-  const [sort, setSort] = useState("index"),
-    [search, setSearch] = useState(""),
-    [set, setSet] = useState<"all" | "i18" | "fab4">("all");
-  const allRows = [
-    ...FULL_HI_LO_DEVIATIONS,
-    ILLUSTRIOUS_18_DEVIATIONS[0],
-    ...FAB_4_DEVIATIONS,
-  ];
-  const selectedRows = set === "i18"
-    ? ILLUSTRIOUS_18_DEVIATIONS
-    : set === "fab4"
-      ? FAB_4_DEVIATIONS
-      : allRows;
-  const i18EvOrder = new Map(ILLUSTRIOUS_18_DEVIATIONS.map((deviation, index) => [`${deviation.hand}|${deviation.dealer}`, index]));
-  const fab4EvOrder = new Map(FAB_4_DEVIATIONS.map((deviation, index) => [`${deviation.hand}|${deviation.dealer}`, index]));
-  const evPriority = (deviation: FullHiLoDeviation) => {
-    const key = `${deviation.hand}|${deviation.dealer}`;
-    const i18Rank = i18EvOrder.get(key);
-    if (i18Rank !== undefined) return { order: i18Rank, label: `I18 #${i18Rank + 1}` };
-    const fab4Rank = fab4EvOrder.get(key);
-    if (fab4Rank !== undefined) return { order: 100 + fab4Rank, label: `Fab 4 #${fab4Rank + 1}` };
-    return { order: 1000, label: "Extended" };
-  };
-  const rows = [...selectedRows]
-    .filter((d) =>
-      `${d.hand} ${d.dealer} ${DEVIATION_ACTION_NAMES[d.normalAction]} ${DEVIATION_ACTION_NAMES[d.deviationAction]}`
-        .toLowerCase().includes(search.toLowerCase()),
-    )
-    .sort((a, b) =>
-      sort === "ev"
-        ? evPriority(a).order - evPriority(b).order || a.hand.localeCompare(b.hand) || a.dealer.localeCompare(b.dealer)
-        : sort === "index"
-        ? a.index - b.index
-        : sort === "hand"
-          ? a.hand.localeCompare(b.hand)
-          : a.dealer.localeCompare(b.dealer),
-    );
-  const threshold = (deviation: FullHiLoDeviation) => {
-    const value = deviation.index > 0 ? `+${deviation.index}` : String(deviation.index);
-    return `TC ${deviation.direction === "atOrBelow" ? "≤" : "≥"} ${value}`;
-  };
-  const context = (deviation: FullHiLoDeviation) => {
-    const available = [
-      deviation.doubleAllowed && "Double",
-      deviation.splitAllowed && "Split",
-      deviation.surrenderAllowed && "Surrender",
-    ].filter(Boolean);
-    return available.length ? available.join(" · ") : "Base play";
-  };
-  return (
-    <>
-      <h1 className="text-3xl font-semibold">Index Deviations</h1>
-      <p className="mt-2 text-zinc-400">
-        A complete total-dependent Hi-Lo catalog, with quick views for the
-        Illustrious 18 and Fab 4.
-      </p>
-      <Panel className="mt-7">
-        <div className="mb-5 rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-sm text-zinc-300">
-          <p>
-            The full view keeps action-availability contexts separate, because
-            the correct index can change when doubling, splitting, or surrender
-            is legal. Exact indices also vary by rules, decks, and true-count
-            method.
-          </p>
-          <p className="mt-2 text-xs text-zinc-500">
-            Full table: {FULL_HI_LO_DEVIATIONS.length} generated transitions ·{" "}
-            <a className="text-emerald-300 hover:underline" href="https://github.com/possibly-wrong/blackjack/blob/a1f7dbb74266fb39296292bdff568b076120a61c/indices/indices_hi_lo.txt" target="_blank" rel="noreferrer">source table</a>
-            {" "}·{" "}
-            <a className="text-emerald-300 hover:underline" href="https://www.qfit.com/cvdatav2a.htm" target="_blank" rel="noreferrer">why rule-specific generation matters</a>
-          </p>
-        </div>
-        <fieldset className="mb-5">
-          <legend className="mb-2 text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Deviation set</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {([
-              ["all", "All deviations", allRows.length],
-              ["i18", "Illustrious 18", ILLUSTRIOUS_18_DEVIATIONS.length],
-              ["fab4", "Fab 4", FAB_4_DEVIATIONS.length],
-            ] as const).map(([value, label, count]) => (
-              <label key={value} className={`pressable flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 ${set === value ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200" : "border-white/[.08] bg-black/20 text-zinc-400"}`}>
-                <input type="radio" name="deviation-set" value={value} checked={set === value} onChange={() => setSet(value)} className="accent-emerald-400" />
-                <span className="flex-1 font-medium">{label}</span>
-                <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs">{count}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row">
-          <input
-            placeholder="Search hand or dealer…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="min-h-11 flex-1 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
-          />
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="min-h-11 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
-          >
-            <option value="index">Sort: Index</option>
-            <option value="ev">Sort: EV importance</option>
-            <option value="hand">Sort: Hand</option>
-            <option value="dealer">Sort: Dealer</option>
-          </select>
-        </div>
-        {sort === "ev" && (
-          <p className="mb-4 rounded-xl bg-white/[.035] px-3 py-2 text-xs leading-5 text-zinc-500">
-            EV importance uses the published profitability order within the Illustrious 18 and Fab 4. Extended indices follow those sets; their exact relative EV requires a simulation for the selected rules, penetration, spread, and count method.
-          </p>
-        )}
-        <p className="mb-4 text-xs text-zinc-500">Showing {rows.length} of {selectedRows.length} entries</p>
-        <div className="space-y-3 md:hidden">
-          {rows.map((deviation) => (
-            <article key={deviation.id} className="rounded-2xl bg-black/20 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div><p className="text-xs text-zinc-500">Player hand</p><b className="mt-1 block text-lg">{deviation.hand}</b></div>
-                <div className="text-right"><p className="text-xs text-zinc-500">Dealer</p><b className="mt-1 block text-lg">{deviation.dealer}</b></div>
-              </div>
-              <div className="mt-4 rounded-xl bg-white/[.04] p-3">
-                <p className="text-xs text-zinc-500">Deviation point</p>
-                <b className="text-xl text-emerald-400">{threshold(deviation)}</b>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div><dt className="text-xs text-zinc-500">Basic strategy</dt><dd className="mt-1 font-medium">{DEVIATION_ACTION_NAMES[deviation.normalAction]}</dd></div>
-                <div className="text-right"><dt className="text-xs text-zinc-500">Deviation</dt><dd className="mt-1 font-medium text-emerald-300">{DEVIATION_ACTION_NAMES[deviation.deviationAction]}</dd></div>
-              </dl>
-              <p className="mt-3 text-xs text-zinc-500">Context: {context(deviation)}</p>
-              <p className="mt-1 text-xs text-zinc-500">EV priority: {evPriority(deviation).label}</p>
-            </article>
-          ))}
-        </div>
-        <table className="hidden w-full text-left text-sm md:table">
-          <thead className="text-zinc-500">
-            <tr>
-              {[
-                "Player Hand",
-                "Dealer Card",
-                "Index",
-                "Basic Strategy",
-                "Deviation",
-                "EV Priority",
-                "Context",
-              ].map((x) => (
-                <th className="pb-3" key={x}>
-                  {x}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((d) => (
-              <tr className="border-t border-white/[.06]" key={d.id}>
-                <td className="py-4">{d.hand}</td>
-                <td>{d.dealer}</td>
-                <td className="text-emerald-400">
-                  {threshold(d)}
-                </td>
-                <td>{DEVIATION_ACTION_NAMES[d.normalAction]}</td>
-                <td>{DEVIATION_ACTION_NAMES[d.deviationAction]}</td>
-                <td className="text-xs text-zinc-400">{evPriority(d).label}</td>
-                <td className="text-xs text-zinc-500">{context(d)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && <p className="py-10 text-center text-sm text-zinc-500">No deviations match that search.</p>}
-      </Panel>
-    </>
-  );
-}
-function Statistics() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  useEffect(() => {
-    const load = () => setSessions(storage.sessions());
-    load();
-    addEventListener("hilo-storage", load);
-    return () => removeEventListener("hilo-storage", load);
-  }, []);
-  const chart = [...sessions]
-    .reverse()
-    .slice(-20)
-    .map((s, i) => ({
-      name: i + 1,
-      accuracy: s.accuracy,
-      response: Math.round(s.averageResponseTime / 100) / 10,
-    }));
-  const byDrill = Object.entries(
-    sessions.reduce<Record<string, { total: number; correct: number }>>(
-      (a, s) => {
-        a[s.drill] ??= { total: 0, correct: 0 };
-        a[s.drill].total += s.questions;
-        a[s.drill].correct += s.correct;
-        return a;
-      },
-      {},
-    ),
-  ).map(([name, v]) => ({
-    name,
-    accuracy: Math.round((v.correct / v.total) * 100),
-  }));
-  const byCategory = Object.entries(
-    sessions.reduce<Record<string, { total: number; correct: number }>>(
-      (all, session) => {
-        for (const [category, result] of Object.entries(session.categories ?? {})) {
-          const key = `${session.drill}: ${category}`;
-          all[key] ??= { total: 0, correct: 0 };
-          all[key].total += result.total;
-          all[key].correct += result.correct;
-        }
-        return all;
-      },
-      {},
-    ),
-  )
-    .map(([name, result]) => ({
-      name,
-      accuracy: Math.round((result.correct / result.total) * 100),
-      total: result.total,
-    }))
-    .sort((a, b) => a.accuracy - b.accuracy);
-  const accuracySince = (days: number) => {
-    const cutoff = Date.now() - days * 86400000;
-    const recent = sessions.filter((session) => new Date(session.date).getTime() >= cutoff);
-    const total = recent.reduce((sum, session) => sum + session.questions, 0);
-    return total ? Math.round(recent.reduce((sum, session) => sum + session.correct, 0) / total * 100) : 0;
-  };
-  const counting = sessions.filter((session) => ["Running Count", "True Count", "Deck Estimation", "Full Shoe"].includes(session.drill));
-  const numericMetric = (key: string) => counting.map((session) => Number(session.metrics?.[key])).filter(Number.isFinite);
-  const cardSpeeds = numericMetric("cardsPerSecond"), deckErrors = numericMetric("meanAbsoluteDeckError"), mastery = countingMastery(sessions);
-  const perfectShoes = counting.filter((session) => session.drill === "Full Shoe" && session.accuracy === 100).length;
-  const errorCounts = Object.entries(counting.flatMap((session) => session.mistakes).reduce<Record<string, number>>((all, mistake) => {
-    const key = mistake.category ?? "uncategorized";
-    all[key] = (all[key] ?? 0) + 1;
-    return all;
-  }, {})).sort((a, b) => b[1] - a[1]);
-  return (
-    <>
-      <h1 className="text-3xl font-semibold">Statistics</h1>
-      <p className="mt-2 text-zinc-400">
-        Persistent performance history across every training mode.
-      </p>
-      {sessions.length === 0 ? (
-        <Panel className="mt-7 py-16 text-center">
-          <p className="text-zinc-400">
-            Complete a drill to start building your history.
-          </p>
-          <Link href="/training/running-count">
-            <Button className="mt-5">Start a drill</Button>
-          </Link>
-        </Panel>
-      ) : (
-        <div className="mt-7 grid gap-5 lg:grid-cols-2">
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-5">
-            <Metric label="7-day accuracy" value={`${accuracySince(7)}%`} />
-            <Metric label="30-day accuracy" value={`${accuracySince(30)}%`} />
-            <Metric label="Best card speed" value={`${Math.max(0, ...cardSpeeds).toFixed(1)}/s`} />
-            <Metric label="Latest deck MAE" value={`${(deckErrors[0] ?? 0).toFixed(2)} decks`} />
-            <Metric label="Counting mastery" value={`${mastery.score}%`} sub={`${perfectShoes} perfect shoes`} />
-          </div>
-          <Panel>
-            <h2 className="mb-5 font-semibold">Accuracy over time</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chart}>
-                  <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
-                  <YAxis domain={[0, 100]} stroke="#71717a" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="accuracy"
-                    stroke="#b5ed5c"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Panel>
-          <Panel>
-            <h2 className="mb-5 font-semibold">Response time over time</h2>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chart}>
-                  <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
-                  <YAxis stroke="#71717a" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="response"
-                    stroke="#38bdf8"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </Panel>
-          <Panel className="lg:col-span-2">
-            <h2 className="mb-5 font-semibold">Performance by drill</h2>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byDrill}>
-                  <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
-                  <YAxis domain={[0, 100]} stroke="#71717a" />
-                  <Tooltip
-                    contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
-                    }}
-                  />
-                  <Bar
-                    dataKey="accuracy"
-                    fill="#1e8f62"
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Panel>
-          {byCategory.length > 0 && (
-            <Panel className="lg:col-span-2">
-              <h2 className="font-semibold">Accuracy by decision category</h2>
-              <p className="mb-5 mt-1 text-sm text-zinc-500">
-                Lowest-performing categories appear first.
-              </p>
-              <div className="grid gap-3 md:grid-cols-2">
-                {byCategory.map((row) => (
-                  <div key={row.name} className="rounded-xl bg-black/20 p-4">
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span>{row.name}</span>
-                      <b>{row.accuracy}%</b>
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full bg-emerald-500" style={{ width: `${row.accuracy}%` }} />
-                    </div>
-                    <p className="mt-2 text-xs text-zinc-500">{row.total} answers</p>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          )}
-          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-zinc-500">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-black/25 px-3 py-2 text-sm"><b className="text-amber-300">{count}</b> {name}</span>)}</div></Panel>}
-          <section className="sr-only" aria-label="Statistics text summary">
-            <h2>Performance summary</h2>
-            <ul>
-              {byDrill.map((row) => (
-                <li key={row.name}>{row.name}: {row.accuracy}% accuracy</li>
-              ))}
-              {byCategory.map((row) => (
-                <li key={row.name}>{row.name}: {row.accuracy}% across {row.total} answers</li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      )}
-    </>
-  );
-}
 function SettingsPage() {
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
     [saved, setSaved] = useState(false),
@@ -1096,6 +721,7 @@ export default function DynamicPage() {
     dashboard: <Dashboard />,
     cvcx: <CvcxLab />,
     simulation: <SessionSimulator />,
+    journal: <SessionJournal />,
     analysis: <CvcxLab />,
     bankroll: <CvcxLab />,
     "chase-flush": <ChaseFlushLab />,
@@ -1110,8 +736,8 @@ export default function DynamicPage() {
     "training/benchmark": <CountingBenchmark />,
     reference: <HiLoReference />,
     "reference/basic-strategy": <StrategyReference />,
-    "reference/deviations": <DeviationReference />,
-    statistics: <Statistics />,
+    "reference/deviations": <DeviationReferencePage />,
+    statistics: <StatisticsPage />,
     settings: <SettingsPage />,
   };
   return pages[path] || <NotFound />;

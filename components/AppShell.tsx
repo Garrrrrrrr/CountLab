@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { FullShoeGame } from "@/components/FullShoeGame";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
+
+const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
 const groups = [
   {
     label: "",
@@ -17,6 +19,7 @@ const groups = [
     items: [
       ["Game & Bankroll Lab", "/cvcx", "fa-chart-area"],
       ["Session Simulator", "/simulation", "fa-wave-square"],
+      ["Session Journal", "/journal", "fa-book"],
     ],
   },
   {
@@ -217,7 +220,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ["Train", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/analysis", "/bankroll", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
+          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/journal", "/analysis", "/bankroll", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
           return (
             <Link
               key={href}

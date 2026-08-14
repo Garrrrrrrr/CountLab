@@ -7,8 +7,10 @@ import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack
 import { signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
 import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
+import type { LiveEvResult } from "@/lib/blackjack/liveEv";
 import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, NumberField, Panel, Select } from "./ui";
+import { CoachPanel, EvMetrics, type CoachNote } from "./CasinoGameUI";
 
 type Phase = "setup" | "bet" | "dealing" | "insurance" | "play" | "dealer" | "shoe-end";
 type HandStatus = "playing" | "stood" | "busted" | "surrendered";
@@ -23,12 +25,6 @@ interface PlayerHand {
   fromSplit?: boolean;
   splitAces?: boolean;
   awaitingSplitCard?: boolean;
-}
-
-interface CoachNote {
-  ok: boolean;
-  title: string;
-  detail: string;
 }
 
 const ACTION_NAMES: Record<Action, string> = {
@@ -110,12 +106,28 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [dealing, setDealing] = useState(false);
   const [stats, setStats] = useState({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
   const [visibleIntel, setVisibleIntel] = useState<Record<string, boolean>>({});
+  const [holePeek, setHolePeek] = useState(false);
+  const [evResult, setEvResult] = useState<LiveEvResult>();
+  const [evLoading, setEvLoading] = useState(false);
   const shoe = useRef<BlackjackShoe | undefined>(undefined);
   const bankrollRef = useRef(1000);
   const activeRef = useRef(active);
+  const evWorker = useRef<Worker | undefined>(undefined);
+  const evRequestId = useRef(0);
+  const evSignatureRef = useRef("");
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
+  useEffect(() => {
+    const worker = new Worker(new URL("../workers/blackjackEv.worker.ts", import.meta.url));
+    evWorker.current = worker;
+    worker.onmessage = (event: MessageEvent<{ id: number; result?: LiveEvResult; error?: string }>) => {
+      if (event.data.id !== evRequestId.current) return;
+      setEvLoading(false);
+      if (event.data.result) setEvResult(event.data.result);
+    };
+    return () => worker.terminate();
+  }, []);
   const casinoPause = async (milliseconds: number) => {
     await pause(animations ? milliseconds * (fastMode ? 0.35 : 1) : 40);
     while (!activeRef.current) await pause(100);
@@ -169,6 +181,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     setDealing(false);
     setVisibleIntel({});
     setNote(undefined);
+    setEvResult(undefined);
+    setEvLoading(false);
     setRoundMessage("Choose your wager. The coach expects the highlighted amount.");
     setPhase("bet");
   };
@@ -371,6 +385,43 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     return { action, explanation };
   };
 
+  const handSignature = (hand: PlayerHand) => `${hand.cards.map((c) => c.rank).join(",")}|${dealer.map((c) => c.rank).join(",")}|${holePeek}`;
+
+  const requestEv = (hand: PlayerHand) => {
+    if (!evWorker.current || !shoe.current || !dealer[0]) return;
+    evSignatureRef.current = handSignature(hand);
+    const id = ++evRequestId.current;
+    setEvLoading(true);
+    setEvResult(undefined);
+    evWorker.current.postMessage({
+      id,
+      request: {
+        playerCards: hand.cards,
+        dealerUpcard: dealer[0],
+        dealerHoleCard: holePeek ? dealer[1] : undefined,
+        composition: shoe.current.remainingComposition(),
+        rules,
+        legalActions: legalActions(hand),
+      },
+    });
+  };
+
+  const evExplanation = (result: LiveEvResult, hand: PlayerHand) => {
+    const parts = legalActions(hand)
+      .map((action) => `${ACTION_NAMES[action]} ${result.evs[action] !== undefined ? `${result.evs[action]! >= 0 ? "+" : ""}${result.evs[action]!.toFixed(3)}` : "—"}`)
+      .join(" · ");
+    return `Hole card known: composition-dependent Monte Carlo EV favors ${ACTION_NAMES[result.bestAction]}. ${parts}.`;
+  };
+
+  const currentCardCount = hands[activeHand]?.cards.length;
+  useEffect(() => {
+    if (phase !== "play" || !current) return;
+    setEvResult(undefined);
+    setEvLoading(false);
+    if (holePeek) requestEv(current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, activeHand, holePeek, currentCardCount]);
+
   const advance = async (nextHands: PlayerHand[], from: number) => {
     const next = nextHands.findIndex((hand, index) => index > from && hand.status === "playing");
     setHands(nextHands);
@@ -422,7 +473,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const act = async (action: Action) => {
     const hand = hands[activeHand];
     if (dealing || !hand || phase !== "play" || !legalActions(hand).includes(action)) return;
-    const expected = expectedAction(hand);
+    const evReady = holePeek && evResult && evSignatureRef.current === handSignature(hand);
+    const expected = evReady ? { action: evResult!.bestAction, explanation: evExplanation(evResult!, hand) } : expectedAction(hand);
     const ok = action === expected.action;
     coach(
       ok,
@@ -567,6 +619,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               ["resplitAces", "Resplit aces"],
               ["lateSurrender", "Late surrender"],
             ].map(([key, label]) => <label key={key} className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>{label}</span><input type="checkbox" checked={Boolean(rules[key as keyof BlackjackRules])} onChange={(event) => setRules({ ...rules, [key]: event.target.checked })} className="h-5 w-5 accent-emerald-400" /></label>)}
+            <Select label="Dealer hole card" value={holePeek ? "peek" : "hidden"} onChange={(event) => setHolePeek(event.target.value === "peek")}>
+              <option value="hidden">Hidden (realistic)</option>
+              <option value="peek">Peek every hand</option>
+            </Select>
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Card animations</span><input type="checkbox" checked={animations} onChange={(event) => setAnimations(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
             <div className="flex items-center justify-between gap-4 rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Fast mode</b><small className="text-zinc-500">Shorter casino pauses</small></span><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} onClick={() => setFastMode((value) => !value)} className={`pressable flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ${fastMode ? "justify-end bg-emerald-400" : "justify-start bg-zinc-700"}`}><span className="h-6 w-6 rounded-full bg-white shadow" /></button></div>
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Sound effects</span><input type="checkbox" checked={soundEnabled} onChange={(event) => setSoundEnabled(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
@@ -591,7 +647,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     </>
   );
 
-  const holeHidden = phase === "dealing" || phase === "insurance" || phase === "play";
+  const holeHidden = (phase === "dealing" || phase === "insurance" || phase === "play") && !holePeek;
   const metrics: Array<{ label: string; value: string | number; intel?: "rc" | "tc" | "decks" | "discard" }> = [
     { label: "Bankroll", value: `$${bankroll.toFixed(2)}` },
     { label: phase === "bet" ? "Available" : "In action", value: phase === "bet" ? `$${(bankroll - totalWager).toFixed(2)}` : `$${hands.reduce((sum, hand) => sum + hand.bet, 0).toFixed(2)}` },
@@ -664,7 +720,17 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(7).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="col-span-3 w-full sm:w-auto" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
             </div>}
             {phase === "insurance" && <div className="flex flex-wrap justify-center gap-3"><GhostButton disabled={dealing} onClick={() => chooseInsurance(false)}>Decline insurance</GhostButton><Button disabled={dealing || bankroll < insuranceTotal} onClick={() => chooseInsurance(true)}>Insure all spots for ${insuranceTotal}</Button></div>}
-            {phase === "play" && current && <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">{legalActions(current).map((action) => <Button disabled={dealing} className="w-full sm:w-auto" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}</div>}
+            {phase === "play" && current && <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">
+              {legalActions(current).map((action) => <Button disabled={dealing} className="w-full sm:w-auto" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}
+              <GhostButton disabled={dealing || evLoading} className="col-span-2 w-full sm:w-auto" onClick={() => requestEv(current)}>{evLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton>
+            </div>}
+            {phase === "play" && current && (evLoading || (evResult && evSignatureRef.current === handSignature(current))) && (
+              <EvMetrics
+                evs={evResult && evSignatureRef.current === handSignature(current) ? evResult.evs : undefined}
+                loading={evLoading}
+                note="Monte Carlo estimate from the actual remaining shoe. Hit and Split EV assume correct basic-strategy play afterward, not a full recursive-exact solve."
+              />
+            )}
             {(phase === "dealing" || phase === "dealer") && <div className="flex min-h-12 items-center justify-center gap-3 text-sm font-medium text-emerald-100/70"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing" : "Cards in motion"}</div>}
             {phase === "shoe-end" && <div className="text-center"><p className="mb-4 text-2xl font-semibold">Session result: {bankroll >= startingBankroll ? "+" : ""}${(bankroll - startingBankroll).toFixed(2)}</p><Button onClick={startShoe}>Shuffle another shoe</Button></div>}
           </div>
@@ -678,11 +744,13 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full bg-emerald-400 transition-[width]" style={{ width: `${Math.min(100, (discarded / (cardsTotal * penetration)) * 100)}%` }} /></div>
           </Panel>
-          <Panel>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Live coach</p>
-            {note ? <div aria-live="polite" className={`mt-3 rounded-xl border p-4 ${note.ok ? "border-emerald-400/30 bg-emerald-400/[.07]" : "border-red-400/30 bg-red-400/[.07]"}`}><p className={`font-semibold ${note.ok ? "text-emerald-300" : "text-red-300"}`}>{note.ok ? "✓" : "!"} {note.title}</p><p className="mt-2 text-xs leading-5 text-zinc-300">{note.detail}</p></div> : <p className="mt-3 text-sm leading-6 text-zinc-400">Your bet sizing, basic strategy, insurance, and index deviations are checked as you play.</p>}
+          <CoachPanel
+            note={note}
+            accuracyLabel={`${accuracy}% accuracy`}
+            emptyHint="Your bet sizing, basic strategy, insurance, and index deviations are checked as you play."
+          >
             <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs"><div className="rounded-lg bg-black/20 p-2"><strong className="block text-lg text-red-300">{stats.betErrors}</strong>Bet errors</div><div className="rounded-lg bg-black/20 p-2"><strong className="block text-lg text-red-300">{stats.playErrors}</strong>Play errors</div></div>
-          </Panel>
+          </CoachPanel>
         </div>
       </div>
     </div>
