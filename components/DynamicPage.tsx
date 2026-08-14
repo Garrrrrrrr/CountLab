@@ -23,10 +23,10 @@ import {
 import {
   CountingBenchmark,
   DeckEstimationDrill,
-  FullShoeDrill,
   RunningCountDrill,
   TrueCountDrill,
 } from "@/components/CountingDrills";
+import { FullShoeGame } from "@/components/FullShoeGame";
 import { DEVIATIONS, DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
   DEFAULT_SETTINGS,
@@ -978,7 +978,7 @@ export default function DynamicPage() {
     "training/true-count": <TrueCountDrill />,
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
-    "training/full-shoe": <FullShoeDrill />,
+    "training/full-shoe": <FullShoeGame />,
     "training/missing-card": <MissingCardDrill />,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
