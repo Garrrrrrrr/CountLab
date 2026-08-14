@@ -3,17 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/generate-auth.mjs",
     "dev": "next dev",
-    "prebuild": "node scripts/generate-auth.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
-    "pretest": "node scripts/generate-auth.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.0",
+    "@supabase/supabase-js": "^2.45.4",
     "next": "^15.4.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
