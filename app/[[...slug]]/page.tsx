@@ -3,6 +3,7 @@ import DynamicPage from "@/components/DynamicPage";
 const routes = [
   [],
   ["dashboard"],
+  ["cvcx"],
   ["analysis"],
   ["bankroll"],
   ["chase-flush"],

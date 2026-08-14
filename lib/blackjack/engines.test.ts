@@ -15,6 +15,14 @@ import {
   zeroNegativeCountBets,
 } from "./advantage";
 import { COEFFICIENT_METADATA } from "./coefficients";
+import {
+  analyzeCvcx,
+  createOptimalRamp,
+  finiteHorizonRisk,
+  goalBeforeRuinProbability,
+  normalCdf,
+  requiredBankroll,
+} from "./cvcx";
 const c = (rank: Card["rank"], suit: Card["suit"] = "spades"): Card => ({
   rank,
   suit,
@@ -167,5 +175,49 @@ describe("advantage model", () => {
     expect(recommendUnit(1000, 1, DEFAULT_ADVANTAGE_RULES, RAMPS["1-8"])).toBe(
       Infinity,
     );
+  });
+});
+
+describe("CVCX-style analysis", () => {
+  it("builds a bounded ramp and respects a wong-in point", () => {
+    const ramp = createOptimalRamp(DEFAULT_ADVANTAGE_RULES, 8, 1, true);
+    expect(ramp).toHaveLength(17);
+    expect(ramp.find((row) => row.trueCount === 0)?.units).toBe(0);
+    expect(ramp.find((row) => row.trueCount === 1)?.units).toBe(1);
+    expect(Math.max(...ramp.map((row) => row.units))).toBeLessThanOrEqual(8);
+  });
+
+  it("reports scale-independent SCORE and practical performance metrics", () => {
+    const scenario = {
+      bankroll: 25_000,
+      minimumBet: 10,
+      handsPerHour: 100,
+      hours: 100,
+      targetRisk: 0.05,
+      maxSpread: 12,
+      wongInAt: null,
+      rules: DEFAULT_ADVANTAGE_RULES,
+    };
+    const ramp = createOptimalRamp(DEFAULT_ADVANTAGE_RULES, 12, null);
+    const tenDollar = analyzeCvcx(scenario, ramp, 10);
+    const twentyDollar = analyzeCvcx(scenario, ramp, 20);
+    expect(tenDollar.hourlyEv).toBeGreaterThan(0);
+    expect(tenDollar.playedFrequency).toBeCloseTo(1, 10);
+    expect(tenDollar.cScore).toBeCloseTo(twentyDollar.cScore, 10);
+    expect(twentyDollar.hourlyEv).toBeCloseTo(tenDollar.hourlyEv * 2, 10);
+    expect(tenDollar.requiredBankroll).toBeGreaterThan(0);
+  });
+
+  it("keeps probability and risk calculators numerically sane", () => {
+    expect(normalCdf(0)).toBeCloseTo(0.5, 6);
+    expect(normalCdf(1.96)).toBeCloseTo(0.975, 3);
+    expect(finiteHorizonRisk(10_000, 1, 100, 0)).toBe(0);
+    const shortRisk = finiteHorizonRisk(1_000, 0.5, 100, 100);
+    const longRisk = finiteHorizonRisk(1_000, 0.5, 100, 10_000);
+    expect(shortRisk).toBeGreaterThanOrEqual(0);
+    expect(longRisk).toBeGreaterThan(shortRisk);
+    expect(longRisk).toBeLessThanOrEqual(1);
+    expect(goalBeforeRuinProbability(1_000, 1_000, 0, 100)).toBeCloseTo(0.5);
+    expect(requiredBankroll(0.5, 100, 0.05)).toBeCloseTo(299.573, 2);
   });
 });

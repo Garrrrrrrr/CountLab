@@ -39,6 +39,7 @@ import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { countingMastery } from "@/lib/blackjack/countingTraining";
 import { AdvantageCalculator } from "@/components/AdvantageCalculator";
 import { BankrollRecommender } from "@/components/BankrollRecommender";
+import { CvcxLab } from "@/components/CvcxLab";
 import { ChaseFlushLab } from "@/components/ChaseFlushLab";
 import { UTHLab } from "@/components/UTHLab";
 const actionNames: Record<Action, string> = {
@@ -968,6 +969,7 @@ export default function DynamicPage() {
     path = (p.slug || ["dashboard"]).join("/");
   const pages: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
+    cvcx: <CvcxLab />,
     analysis: <AdvantageCalculator />,
     bankroll: <BankrollRecommender />,
     "chase-flush": <ChaseFlushLab />,

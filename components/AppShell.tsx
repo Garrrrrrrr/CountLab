@@ -8,6 +8,7 @@ const groups = [
     label: "",
     items: [
       ["Dashboard", "/dashboard", "fa-house"],
+      ["Counter’s Edge Lab", "/cvcx", "fa-chart-area"],
       ["EV & Risk Lab", "/analysis", "fa-calculator"],
       ["Bankroll Recommender", "/bankroll", "fa-sack-dollar"],
       ["Chase the Flush", "/chase-flush", "fa-diamond"],
@@ -200,7 +201,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {[
           ["Dashboard", "/dashboard", "fa-house"],
           ["Train", "/training/running-count", "fa-bolt"],
-          ["Analyze", "/analysis", "fa-calculator"],
+          ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
           const active = path === href || (name === "Train" && path.startsWith("/training/"));
           return (

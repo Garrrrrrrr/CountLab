@@ -112,6 +112,62 @@ kbd {
     transform: none;
   }
 }
+@keyframes casino-deal {
+  0% {
+    opacity: 0;
+    transform: translate(280px, -260px) rotate(18deg) scale(0.82);
+    filter: blur(1px);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-5px, 4px) rotate(-2deg) scale(1.025);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes casino-card-flip {
+  0% { transform: perspective(700px) rotateY(90deg) scale(0.95); }
+  70% { transform: perspective(700px) rotateY(-6deg) scale(1.02); }
+  100% { transform: perspective(700px) rotateY(0); }
+}
+@keyframes casino-chip-drop {
+  0% { opacity: 0; transform: translateY(-38px) rotate(-22deg) scale(1.18); }
+  65% { opacity: 1; transform: translateY(4px) rotate(4deg) scale(0.96); }
+  100% { transform: none; }
+}
+.casino-deal {
+  animation: casino-deal 0.48s cubic-bezier(.18,.8,.22,1) both;
+  transform-origin: center;
+}
+.casino-card-flip {
+  animation: casino-card-flip 0.42s cubic-bezier(.2,.75,.25,1) both;
+  backface-visibility: hidden;
+}
+.casino-chip-drop {
+  animation: casino-chip-drop 0.3s cubic-bezier(.2,.9,.3,1.2) both;
+}
+.casino-chip {
+  position: relative;
+  transition: transform .16s ease, filter .16s ease;
+  box-shadow: inset 0 0 0 4px rgba(0,0,0,.24), 0 8px 16px rgba(0,0,0,.42);
+}
+.casino-chip::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(255,255,255,.42);
+  border-radius: 999px;
+}
+.casino-chip:hover:not(:disabled) {
+  transform: translateY(-7px) rotate(-3deg);
+  filter: brightness(1.12);
+}
+.casino-chip:active:not(:disabled) {
+  transform: translateY(-1px) scale(.94);
+}
 .md\:grid-cols-13 {
   grid-template-columns: repeat(13, minmax(0, 1fr));
 }

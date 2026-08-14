@@ -12,11 +12,15 @@ export function PlayingCard({
   hidden = false,
   size = "md",
   animated = false,
+  dealIndex = 0,
+  flip = false,
 }: {
   card?: Card;
   hidden?: boolean;
   size?: "sm" | "md" | "lg";
   animated?: boolean;
+  dealIndex?: number;
+  flip?: boolean;
 }) {
   const scale =
       size === "sm"
@@ -30,7 +34,8 @@ export function PlayingCard({
     return (
       <div
         aria-label="Hidden card"
-        className={`${scale} shrink-0 rounded-xl border border-emerald-500/40 bg-[repeating-linear-gradient(45deg,#163d31,#163d31_5px,#0e2c24_5px,#0e2c24_10px)] shadow-xl ring-4 ring-white`}
+        style={animated ? { animationDelay: `${dealIndex * 70}ms` } : undefined}
+        className={`${scale} ${animated ? "casino-deal" : ""} shrink-0 rounded-xl border border-emerald-500/40 bg-[repeating-linear-gradient(45deg,#163d31,#163d31_5px,#0e2c24_5px,#0e2c24_10px)] shadow-xl ring-4 ring-white`}
       />
     );
 
@@ -38,7 +43,8 @@ export function PlayingCard({
   return (
     <div
       aria-label={`${card.rank} of ${card.suit}`}
-      className={`${scale} ${animated ? "animate-[deal_.25s_ease-out]" : ""} relative shrink-0 select-none overflow-hidden rounded-xl bg-[#f7f3e9] font-semibold ${red ? "text-red-600" : "text-zinc-950"} shadow-[0_12px_30px_#0008] ring-1 ring-black/20`}
+      style={animated && !flip ? { animationDelay: `${dealIndex * 70}ms` } : undefined}
+      className={`${scale} ${flip ? "casino-card-flip" : animated ? "casino-deal" : ""} relative shrink-0 select-none overflow-hidden rounded-xl bg-[#f7f3e9] font-semibold ${red ? "text-red-600" : "text-zinc-950"} shadow-[0_12px_30px_#0008] ring-1 ring-black/20`}
     >
       <span className={`absolute left-0 top-0 ${cornerOffset} leading-[.8]`}>
         {card.rank}
