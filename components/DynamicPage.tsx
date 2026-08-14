@@ -13,6 +13,7 @@ import {
 } from "@/lib/statistics/storage";
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
+import { clearSession } from "@/lib/auth/passwordGate";
 
 function PageLoading() {
   return (
@@ -41,6 +42,8 @@ const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) 
 const MissingCardDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.MissingCardDrill })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
+const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
+const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const actionNames: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -700,6 +703,22 @@ function SettingsPage() {
             </p>
           )}
         </Panel>
+        <Panel className="lg:col-span-2">
+          <h2 className="font-semibold">Access</h2>
+          <p className="mt-2 text-sm text-zinc-400">
+            Lock this device now instead of waiting for the session to
+            expire. You&apos;ll need the password again on your next visit.
+          </p>
+          <GhostButton className="mt-4" onClick={() => clearSession()}>
+            <i className="fa-solid fa-lock mr-2" />
+            Lock CountLab
+          </GhostButton>
+          <p className="mt-4 text-xs text-zinc-500">
+            <Link href="/terms" className="hover:text-zinc-300">Terms of Service</Link>
+            {" · "}
+            <Link href="/privacy" className="hover:text-zinc-300">Privacy Policy</Link>
+          </p>
+        </Panel>
       </div>
     </>
   );
@@ -739,6 +758,8 @@ export default function DynamicPage() {
     "reference/deviations": <DeviationReferencePage />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
+    terms: <TermsPage />,
+    privacy: <PrivacyPage />,
   };
   return pages[path] || <NotFound />;
 }

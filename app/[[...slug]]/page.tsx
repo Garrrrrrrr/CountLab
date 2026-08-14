@@ -23,6 +23,8 @@ const routes = [
   ["reference", "deviations"],
   ["statistics"],
   ["settings"],
+  ["terms"],
+  ["privacy"],
 ];
 
 export const dynamicParams = false;
