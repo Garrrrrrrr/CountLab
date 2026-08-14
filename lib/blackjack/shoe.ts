@@ -1,4 +1,4 @@
-import { Card, RANKS, SUITS } from "./types";
+import { Card, Rank, RANKS, SUITS } from "./types";
 import { runningCount } from "./hiLo";
 export class BlackjackShoe {
   private cards: Card[] = [];
@@ -10,5 +10,11 @@ export class BlackjackShoe {
   decksRemaining() { return this.cards.length/52; }
   runningCount() { return runningCount(this.dealt); }
   dealtCards() { return [...this.dealt]; }
+  /** Counts by rank among undealt cards, for composition-dependent EV. */
+  remainingComposition(): Record<Rank, number> {
+    const counts = Object.fromEntries(RANKS.map((rank) => [rank, 0])) as Record<Rank, number>;
+    for (const card of this.cards) counts[card.rank]++;
+    return counts;
+  }
   reset() { this.cards=[]; this.dealt=[]; for(let d=0;d<this.numberOfDecks;d++) for(const suit of SUITS) for(const rank of RANKS) this.cards.push({rank,suit}); this.shuffle(); }
 }
