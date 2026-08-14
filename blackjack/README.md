@@ -42,9 +42,10 @@ design. Access control comes from the Row Level Security policies in
 `supabase/schema.sql`, not from keeping this key secret.
 
 **Deployed site:** add `NEXT_PUBLIC_SUPABASE_URL` and
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` as repository secrets in GitHub → Settings →
-Secrets and variables → Actions; `.github/workflows/deploy.yml` passes them
-to the build step.
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` as repository **variables** (not secrets —
+they're public values, see above) in GitHub → Settings → Secrets and
+variables → Actions → Variables tab; `.github/workflows/deploy.yml` passes
+them to the build step.
 
 The EV and bankroll pages use reproducible per-true-count aggregates generated
 by [`../blackjack-simulator`](../blackjack-simulator/README.md). The deployed
