@@ -422,7 +422,7 @@ export function CvcxLab() {
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">
             Professional game analysis
           </p>
-          <h1 className="mt-2 text-3xl font-semibold">Counter’s Edge Lab</h1>
+          <h1 className="mt-2 text-3xl font-semibold">Game &amp; Bankroll Lab</h1>
           <p className="mt-2 max-w-4xl text-zinc-400">
             A CVCX-style workspace for comparing games, shaping a bet ramp,
             sizing a bankroll, and understanding long-run and trip risk.

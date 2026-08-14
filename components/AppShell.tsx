@@ -2,17 +2,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
+import { FullShoeGame } from "@/components/FullShoeGame";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 const groups = [
   {
     label: "",
     items: [
       ["Dashboard", "/dashboard", "fa-house"],
-      ["Counter’s Edge Lab", "/cvcx", "fa-chart-area"],
-      ["EV & Risk Lab", "/analysis", "fa-calculator"],
-      ["Bankroll Recommender", "/bankroll", "fa-sack-dollar"],
-      ["Chase the Flush", "/chase-flush", "fa-diamond"],
-      ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"],
+      ["Full Shoe", "/training/full-shoe", "fa-shoe-prints"],
+    ],
+  },
+  {
+    label: "Analyze",
+    items: [
+      ["Game & Bankroll Lab", "/cvcx", "fa-chart-area"],
+      ["Session Simulator", "/simulation", "fa-wave-square"],
     ],
   },
   {
@@ -22,7 +26,6 @@ const groups = [
       ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
       ["Deviations", "/training/deviations", "fa-code-branch"],
-      ["Full Shoe", "/training/full-shoe", "fa-shoe-prints"],
       ["Missing Card", "/training/missing-card", "fa-eye"],
       ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
       ["Counting Benchmark", "/training/benchmark", "fa-medal"],
@@ -45,7 +48,8 @@ const groups = [
   },
 ];
 export function AppShell({ children }: { children: ReactNode }) {
-  const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "") || "/dashboard",
+  const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "").replace(/\/$/, "") || "/dashboard",
+    fullShoeActive = path === "/training/full-shoe",
     [open, setOpen] = useState(false),
     [rules, setRules] = useState(DEFAULT_SETTINGS),
     toggle = useRef<HTMLButtonElement>(null),
@@ -191,7 +195,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </header>
         <div className="mx-auto max-w-[90rem] p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20">
-          {children}
+          <div className={fullShoeActive ? undefined : "hidden"} aria-hidden={!fullShoeActive}>
+            <FullShoeGame active={fullShoeActive} />
+          </div>
+          {!fullShoeActive && children}
         </div>
       </main>
       <nav
@@ -200,10 +207,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         {[
           ["Dashboard", "/dashboard", "fa-house"],
-          ["Train", "/training/running-count", "fa-bolt"],
+          ["Train", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/"));
+          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/analysis", "/bankroll"].includes(path));
           return (
             <Link
               key={href}
