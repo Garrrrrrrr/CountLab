@@ -56,6 +56,13 @@ const groups = [
       ["Settings", "/settings", "fa-gear"],
     ],
   },
+  {
+    label: "",
+    items: [
+      ["Terms", "/terms", "fa-file-contract"],
+      ["Privacy", "/privacy", "fa-shield-halved"],
+    ],
+  },
 ];
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "").replace(/\/$/, "") || "/dashboard",
