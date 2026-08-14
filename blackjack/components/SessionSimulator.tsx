@@ -6,7 +6,11 @@ import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackj
 import { COEFFICIENT_METADATA, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { SavedSimulationRun, simulationLibrary, SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig, SessionSimulationResult } from "@/lib/blackjack/sessionSimulation";
+import type { DeviationGroup } from "@/lib/blackjack/fullHiLoIndices";
+import type { ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
 import { Button, GhostButton, Metric, NumberField, Panel, Select } from "./ui";
+import { ShoeExplorer } from "./ShoeExplorer";
+import { HandReplayer } from "./HandReplayer";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 const percent = (value: number, digits = 2) => `${(value * 100).toFixed(digits)}%`;
@@ -25,6 +29,21 @@ type WorkerMessage =
   | { kind: "cancelled"; id: number }
   | { kind: "error"; id: number; error: string };
 
+type ShoeWorkerMessage =
+  | { kind: "progress"; id: number; completed: number; total: number }
+  | { kind: "result"; id: number; result: ShoeSimulationResult }
+  | { kind: "cancelled"; id: number }
+  | { kind: "error"; id: number; error: string };
+
+const hashSeed = (seed: string) => {
+  let hash = 2166136261;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash ^= seed.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
 export function SessionSimulator() {
   const [bankroll, setBankroll] = useState(10_000);
   const [unit, setUnit] = useState(25);
@@ -41,6 +60,14 @@ export function SessionSimulator() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<SessionSimulationResult>();
   const [error, setError] = useState<string>();
+  const [mode, setMode] = useState<"profile" | "shoes">("profile");
+  const [handsToSimulate, setHandsToSimulate] = useState(10_000);
+  const [highSpeed, setHighSpeed] = useState(false);
+  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["i18", "fab4"]);
+  const [shoeResult, setShoeResult] = useState<ShoeSimulationResult>();
+  const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
+  const shoeWorkerRef = useRef<Worker | undefined>(undefined);
+  const shoeRequestId = useRef(0);
   const [analysisName, setAnalysisName] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [savedRuns, setSavedRuns] = useState<SavedSimulationRun[]>([]);
@@ -54,9 +81,10 @@ export function SessionSimulator() {
   const pendingRun = useRef<{ config: SessionSimulationConfig; name: string } | undefined>(undefined);
   const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks }), [decks, dealt]);
   const config = useMemo<SessionSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, rounds, paths, roundsPerHour, seed: seed.trim() || "countlab", rules, ramp }), [bankroll, unit, playerHands, rounds, paths, roundsPerHour, seed, rules, ramp]);
+  const shoeConfig = useMemo<ShoeSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed: hashSeed(seed.trim() || "countlab"), rules, ramp, deviationGroups }), [bankroll, unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed, rules, ramp, deviationGroups]);
   const comparedRuns = useMemo(() => selectedRunIds.map((id) => savedRuns.find((run) => run.id === id)).filter((run): run is SavedSimulationRun => Boolean(run)), [savedRuns, selectedRunIds]);
 
-  useEffect(() => () => workerRef.current?.terminate(), []);
+  useEffect(() => () => { workerRef.current?.terminate(); shoeWorkerRef.current?.terminate(); }, []);
   useEffect(() => {
     const refresh = () => {
       setSavedRuns(simulationLibrary.runs());
@@ -92,13 +120,39 @@ export function SessionSimulator() {
     return workerRef.current;
   };
 
-  const run = () => {
-    const id = ++requestId.current;
-    pendingRun.current = { config, name: analysisName };
-    setError(undefined); setResult(undefined); setProgress(0); setRunning(true);
-    getWorker().postMessage({ kind: "start", id, config });
+  const getShoeWorker = () => {
+    if (!shoeWorkerRef.current) {
+      const worker = new Worker(new URL("../workers/shoeSimulation.worker.ts", import.meta.url));
+      worker.onmessage = (event: MessageEvent<ShoeWorkerMessage>) => {
+        const message = event.data;
+        if (message.id !== shoeRequestId.current) return;
+        if (message.kind === "progress") setProgress(message.completed / message.total);
+        if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); }
+        if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
+        if (message.kind === "error") { setError(message.error); setRunning(false); }
+      };
+      shoeWorkerRef.current = worker;
+    }
+    return shoeWorkerRef.current;
   };
-  const cancel = () => workerRef.current?.postMessage({ kind: "cancel", id: requestId.current });
+
+  const run = () => {
+    setError(undefined); setProgress(0); setRunning(true);
+    if (mode === "profile") {
+      const id = ++requestId.current;
+      pendingRun.current = { config, name: analysisName };
+      setResult(undefined);
+      getWorker().postMessage({ kind: "start", id, config });
+    } else {
+      const id = ++shoeRequestId.current;
+      setShoeResult(undefined);
+      getShoeWorker().postMessage({ kind: "start", id, config: shoeConfig });
+    }
+  };
+  const cancel = () => {
+    workerRef.current?.postMessage({ kind: "cancel", id: requestId.current });
+    shoeWorkerRef.current?.postMessage({ kind: "cancel", id: shoeRequestId.current });
+  };
   const chooseSpread = (name: string) => {
     setSpread(name);
     if (RAMPS[name]) setRamp(expandRamp(RAMPS[name]));
@@ -176,15 +230,32 @@ export function SessionSimulator() {
         </div>
       </div>
 
-      <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
-        <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-zinc-200 marker:hidden">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><i className="fa-solid fa-circle-info" /></span>
-          <span className="flex-1">Profile-based model and assumptions</span>
-          <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
-          <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
-        </summary>
-        <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">Each round samples audited 6D/8D H17 Hi-Lo true-count frequencies and conditional payoff moments, then applies your ramp. This fast model does not yet reproduce card-by-card shoe order or shoe replays. Multi-hand variance uses the documented conditional-independence approximation.</p>
-      </details>
+      <div className="mb-5 flex gap-2 text-sm">
+        <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Profile model</button>
+        <button type="button" disabled={running} onClick={() => setMode("shoes")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "shoes" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Real shoes</button>
+      </div>
+
+      {mode === "profile" ? (
+        <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
+          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-zinc-200 marker:hidden">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><i className="fa-solid fa-circle-info" /></span>
+            <span className="flex-1">Profile-based model and assumptions</span>
+            <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
+            <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">Each round samples audited 6D/8D H17 Hi-Lo true-count frequencies and conditional payoff moments, then applies your ramp. This fast model does not reproduce card-by-card shoe order or shoe replays. Multi-hand variance uses the documented conditional-independence approximation.</p>
+        </details>
+      ) : (
+        <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
+          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-zinc-200 marker:hidden">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><i className="fa-solid fa-circle-info" /></span>
+            <span className="flex-1">Card-by-card shoe model</span>
+            <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
+            <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">Deals real shoes and plays every hand with basic strategy plus your selected index deviations, so every card, running count, and payout is reproducible. Standard mode caps at 250,000 hands and keeps every shoe for inspection below; High-Speed Mode discards per-hand data as it goes so you can run far larger sessions for aggregate stats only.</p>
+        </details>
+      )}
 
       <Panel className="overflow-hidden p-0">
         <div className="p-4 sm:p-5 md:p-6">
@@ -197,10 +268,56 @@ export function SessionSimulator() {
               <Select label="Penetration" value={dealt} disabled={running} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
               <NumberField label="Starting bankroll" value={bankroll} min={1} prefix="$" disabled={running} onValueChange={setBankroll} />
               <NumberField label="Betting unit" value={unit} min={0.01} prefix="$" disabled={running} onValueChange={setUnit} />
-              <Select label="Rounds per path" value={rounds} disabled={running} onChange={(event) => setRounds(Number(event.target.value))}>{[10_000, 100_000, 1_000_000].map((value) => <option key={value} value={value}>{value === 1_000_000 ? "1M" : `${value / 1000}K`} rounds</option>)}</Select>
-              <Select label="Independent paths" value={paths} disabled={running} onChange={(event) => setPaths(Number(event.target.value))}>{[10, 25, 50, 100].map((value) => <option key={value} value={value}>{value} paths</option>)}</Select>
+              {mode === "profile" ? (
+                <>
+                  <Select label="Rounds per path" value={rounds} disabled={running} onChange={(event) => setRounds(Number(event.target.value))}>{[10_000, 100_000, 1_000_000].map((value) => <option key={value} value={value}>{value === 1_000_000 ? "1M" : `${value / 1000}K`} rounds</option>)}</Select>
+                  <Select label="Independent paths" value={paths} disabled={running} onChange={(event) => setPaths(Number(event.target.value))}>{[10, 25, 50, 100].map((value) => <option key={value} value={value}>{value} paths</option>)}</Select>
+                </>
+              ) : (
+                <>
+                  <NumberField
+                    label="Hands to simulate"
+                    value={handsToSimulate}
+                    min={100}
+                    max={highSpeed ? 1_000_000 : 250_000}
+                    step={100}
+                    disabled={running}
+                    onValueChange={(value) => setHandsToSimulate(Math.round(value))}
+                  />
+                  <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+                    High-Speed Mode
+                    <button
+                      type="button"
+                      disabled={running}
+                      onClick={() => setHighSpeed((value) => !value)}
+                      className={`field flex min-h-11 items-center justify-between rounded-xl px-3 text-left text-[.9rem] ${highSpeed ? "text-emerald-300" : "text-zinc-400"}`}
+                    >
+                      {highSpeed ? "On · no per-shoe data" : "Off · full shoe data"}
+                    </button>
+                  </label>
+                </>
+              )}
               <NumberField label="Rounds per hour" value={roundsPerHour} min={1} disabled={running} onValueChange={setRoundsPerHour} />
               <Select label="Simultaneous hands" value={playerHands} disabled={running} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
+              {mode === "shoes" && (
+                <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">
+                  Index deviations
+                  <div className="flex min-h-11 items-center gap-4 px-1">
+                    {(["i18", "fab4"] as DeviationGroup[]).map((group) => (
+                      <label key={group} className="flex items-center gap-2 text-sm text-zinc-300">
+                        <input
+                          type="checkbox"
+                          disabled={running}
+                          checked={deviationGroups.includes(group)}
+                          onChange={() => setDeviationGroups((current) => current.includes(group) ? current.filter((value) => value !== group) : [...current, group])}
+                          className="h-4 w-4 accent-emerald-400"
+                        />
+                        {group === "i18" ? "Illustrious 18" : "Fab 4"}
+                      </label>
+                    ))}
+                  </div>
+                </label>
+              )}
               <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">Analysis name<input value={analysisName} disabled={running} onChange={(event) => setAnalysisName(event.target.value)} placeholder="Generated automatically if blank" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
               <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">Deterministic seed<input value={seed} disabled={running} onChange={(event) => setSeed(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
             </div>
@@ -217,7 +334,7 @@ export function SessionSimulator() {
 
         <div className="border-t border-white/[.06] bg-black/15 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            <div className="grid flex-1 grid-cols-3 gap-2 text-xs"><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(modeledOutcomes)} rounds</b></div><div><p className="text-zinc-600">Hours / path</p><b className="mt-1 block text-zinc-300">{compact(rounds / roundsPerHour)}</b></div><div><p className="text-zinc-600">Max action</p><b className="mt-1 block text-zinc-300">{money(maxAction)}</b></div></div>
+            <div className="grid flex-1 grid-cols-3 gap-2 text-xs">{mode === "profile" ? <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(modeledOutcomes)} rounds</b></div><div><p className="text-zinc-600">Hours / path</p><b className="mt-1 block text-zinc-300">{compact(rounds / roundsPerHour)}</b></div></> : <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate)} hands</b></div><div><p className="text-zinc-600">Hours</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate / roundsPerHour)}</b></div></>}<div><p className="text-zinc-600">Max action</p><b className="mt-1 block text-zinc-300">{money(maxAction)}</b></div></div>
             <div className="flex gap-2 lg:w-[24rem]"><Button onClick={run} disabled={running} className="flex-1"><i className="fa-solid fa-play mr-2 text-xs" />Run simulation</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
           </div>
           {(running || progress > 0) && <div className="mt-4"><div className="mb-2 flex justify-between text-xs text-zinc-500"><span>{running ? "Simulating in worker…" : "Complete"}</span><span>{percent(progress, 0)}</span></div><div className="h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width: `${progress * 100}%` }} /></div></div>}
@@ -268,8 +385,8 @@ export function SessionSimulator() {
       </details>
 
       <div className="mt-5 space-y-5">
-          {!result && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-chart-line" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Expectation, uncertainty, bankroll percentiles, drawdown, and TC contribution.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
-          {result && <>
+          {mode === "profile" && !result && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-chart-line" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Expectation, uncertainty, bankroll percentiles, drawdown, and TC contribution.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
+          {mode === "profile" && result && <>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Metric label="Expected hourly EV" value={money(result.expectedHourlyEv, 2)} sub={`${money(result.expectedEvPerRound, 3)} / round`} />
               <Metric label="Simulated EV / round" value={money(result.simulatedEvPerRound, 3)} sub={`95% CI ${money(result.simulatedCi95[0], 3)} to ${money(result.simulatedCi95[1], 3)}`} />
@@ -286,6 +403,30 @@ export function SessionSimulator() {
               <h2 className="text-lg font-semibold">True-count frequency and EV contribution</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Expected frequency and edge come from the audited profile. Simulated frequency is a seeded sampling check. Contribution is expected dollars per observed round.</p>
               <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-zinc-500"><tr><th className="pb-3">TC</th><th>Expected freq.</th><th>Simulated freq.</th><th>Player edge</th><th>Total wager</th><th>EV contribution</th></tr></thead><tbody>{result.countBreakdown.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-3 font-medium">{row.label}</td><td>{percent(row.frequency, 2)}</td><td>{percent(row.simulatedFrequency, 2)}</td><td className={row.playerEdge >= 0 ? "text-emerald-300" : "text-red-300"}>{row.playerEdge >= 0 ? "+" : ""}{percent(row.playerEdge, 3)}</td><td>{money(row.wager, 2)}</td><td className={row.evContribution >= 0 ? "text-emerald-300" : "text-red-300"}>{money(row.evContribution, 4)}</td></tr>)}</tbody></table></div>
             </Panel>
+          </>}
+
+          {mode === "shoes" && !shoeResult && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-cards-blank" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Bankroll trace, and every shoe/hand dealt if High-Speed Mode is off.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
+          {mode === "shoes" && shoeResult && <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <Metric label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} hands`} />
+              <Metric label="Total profit" value={money(shoeResult.totalProfit, 2)} sub={`${shoeResult.totalShoes} shoes`} />
+              <Metric label="Starting bankroll" value={money(shoeResult.startingBankroll)} />
+              <Metric label="Ending bankroll" value={money(shoeResult.endingBankroll)} />
+              <Metric label="Peak bankroll" value={money(shoeResult.peakBankroll)} />
+              <Metric label="Low bankroll" value={money(shoeResult.lowBankroll)} />
+            </div>
+            <Panel>
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Bankroll history</h2><p className="mt-1 text-xs text-zinc-500">Sampled trajectory over the simulation.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{compact(shoeResult.totalHands)} hands</span></div>
+              <div className="mt-5 h-72 min-w-0"><ResponsiveContainer width="100%" height="100%"><LineChart data={shoeResult.bankrollTrace} margin={{ left: 8, right: 8 }}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} /><XAxis dataKey="round" stroke="#71717a" tickFormatter={compact} minTickGap={35} /><YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} /><Tooltip formatter={(value) => money(Number(value))} labelFormatter={(value) => `Hand ${compact(Number(value))}`} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} /><Line type="monotone" dataKey="bankroll" stroke="#86efac" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
+            </Panel>
+
+            {shoeResult.shoes.length === 0 ? (
+              <Panel><p className="text-sm text-zinc-500">High-Speed Mode was on for this run, so per-shoe data wasn&apos;t kept. Turn it off and re-run to explore individual shoes and hands.</p></Panel>
+            ) : selectedShoeIndex === undefined ? (
+              <ShoeExplorer shoes={shoeResult.shoes} onSelectShoe={setSelectedShoeIndex} />
+            ) : (
+              <HandReplayer shoe={shoeResult.shoes[selectedShoeIndex]} onBack={() => setSelectedShoeIndex(undefined)} />
+            )}
           </>}
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">Audit basis: {COEFFICIENT_METADATA.totalRounds.toLocaleString()} resolved rounds · source seed {COEFFICIENT_METADATA.seed} · coefficient uncertainty remains separate from this session sampler&apos;s Monte Carlo standard error. A single path may go below zero because the expected-value process is shown without forced bankroll resizing; “crossed zero” records that event.</p>

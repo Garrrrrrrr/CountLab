@@ -3,8 +3,8 @@ import { runningCount } from "./hiLo";
 export class BlackjackShoe {
   private cards: Card[] = [];
   private dealt: Card[] = [];
-  constructor(public readonly numberOfDecks = 6) { this.reset(); }
-  shuffle() { for (let i=this.cards.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [this.cards[i],this.cards[j]]=[this.cards[j],this.cards[i]]; } }
+  constructor(public readonly numberOfDecks = 6, private readonly random: () => number = Math.random) { this.reset(); }
+  shuffle() { for (let i=this.cards.length-1;i>0;i--) { const j=Math.floor(this.random()*(i+1)); [this.cards[i],this.cards[j]]=[this.cards[j],this.cards[i]]; } }
   deal() { const card=this.cards.pop(); if (card) this.dealt.push(card); return card; }
   cardsRemaining() { return this.cards.length; }
   decksRemaining() { return this.cards.length/52; }
