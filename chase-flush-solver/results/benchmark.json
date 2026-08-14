@@ -1,0 +1,58 @@
+{
+  "metadata": {
+    "git_commit": "a0464d488b557795e6615fb7b1aa3cc2f4f375f8",
+    "date": "2026-08-13T10:12:12.406258+00:00",
+    "working_tree_dirty": true,
+    "rules_version": "Wizard of Odds Chase the Flush, accessed 2026-08-13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 32
+  },
+  "cpu": {
+    "logical_cores": 32,
+    "workers": 32,
+    "measured_utilization_percent": 78.14864898207182
+  },
+  "hand_evaluator": {
+    "units": 10000000,
+    "seconds": 0.5784506000054535,
+    "per_second": 17287560.942811232
+  },
+  "showdown": {
+    "units": 5000000,
+    "seconds": 0.6077727000083541,
+    "per_second": 8226759.773730002
+  },
+  "river_exact": {
+    "units": 946,
+    "seconds": 0.0003445000038482249,
+    "per_second": 2746008.677598668
+  },
+  "stage2_exact": {
+    "units": 979110,
+    "seconds": 0.0009539999882690609,
+    "per_second": 1026320767.3372185
+  },
+  "opening_exact": {
+    "units": 1104436080,
+    "seconds": 0.7103647999902023,
+    "per_second": 1554744942.3384054
+  },
+  "paired_policy_single_core": {
+    "units": 100000,
+    "seconds": 1.5997946999996202,
+    "per_second": 62508.02056040299
+  },
+  "paired_policy_all_core": {
+    "units": 3200000,
+    "seconds": 27.038690200002748,
+    "per_second": 118348.92801130118
+  },
+  "estimated_runtime_seconds": {
+    "100000000": 844.9590687500859,
+    "1000000000": 8449.590687500859,
+    "10000000000": 84495.90687500859,
+    "100000000000": 844959.0687500859,
+    "1000000000000": 8449590.687500859,
+    "4000000000000": 33798362.750003435
+  }
+}

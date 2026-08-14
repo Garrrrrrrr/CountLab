@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "git_commit": "a0464d488b557795e6615fb7b1aa3cc2f4f375f8",
+    "working_tree_dirty": true,
+    "date": "2026-08-13T10:00:52.554940+00:00",
+    "rules_version": "Wizard of Odds Chase the Flush, accessed 2026-08-13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 32,
+    "mode": "baseline",
+    "seed": 20260813,
+    "rng": "PCG64DXSM with SeedSequence spawn_key=batch_index",
+    "batch_size": 200000,
+    "next_batch": 100,
+    "model_path": "results/legacy20-policies-2m.joblib",
+    "six_card_payout": 20.0,
+    "workers": 32,
+    "runtime_seconds": 79.45304330006184,
+    "hands": 20000000,
+    "throughput_hands_per_second": 251721.00613526072,
+    "policy_note": "Monte Carlo error applies to evaluation of the fixed fitted policy; policy approximation error is separate."
+  },
+  "variants": {
+    "baseline": {
+      "count": 20000000,
+      "total": -534004,
+      "total_squares": 322212294,
+      "mean": -0.0267002,
+      "variance": 16.10990260481509,
+      "standard_error": 0.000897493805126673,
+      "ci95": [
+        -0.02845925553439609,
+        -0.02494114446560391
+      ],
+      "ci99": [
+        -0.02901199084299889,
+        -0.02438840915700111
+      ],
+      "ci99_9": [
+        -0.029653427357117724,
+        -0.023746972642882277
+      ],
+      "ci99_99": [
+        -0.030191982116331874,
+        -0.023208417883668127
+      ],
+      "average_wager": 3.57397995,
+      "edge_vs_ante": -0.0267002,
+      "wager_total": 71479599,
+      "edge_vs_initial_two_units": -0.0133501,
+      "edge_vs_average_total_wager": -0.007470719022920092,
+      "actions": {
+        "0": 3143615,
+        "1": 7069076,
+        "2": 4951404,
+        "3": 4835905
+      }
+    }
+  },
+  "paired_difference": null,
+  "stopping": {
+    "confidence": 0.999,
+    "precision_half_width": 0.001,
+    "status": "INCONCLUSIVE"
+  }
+}

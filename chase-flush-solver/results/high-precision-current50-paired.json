@@ -1,0 +1,123 @@
+{
+  "metadata": {
+    "git_commit": "a0464d488b557795e6615fb7b1aa3cc2f4f375f8",
+    "working_tree_dirty": true,
+    "date": "2026-08-13T10:00:52.554885+00:00",
+    "rules_version": "Wizard of Odds Chase the Flush, accessed 2026-08-13",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 32,
+    "mode": "paired",
+    "seed": 20260814,
+    "rng": "PCG64DXSM with SeedSequence spawn_key=batch_index",
+    "batch_size": 200000,
+    "next_batch": 100,
+    "model_path": "results/current50-policies-2m.joblib",
+    "six_card_payout": 50.0,
+    "workers": 32,
+    "runtime_seconds": 164.79685419998714,
+    "hands": 20000000,
+    "throughput_hands_per_second": 121361.53992192869,
+    "policy_note": "Monte Carlo error applies to evaluation of the fixed fitted policy; policy approximation error is separate."
+  },
+  "variants": {
+    "baseline": {
+      "count": 20000000,
+      "total": 699737,
+      "total_squares": 414138705,
+      "mean": 0.03498685,
+      "variance": 20.705712205612688,
+      "standard_error": 0.0010174898575812117,
+      "ci95": [
+        0.03299260652450604,
+        0.03698109347549396
+      ],
+      "ci99": [
+        0.03236596980877852,
+        0.03760773019122148
+      ],
+      "ci99_9": [
+        0.03163877242460711,
+        0.03833492757539289
+      ],
+      "ci99_99": [
+        0.031028212215586895,
+        0.038945487784413105
+      ],
+      "average_wager": 3.5488653,
+      "edge_vs_ante": 0.03498685,
+      "wager_total": 70977306,
+      "edge_vs_initial_two_units": 0.017493425,
+      "edge_vs_average_total_wager": 0.009858601846624047,
+      "actions": {
+        "0": 3204894,
+        "1": 7147466,
+        "2": 5113080,
+        "3": 4534560
+      }
+    },
+    "full_exposed": {
+      "count": 20000000,
+      "total": 2428077,
+      "total_squares": 408590085,
+      "mean": 0.12140385,
+      "variance": 20.414766375943497,
+      "standard_error": 0.0010103159499865251,
+      "ci95": [
+        0.11942366712502003,
+        0.12338403287497995
+      ],
+      "ci99": [
+        0.11880144857018186,
+        0.12400625142981812
+      ],
+      "ci99_9": [
+        0.11807937835931667,
+        0.12472832164068332
+      ],
+      "ci99_99": [
+        0.11747312296226865,
+        0.12533457703773132
+      ],
+      "average_wager": 3.52708285,
+      "edge_vs_ante": 0.12140385,
+      "wager_total": 70541657,
+      "edge_vs_initial_two_units": 0.060701925,
+      "edge_vs_average_total_wager": 0.03442047016275787,
+      "actions": {
+        "0": 3882592,
+        "1": 6286263,
+        "2": 5238041,
+        "3": 4593104
+      }
+    }
+  },
+  "paired_difference": {
+    "count": 20000000,
+    "total": 1728340,
+    "total_squares": 13772820,
+    "mean": 0.086417,
+    "variance": 0.6811731361696568,
+    "standard_error": 0.0001845498762082566,
+    "ci95": [
+      0.08605528888928049,
+      0.0867787111107195
+    ],
+    "ci99": [
+      0.08594163102089644,
+      0.08689236897910355
+    ],
+    "ci99_9": [
+      0.0858097336990432,
+      0.08702426630095679
+    ],
+    "ci99_99": [
+      0.08569899174898561,
+      0.08713500825101438
+    ]
+  },
+  "stopping": {
+    "confidence": 0.999,
+    "precision_half_width": 0.001,
+    "status": "HIGH_CONFIDENCE_RESULT"
+  }
+}
