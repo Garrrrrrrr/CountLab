@@ -115,7 +115,7 @@ kbd {
 @keyframes casino-deal {
   0% {
     opacity: 0;
-    transform: translate(280px, -260px) rotate(18deg) scale(0.82);
+    transform: translate(clamp(130px, 28vw, 280px), -230px) rotate(18deg) scale(0.82);
     filter: blur(1px);
   }
   62% {
@@ -139,11 +139,11 @@ kbd {
   100% { transform: none; }
 }
 .casino-deal {
-  animation: casino-deal 0.48s cubic-bezier(.18,.8,.22,1) both;
+  animation: casino-deal 0.68s cubic-bezier(.18,.8,.22,1) both;
   transform-origin: center;
 }
 .casino-card-flip {
-  animation: casino-card-flip 0.42s cubic-bezier(.2,.75,.25,1) both;
+  animation: casino-card-flip 0.56s cubic-bezier(.2,.75,.25,1) both;
   backface-visibility: hidden;
 }
 .casino-chip-drop {
@@ -167,6 +167,13 @@ kbd {
 }
 .casino-chip:active:not(:disabled) {
   transform: translateY(-1px) scale(.94);
+}
+.casino-spots {
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.casino-spots::-webkit-scrollbar {
+  display: none;
 }
 .md\:grid-cols-13 {
   grid-template-columns: repeat(13, minmax(0, 1fr));

@@ -102,6 +102,7 @@ export function FullShoeGame() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [animations, setAnimations] = useState(true);
   const [stats, setStats] = useState({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
+  const [visibleIntel, setVisibleIntel] = useState<Record<string, boolean>>({});
   const shoe = useRef<BlackjackShoe | undefined>(undefined);
   const bankrollRef = useRef(1000);
 
@@ -151,6 +152,7 @@ export function FullShoeGame() {
     setChipHistory([]);
     setInsuranceBet(0);
     setStats({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
+    setVisibleIntel({});
     setNote(undefined);
     setRoundMessage("Choose your wager. The coach expects the highlighted amount.");
     setPhase("bet");
@@ -485,46 +487,58 @@ export function FullShoeGame() {
   );
 
   const holeHidden = phase === "insurance" || phase === "play";
+  const metrics: Array<{ label: string; value: string | number; intel?: "rc" | "tc" | "decks" | "discard" }> = [
+    { label: "Bankroll", value: `$${bankroll.toFixed(2)}` },
+    { label: phase === "bet" ? "Available" : "In action", value: phase === "bet" ? `$${(bankroll - totalWager).toFixed(2)}` : `$${hands.reduce((sum, hand) => sum + hand.bet, 0).toFixed(2)}` },
+    { label: "Running count", value: signed(runningCount), intel: "rc" },
+    { label: "True count", value: signed(tc), intel: "tc" },
+    { label: "Decks left", value: decksRemaining.toFixed(2), intel: "decks" },
+    { label: "Coach accuracy", value: `${accuracy}%` },
+    { label: "Cards discarded", value: discarded, intel: "discard" },
+  ];
   return (
     <>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-4 flex items-start justify-between gap-3 sm:mb-5 sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread}</p>
-          <h1 className="mt-2 text-3xl font-semibold">Full Shoe Blackjack</h1>
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Full Shoe Blackjack</h1>
         </div>
-        <GhostButton onClick={() => setPhase("setup")}>End session</GhostButton>
+        <GhostButton className="shrink-0 px-3 text-sm sm:px-4" onClick={() => setPhase("setup")}>End</GhostButton>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-        {[
-          ["Bankroll", `$${bankroll.toFixed(2)}`], [phase === "bet" ? "Available" : "In action", phase === "bet" ? `$${(bankroll - totalWager).toFixed(2)}` : `$${hands.reduce((sum, hand) => sum + hand.bet, 0).toFixed(2)}`], ["Running count", signed(runningCount)], ["True count", signed(tc)],
-          ["Decks left", decksRemaining.toFixed(2)], ["Coach accuracy", `${accuracy}%`], ["Cards discarded", discarded],
-        ].map(([label, value]) => <div key={label} className="surface rounded-2xl p-3"><p className="text-[.67rem] uppercase tracking-wider text-zinc-500">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></div>)}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:mb-5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-7">
+        {metrics.map(({ label, value, intel }) => <div key={label} className="surface relative min-w-0 rounded-2xl p-3">
+          <p className="pr-7 text-[.67rem] uppercase tracking-wider text-zinc-500">{label}</p>
+          {intel && <button type="button" aria-label={`${visibleIntel[intel] ? "Hide" : "Reveal"} ${label.toLowerCase()}`} aria-pressed={Boolean(visibleIntel[intel])} onClick={() => setVisibleIntel((shown) => ({ ...shown, [intel]: !shown[intel] }))} className="pressable absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-full text-xs text-zinc-500 hover:bg-white/10 hover:text-emerald-300">
+            <i aria-hidden="true" className={`fas ${visibleIntel[intel] ? "fa-eye-slash" : "fa-eye"}`} />
+          </button>}
+          <p className={`mt-1 truncate text-lg font-semibold sm:text-xl ${intel && !visibleIntel[intel] ? "select-none tracking-[.18em] text-zinc-600" : ""}`}>{intel && !visibleIntel[intel] ? "•••" : value}</p>
+        </div>)}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <Panel className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#176448_0%,#103d30_48%,#0b241e_100%)] ring-1 ring-emerald-300/10">
-          <div className="relative min-h-[510px]">
+        <Panel className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#176448_0%,#103d30_48%,#0b241e_100%)] p-3 ring-1 ring-emerald-300/10 sm:p-5 md:p-6">
+          <div className="relative min-h-[420px] sm:min-h-[510px]">
             <div className="pointer-events-none absolute inset-6 rounded-[50%] border border-emerald-200/15" />
             <div className="relative text-center">
               <p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-emerald-100/60">Dealer {dealer.length && !holeHidden ? `· ${calculateHandValue(dealer)}` : ""}</p>
               <div className="flex min-h-24 justify-center -space-x-5">
-                {dealer.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} hidden={index === 1 && holeHidden} size="sm" animated={animations} dealIndex={index === 0 ? occupiedSpots : occupiedSpots * 2 + 1} flip={index === 1 && !holeHidden} />)}
+                {dealer.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} hidden={index === 1 && holeHidden} size="sm" animated={animations} dealIndex={index === 0 ? occupiedSpots : index === 1 ? occupiedSpots * 2 + 1 : 0} flip={index === 1 && !holeHidden} />)}
               </div>
             </div>
-            <div className="relative mt-16 grid min-h-52 grid-cols-2 items-start gap-2 sm:grid-cols-4 xl:grid-cols-7">
+            <div className="casino-spots relative -mx-3 mt-10 flex min-h-48 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-4 sm:mx-0 sm:mt-16 sm:grid sm:min-h-52 sm:grid-cols-4 sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-7">
               {Array.from({ length: 7 }, (_, spot) => {
                 const spotHands = hands.filter((hand) => hand.spot === spot);
                 const activeHere = phase === "play" && current?.spot === spot;
                 const selected = phase === "bet" && selectedSpot === spot;
                 const bet = wagers[spot];
                 const spotOrder = wagers.slice(0, spot).filter(Boolean).length;
-                return <button key={spot} type="button" disabled={phase !== "bet"} onClick={() => setSelectedSpot(spot)} className={`relative min-h-44 rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}>
+                return <button key={spot} type="button" disabled={phase !== "bet"} onClick={() => setSelectedSpot(spot)} className={`relative min-h-40 w-32 min-w-32 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:min-h-44 sm:w-auto sm:min-w-0 ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}>
                   <p className="mb-2 text-[.62rem] font-bold uppercase tracking-wider text-emerald-100/60">Spot {spot + 1}</p>
                   {spotHands.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{spotHands.map((hand) => {
                     const handIndex = hands.indexOf(hand);
                     return <div key={handIndex} className={phase === "play" && handIndex === activeHand ? "rounded-xl bg-amber-200/10 p-1" : "p-1"}>
-                      <div className="flex justify-center -space-x-7">{hand.cards.map((card, cardIndex) => <PlayingCard key={`${card.rank}-${card.suit}-${cardIndex}`} card={card} size="sm" animated={animations} dealIndex={cardIndex === 0 ? spotOrder : occupiedSpots + 1 + spotOrder + (cardIndex - 1) * Math.max(1, occupiedSpots)} />)}</div>
+                      <div className="flex justify-center -space-x-7">{hand.cards.map((card, cardIndex) => <PlayingCard key={`${card.rank}-${card.suit}-${cardIndex}`} card={card} size="sm" animated={animations} dealIndex={cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0} />)}</div>
                       <p className="mt-1 text-[.62rem] font-semibold">${hand.bet} · {handLabel(hand.cards)}</p>
                       {hand.status !== "playing" && <span className="text-[.55rem] font-bold uppercase text-emerald-100/55">{hand.status}</span>}
                     </div>;
@@ -536,15 +550,15 @@ export function FullShoeGame() {
               })}
             </div>
           </div>
-          <div className="relative rounded-2xl border border-white/10 bg-black/25 p-4 backdrop-blur">
+          <div className="relative rounded-2xl border border-white/10 bg-black/25 p-3 backdrop-blur sm:p-4">
             <p aria-live="polite" className="mb-4 text-center text-sm text-zinc-200">{roundMessage}</p>
             {phase === "bet" && <div>
               <div className="mb-4 flex flex-wrap items-center justify-center gap-3"><span className="text-sm text-zinc-400">Selected: spot {selectedSpot + 1}</span><strong className="text-3xl">${wagers[selectedSpot]}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-emerald-200">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${totalWager} total</span></div>
-              <div className="casino-chip-rail mx-auto flex max-w-xl flex-wrap items-end justify-center gap-3 rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-800/95 to-zinc-950/95 p-4 shadow-[inset_0_2px_0_#ffffff12,0_14px_32px_#0008]">{chipValues.map((value, index) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-16 w-16 place-items-center rounded-full border-4 border-dashed text-xs font-black shadow-xl disabled:opacity-30 ${["border-red-100 bg-gradient-to-br from-red-500 to-red-800", "border-blue-100 bg-gradient-to-br from-blue-500 to-blue-800", "border-emerald-100 bg-gradient-to-br from-emerald-500 to-emerald-800", "border-zinc-100 bg-gradient-to-br from-zinc-600 to-black"][index]}`}>${value}</button>)}</div>
-              <div className="mt-4 flex flex-wrap justify-center gap-2"><GhostButton disabled={!chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton onClick={() => { setWagers(Array(7).fill(0)); setChipHistory([]); }}>Clear all</GhostButton><GhostButton disabled={!lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button disabled={!totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
+              <div className="casino-chip-rail mx-auto flex max-w-xl flex-wrap items-end justify-center gap-2 rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-800/95 to-zinc-950/95 p-3 shadow-[inset_0_2px_0_#ffffff12,0_14px_32px_#0008] sm:gap-3 sm:p-4">{chipValues.map((value, index) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs ${["border-red-100 bg-gradient-to-br from-red-500 to-red-800", "border-blue-100 bg-gradient-to-br from-blue-500 to-blue-800", "border-emerald-100 bg-gradient-to-br from-emerald-500 to-emerald-800", "border-zinc-100 bg-gradient-to-br from-zinc-600 to-black"][index]}`}>${value}</button>)}</div>
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={!chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" onClick={() => { setWagers(Array(7).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={!lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="col-span-3 w-full sm:w-auto" disabled={!totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
             </div>}
             {phase === "insurance" && <div className="flex flex-wrap justify-center gap-3"><GhostButton onClick={() => chooseInsurance(false)}>Decline insurance</GhostButton><Button disabled={bankroll < insuranceTotal} onClick={() => chooseInsurance(true)}>Insure all spots for ${insuranceTotal}</Button></div>}
-            {phase === "play" && current && <div className="flex flex-wrap justify-center gap-2">{legalActions(current).map((action) => <Button key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}</div>}
+            {phase === "play" && current && <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">{legalActions(current).map((action) => <Button className="w-full sm:w-auto" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}</div>}
             {phase === "result" && <div className="text-center"><Button onClick={nextRound}>{cutReached ? "Finish shoe" : "Next round"}</Button></div>}
             {phase === "shoe-end" && <div className="text-center"><p className="mb-4 text-2xl font-semibold">Session result: {bankroll >= startingBankroll ? "+" : ""}${(bankroll - startingBankroll).toFixed(2)}</p><Button onClick={startShoe}>Shuffle another shoe</Button></div>}
           </div>
@@ -552,8 +566,8 @@ export function FullShoeGame() {
 
         <div className="space-y-5">
           <Panel>
-            <div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Discard tray</p><p className="mt-1 text-sm text-zinc-300">{(discarded / 52).toFixed(2)} decks seen</p></div><span className="text-xs text-zinc-500">Cut at {Math.round(penetration * 100)}%</span></div>
-            <div className="mt-4 flex h-48 items-end rounded-b-2xl border-x-4 border-b-4 border-zinc-500/60 bg-black/25 p-2">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Discard tray</p><div className="mt-1 flex items-center gap-2 text-sm text-zinc-300"><span className={!visibleIntel.discard ? "select-none tracking-[.16em] text-zinc-600" : ""}>{visibleIntel.discard ? `${(discarded / 52).toFixed(2)} decks seen` : "•••"}</span><button type="button" aria-label={`${visibleIntel.discard ? "Hide" : "Reveal"} exact discard amount`} aria-pressed={Boolean(visibleIntel.discard)} onClick={() => setVisibleIntel((shown) => ({ ...shown, discard: !shown.discard }))} className="pressable grid h-7 w-7 place-items-center rounded-full text-xs text-zinc-500 hover:bg-white/10 hover:text-emerald-300"><i aria-hidden="true" className={`fas ${visibleIntel.discard ? "fa-eye-slash" : "fa-eye"}`} /></button></div></div><span className="text-xs text-zinc-500">Cut at {Math.round(penetration * 100)}%</span></div>
+            <div className="mt-4 flex h-32 items-end rounded-b-2xl border-x-4 border-b-4 border-zinc-500/60 bg-black/25 p-2 sm:h-48">
               <div className="w-full rounded-sm bg-[repeating-linear-gradient(0deg,#f4f1e8,#f4f1e8_2px,#aaa_3px)] shadow-[0_0_25px_#0008] transition-[height] duration-500" style={{ height: `${Math.max(2, Math.min(100, (discarded / (cardsTotal * penetration)) * 100))}%` }} />
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full bg-emerald-400 transition-[width]" style={{ width: `${Math.min(100, (discarded / (cardsTotal * penetration)) * 100)}%` }} /></div>
