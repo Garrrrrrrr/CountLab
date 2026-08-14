@@ -1,0 +1,2503 @@
+{
+  "metadata": {
+    "created_utc": "2026-08-13T17:49:37.549371+00:00",
+    "source_sha256": "80447a8bc7f73f2db2e471638211792661da740b1929cae146f4c6b2079e7ac9",
+    "git": {
+      "commit": "012c50d78bc725b7cce02e188202f1c03e8a8fe0",
+      "working_tree_dirty": true
+    },
+    "python": "3.14.6",
+    "numpy": "2.4.6",
+    "numba": "0.66.0",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_count": 32,
+    "requested_shoes_per_configuration": 100000000,
+    "tasks": 256,
+    "seed": 20260813,
+    "spots": 1,
+    "strategy": {
+      "system": "Hi-Lo",
+      "true_count": "floor(running_count / exact undealt decks), updated before every player decision",
+      "insurance": "take at TC >= +3",
+      "pair_departures": {
+        "10,10 vs 5": ">= +5 split",
+        "10,10 vs 6": ">= +4 split"
+      },
+      "hard_departures": {
+        "16 vs 9": ">= +4 stand; otherwise late surrender",
+        "16 vs 10": "late surrender",
+        "15 vs 10": ">= +4 stand; TC 0..3 surrender; below 0 hit",
+        "14 vs 10": ">= +3 surrender",
+        "15 vs 9": ">= +2 surrender",
+        "15 vs A": ">= -1 surrender",
+        "13 vs 2": ">= -1 stand",
+        "13 vs 3": ">= -2 stand",
+        "12 vs 2": ">= +3 stand",
+        "12 vs 3": ">= +2 stand",
+        "12 vs 4": ">= 0 stand",
+        "12 vs 5": ">= -2 stand",
+        "12 vs 6": ">= -3 stand",
+        "11 vs A": ">= 0 double",
+        "10 vs 10": ">= +4 double",
+        "10 vs A": ">= +3 double",
+        "9 vs 2": ">= +1 double",
+        "9 vs 7": ">= +3 double"
+      },
+      "always_late_surrender": [
+        "10+7 vs A",
+        "hard 16 vs 10 or A",
+        "8,8 vs A"
+      ]
+    }
+  },
+  "profiles": {
+    "6-4": {
+      "rounds": 3865977496,
+      "mean": -0.00429527629614531,
+      "standard_deviation": 1.1469835319823347,
+      "standard_error": 1.8447075347725477e-05,
+      "ci95": [
+        -0.0043314318994469485,
+        -0.004259120692843672
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 12975662,
+          "frequency": 0.0033563728742408592,
+          "advantage": -0.05330803160563215,
+          "standard_deviation": 1.193525932428223,
+          "standard_error": 0.00033133483465190957,
+          "ci95": [
+            -0.053957435948373426,
+            -0.05265862726289087
+          ],
+          "profit_sum": -691707.0,
+          "profit_square_sum": 18520756.5
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 16294740,
+          "frequency": 0.0042149081356163175,
+          "advantage": -0.04185798607403371,
+          "standard_deviation": 1.1820742226296248,
+          "standard_error": 0.00029283368267335686,
+          "ci95": [
+            -0.04243192954553372,
+            -0.041284042602533697
+          ],
+          "profit_sum": -682065.0,
+          "profit_square_sum": 22797180.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 34179892,
+          "frequency": 0.008841203042533179,
+          "advantage": -0.03598371522063323,
+          "standard_deviation": 1.1754800108641872,
+          "standard_error": 0.0002010619569453859,
+          "ci95": [
+            -0.03637778941490733,
+            -0.035589641026359135
+          ],
+          "profit_sum": -1229919.5,
+          "profit_square_sum": 47272432.75
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 67395103,
+          "frequency": 0.017432875144703118,
+          "advantage": -0.02976142049964669,
+          "standard_deviation": 1.1695949807956965,
+          "standard_error": 0.00014246931139081932,
+          "ci95": [
+            -0.030040655218874918,
+            -0.02948218578041846
+          ],
+          "profit_sum": -2005774.0,
+          "profit_square_sum": 92252987.5
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 134135173,
+          "frequency": 0.034696315004105756,
+          "advantage": -0.023688331918727983,
+          "standard_deviation": 1.1639441186334847,
+          "standard_error": 0.00010049878083957709,
+          "ci95": [
+            -0.02388530590966374,
+            -0.023491357927792226
+          ],
+          "profit_sum": -3177438.5,
+          "profit_square_sum": 181797026.75
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 253944378,
+          "frequency": 0.06568697781162666,
+          "advantage": -0.018127792535733947,
+          "standard_deviation": 1.1588252356178232,
+          "standard_error": 7.271912473041148e-05,
+          "ci95": [
+            -0.01827031940119283,
+            -0.017985265670275065
+          ],
+          "profit_sum": -4603451.0,
+          "profit_square_sum": 341099241.0
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 486678715,
+          "frequency": 0.12588762234222795,
+          "advantage": -0.012579024541888995,
+          "standard_deviation": 1.1536938131512742,
+          "standard_error": 5.229611022465888e-05,
+          "ci95": [
+            -0.012681523034460863,
+            -0.012476526049317127
+          ],
+          "profit_sum": -6121943.5,
+          "profit_square_sum": 647850958.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 793426729,
+          "frequency": 0.20523314732714626,
+          "advantage": -0.0074272270955973805,
+          "standard_deviation": 1.1483559370758447,
+          "standard_error": 4.0768347354733965e-05,
+          "ci95": [
+            -0.007507131588121878,
+            -0.007347322603072883
+          ],
+          "profit_sum": -5892960.5,
+          "profit_square_sum": 1046352540.75
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1104521068,
+          "frequency": 0.2857029222603628,
+          "advantage": -0.0022002844222795757,
+          "standard_deviation": 1.1436761179995287,
+          "standard_error": 3.441248620278126e-05,
+          "ci95": [
+            -0.0022677316558555086,
+            -0.002132837188703643
+          ],
+          "profit_sum": -2430260.5,
+          "profit_square_sum": 1444713449.75
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 462640020,
+          "frequency": 0.11966961020302845,
+          "advantage": 0.0043515161096525975,
+          "standard_deviation": 1.1374071105236387,
+          "standard_error": 5.2880352305133636e-05,
+          "ci95": [
+            0.004247872523644746,
+            0.004455159695660449
+          ],
+          "profit_sum": 2013185.5,
+          "profit_square_sum": 598523809.75
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 245467061,
+          "frequency": 0.06349417741152831,
+          "advantage": 0.010390390016524458,
+          "standard_deviation": 1.132159061578645,
+          "standard_error": 7.226214278340869e-05,
+          "ci95": [
+            0.010248758819223287,
+            0.01053202121382563
+          ],
+          "profit_sum": 2550498.5,
+          "profit_square_sum": 314662285.25
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 127461838,
+          "frequency": 0.03297014484225027,
+          "advantage": 0.016372194475965426,
+          "standard_deviation": 1.127488477308403,
+          "standard_error": 9.986700458321335e-05,
+          "ci95": [
+            0.016176458743738433,
+            0.01656793020819242
+          ],
+          "profit_sum": 2086830.0,
+          "profit_square_sum": 162067511.0
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 66561901,
+          "frequency": 0.017217353455592905,
+          "advantage": 0.022129078014163087,
+          "standard_deviation": 1.1432282293111147,
+          "standard_error": 0.00014012643765576918,
+          "ci95": [
+            0.02185443524307588,
+            0.022403720785250294
+          ],
+          "profit_sum": 1472953.5,
+          "profit_square_sum": 87027053.75
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 32440814,
+          "frequency": 0.008391361313811435,
+          "advantage": 0.028939455711561368,
+          "standard_deviation": 1.1582826839120972,
+          "standard_error": 0.00020336147926821896,
+          "ci95": [
+            0.02854087453635287,
+            0.029338036886769867
+          ],
+          "profit_sum": 938819.5,
+          "profit_square_sum": 43550372.75
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 15628064,
+          "frequency": 0.004042461192847047,
+          "advantage": 0.03675413666081736,
+          "standard_deviation": 1.163596738379632,
+          "standard_error": 0.00029434041962302175,
+          "ci95": [
+            0.03617724003916183,
+            0.037331033282472885
+          ],
+          "profit_sum": 574396.0,
+          "profit_square_sum": 21180842.5
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 7051707,
+          "frequency": 0.001824042433587927,
+          "advantage": 0.043203794485505424,
+          "standard_deviation": 1.1592240763194612,
+          "standard_error": 0.00043653619943987093,
+          "ci95": [
+            0.04234819925665528,
+            0.044059389714355565
+          ],
+          "profit_sum": 304660.5,
+          "profit_square_sum": 9489248.25
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 5174631,
+          "frequency": 0.0013385052047907731,
+          "advantage": 0.055798084926248846,
+          "standard_deviation": 1.1519148832761428,
+          "standard_error": 0.0005063848414064552,
+          "ci95": [
+            0.054805588874775164,
+            0.05679058097772253
+          ],
+          "profit_sum": 288734.5,
+          "profit_square_sum": 6882368.25
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 95.81505730000208,
+      "rounds_per_second": 40348329.42692313
+    },
+    "6-4.5": {
+      "rounds": 4343799891,
+      "mean": -0.004093425905010227,
+      "standard_deviation": 1.1476037438448394,
+      "standard_error": 1.741233649476435e-05,
+      "ci95": [
+        -0.004127553457426657,
+        -0.004059298352593796
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 33150315,
+          "frequency": 0.007631639539538816,
+          "advantage": -0.0556345844677494,
+          "standard_deviation": 1.1952678100037701,
+          "standard_error": 0.00020759715326931655,
+          "ci95": [
+            -0.0560414674114503,
+            -0.0552277015240485
+          ],
+          "profit_sum": -1844304.0,
+          "profit_square_sum": 47463305.0
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 28976165,
+          "frequency": 0.006670695180971908,
+          "advantage": -0.04109387836520119,
+          "standard_deviation": 1.1817437168935625,
+          "standard_error": 0.0002195345350307711,
+          "ci95": [
+            -0.041524158147224245,
+            -0.04066359858317813
+          ],
+          "profit_sum": -1190743.0,
+          "profit_square_sum": 40514673.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 53577991,
+          "frequency": 0.012334359856449473,
+          "advantage": -0.03528991969855682,
+          "standard_deviation": 1.1755780857222051,
+          "standard_error": 0.0001606047069158251,
+          "ci95": [
+            -0.03560469913985945,
+            -0.03497514025725419
+          ],
+          "profit_sum": -1890763.0,
+          "profit_square_sum": 74110641.0
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 91624343,
+          "frequency": 0.021093131658720787,
+          "advantage": -0.029345672907035197,
+          "standard_deviation": 1.1694638265439468,
+          "standard_error": 0.00012217472105806432,
+          "ci95": [
+            -0.02958513096013023,
+            -0.029106214853940163
+          ],
+          "profit_sum": -2688778.0,
+          "profit_square_sum": 125388536.0
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 168302491,
+          "frequency": 0.038745452190076496,
+          "advantage": -0.02354717376108236,
+          "standard_deviation": 1.163898894939722,
+          "standard_error": 8.971601686408658e-05,
+          "ci95": [
+            -0.02372301392297236,
+            -0.023371333599192363
+          ],
+          "profit_sum": -3963048.0,
+          "profit_square_sum": 228086077.0
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 291250958,
+          "frequency": 0.06704981014513313,
+          "advantage": -0.017903637247435253,
+          "standard_deviation": 1.1587972964921194,
+          "standard_error": 6.79006281615357e-05,
+          "ci95": [
+            -0.01803672003315951,
+            -0.017770554461710997
+          ],
+          "profit_sum": -5214451.5,
+          "profit_square_sum": 391188397.25
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 536990098,
+          "frequency": 0.12362219979621984,
+          "advantage": -0.012341671708069372,
+          "standard_deviation": 1.1536806271083426,
+          "standard_error": 4.97854527745122e-05,
+          "ci95": [
+            -0.012439249402461437,
+            -0.012244094013677308
+          ],
+          "profit_sum": -6627355.5,
+          "profit_square_sum": 714804329.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 821082533,
+          "frequency": 0.18902402357466241,
+          "advantage": -0.007393817620036986,
+          "standard_deviation": 1.1484747148697008,
+          "standard_error": 4.008002939553967e-05,
+          "ci95": [
+            -0.0074723730341515505,
+            -0.007315262205922421
+          ],
+          "profit_sum": -6070934.5,
+          "profit_square_sum": 1083047960.75
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1158354632,
+          "frequency": 0.26666850708293827,
+          "advantage": -0.002139687563316102,
+          "standard_deviation": 1.1437693120775494,
+          "standard_error": 3.3606065552533965e-05,
+          "ci95": [
+            -0.0022055542414611607,
+            -0.0020738208851710433
+          ],
+          "profit_sum": -2478517.0,
+          "profit_square_sum": 1515374375.5
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 513308122,
+          "frequency": 0.11817029671728956,
+          "advantage": 0.004493221324871224,
+          "standard_deviation": 1.1373053191756948,
+          "standard_error": 5.019818355737431e-05,
+          "ci95": [
+            0.00439483469300944,
+            0.004591607956733008
+          ],
+          "profit_sum": 2306407.0,
+          "profit_square_sum": 663955625.0
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 282987945,
+          "frequency": 0.0651475556197531,
+          "advantage": 0.010525888302415144,
+          "standard_deviation": 1.1321572741458459,
+          "standard_error": 6.73011977782574e-05,
+          "ci95": [
+            0.010393980378653352,
+            0.010657796226176935
+          ],
+          "profit_sum": 2978699.5,
+          "profit_square_sum": 362759666.75
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 161150505,
+          "frequency": 0.037098970726964366,
+          "advantage": 0.016715668995266258,
+          "standard_deviation": 1.1281080683452673,
+          "standard_error": 8.886584400256284e-05,
+          "ci95": [
+            0.01654149514156548,
+            0.016889842848967034
+          ],
+          "profit_sum": 2693738.5,
+          "profit_square_sum": 205129641.25
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 91452355,
+          "frequency": 0.021053537753772184,
+          "advantage": 0.022423780120260434,
+          "standard_deviation": 1.1424840663131146,
+          "standard_error": 0.0001194683058517406,
+          "ci95": [
+            0.02218962654349701,
+            0.02265793369702386
+          ],
+          "profit_sum": 2050707.5,
+          "profit_square_sum": 119415984.25
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 51611226,
+          "frequency": 0.011881584625234294,
+          "advantage": 0.02940241140561164,
+          "standard_deviation": 1.1562385485651776,
+          "standard_error": 0.00016094420970367003,
+          "ci95": [
+            0.029086966551072187,
+            0.029717856260151096
+          ],
+          "profit_sum": 1517494.5,
+          "profit_square_sum": 69043023.75
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 28111621,
+          "frequency": 0.006471665754733544,
+          "advantage": 0.036606355784321365,
+          "standard_deviation": 1.1621582818790661,
+          "standard_error": 0.00021919080767258815,
+          "ci95": [
+            0.03617674969554085,
+            0.03703596187310188
+          ],
+          "profit_sum": 1029064.0,
+          "profit_square_sum": 38005558.0
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 15484712,
+          "frequency": 0.0035647848401311175,
+          "advantage": 0.04377249638223817,
+          "standard_deviation": 1.158969143864384,
+          "standard_error": 0.0002945237404609812,
+          "ci95": [
+            0.04319524045834263,
+            0.044349752306133715
+          ],
+          "profit_sum": 677804.5,
+          "profit_square_sum": 20828879.75
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 16383879,
+          "frequency": 0.0037717849374106906,
+          "advantage": 0.057004571383858484,
+          "standard_deviation": 1.1498704534704762,
+          "standard_error": 0.0002840799276826167,
+          "ci95": [
+            0.05644778495686981,
+            0.057561357810847154
+          ],
+          "profit_sum": 933956.0,
+          "profit_square_sum": 21716037.0
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 104.43594510000548,
+      "rounds_per_second": 41592958.12222962
+    },
+    "6-4.75": {
+      "rounds": 4582647130,
+      "mean": -0.003946986422234086,
+      "standard_deviation": 1.1479483229096545,
+      "standard_error": 1.6957589944135542e-05,
+      "ci95": [
+        -0.0039802226877891905,
+        -0.003913750156678981
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 49733043,
+          "frequency": 0.010852470545773835,
+          "advantage": -0.05697611344634592,
+          "standard_deviation": 1.196384760177082,
+          "standard_error": 0.00016964784829796563,
+          "ci95": [
+            -0.057308617119064646,
+            -0.056643609773627195
+          ],
+          "profit_sum": -2833595.5,
+          "profit_square_sum": 71346165.25
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 37370546,
+          "frequency": 0.008154794584849478,
+          "advantage": -0.04148355231416742,
+          "standard_deviation": 1.1814767502368055,
+          "standard_error": 0.00019326822506304702,
+          "ci95": [
+            -0.041862351074646975,
+            -0.04110475355368787
+          ],
+          "profit_sum": -1550263.0,
+          "profit_square_sum": 52229380.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 63289344,
+          "frequency": 0.013810651836071,
+          "advantage": -0.03490615260603744,
+          "standard_deviation": 1.175262673834129,
+          "standard_error": 0.00014773032258158113,
+          "ci95": [
+            -0.035195698717721824,
+            -0.03461660649435305
+          ],
+          "profit_sum": -2209187.5,
+          "profit_square_sum": 87495035.25
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 104326781,
+          "frequency": 0.02276561516531167,
+          "advantage": -0.02917082719153388,
+          "standard_deviation": 1.1694798184108153,
+          "standard_error": 0.00011449718989457933,
+          "ci95": [
+            -0.0293952375600583,
+            -0.02894641682300946
+          ],
+          "profit_sum": -3043298.5,
+          "profit_square_sum": 142774743.75
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 183712262,
+          "frequency": 0.04008867730559913,
+          "advantage": -0.023498142981876736,
+          "standard_deviation": 1.16381409443147,
+          "standard_error": 8.586467692046359e-05,
+          "ci95": [
+            -0.023666434656185013,
+            -0.02332985130756846
+          ],
+          "profit_sum": -4316897.0,
+          "profit_square_sum": 248932944.5
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 311702652,
+          "frequency": 0.06801803480775531,
+          "advantage": -0.01771640204075004,
+          "standard_deviation": 1.1587585472738156,
+          "standard_error": 6.563306743387366e-05,
+          "ci95": [
+            -0.017845040489115324,
+            -0.01758776359238476
+          ],
+          "profit_sum": -5522249.5,
+          "profit_square_sum": 418627645.25
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 551821939,
+          "frequency": 0.12041554222831903,
+          "advantage": -0.012345632745855725,
+          "standard_deviation": 1.1536316565265372,
+          "standard_error": 4.9109745494557715e-05,
+          "ci95": [
+            -0.012441886078314986,
+            -0.012249379413396464
+          ],
+          "profit_sum": -6812591.0,
+          "profit_square_sum": 734485160.5
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 835530443,
+          "frequency": 0.1823248483458948,
+          "advantage": -0.007326389542457402,
+          "standard_deviation": 1.1485253936474809,
+          "standard_error": 3.9733741558707446e-05,
+          "ci95": [
+            -0.007404266244883491,
+            -0.007248512840031313
+          ],
+          "profit_sum": -6121421.5,
+          "profit_square_sum": 1102201893.75
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1187360581,
+          "frequency": 0.25909928199075627,
+          "advantage": -0.0020583448188431987,
+          "standard_deviation": 1.1437387711730924,
+          "standard_error": 3.319216112053663e-05,
+          "ci95": [
+            -0.002123400259208501,
+            -0.0019932893784778962
+          ],
+          "profit_sum": -2443997.5,
+          "profit_square_sum": 1553236972.25
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 527195285,
+          "frequency": 0.11504164951928122,
+          "advantage": 0.004740499528557051,
+          "standard_deviation": 1.1373699106495365,
+          "standard_error": 4.953543441192711e-05,
+          "ci95": [
+            0.004643411861151128,
+            0.004837587195962974
+          ],
+          "profit_sum": 2499169.0,
+          "profit_square_sum": 681997104.0
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 304355022,
+          "frequency": 0.06641467548473452,
+          "advantage": 0.010734222417397798,
+          "standard_deviation": 1.132228636987839,
+          "standard_error": 6.489988078041757e-05,
+          "ci95": [
+            0.010607020988467237,
+            0.01086142384632836
+          ],
+          "profit_sum": 3267014.5,
+          "profit_square_sum": 390200457.75
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 175772555,
+          "frequency": 0.03835611820279952,
+          "advantage": 0.01663873236638109,
+          "standard_deviation": 1.1283925896535527,
+          "standard_error": 8.511080390262614e-05,
+          "ci95": [
+            0.01647191825603669,
+            0.016805546476725487
+          ],
+          "profit_sum": 2924632.5,
+          "profit_square_sum": 223854553.25
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 104857489,
+          "frequency": 0.022881423340138346,
+          "advantage": 0.0226810313949059,
+          "standard_deviation": 1.1421343679033296,
+          "standard_error": 0.00011153661840070775,
+          "ci95": [
+            0.022462423639883124,
+            0.022899639149928677
+          ],
+          "profit_sum": 2378276.0,
+          "profit_square_sum": 136837485.0
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 60755956,
+          "frequency": 0.013257829869174327,
+          "advantage": 0.029462848053942232,
+          "standard_deviation": 1.1549881015199557,
+          "standard_error": 0.00014817777893423736,
+          "ci95": [
+            0.029172424943921988,
+            0.029753271163962477
+          ],
+          "profit_sum": 1790043.5,
+          "profit_square_sum": 81101032.75
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 36811933,
+          "frequency": 0.008032897134717854,
+          "advantage": 0.03738608347461678,
+          "standard_deviation": 1.16126325126066,
+          "standard_error": 0.00019139754871569568,
+          "ci95": [
+            0.037010951172404764,
+            0.03776121577682879
+          ],
+          "profit_sum": 1376254.0,
+          "profit_square_sum": 49693533.5
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 20902412,
+          "frequency": 0.0045612091455097484,
+          "advantage": 0.04397975697732874,
+          "standard_deviation": 1.1581731846463676,
+          "standard_error": 0.0002533233972363912,
+          "ci95": [
+            0.04348325224230408,
+            0.0444762617123534
+          ],
+          "profit_sum": 919283.0,
+          "profit_square_sum": 28078195.0
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 27148887,
+          "frequency": 0.005924280493313915,
+          "advantage": 0.05934617135501724,
+          "standard_deviation": 1.1487875408005366,
+          "standard_error": 0.00022047720862493445,
+          "ci95": [
+            0.05891404396670045,
+            0.059778298743334034
+          ],
+          "profit_sum": 1611182.5,
+          "profit_square_sum": 35924350.25
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 110.94033010001294,
+      "rounds_per_second": 41307314.714754626
+    },
+    "6-5": {
+      "rounds": 4821497159,
+      "mean": -0.0038300976628243204,
+      "standard_deviation": 1.1483575978273801,
+      "standard_error": 1.6538121969566713e-05,
+      "ci95": [
+        -0.003862511786256602,
+        -0.003797683539392039
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 72641375,
+          "frequency": 0.01506614493475428,
+          "advantage": -0.058219024626117,
+          "standard_deviation": 1.1979765512254832,
+          "standard_error": 0.00014055823314352978,
+          "ci95": [
+            -0.0584945137008089,
+            -0.0579435355514251
+          ],
+          "profit_sum": -4229110.0,
+          "profit_square_sum": 104497324.0
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 45414462,
+          "frequency": 0.00941916182927279,
+          "advantage": -0.04112270448122891,
+          "standard_deviation": 1.1814999118008769,
+          "standard_error": 0.00017532207687710424,
+          "ci95": [
+            -0.04146632943760279,
+            -0.04077907952485502
+          ],
+          "profit_sum": -1867565.5,
+          "profit_square_sum": 63472754.75
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 73840744,
+          "frequency": 0.015314899410894789,
+          "advantage": -0.03488070217710699,
+          "standard_deviation": 1.1752513241006377,
+          "standard_error": 0.00013676743978158814,
+          "ci95": [
+            -0.03514876143333665,
+            -0.034612642920877325
+          ],
+          "profit_sum": -2575617.0,
+          "profit_square_sum": 102079831.0
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 116836977,
+          "frequency": 0.02423250976761594,
+          "advantage": -0.028964297835264944,
+          "standard_deviation": 1.1692923990476574,
+          "standard_error": 0.00010817651115975973,
+          "ci95": [
+            -0.029176319901111268,
+            -0.02875227576941862
+          ],
+          "profit_sum": -3384101.0,
+          "profit_square_sum": 159842756.0
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 197119323,
+          "frequency": 0.04088342614327775,
+          "advantage": -0.023198844387264866,
+          "standard_deviation": 1.1638197567872695,
+          "standard_error": 8.289362383400162e-05,
+          "ci95": [
+            -0.02336131290452752,
+            -0.02303637587000221
+          ],
+          "profit_sum": -4572940.5,
+          "profit_square_sum": 267099561.75
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 325471739,
+          "frequency": 0.06750428928335286,
+          "advantage": -0.017745666698269002,
+          "standard_deviation": 1.1586979034520852,
+          "standard_error": 6.422639988541653e-05,
+          "ci95": [
+            -0.017871548128901085,
+            -0.01761978526763692
+          ],
+          "profit_sum": -5775713.0,
+          "profit_square_sum": 437074610.5
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 566657389,
+          "frequency": 0.11752726804831869,
+          "advantage": -0.012322879107467176,
+          "standard_deviation": 1.1537001490517362,
+          "standard_error": 4.846549699845388e-05,
+          "ci95": [
+            -0.01241786973607698,
+            -0.012227888478857371
+          ],
+          "profit_sum": -6982850.5,
+          "profit_square_sum": 754320651.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 851031215,
+          "frequency": 0.17650766700368806,
+          "advantage": -0.00733547652538221,
+          "standard_deviation": 1.1486218272313433,
+          "standard_error": 3.937352702066e-05,
+          "ci95": [
+            -0.007412647220287017,
+            -0.007258305830477402
+          ],
+          "profit_sum": -6242719.5,
+          "profit_square_sum": 1122838593.75
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1218610806,
+          "frequency": 0.25274531246488285,
+          "advantage": -0.002017089859943356,
+          "standard_deviation": 1.1437699495771982,
+          "standard_error": 3.27646980239303e-05,
+          "ci95": [
+            -0.00208130748803459,
+            -0.0019528722318521217
+          ],
+          "profit_sum": -2458047.5,
+          "profit_square_sum": 1594203430.75
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 542104745,
+          "frequency": 0.11243494025254905,
+          "advantage": 0.00474156521171937,
+          "standard_deviation": 1.1372902310353494,
+          "standard_error": 4.8846078647484934e-05,
+          "ci95": [
+            0.004645828656784289,
+            0.004837301766654451
+          ],
+          "profit_sum": 2570425.0,
+          "profit_square_sum": 701186222.5
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 318289985,
+          "frequency": 0.06601476149495747,
+          "advantage": 0.010893999696534592,
+          "standard_deviation": 1.1322191451276065,
+          "standard_error": 6.346276755673168e-05,
+          "ci95": [
+            0.01076961495776416,
+            0.011018384435305024
+          ],
+          "profit_sum": 3467451.0,
+          "profit_square_sum": 408060132.0
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 188483879,
+          "frequency": 0.03909239656984313,
+          "advantage": 0.016978438776718938,
+          "standard_deviation": 1.1285880677211404,
+          "standard_error": 8.220502178732503e-05,
+          "ci95": [
+            0.01681731989466745,
+            0.017139557658770427
+          ],
+          "profit_sum": 3200162.0,
+          "profit_square_sum": 240128327.5
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 118370708,
+          "frequency": 0.024550612412794746,
+          "advantage": 0.02299853609053348,
+          "standard_deviation": 1.1416881777103882,
+          "standard_error": 0.00010493621160695307,
+          "ci95": [
+            0.022792864895109777,
+            0.023204207285957183
+          ],
+          "profit_sum": 2722353.0,
+          "profit_square_sum": 154353132.5
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 71233598,
+          "frequency": 0.014774165710547503,
+          "advantage": 0.029605980312829346,
+          "standard_deviation": 1.1543170025202227,
+          "standard_error": 0.00013676741928020063,
+          "ci95": [
+            0.029337921096781665,
+            0.029874039528877027
+          ],
+          "profit_sum": 2108940.5,
+          "profit_square_sum": 94977482.75
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 44797795,
+          "frequency": 0.0092912623450122,
+          "advantage": 0.03722408658729743,
+          "standard_deviation": 1.1600160308071765,
+          "standard_error": 0.00017331480863500972,
+          "ci95": [
+            0.03688439580438536,
+            0.0375637773702095
+          ],
+          "profit_sum": 1667557.0,
+          "profit_square_sum": 60343651.0
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 27252028,
+          "frequency": 0.005652192068418058,
+          "advantage": 0.04469852665643819,
+          "standard_deviation": 1.1582309211321342,
+          "standard_error": 0.00022186854832426618,
+          "ci95": [
+            0.044263672292420446,
+            0.045133381020455936
+          ],
+          "profit_sum": 1218125.5,
+          "profit_square_sum": 36613011.75
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 43340391,
+          "frequency": 0.008988990259819833,
+          "advantage": 0.06153256669973282,
+          "standard_deviation": 1.147259692110995,
+          "standard_error": 0.00017426706737654507,
+          "ci95": [
+            0.061191009523983375,
+            0.06187412387548226
+          ],
+          "profit_sum": 2666845.5,
+          "profit_square_sum": 57208927.25
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 116.86097259999951,
+      "rounds_per_second": 41258403.48345706
+    },
+    "6-5.25": {
+      "rounds": 5060290481,
+      "mean": -0.0036625640503423107,
+      "standard_deviation": 1.148809906312457,
+      "standard_error": 1.6149550839183e-05,
+      "ci95": [
+        -0.003694216588353608,
+        -0.0036309115123310132
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 104098647,
+          "frequency": 0.02057167417381706,
+          "advantage": -0.060324410364334516,
+          "standard_deviation": 1.200183175416435,
+          "standard_error": 0.00011763186752349165,
+          "ci95": [
+            -0.06055496458811475,
+            -0.060093856140554285
+          ],
+          "profit_sum": -6279689.5,
+          "profit_square_sum": 150326636.25
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 54735309,
+          "frequency": 0.01081663378920954,
+          "advantage": -0.040637662244676465,
+          "standard_deviation": 1.1810563828311804,
+          "standard_error": 0.0001596382079739732,
+          "ci95": [
+            -0.04095054738286197,
+            -0.04032477710649096
+          ],
+          "profit_sum": -2224315.0,
+          "profit_square_sum": 76440353.5
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 83687390,
+          "frequency": 0.016538060475821133,
+          "advantage": -0.03464019489674609,
+          "standard_deviation": 1.1750378972948263,
+          "standard_error": 0.00012844637788961394,
+          "ci95": [
+            -0.03489194517135436,
+            -0.034388444622137825
+          ],
+          "profit_sum": -2898947.5,
+          "profit_square_sum": 115648774.75
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 127889625,
+          "frequency": 0.02527317858138587,
+          "advantage": -0.028758380517575215,
+          "standard_deviation": 1.1692263962620428,
+          "standard_error": 0.00010339057589542268,
+          "ci95": [
+            -0.028961022322671098,
+            -0.028555738712479333
+          ],
+          "profit_sum": -3677898.5,
+          "profit_square_sum": 174942443.25
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 211854396,
+          "frequency": 0.04186605428985846,
+          "advantage": -0.02303332190472932,
+          "standard_deviation": 1.1637747040088982,
+          "standard_error": 7.995583682900129e-05,
+          "ci95": [
+            -0.023190032465267924,
+            -0.02287661134419072
+          ],
+          "profit_sum": -4879710.5,
+          "profit_square_sum": 287041963.75
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 341423401,
+          "frequency": 0.06747110709986927,
+          "advantage": -0.01767390279144926,
+          "standard_deviation": 1.158651157707284,
+          "standard_error": 6.270556102748551e-05,
+          "ci95": [
+            -0.01779680343269351,
+            -0.017551002150205008
+          ],
+          "profit_sum": -6034284.0,
+          "profit_square_sum": 458458176.5
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 583528482,
+          "frequency": 0.11531521445082828,
+          "advantage": -0.012113808868030542,
+          "standard_deviation": 1.1537284635345704,
+          "standard_error": 4.776090833835477e-05,
+          "ci95": [
+            -0.012207418528242637,
+            -0.012020199207818447
+          ],
+          "profit_sum": -7068752.5,
+          "profit_square_sum": 776814186.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 852328232,
+          "frequency": 0.16843464524423218,
+          "advantage": -0.007311940712530569,
+          "standard_deviation": 1.1486040663555663,
+          "standard_error": 3.934294923368687e-05,
+          "ci95": [
+            -0.0073890514760741825,
+            -0.007234829948986955
+          ],
+          "profit_sum": -6232173.5,
+          "profit_square_sum": 1124514790.25
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1235901852,
+          "frequency": 0.24423535697021184,
+          "advantage": -0.001981988695976159,
+          "standard_deviation": 1.1438869623829246,
+          "standard_error": 3.25380197608588e-05,
+          "ci95": [
+            -0.002045762042835695,
+            -0.0019182153491166232
+          ],
+          "profit_sum": -2449543.5,
+          "profit_square_sum": 1617154474.25
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 559227504,
+          "frequency": 0.11051292531520583,
+          "advantage": 0.004820866249811633,
+          "standard_deviation": 1.1373192613228627,
+          "standard_error": 4.8093693676815365e-05,
+          "ci95": [
+            0.004726604342321574,
+            0.004915128157301693
+          ],
+          "profit_sum": 2695961.0,
+          "profit_square_sum": 723371033.0
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 334605488,
+          "frequency": 0.06612377081046071,
+          "advantage": 0.010959431723367311,
+          "standard_deviation": 1.132249790329066,
+          "standard_error": 6.189787207050586e-05,
+          "ci95": [
+            0.01083811412338945,
+            0.011080749323345171
+          ],
+          "profit_sum": 3667086.0,
+          "profit_square_sum": 429000939.5
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 203512867,
+          "frequency": 0.040217625403943684,
+          "advantage": 0.01725157014273697,
+          "standard_deviation": 1.1288879410940706,
+          "standard_error": 7.913250204313287e-05,
+          "ci95": [
+            0.017096473288725888,
+            0.01740666699674805
+          ],
+          "profit_sum": 3510916.5,
+          "profit_square_sum": 259414919.75
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 129666494,
+          "frequency": 0.025624318304821047,
+          "advantage": 0.023237259734962833,
+          "standard_deviation": 1.141123763177413,
+          "standard_error": 0.00010021180051800252,
+          "ci95": [
+            0.023040848215121635,
+            0.02343367125480403
+          ],
+          "profit_sum": 3013094.0,
+          "profit_square_sum": 168916983.0
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 81224462,
+          "frequency": 0.016051343752888404,
+          "advantage": 0.029971137266504765,
+          "standard_deviation": 1.1530748325136748,
+          "standard_error": 0.0001279422757661592,
+          "ci95": [
+            0.029720375013903,
+            0.03022189951910653
+          ],
+          "profit_sum": 2434389.5,
+          "profit_square_sum": 108067507.75
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 54238459,
+          "frequency": 0.010718447726202776,
+          "advantage": 0.03721026624299927,
+          "standard_deviation": 1.1584204971543974,
+          "standard_error": 0.00015729414690457812,
+          "ci95": [
+            0.03690197538008735,
+            0.0375185571059112
+          ],
+          "profit_sum": 2018227.5,
+          "profit_square_sum": 72859749.25
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 35115744,
+          "frequency": 0.006939471979296439,
+          "advantage": 0.04472641957977595,
+          "standard_deviation": 1.1564212232045237,
+          "standard_error": 0.00019514845455736811,
+          "ci95": [
+            0.04434393563720486,
+            0.045108903522347046
+          ],
+          "profit_sum": 1570601.5,
+          "profit_square_sum": 47030883.25
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 67252129,
+          "frequency": 0.013290171631947467,
+          "advantage": 0.0639593209012015,
+          "standard_deviation": 1.1450646183548288,
+          "standard_error": 0.00013962943375954144,
+          "ci95": [
+            0.06368565223985108,
+            0.06423298956255193
+          ],
+          "profit_sum": 4301400.5,
+          "profit_square_sum": 88454287.75
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 119.82180439998046,
+      "rounds_per_second": 42231800.01619826
+    },
+    "8-5.5": {
+      "rounds": 5298462538,
+      "mean": -0.004602686878523326,
+      "standard_deviation": 1.1468298587967245,
+      "standard_error": 1.5755204972911763e-05,
+      "ci95": [
+        -0.004633566512839279,
+        -0.004571807244207373
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 9269913,
+          "frequency": 0.0017495477100228957,
+          "advantage": -0.053129570903200495,
+          "standard_deviation": 1.193187145327739,
+          "standard_error": 0.0003918959152049899,
+          "ci95": [
+            -0.053897672782690635,
+            -0.052361469023710354
+          ],
+          "profit_sum": -492506.5,
+          "profit_square_sum": 13223699.25
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 14165265,
+          "frequency": 0.0026734670479234782,
+          "advantage": -0.04234470728221463,
+          "standard_deviation": 1.1828028324753521,
+          "standard_error": 0.00031426788593150737,
+          "ci95": [
+            -0.04296066102013792,
+            -0.041728753544291335
+          ],
+          "profit_sum": -599824.0,
+          "profit_square_sum": 19842923.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 33420571,
+          "frequency": 0.006307597866420925,
+          "advantage": -0.035982329565823395,
+          "standard_deviation": 1.1762817954134543,
+          "standard_error": 0.0002034719011383201,
+          "ci95": [
+            -0.0363811271639204,
+            -0.035583531967726394
+          ],
+          "profit_sum": -1202550.0,
+          "profit_square_sum": 46285270.0
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 71680097,
+          "frequency": 0.013528471039649352,
+          "advantage": -0.030019699889636032,
+          "standard_deviation": 1.1702275783009461,
+          "standard_error": 0.00013822004708199953,
+          "ci95": [
+            -0.03029060620385818,
+            -0.029748793575413882
+          ],
+          "profit_sum": -2151815.0,
+          "profit_square_sum": 98225656.0
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 156462856,
+          "frequency": 0.029529859818365294,
+          "advantage": -0.02441201124438122,
+          "standard_deviation": 1.1644545184983088,
+          "standard_error": 9.309297378674809e-05,
+          "ci95": [
+            -0.02459447012021698,
+            -0.024229552368545463
+          ],
+          "profit_sum": -3819573.0,
+          "profit_square_sum": 212249728.5
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 319269475,
+          "frequency": 0.06025700336847413,
+          "advantage": -0.01843070966931618,
+          "standard_deviation": 1.1593686408862005,
+          "standard_error": 6.488478204782202e-05,
+          "ci95": [
+            -0.01855788150527464,
+            -0.018303537833357718
+          ],
+          "profit_sum": -5884363.0,
+          "profit_square_sum": 429249933.5
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 669258366,
+          "frequency": 0.12631180483020338,
+          "advantage": -0.01278393657017057,
+          "standard_deviation": 1.1541723934866688,
+          "standard_error": 4.461426862727769e-05,
+          "ci95": [
+            -0.01287137892987663,
+            -0.01269649421046451
+          ],
+          "profit_sum": -8555756.5,
+          "profit_square_sum": 891637756.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 1222392216,
+          "frequency": 0.23070696588550646,
+          "advantage": -0.00756135214133268,
+          "standard_deviation": 1.1485727805742432,
+          "standard_error": 3.285135082002883e-05,
+          "ci95": [
+            -0.007625739605783427,
+            -0.007496964676881933
+          ],
+          "profit_sum": -9242938.0,
+          "profit_square_sum": 1612673453.0
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1571773006,
+          "frequency": 0.2966469980163895,
+          "advantage": -0.002514919765710749,
+          "standard_deviation": 1.1434402948296916,
+          "standard_error": 2.88415488896557e-05,
+          "ci95": [
+            -0.0025714481627928257,
+            -0.0024583913686286726
+          ],
+          "profit_sum": -3952883.0,
+          "profit_square_sum": 2055033528.0
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 643588146,
+          "frequency": 0.12146696166751307,
+          "advantage": 0.004053878270156952,
+          "standard_deviation": 1.1380059353514145,
+          "standard_error": 4.485806221730988e-05,
+          "ci95": [
+            0.0039659580837947675,
+            0.004141798456519136
+          ],
+          "profit_sum": 2609028.0,
+          "profit_square_sum": 833494236.5
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 310646373,
+          "frequency": 0.05862953088222816,
+          "advantage": 0.009976499870481347,
+          "standard_deviation": 1.1322820413562869,
+          "standard_error": 6.424235834324878e-05,
+          "ci95": [
+            0.009850587161846662,
+            0.010102412579116031
+          ],
+          "profit_sum": 3099163.5,
+          "profit_square_sum": 398299020.75
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 150869769,
+          "frequency": 0.028474254166747117,
+          "advantage": 0.01617891719579686,
+          "standard_deviation": 1.1268963531255494,
+          "standard_error": 9.174509627265736e-05,
+          "ci95": [
+            0.01599910011134429,
+            0.016358734280249428
+          ],
+          "profit_sum": 2440909.5,
+          "profit_square_sum": 191628314.25
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 71014797,
+          "frequency": 0.01340290631304639,
+          "advantage": 0.021699766317715447,
+          "standard_deviation": 1.1451207132151053,
+          "standard_error": 0.0001358866666590074,
+          "ci95": [
+            0.02143343334508459,
+            0.021966099290346302
+          ],
+          "profit_sum": 1541004.5,
+          "profit_square_sum": 93155244.25
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 32153100,
+          "frequency": 0.006068383001559687,
+          "advantage": 0.0286104139258734,
+          "standard_deviation": 1.160668444751024,
+          "standard_error": 0.00020469005927580754,
+          "ci95": [
+            0.028209228781699448,
+            0.029011599070047352
+          ],
+          "profit_sum": 919913.5,
+          "profit_square_sum": 43341406.25
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 13647825,
+          "frequency": 0.002575808529761091,
+          "advantage": 0.0361420226299795,
+          "standard_deviation": 1.1648571477223981,
+          "standard_error": 0.00031531232462792685,
+          "ci95": [
+            0.03552402182982716,
+            0.03676002343013184
+          ],
+          "profit_sum": 493260.0,
+          "profit_square_sum": 18536453.0
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 5605495,
+          "frequency": 0.0010579474630230932,
+          "advantage": 0.04280264276393075,
+          "standard_deviation": 1.1600123520032932,
+          "standard_error": 0.0004899543624977595,
+          "ci95": [
+            0.041842349859366856,
+            0.04376293566849464
+          ],
+          "profit_sum": 239930.0,
+          "profit_square_sum": 7553183.0
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 3245268,
+          "frequency": 0.0006124923931659966,
+          "advantage": 0.05294971016261215,
+          "standard_deviation": 1.1524917995333204,
+          "standard_error": 0.0006397533374317969,
+          "ci95": [
+            0.051695816662256526,
+            0.054203603662967774
+          ],
+          "profit_sum": 171836.0,
+          "profit_square_sum": 4319583.5
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 129.74732620001305,
+      "rounds_per_second": 40836776.31885926
+    },
+    "8-6": {
+      "rounds": 5776188937,
+      "mean": -0.0044634455834456025,
+      "standard_deviation": 1.1472260231521116,
+      "standard_error": 1.5094832372757884e-05,
+      "ci95": [
+        -0.004493030911248877,
+        -0.004433860255642328
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 21394416,
+          "frequency": 0.0037038982334798238,
+          "advantage": -0.05390446273457523,
+          "standard_deviation": 1.194456352902623,
+          "standard_error": 0.00025823795068283066,
+          "ci95": [
+            -0.05441059981735501,
+            -0.05339832565179545
+          ],
+          "profit_sum": -1153254.5,
+          "profit_square_sum": 30586133.25
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 24462662,
+          "frequency": 0.004235086882858312,
+          "advantage": -0.04245629523066623,
+          "standard_deviation": 1.1825741215794376,
+          "standard_error": 0.00023909831399071955,
+          "ci95": [
+            -0.04292491931485229,
+            -0.041987671146480166
+          ],
+          "profit_sum": -1038594.0,
+          "profit_square_sum": 34254675.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 49581403,
+          "frequency": 0.00858375713481271,
+          "advantage": -0.0361038895974767,
+          "standard_deviation": 1.1764220066869402,
+          "standard_error": 0.0001670720240799816,
+          "ci95": [
+            -0.03643134474749767,
+            -0.03577643444745573
+          ],
+          "profit_sum": -1790081.5,
+          "profit_square_sum": 68683739.25
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 95785691,
+          "frequency": 0.01658285281951815,
+          "advantage": -0.030010928250233118,
+          "standard_deviation": 1.1701786962444636,
+          "standard_error": 0.00011956439454018519,
+          "ci95": [
+            -0.03024527015736522,
+            -0.029776586343101017
+          ],
+          "profit_sum": -2874617.5,
+          "profit_square_sum": 131247356.75
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 188936375,
+          "frequency": 0.032709521288292305,
+          "advantage": -0.02412931866613827,
+          "standard_deviation": 1.1644705430602549,
+          "standard_error": 8.471702916245875e-05,
+          "ci95": [
+            -0.024295360992173918,
+            -0.023963276340102622
+          ],
+          "profit_sum": -4558906.0,
+          "profit_square_sum": 256306148.0
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 361541493,
+          "frequency": 0.06259170136975732,
+          "advantage": -0.018295888931343214,
+          "standard_deviation": 1.1593291678630468,
+          "standard_error": 6.097161364025255e-05,
+          "ci95": [
+            -0.0184153910981574,
+            -0.01817638676452903
+          ],
+          "profit_sum": -6614723.0,
+          "profit_square_sum": 486048738.5
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 712833593,
+          "frequency": 0.12340898138457135,
+          "advantage": -0.012754944617207456,
+          "standard_deviation": 1.154188163019637,
+          "standard_error": 4.322973138418558e-05,
+          "ci95": [
+            -0.0128396733337818,
+            -0.012670215900633112
+          ],
+          "profit_sum": -9092153.0,
+          "profit_square_sum": 949717464.5
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 1268628011,
+          "frequency": 0.21963062926727808,
+          "advantage": -0.00753732175002401,
+          "standard_deviation": 1.1486264704107967,
+          "standard_error": 3.2248659915411664e-05,
+          "ci95": [
+            -0.007600527962007898,
+            -0.007474115538040123
+          ],
+          "profit_sum": -9562057.5,
+          "profit_square_sum": 1673827263.25
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1641994861,
+          "frequency": 0.28426959002016455,
+          "advantage": -0.002339084056365996,
+          "standard_deviation": 1.1434978891233984,
+          "standard_error": 2.821951013084464e-05,
+          "ci95": [
+            -0.0023943932798838148,
+            -0.0022837748328481773
+          ],
+          "profit_sum": -3840764.0,
+          "profit_square_sum": 2147060810.5
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 686726000,
+          "frequency": 0.1188891165940059,
+          "advantage": 0.004184867035760988,
+          "standard_deviation": 1.137932467514114,
+          "standard_error": 4.342349183642253e-05,
+          "ci95": [
+            0.004099758555678631,
+            0.004269975515843345
+          ],
+          "profit_sum": 2873857.0,
+          "profit_square_sum": 889246862.0
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 353648536,
+          "frequency": 0.06122523689186589,
+          "advantage": 0.010039415234564975,
+          "standard_deviation": 1.132332113692478,
+          "standard_error": 6.021267091570125e-05,
+          "ci95": [
+            0.009921400568157237,
+            0.010157429900972712
+          ],
+          "profit_sum": 3550424.5,
+          "profit_square_sum": 453475313.75
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 182355974,
+          "frequency": 0.03157029245215633,
+          "advantage": 0.016249755546807586,
+          "standard_deviation": 1.127309922184995,
+          "standard_error": 8.348017134974602e-05,
+          "ci95": [
+            0.01608613741753885,
+            0.016413373676076322
+          ],
+          "profit_sum": 2963240.0,
+          "profit_square_sum": 231791166.5
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 95855710,
+          "frequency": 0.01659497482604593,
+          "advantage": 0.022028760727973325,
+          "standard_deviation": 1.1443695409922758,
+          "standard_error": 0.00011688460021802823,
+          "ci95": [
+            0.021799671121198627,
+            0.022257850334748024
+          ],
+          "profit_sum": 2111582.5,
+          "profit_square_sum": 125577392.75
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 47898093,
+          "frequency": 0.008292334880734876,
+          "advantage": 0.02849303415900086,
+          "standard_deviation": 1.159468912729392,
+          "standard_error": 0.000167532858076996,
+          "ci95": [
+            0.028164675790942888,
+            0.028821392527058835
+          ],
+          "profit_sum": 1364762.0,
+          "profit_square_sum": 64431556.0
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 23934744,
+          "frequency": 0.0041436913267645075,
+          "advantage": 0.03626903216512364,
+          "standard_deviation": 1.16407130360059,
+          "standard_error": 0.0002379387577611027,
+          "ci95": [
+            0.03580268076938568,
+            0.0367353835608616
+          ],
+          "profit_sum": 868090.0,
+          "profit_square_sum": 32464545.5
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 11333720,
+          "frequency": 0.0019621449581402432,
+          "advantage": 0.04384747461557194,
+          "standard_deviation": 1.1596795048598085,
+          "standard_error": 0.00034447026750581935,
+          "ci95": [
+            0.043172325297515655,
+            0.04452262393362822
+          ],
+          "profit_sum": 496955.0,
+          "profit_square_sum": 15264016.5
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 9277655,
+          "frequency": 0.0016061896695537402,
+          "advantage": 0.05545959620184195,
+          "standard_deviation": 1.151641025670669,
+          "standard_error": 0.0003780924613992531,
+          "ci95": [
+            0.054718548594673316,
+            0.05620064380901059
+          ],
+          "profit_sum": 514535.0,
+          "profit_square_sum": 12333275.5
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 139.71144579999964,
+      "rounds_per_second": 41343705.97859789
+    },
+    "8-6.5": {
+      "rounds": 6253872712,
+      "mean": -0.004328556439605386,
+      "standard_deviation": 1.1477190159441581,
+      "standard_error": 1.4513129099861655e-05,
+      "ci95": [
+        -0.004357001649944095,
+        -0.0043001112292666765
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 45156447,
+          "frequency": 0.007220557417702684,
+          "advantage": -0.0561756331272033,
+          "standard_deviation": 1.19595896635864,
+          "standard_error": 0.00017797393280883544,
+          "ci95": [
+            -0.056524455625695566,
+            -0.05582681062871103
+          ],
+          "profit_sum": -2536692.0,
+          "profit_square_sum": 64730571.0
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 38042901,
+          "frequency": 0.006083094868081159,
+          "advantage": -0.04180724808552323,
+          "standard_deviation": 1.182600972487352,
+          "standard_error": 0.0001917350090282599,
+          "ci95": [
+            -0.042183041797794085,
+            -0.04143145437325238
+          ],
+          "profit_sum": -1590469.0,
+          "profit_square_sum": 53271203.0
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 69628872,
+          "frequency": 0.011133720689005287,
+          "advantage": -0.035480698294236335,
+          "standard_deviation": 1.1761064885366739,
+          "standard_error": 0.0001409457439128254,
+          "ci95": [
+            -0.03575694687607968,
+            -0.03520444971239299
+          ],
+          "profit_sum": -2470481.0,
+          "profit_square_sum": 96400152.0
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 120162920,
+          "frequency": 0.019214161453818858,
+          "advantage": -0.029657193749952147,
+          "standard_deviation": 1.170086080060889,
+          "standard_error": 0.00010674132172209882,
+          "ci95": [
+            -0.029866402896189664,
+            -0.02944798460371463
+          ],
+          "profit_sum": -3563695.0,
+          "profit_square_sum": 164620914.0
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 222492497,
+          "frequency": 0.03557675495586582,
+          "advantage": -0.023861152944856384,
+          "standard_deviation": 1.164410915226046,
+          "standard_error": 7.80636013305092e-05,
+          "ci95": [
+            -0.024014154791967675,
+            -0.023708151097745093
+          ],
+          "profit_sum": -5308927.5,
+          "profit_square_sum": 301793746.25
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 397504381,
+          "frequency": 0.0635613162124749,
+          "advantage": -0.018352049307350904,
+          "standard_deviation": 1.1592724378451855,
+          "standard_error": 5.81452913138611e-05,
+          "ci95": [
+            -0.018466011984196663,
+            -0.018238086630505145
+          ],
+          "profit_sum": -7295020.0,
+          "profit_square_sum": 534345017.5
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 761021568,
+          "frequency": 0.1216880488372818,
+          "advantage": -0.01260503762752753,
+          "standard_deviation": 1.154221686940437,
+          "standard_error": 4.1839910561741036e-05,
+          "ci95": [
+            -0.012687042345344918,
+            -0.01252303290971014
+          ],
+          "profit_sum": -9592705.5,
+          "profit_square_sum": 1013974930.25
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 1294946272,
+          "frequency": 0.207063100199536,
+          "advantage": -0.007552904480657866,
+          "standard_deviation": 1.1486686895107272,
+          "standard_error": 3.192044288152665e-05,
+          "ci95": [
+            -0.007615467399076226,
+            -0.007490341562239506
+          ],
+          "profit_sum": -9780605.5,
+          "profit_square_sum": 1708677466.75
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1693410952,
+          "frequency": 0.27077796910555346,
+          "advantage": -0.0023202743524006687,
+          "standard_deviation": 1.1435568678748786,
+          "standard_error": 2.7789234550661863e-05,
+          "ci95": [
+            -0.0023747402512779023,
+            -0.002265808453523435
+          ],
+          "profit_sum": -3929178.0,
+          "profit_square_sum": 2214520397.5
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 735254269,
+          "frequency": 0.11756783402213895,
+          "advantage": 0.00426216430441426,
+          "standard_deviation": 1.1379263987730464,
+          "standard_error": 4.1965789256217066e-05,
+          "ci95": [
+            0.0041799128688892765,
+            0.0043444157399392435
+          ],
+          "profit_sum": 3133774.5,
+          "profit_square_sum": 952076821.75
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 390053711,
+          "frequency": 0.06236994722511071,
+          "advantage": 0.010294619399224226,
+          "standard_deviation": 1.1323817105456717,
+          "standard_error": 5.733642877649769e-05,
+          "ci95": [
+            0.010182242063820145,
+            0.010406996734628308
+          ],
+          "profit_sum": 4015454.5,
+          "profit_square_sum": 500202661.25
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 215663304,
+          "frequency": 0.034484760712539426,
+          "advantage": 0.016342557749184812,
+          "standard_deviation": 1.1278327199391407,
+          "standard_error": 7.679917640941021e-05,
+          "ci95": [
+            0.01619203412938003,
+            0.016493081368989596
+          ],
+          "profit_sum": 3524490.0,
+          "profit_square_sum": 274382753.5
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 121121441,
+          "frequency": 0.01936742984352573,
+          "advantage": 0.02222724546350138,
+          "standard_deviation": 1.1436662653810434,
+          "standard_error": 0.00010391752543408853,
+          "ci95": [
+            0.02202357085628804,
+            0.02243092007071472
+          ],
+          "profit_sum": 2692196.0,
+          "profit_square_sum": 158483356.0
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 67886982,
+          "frequency": 0.01085519087552545,
+          "advantage": 0.02922706889518229,
+          "standard_deviation": 1.157603447010874,
+          "standard_error": 0.00014049684127662195,
+          "ci95": [
+            0.028951700146338473,
+            0.02950243764402611
+          ],
+          "profit_sum": 1984137.5,
+          "profit_square_sum": 91029650.25
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 37435414,
+          "frequency": 0.005985957137913682,
+          "advantage": 0.03684297440920514,
+          "standard_deviation": 1.163025378655553,
+          "standard_error": 0.00019008501065596726,
+          "ci95": [
+            0.036470414634318535,
+            0.03721553418409175
+          ],
+          "profit_sum": 1379232.0,
+          "profit_square_sum": 50687004.0
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 20809107,
+          "frequency": 0.003327395352974047,
+          "advantage": 0.04403706511769102,
+          "standard_deviation": 1.1594153031997159,
+          "standard_error": 0.00025416298751239585,
+          "ci95": [
+            0.043538914815963614,
+            0.04453521541941842
+          ],
+          "profit_sum": 916372.0,
+          "profit_square_sum": 28012867.0
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 23281674,
+          "frequency": 0.00372276109095199,
+          "advantage": 0.058066099542498535,
+          "standard_deviation": 1.1501659665172816,
+          "standard_error": 0.0002383709958073261,
+          "ci95": [
+            0.057598900975757227,
+            0.058533298109239844
+          ],
+          "profit_sum": 1351876.0,
+          "profit_square_sum": 30877398.5
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 151.27379730000393,
+      "rounds_per_second": 41341414.20141264
+    },
+    "8-7": {
+      "rounds": 6731425808,
+      "mean": -0.004139794494486093,
+      "standard_deviation": 1.148318535707172,
+      "standard_error": 1.3996158220673184e-05,
+      "ci95": [
+        -0.004167226460520537,
+        -0.004112362528451649
+      ],
+      "rows": [
+        {
+          "true_count": -8,
+          "label": "<= -8",
+          "rounds": 87680952,
+          "frequency": 0.013025613666542249,
+          "advantage": -0.05877169308106965,
+          "standard_deviation": 1.1989600692388716,
+          "standard_error": 0.00012804189444029398,
+          "ci95": [
+            -0.0590226505826849,
+            -0.0585207355794544
+          ],
+          "profit_sum": -5153158.0,
+          "profit_square_sum": 126344687.0
+        },
+        {
+          "true_count": -7,
+          "label": "-7",
+          "rounds": 54756949,
+          "frequency": 0.008134524625514524,
+          "advantage": -0.04130992579590218,
+          "standard_deviation": 1.1822488373963174,
+          "standard_error": 0.00015976780726657553,
+          "ci95": [
+            -0.04162306494403361,
+            -0.040996786647770754
+          ],
+          "profit_sum": -2262005.5,
+          "profit_square_sum": 76627903.75
+        },
+        {
+          "true_count": -6,
+          "label": "-6",
+          "rounds": 89936728,
+          "frequency": 0.013360724839767855,
+          "advantage": -0.03511976775494879,
+          "standard_deviation": 1.1759584675749015,
+          "standard_error": 0.00012400050159414093,
+          "ci95": [
+            -0.035362804272138205,
+            -0.03487673123775937
+          ],
+          "profit_sum": -3158557.0,
+          "profit_square_sum": 124482477.5
+        },
+        {
+          "true_count": -5,
+          "label": "-5",
+          "rounds": 145133484,
+          "frequency": 0.021560585846094497,
+          "advantage": -0.02923141430271184,
+          "standard_deviation": 1.169940070147111,
+          "standard_error": 9.711354444842238e-05,
+          "ci95": [
+            -0.029421753352241776,
+            -0.029041075253181902
+          ],
+          "profit_sum": -4242457.0,
+          "profit_square_sum": 198776885.5
+        },
+        {
+          "true_count": -4,
+          "label": "-4",
+          "rounds": 250701142,
+          "frequency": 0.03724339376986861,
+          "advantage": -0.02385510074780593,
+          "standard_deviation": 1.164307566438045,
+          "standard_error": 7.353423245827876e-05,
+          "ci95": [
+            -0.02399922519505495,
+            -0.023710976300556907
+          ],
+          "profit_sum": -5980501.0,
+          "profit_square_sum": 339996168.0
+        },
+        {
+          "true_count": -3,
+          "label": "-3",
+          "rounds": 430787405,
+          "frequency": 0.06399645740550662,
+          "advantage": -0.01809345145548069,
+          "standard_deviation": 1.159249925693111,
+          "standard_error": 5.585288078278441e-05,
+          "ci95": [
+            -0.018202921090247758,
+            -0.017983981820713625
+          ],
+          "profit_sum": -7794431.0,
+          "profit_square_sum": 579059157.0
+        },
+        {
+          "true_count": -2,
+          "label": "-2",
+          "rounds": 789685036,
+          "frequency": 0.11731319018052527,
+          "advantage": -0.0126422301865677,
+          "standard_deviation": 1.1541761738476997,
+          "standard_error": 4.107193372034016e-05,
+          "ci95": [
+            -0.012722729697434983,
+            -0.012561730675700416
+          ],
+          "profit_sum": -9983380.0,
+          "profit_square_sum": 1052083526.0
+        },
+        {
+          "true_count": -1,
+          "label": "-1",
+          "rounds": 1324024643,
+          "frequency": 0.1966930455396917,
+          "advantage": -0.007566452447063706,
+          "standard_deviation": 1.1487899442074314,
+          "standard_error": 3.157130917044133e-05,
+          "ci95": [
+            -0.0076283310759825505,
+            -0.007504573818144861
+          ],
+          "profit_sum": -10018169.5,
+          "profit_square_sum": 1747415399.25
+        },
+        {
+          "true_count": 0,
+          "label": "+0",
+          "rounds": 1751739640,
+          "frequency": 0.2602330754233576,
+          "advantage": -0.0022027134694514307,
+          "standard_deviation": 1.1436169179382216,
+          "standard_error": 2.7324095373922465e-05,
+          "ci95": [
+            -0.0022562677122944562,
+            -0.002149159226608405
+          ],
+          "profit_sum": -3858580.5,
+          "profit_square_sum": 2291038099.25
+        },
+        {
+          "true_count": 1,
+          "label": "+1",
+          "rounds": 763327026,
+          "frequency": 0.11339752494825388,
+          "advantage": 0.004423959698762192,
+          "standard_deviation": 1.1378701319083386,
+          "standard_error": 4.118483953162968e-05,
+          "ci95": [
+            0.004343238896571136,
+            0.004504680500953248
+          ],
+          "profit_sum": 3376928.0,
+          "profit_square_sum": 988331412.0
+        },
+        {
+          "true_count": 2,
+          "label": "+2",
+          "rounds": 424655604,
+          "frequency": 0.06308553583036089,
+          "advantage": 0.010509551641287184,
+          "standard_deviation": 1.132367677051028,
+          "standard_error": 5.495016923419439e-05,
+          "ci95": [
+            0.010401851288643783,
+            0.010617251993930585
+          ],
+          "profit_sum": 4462940.0,
+          "profit_square_sum": 544564334.5
+        },
+        {
+          "true_count": 3,
+          "label": "+3",
+          "rounds": 242610388,
+          "frequency": 0.03604145613722257,
+          "advantage": 0.016790148738396148,
+          "standard_deviation": 1.1282775594256076,
+          "standard_error": 7.243713321259235e-05,
+          "ci95": [
+            0.016648174566156138,
+            0.016932122910636158
+          ],
+          "profit_sum": 4073464.5,
+          "profit_square_sum": 308913903.75
+        },
+        {
+          "true_count": 4,
+          "label": "+4",
+          "rounds": 147889965,
+          "frequency": 0.021970080220484547,
+          "advantage": 0.02243505162774229,
+          "standard_deviation": 1.142944831378858,
+          "standard_error": 9.398443066813844e-05,
+          "ci95": [
+            0.022250845528525236,
+            0.022619257726959344
+          ],
+          "profit_sum": 3317919.0,
+          "profit_square_sum": 193266482.5
+        },
+        {
+          "true_count": 5,
+          "label": "+5",
+          "rounds": 87714056,
+          "frequency": 0.013030531495386275,
+          "advantage": 0.029493049551830096,
+          "standard_deviation": 1.1558599530091194,
+          "standard_error": 0.00012341575948340028,
+          "ci95": [
+            0.029251159108117975,
+            0.029734939995542217
+          ],
+          "profit_sum": 2586955.0,
+          "profit_square_sum": 117263347.5
+        },
+        {
+          "true_count": 6,
+          "label": "+6",
+          "rounds": 54576447,
+          "frequency": 0.008107709801263548,
+          "advantage": 0.03685510161553756,
+          "standard_deviation": 1.1609178435967777,
+          "standard_error": 0.00015714438111417918,
+          "ci95": [
+            0.036547104288180934,
+            0.037163098942894185
+          ],
+          "profit_sum": 2011420.5,
+          "profit_square_sum": 73628457.75
+        },
+        {
+          "true_count": 7,
+          "label": "+7",
+          "rounds": 33084842,
+          "frequency": 0.004914982790225533,
+          "advantage": 0.04452413585653515,
+          "standard_deviation": 1.1586731716252,
+          "standard_error": 0.00020144032747000245,
+          "ci95": [
+            0.044129320069659986,
+            0.04491895164341031
+          ],
+          "profit_sum": 1473074.0,
+          "profit_square_sum": 44482764.5
+        },
+        {
+          "true_count": 8,
+          "label": ">= +8",
+          "rounds": 53121501,
+          "frequency": 0.007891567479933814,
+          "advantage": 0.061779485485547556,
+          "standard_deviation": 1.1473876387288542,
+          "standard_error": 0.00015742546970549598,
+          "ci95": [
+            0.061470937234675484,
+            0.06208803373641963
+          ],
+          "profit_sum": 3281819.0,
+          "profit_square_sum": 70137118.5
+        }
+      ],
+      "shoes": 100000000,
+      "tasks": 256,
+      "seed": 20260813,
+      "runtime_seconds": 158.56221920001553,
+      "rounds_per_second": 42452898.56538121
+    }
+  }
+}
