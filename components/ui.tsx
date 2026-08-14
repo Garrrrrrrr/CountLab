@@ -39,11 +39,11 @@ export const Select = ({
   label: string;
   children: ReactNode;
 } & React.SelectHTMLAttributes<HTMLSelectElement>) => (
-  <label className="grid gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
+  <label className="grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
     {label}
     <select
       {...props}
-      className={`field min-h-11 rounded-xl px-3 text-[.9rem] text-zinc-100 outline-none ${className}`}
+      className={`field min-h-11 w-full min-w-0 rounded-xl px-3 text-[.9rem] text-zinc-100 outline-none ${className}`}
     >
       {children}
     </select>
@@ -93,7 +93,7 @@ export function NumberField({
   };
   const field = (
     <div
-      className={`field flex min-h-11 items-center rounded-xl ${focused ? "field-active" : ""} ${className}`}
+      className={`field flex min-h-11 w-full min-w-0 items-center rounded-xl ${focused ? "field-active" : ""} ${className}`}
     >
       {prefix && <span className="pl-3 text-zinc-500">{prefix}</span>}
       <input
@@ -120,7 +120,7 @@ export function NumberField({
     </div>
   );
   return label ? (
-    <label className="grid gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
+    <label className="grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
       {label}
       {field}
     </label>

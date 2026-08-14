@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { DEVIATIONS, DEVIATION_ACTION_NAMES, deviationDecision } from "@/lib/blackjack/deviations";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
@@ -73,7 +73,7 @@ function handLabel(cards: Card[]) {
   return `${isSoft(cards) ? "Soft " : ""}${total}`;
 }
 
-export function FullShoeGame() {
+export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [phase, setPhase] = useState<Phase>("setup");
   const [rules, setRules] = useState<BlackjackRules>({
     decks: 6,
@@ -112,7 +112,14 @@ export function FullShoeGame() {
   const [visibleIntel, setVisibleIntel] = useState<Record<string, boolean>>({});
   const shoe = useRef<BlackjackShoe | undefined>(undefined);
   const bankrollRef = useRef(1000);
-  const casinoPause = (milliseconds: number) => pause(animations ? milliseconds * (fastMode ? 0.35 : 1) : 40);
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+  const casinoPause = async (milliseconds: number) => {
+    await pause(animations ? milliseconds * (fastMode ? 0.35 : 1) : 40);
+    while (!activeRef.current) await pause(100);
+  };
 
   const decksRemaining = shoe.current?.decksRemaining() ?? rules.decks;
   const tc = trueCount(runningCount, Math.max(0.25, decksRemaining), "floor");
@@ -494,8 +501,16 @@ export function FullShoeGame() {
   const chipValues = useMemo(() => Array.from(new Set([unit, unit * 2, unit * 5, unit * 10])).sort((a, b) => a - b), [unit]);
   const insuranceTotal = hands.reduce((sum, hand) => sum + hand.bet / 2, 0);
 
+  const clearPreviousHandForBet = () => {
+    if (phase !== "bet" || (!hands.length && !dealer.length)) return;
+    setHands([]);
+    setDealer([]);
+    setRoundMessage("Build the next wager, then deal when ready.");
+  };
+
   const placeChip = (value: number) => {
     if (totalWager + value > bankroll) return;
+    clearPreviousHandForBet();
     setWagers((currentWagers) => currentWagers.map((bet, spot) => spot === selectedSpot ? bet + value : bet));
     setChipHistory((history) => [...history, { spot: selectedSpot, value }]);
     sound("chip", soundEnabled);
@@ -511,6 +526,7 @@ export function FullShoeGame() {
   const repeatLastBet = () => {
     const previousTotal = lastWagers.reduce((sum, bet) => sum + bet, 0);
     if (!previousTotal || previousTotal > bankroll) return;
+    clearPreviousHandForBet();
     setWagers([...lastWagers]);
     setChipHistory([]);
   };

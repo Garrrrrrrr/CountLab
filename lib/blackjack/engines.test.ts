@@ -4,6 +4,11 @@ import { BlackjackShoe } from "./shoe";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "./hand";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { DEVIATIONS, deviationDecision } from "./deviations";
+import {
+  FAB_4_DEVIATIONS,
+  FULL_HI_LO_DEVIATIONS,
+  ILLUSTRIOUS_18_DEVIATIONS,
+} from "./fullHiLoIndices";
 import { Card, DEFAULT_RULES, RANKS, SUITS } from "./types";
 import {
   calculateAdvantage,
@@ -15,6 +20,7 @@ import {
   zeroNegativeCountBets,
 } from "./advantage";
 import { COEFFICIENT_METADATA } from "./coefficients";
+import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
   createOptimalRamp,
@@ -146,6 +152,19 @@ describe("deviations", () => {
     expect(deviationDecision(insurance, 2)).toBe("N");
     expect(deviationDecision(insurance, 3)).toBe("I");
   });
+  it("provides the full contextual catalog and curated subsets", () => {
+    expect(FULL_HI_LO_DEVIATIONS.length).toBeGreaterThanOrEqual(250);
+    expect(new Set(FULL_HI_LO_DEVIATIONS.map((entry) => entry.id)).size).toBe(FULL_HI_LO_DEVIATIONS.length);
+    expect(FULL_HI_LO_DEVIATIONS.some((entry) => entry.hand.startsWith("Soft "))).toBe(true);
+    expect(FULL_HI_LO_DEVIATIONS.some((entry) => entry.splitAllowed)).toBe(true);
+    expect(ILLUSTRIOUS_18_DEVIATIONS).toHaveLength(18);
+    expect(ILLUSTRIOUS_18_DEVIATIONS.slice(0, 3).map((entry) => `${entry.hand}|${entry.dealer}`)).toEqual([
+      "Insurance|A",
+      "16|10",
+      "15|10",
+    ]);
+    expect(FAB_4_DEVIATIONS).toHaveLength(4);
+  });
 });
 describe("advantage model", () => {
   it("selects the matching shoe and penetration coefficients", () => {
@@ -232,6 +251,28 @@ describe("advantage model", () => {
     expect(result.rows.find((row) => row.trueCount === 1)?.playerHands).toBe(1);
     expect(result.rows.find((row) => row.trueCount === 2)?.playerHands).toBe(2);
     expect(result.rows.find((row) => row.trueCount === 2)?.totalBet).toBe(80);
+  });
+});
+describe("session simulation", () => {
+  it("is reproducible for a fixed seed and reports complete count frequencies", async () => {
+    const config = {
+      bankroll: 10_000,
+      bettingUnit: 25,
+      playerHands: 1,
+      rounds: 250,
+      paths: 3,
+      roundsPerHour: 100,
+      seed: "deterministic-test",
+      rules: DEFAULT_ADVANTAGE_RULES,
+      ramp: RAMPS["1-8"],
+    };
+    const first = await simulateProfileSessions(config);
+    const second = await simulateProfileSessions(config);
+    expect(first).toEqual(second);
+    expect(first.observations).toBe(750);
+    expect(first.samplePath.at(-1)?.round).toBe(250);
+    expect(first.countBreakdown.reduce((sum, row) => sum + row.simulatedFrequency, 0)).toBeCloseTo(1, 12);
+    expect(first.simulatedCi95[0]).toBeLessThan(first.simulatedCi95[1]);
   });
 });
 

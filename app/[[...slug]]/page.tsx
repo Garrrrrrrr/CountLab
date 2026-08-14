@@ -4,6 +4,7 @@ const routes = [
   [],
   ["dashboard"],
   ["cvcx"],
+  ["simulation"],
   ["analysis"],
   ["bankroll"],
   ["chase-flush"],
