@@ -18,19 +18,22 @@ export function PlayingCard({
 }: {
   card?: Card;
   hidden?: boolean;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "table";
   animated?: boolean;
   fast?: boolean;
   dealIndex?: number;
   flip?: boolean;
 }) {
   const scale =
-      size === "sm"
+      size === "table"
+        ? "h-20 w-14 text-base lg:h-28 lg:w-20 lg:text-2xl 2xl:h-32 2xl:w-24 2xl:text-3xl"
+        : size === "sm"
         ? "h-20 w-14 text-base"
         : size === "lg"
           ? "h-44 w-32 text-4xl"
           : "h-32 w-24 text-2xl",
-    cornerOffset = size === "sm" ? "p-1.5" : "p-2";
+    cornerOffset =
+      size === "sm" || size === "table" ? "p-1.5 lg:p-2" : "p-2";
 
   if (hidden || !card)
     return (

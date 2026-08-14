@@ -20,7 +20,9 @@ import {
   CvcxScenario,
   analyzeCvcx,
   createOptimalRamp,
+  goalByHorizonProbability,
   goalBeforeRuinProbability,
+  roundsToGoalProbability,
   resultPercentile,
   riskSizedUnit,
 } from "@/lib/blackjack/cvcx";
@@ -57,10 +59,10 @@ const expandPreset = (name: string) =>
   });
 
 const views: Array<[View, string, string]> = [
-  ["viewer", "Viewer", "fa-gauge-high"],
-  ["ramp", "Bet ramp", "fa-sliders"],
-  ["risk", "Risk & goals", "fa-shield-halved"],
-  ["compare", "Compare", "fa-chart-column"],
+  ["viewer", "1. Understand", "fa-gauge-high"],
+  ["ramp", "2. Optimize", "fa-sliders"],
+  ["risk", "3. Plan", "fa-shield-halved"],
+  ["compare", "4. Compare", "fa-chart-column"],
 ];
 
 type Tutorial = {
@@ -249,7 +251,21 @@ export function CvcxLab() {
     [ramp, setRamp] = useState<RampPoint[]>(() => expandPreset("1-12")),
     [goal, setGoal] = useState(5000),
     [actualResult, setActualResult] = useState(0),
-    [simplify, setSimplify] = useState(true);
+    [chipIncrement, setChipIncrement] = useState(0.5),
+    [extraHandsAt, setExtraHandsAt] = useState<number | null>(null),
+    [highCountHands, setHighCountHands] = useState(2),
+    [goalProbability, setGoalProbability] = useState(0.75);
+
+  const handsByTrueCount = useMemo(
+    () =>
+      extraHandsAt === null
+        ? undefined
+        : [
+            { trueCount: -8, hands: playerHands },
+            { trueCount: extraHandsAt, hands: highCountHands },
+          ],
+    [extraHandsAt, highCountHands, playerHands],
+  );
 
   const rules = useMemo(
       () => ({
@@ -264,6 +280,7 @@ export function CvcxLab() {
         bankroll,
         minimumBet: baseBet,
         playerHands,
+        handsByTrueCount,
         handsPerHour,
         hours,
         targetRisk,
@@ -271,11 +288,11 @@ export function CvcxLab() {
         wongInAt,
         rules,
       }),
-      [bankroll, baseBet, playerHands, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules],
+      [bankroll, baseBet, playerHands, handsByTrueCount, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules],
     ),
     optimalRamp = useMemo(
-      () => createOptimalRamp(rules, maxSpread, wongInAt, simplify),
-      [rules, maxSpread, wongInAt, simplify],
+      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement),
+      [rules, maxSpread, wongInAt, chipIncrement],
     ),
     custom = useMemo(
       () => analyzeCvcx(scenario, ramp, baseBet),
@@ -345,6 +362,18 @@ export function CvcxLab() {
       custom.evPerRound,
       custom.sdPerRound ** 2,
     ),
+    goalByTrip = goalByHorizonProbability(
+      goal,
+      custom.evPerRound,
+      custom.sdPerRound ** 2,
+      hours * handsPerHour,
+    ),
+    goalRounds = roundsToGoalProbability(
+      goal,
+      goalProbability,
+      custom.evPerRound,
+      custom.sdPerRound ** 2,
+    ),
     actualPercentile = resultPercentile(
       actualResult,
       custom.tripEv,
@@ -364,7 +393,7 @@ export function CvcxLab() {
             comparisonRules,
             maxSpread,
             wongInAt,
-            simplify,
+            chipIncrement,
           );
           const comparisonScenario = {
             ...scenario,
@@ -383,7 +412,7 @@ export function CvcxLab() {
           };
         }),
       ),
-    [rules, maxSpread, wongInAt, simplify, scenario, baseBet],
+    [rules, maxSpread, wongInAt, chipIncrement, scenario, baseBet],
   );
 
   return (
@@ -432,19 +461,37 @@ export function CvcxLab() {
         ))}
       </div>
 
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-emerald-400">Your game</p>
+          <p className="mt-2 font-semibold">{decks} decks, {percent(dealt / decks, 0)} dealt</p>
+          <p className="mt-1 text-sm text-zinc-400">{wongInAt === null ? "Play every count" : `Enter at TC +${wongInAt}`} · {compact(handsPerHour)} rounds/hr</p>
+        </div>
+        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Your bet plan</p>
+          <p className="mt-2 font-semibold">{money(baseBet, 0)} unit · 1–{maxSpread} spread</p>
+          <p className="mt-1 text-sm text-zinc-400">{extraHandsAt === null ? `${playerHands} hand${playerHands === 1 ? "" : "s"} at every count` : `${playerHands} → ${highCountHands} hands at TC +${extraHandsAt}`}</p>
+        </div>
+        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Plain-English result</p>
+          <p className="mt-2 font-semibold text-emerald-300">About {money(custom.hourlyEv, 0)}/hr long run</p>
+          <p className="mt-1 text-sm text-zinc-400">{percent(custom.riskOfRuin)} lifetime ruin risk at fixed bets</p>
+        </div>
+      </div>
+
       <Panel className="mb-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold">Simulation controls</h2>
+            <h2 className="font-semibold">Build your scenario</h2>
             <p className="mt-1 text-sm text-zinc-500">
-              Every result updates instantly from the selected audited profile.
+              Change the game, bankroll, pace, or playing policy. Results update instantly.
             </p>
           </div>
           <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">
             H17 · DAS · RSA · LS · peek · 3:2 · {playerHands} hand{playerHands === 1 ? "" : "s"}
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-9">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
           <Select
             label="Decks"
             value={decks}
@@ -464,8 +511,21 @@ export function CvcxLab() {
           </Select>
           <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
           <NumberField label="Base bet" value={baseBet} min={0.01} prefix="$" onValueChange={setBaseBet} />
+        </div>
+        <details className="mt-5 border-t border-white/[.07] pt-4">
+          <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
+            <span><i className="fa-solid fa-sliders mr-2 text-emerald-400" aria-hidden="true" />Advanced playing and risk controls</span>
+            <span className="text-xs text-zinc-500">hands, pace, RoR, Wonging, rounding</span>
+          </summary>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Select label="Player hands" value={playerHands} onChange={(event) => setPlayerHands(+event.target.value)}>
             {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}
+          </Select>
+          <Select label="Add hands at" value={extraHandsAt ?? "never"} onChange={(event) => setExtraHandsAt(event.target.value === "never" ? null : +event.target.value)}>
+            <option value="never">Never</option><option value={1}>TC +1</option><option value={2}>TC +2</option><option value={3}>TC +3</option><option value={4}>TC +4</option>
+          </Select>
+          <Select label="High-count hands" value={highCountHands} disabled={extraHandsAt === null} onChange={(event) => setHighCountHands(+event.target.value)}>
+            {[2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hands</option>)}
           </Select>
           <NumberField label="Rounds / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
           <NumberField label="Hours" value={hours} min={0.1} step={1} onValueChange={setHours} />
@@ -479,18 +539,25 @@ export function CvcxLab() {
             <option value={0}>TC 0+</option><option value={1}>TC +1+</option>
             <option value={2}>TC +2+</option><option value={3}>TC +3+</option>
           </Select>
-        </div>
+          <Select label="Optimal bet rounding" value={chipIncrement} onChange={(event) => setChipIncrement(+event.target.value)}>
+            <option value={0}>Exact units</option><option value={0.25}>Quarter units</option><option value={0.5}>Half units</option><option value={1}>Whole units</option>
+          </Select>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-zinc-500">Changing hands by count mirrors CVCX-style hand spreading. The model supports up to seven simultaneous hands; shared dealer-result covariance is not available in the source profiles.</p>
+        </details>
       </Panel>
 
       {view === "viewer" && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Metric label="Hourly EV" value={money(custom.hourlyEv, 2)} sub={`${percent(custom.playerEdge, 3, true)} player edge`} />
             <Metric label="Lifetime RoR" value={percent(custom.riskOfRuin)} sub={`${percent(custom.tripRiskOfRuin)} over this trip`} />
             <Metric label="c-SCORE" value={custom.cScore.toFixed(2)} sub={`DI ${custom.desirabilityIndex.toFixed(2)}`} />
             <Metric label="N₀" value={`${compact(custom.nZeroRounds)} rounds`} sub={`${compact(custom.nZeroHours)} observed hr`} />
             <Metric label="Average total action" value={money(custom.averageBet, 2)} sub={`${percent(custom.playedFrequency, 1)} rounds played · ${playerHands} hand${playerHands === 1 ? "" : "s"}`} />
             <Metric label="Trip EV" value={money(custom.tripEv, 0)} sub={`${percent(custom.chanceOfProfit)} chance of profit`} />
+            <Metric label="Risk-adjusted EV" value={money(custom.certaintyEquivalentHourly, 2)} sub={`${percent(custom.certaintyEquivalentRatio, 0)} CE / win rate`} />
+            <Metric label="Hands played / hour" value={custom.handsPlayedPerHour.toFixed(1)} sub="includes multi-hand rounds" />
           </div>
           <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
             <Panel>
@@ -540,7 +607,9 @@ export function CvcxLab() {
                 {!Object.hasOwn(RAMPS, rampName) && <option value="custom">{rampName}</option>}
               </Select>
               <NumberField label="Maximum spread" value={maxSpread} min={1} max={100} onValueChange={setMaxSpread} />
-              <label className="flex min-h-11 items-center gap-3 rounded-xl border border-white/[.08] bg-black/20 px-3 text-sm text-zinc-300"><input type="checkbox" checked={simplify} onChange={(event) => setSimplify(event.target.checked)} className="accent-emerald-400" />Simplify to half units</label>
+              <Select label="Bet rounding" value={chipIncrement} onChange={(event) => setChipIncrement(+event.target.value)}>
+                <option value={0}>Exact units</option><option value={0.25}>Quarter units</option><option value={0.5}>Half units</option><option value={1}>Whole units</option>
+              </Select>
               <Button onClick={useOptimal}>Generate optimized ramp</Button>
             </div>
             <div className="mt-5 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200"><b>{money(optimalUnit, 2)}</b> risk-sized base bet per hand for {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} at a {percent(targetRisk)} lifetime RoR target.</div>
@@ -548,8 +617,8 @@ export function CvcxLab() {
           <Panel className="overflow-x-auto">
             <div className="mb-4"><h2 className="font-semibold">Bets by true count</h2><p className="mt-1 text-sm text-zinc-500">Zero-dollar buckets are observed but not played.</p></div>
             <table className="w-full min-w-[860px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
-              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
+              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Hands</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
+              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
             </table>
           </Panel>
           <Panel className="xl:col-span-2">
@@ -566,15 +635,20 @@ export function CvcxLab() {
             <p className="mt-1 text-sm leading-6 text-zinc-500">Stress-test the active game and ramp without changing its simulation inputs.</p>
             <div className="mt-5 grid gap-4">
               <NumberField label="Profit goal" value={goal} min={0} prefix="$" onValueChange={setGoal}/>
+              <Select label="Goal confidence" value={goalProbability} onChange={(event) => setGoalProbability(+event.target.value)}>
+                <option value={0.6}>60%</option><option value={0.75}>75%</option><option value={0.8}>80%</option><option value={0.9}>90%</option><option value={0.95}>95%</option>
+              </Select>
               <NumberField label="Actual trip result" value={actualResult} prefix="$" onValueChange={setActualResult}/>
               <div className="rounded-xl bg-black/20 p-4 text-sm leading-6 text-zinc-400">Trip horizon: <b className="text-zinc-100">{hours.toLocaleString()} hours</b><br/>Observed rounds: <b className="text-zinc-100">{compact(hours * handsPerHour)}</b></div>
             </div>
           </Panel>
           <div className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Metric label="Required bankroll" value={money(custom.requiredBankroll, 0)} sub={`for ${percent(targetRisk)} lifetime RoR`} />
               <Metric label="Trip ruin risk" value={percent(custom.tripRiskOfRuin, 3)} sub={`${compact(hours * handsPerHour)} observed rounds`} />
               <Metric label="Reach goal first" value={percent(goalChance)} sub={`before ruin, no time limit`} />
+              <Metric label="Goal by this trip" value={percent(goalByTrip)} sub="terminal normal estimate" />
+              <Metric label="Time to goal" value={Number.isFinite(goalRounds) ? `${compact(goalRounds / handsPerHour)} hr` : "Not available"} sub={`for ${percent(goalProbability, 0)} terminal confidence`} />
               <Metric label="Actual percentile" value={percent(actualPercentile, 1)} sub={actualResult >= custom.tripEv ? "above expected result" : "below expected result"} />
             </div>
             <Panel>

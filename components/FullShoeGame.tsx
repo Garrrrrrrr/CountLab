@@ -10,7 +10,7 @@ import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
 import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, NumberField, Panel, Select } from "./ui";
 
-type Phase = "setup" | "bet" | "dealing" | "insurance" | "play" | "dealer" | "result" | "shoe-end";
+type Phase = "setup" | "bet" | "dealing" | "insurance" | "play" | "dealer" | "shoe-end";
 type HandStatus = "playing" | "stood" | "busted" | "surrendered";
 type Spread = "flat" | "1-8" | "1-12";
 
@@ -22,6 +22,7 @@ interface PlayerHand {
   status: HandStatus;
   fromSplit?: boolean;
   splitAces?: boolean;
+  awaitingSplitCard?: boolean;
 }
 
 interface CoachNote {
@@ -119,7 +120,6 @@ export function FullShoeGame() {
   const totalWager = wagers.reduce((sum, value) => sum + value, 0);
   const occupiedSpots = wagers.filter(Boolean).length;
   const cardsTotal = rules.decks * 52;
-  const cutReached = (shoe.current?.cardsRemaining() ?? cardsTotal) <= cardsTotal * (1 - penetration);
   const accuracy = stats.total ? Math.round((stats.correct / stats.total) * 100) : 100;
   const current = hands[activeHand];
 
@@ -202,9 +202,25 @@ export function FullShoeGame() {
     setHands(settledHands);
     setDealer(dealerCards);
     setDiscarded((value) => value + settledHands.reduce((sum, hand) => sum + hand.cards.length, 0) + dealerCards.length);
-    setRoundMessage(`${outcomes.join(" · ")} · Dealer ${dealerBust ? "busts with " : "has "}${dealerTotal}.`);
+    const resultMessage = `${outcomes.join(" · ")} · Dealer ${dealerBust ? "busts with " : "has "}${dealerTotal}.`;
+    const reachedCut =
+      (shoe.current?.cardsRemaining() ?? cardsTotal) <=
+      cardsTotal * (1 - penetration);
+    setWagers(Array(7).fill(0));
+    setChipHistory([]);
+    setInsuranceBet(0);
     setDealing(false);
-    setPhase("result");
+    if (finalBankroll <= 0) {
+      setRoundMessage(`${resultMessage} Bankroll exhausted.`);
+      setPhase("shoe-end");
+    } else if (reachedCut) {
+      setRoundMessage(`${resultMessage} Cut card reached.`);
+      setPhase("shoe-end");
+    } else {
+      setRound((value) => value + 1);
+      setRoundMessage(`${resultMessage} Place the next wager when ready.`);
+      setPhase("bet");
+    }
     sound(returned > settledHands.reduce((sum, hand) => sum + hand.bet, 0) ? "win" : "deal", soundEnabled);
   };
 
@@ -257,7 +273,7 @@ export function FullShoeGame() {
     if (!d1 || !d2 || firstCards.some((card) => !card) || secondCards.some((card) => !card)) return;
     const nextHands: PlayerHand[] = activeBets.map(({ bet, spot }, index) => {
       const cards = [firstCards[index] as Card, secondCards[index] as Card];
-      return { cards, bet, spot, player: spotOwners[spot], status: isBlackjack(cards) ? "stood" : "playing" };
+      return { cards, bet, spot, player: spotOwners[spot], status: calculateHandValue(cards) === 21 ? "stood" : "playing" };
     });
     const nextDealer = [d1, d2];
     changeBankroll(-totalWager);
@@ -318,11 +334,12 @@ export function FullShoeGame() {
   };
 
   const legalActions = (hand: PlayerHand) => {
+    const total = calculateHandValue(hand.cards);
+    if (total >= 21) return [];
     if (hand.splitAces) {
       return isPair(hand.cards) && hand.cards[0].rank === "A" && rules.resplitAces && bankroll >= hand.bet && hands.filter((item) => item.spot === hand.spot).length < 4 ? ["P" as Action] : [];
     }
     const actions: Action[] = ["H", "S"];
-    const total = calculateHandValue(hand.cards);
     const doubleAllowed = rules.doubleRule === "any" || (rules.doubleRule === "9-11" && total >= 9 && total <= 11) || (rules.doubleRule === "10-11" && total >= 10 && total <= 11);
     if (hand.cards.length === 2 && bankroll >= hand.bet && doubleAllowed && (!hand.fromSplit || rules.doubleAfterSplit)) actions.push("D");
     if (isPair(hand.cards) && bankroll >= hand.bet && hands.filter((item) => item.spot === hand.spot).length < 4 && (hand.cards[0].rank !== "A" || !hand.fromSplit || rules.resplitAces)) actions.push("P");
@@ -339,7 +356,7 @@ export function FullShoeGame() {
       : undefined;
     const indexed = deviation ? deviationDecision(deviation, tc) : basic.action;
     let action = indexed as Action;
-    if (!legal.includes(action)) action = action === "D" ? "H" : action === "R" ? "H" : basic.action;
+    if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? "H" : action === "R" ? "H" : basic.action;
     if (!legal.includes(action)) action = "H";
     const explanation = deviation
       ? `${deviation.hand} vs ${deviation.dealer} changes from ${DEVIATION_ACTION_NAMES[deviation.normalAction]} to ${DEVIATION_ACTION_NAMES[deviation.deviationAction]} ${deviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(deviation.index)}. Current TC: ${signed(tc)}.`
@@ -351,7 +368,44 @@ export function FullShoeGame() {
     const next = nextHands.findIndex((hand, index) => index > from && hand.status === "playing");
     setHands(nextHands);
     if (next >= 0) {
-      await casinoPause(280);
+      await casinoPause(420);
+      const nextHand = nextHands[next];
+      if (nextHand.awaitingSplitCard) {
+        setRoundMessage(`Dealing the second card to player ${nextHand.player + 1}, spot ${nextHand.spot + 1}…`);
+        const card = draw();
+        if (!card) {
+          setDealing(false);
+          return;
+        }
+        nextHand.cards.push(card);
+        nextHand.awaitingSplitCard = false;
+        addVisible([card]);
+        sound("deal", soundEnabled);
+        const canResplitAces =
+          nextHand.splitAces &&
+          card.rank === "A" &&
+          rules.resplitAces &&
+          nextHands.filter((item) => item.spot === nextHand.spot).length < 4;
+        if (nextHand.splitAces && !canResplitAces) {
+          nextHand.status = "stood";
+          setHands([...nextHands]);
+          setActiveHand(next);
+          setRoundMessage(`${handLabel(nextHand.cards)} on split aces. Moving on…`);
+          await casinoPause(420);
+          await advance(nextHands, next);
+          return;
+        }
+        if (calculateHandValue(nextHand.cards) === 21) {
+          nextHand.status = "stood";
+          setHands([...nextHands]);
+          setActiveHand(next);
+          setRoundMessage("21. Moving on…");
+          await casinoPause(420);
+          await advance(nextHands, next);
+          return;
+        }
+      }
+      setHands([...nextHands]);
       setDealing(false);
       setActiveHand(next);
       setRoundMessage(`Player ${nextHands[next].player + 1} · spot ${nextHands[next].spot + 1}. Play the next hand.`);
@@ -370,8 +424,6 @@ export function FullShoeGame() {
       "play",
     );
     setDealing(true);
-    setRoundMessage(action === "S" || action === "R" ? "Moving to the next hand…" : "Dealer prepares the next card…");
-    await casinoPause(action === "S" || action === "R" ? 320 : 520);
     const nextHands = hands.map((item) => ({ ...item, cards: [...item.cards] }));
     const next = nextHands[activeHand];
     if (action === "H") {
@@ -379,8 +431,15 @@ export function FullShoeGame() {
       if (!card) { setDealing(false); return; }
       next.cards.push(card);
       addVisible([card]);
-      if (calculateHandValue(next.cards) > 21) {
+      sound("deal", soundEnabled);
+      const total = calculateHandValue(next.cards);
+      if (total > 21) {
         next.status = "busted";
+        setRoundMessage("Bust. Moving on…");
+        await advance(nextHands, activeHand);
+      } else if (total === 21) {
+        next.status = "stood";
+        setRoundMessage("21. Moving on…");
         await advance(nextHands, activeHand);
       } else {
         setHands(nextHands);
@@ -389,6 +448,7 @@ export function FullShoeGame() {
       }
     } else if (action === "S") {
       next.status = "stood";
+      setRoundMessage("Stand registered. Moving on…");
       await advance(nextHands, activeHand);
     } else if (action === "D") {
       const card = draw();
@@ -398,55 +458,37 @@ export function FullShoeGame() {
       next.cards.push(card);
       next.status = calculateHandValue(next.cards) > 21 ? "busted" : "stood";
       addVisible([card]);
-      sound("chip", soundEnabled);
+      sound("deal", soundEnabled);
+      setRoundMessage(`${handLabel(next.cards)} on the double. Moving on…`);
       await advance(nextHands, activeHand);
     } else if (action === "R") {
       next.status = "surrendered";
+      setRoundMessage("Surrender registered. Moving on…");
       await advance(nextHands, activeHand);
     } else {
       const [first, second] = next.cards;
-      const leftCard = draw(), rightCard = draw();
-      if (!leftCard || !rightCard) { setDealing(false); return; }
+      const leftCard = draw();
+      if (!leftCard) { setDealing(false); return; }
       changeBankroll(-next.bet);
       const splitAces = first.rank === "A";
+      const firstSplitCards = [first, leftCard];
       const splitHands: PlayerHand[] = [
-        { cards: [first, leftCard], bet: next.bet, spot: next.spot, player: next.player, status: splitAces && !(leftCard.rank === "A" && rules.resplitAces) ? "stood" : "playing", fromSplit: true, splitAces },
-        { cards: [second, rightCard], bet: next.bet, spot: next.spot, player: next.player, status: splitAces && !(rightCard.rank === "A" && rules.resplitAces) ? "stood" : "playing", fromSplit: true, splitAces },
+        { cards: firstSplitCards, bet: next.bet, spot: next.spot, player: next.player, status: calculateHandValue(firstSplitCards) === 21 || (splitAces && !(leftCard.rank === "A" && rules.resplitAces)) ? "stood" : "playing", fromSplit: true, splitAces },
+        { cards: [second], bet: next.bet, spot: next.spot, player: next.player, status: "playing", fromSplit: true, splitAces, awaitingSplitCard: true },
       ];
       nextHands.splice(activeHand, 1, ...splitHands);
-      addVisible([leftCard, rightCard]);
+      addVisible([leftCard]);
       sound("chip", soundEnabled);
-      if (splitAces) await advance(nextHands, activeHand - 1);
+      setHands(nextHands);
+      setRoundMessage("Split dealt. Finish the first hand before the second receives a card.");
+      if (splitHands[0].status !== "playing")
+        await advance(nextHands, activeHand - 1);
       else {
-        setHands(nextHands);
         setActiveHand(activeHand);
         setDealing(false);
         setRoundMessage(`Split complete. Play hand ${activeHand + 1}.`);
       }
     }
-  };
-
-  const nextRound = () => {
-    setDealing(false);
-    if (bankroll <= 0) {
-      setRoundMessage("Bankroll exhausted. Start a new shoe to try another session.");
-      setPhase("shoe-end");
-      return;
-    }
-    if (cutReached) {
-      setRoundMessage("Cut card reached. The shoe is complete.");
-      setPhase("shoe-end");
-      return;
-    }
-    setRound((value) => value + 1);
-    setHands([]);
-    setDealer([]);
-    setWagers(Array(7).fill(0));
-    setChipHistory([]);
-    setInsuranceBet(0);
-    setNote(undefined);
-    setRoundMessage("Choose your wager for the new true count.");
-    setPhase("bet");
   };
 
   const chipValues = useMemo(() => Array.from(new Set([unit, unit * 2, unit * 5, unit * 10])).sort((a, b) => a - b), [unit]);
@@ -510,7 +552,7 @@ export function FullShoeGame() {
               ["lateSurrender", "Late surrender"],
             ].map(([key, label]) => <label key={key} className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>{label}</span><input type="checkbox" checked={Boolean(rules[key as keyof BlackjackRules])} onChange={(event) => setRules({ ...rules, [key]: event.target.checked })} className="h-5 w-5 accent-emerald-400" /></label>)}
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Card animations</span><input type="checkbox" checked={animations} onChange={(event) => setAnimations(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
-            <div className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Fast mode</b><small className="text-zinc-500">Shorter casino pauses</small></span><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} onClick={() => setFastMode((value) => !value)} className={`pressable relative h-7 w-12 rounded-full transition ${fastMode ? "bg-emerald-400" : "bg-zinc-700"}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${fastMode ? "translate-x-6" : "translate-x-1"}`} /></button></div>
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Fast mode</b><small className="text-zinc-500">Shorter casino pauses</small></span><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} onClick={() => setFastMode((value) => !value)} className={`pressable flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ${fastMode ? "justify-end bg-emerald-400" : "justify-start bg-zinc-700"}`}><span className="h-6 w-6 rounded-full bg-white shadow" /></button></div>
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Sound effects</span><input type="checkbox" checked={soundEnabled} onChange={(event) => setSoundEnabled(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
           </div>
         </Panel>
@@ -544,8 +586,8 @@ export function FullShoeGame() {
     { label: "Cards discarded", value: discarded, intel: "discard" },
   ];
   return (
-    <>
-      <div className="mb-4 flex items-start justify-between gap-3 sm:mb-5 sm:items-end">
+    <div className="xl:-mx-4 2xl:-mx-10">
+      <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-5 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread}</p>
           <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Full Shoe Blackjack</h1>
@@ -563,36 +605,36 @@ export function FullShoeGame() {
         </div>)}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <Panel className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#176448_0%,#103d30_48%,#0b241e_100%)] p-3 ring-1 ring-emerald-300/10 sm:p-5 md:p-6">
-          <div className="relative min-h-[420px] sm:min-h-[510px]">
+      <div className="grid gap-5 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <Panel className="overflow-hidden bg-[radial-gradient(ellipse_at_center,#176448_0%,#103d30_48%,#0b241e_100%)] p-3 ring-1 ring-emerald-300/10 sm:p-5 md:p-6 2xl:p-8">
+          <div className="relative min-h-[460px] sm:min-h-[600px] xl:min-h-[680px] 2xl:min-h-[740px]">
             <div className="pointer-events-none absolute inset-6 rounded-[50%] border border-emerald-200/15" />
             <div className="relative text-center">
               <p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-emerald-100/60">Dealer {dealer.length && !holeHidden ? `· ${calculateHandValue(dealer)}` : ""}</p>
               <div className="flex min-h-24 justify-center -space-x-5">
-                {dealer.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} hidden={index === 1 && holeHidden} size="sm" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? index === 0 ? occupiedSpots : index === 1 ? occupiedSpots * 2 + 1 : 0 : 0} flip={index === 1 && !holeHidden} />)}
+                {dealer.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} hidden={index === 1 && holeHidden} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? index === 0 ? occupiedSpots : index === 1 ? occupiedSpots * 2 + 1 : 0 : 0} flip={index === 1 && !holeHidden} />)}
               </div>
             </div>
-            <div className="casino-spots relative -mx-3 mt-10 flex min-h-48 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-4 sm:mx-0 sm:mt-16 sm:grid sm:min-h-52 sm:grid-cols-4 sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-7">
+            <div className="casino-spots relative -mx-3 mt-12 flex min-h-52 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-4 sm:mx-0 sm:mt-20 sm:grid sm:min-h-60 sm:grid-cols-4 sm:gap-3 sm:overflow-visible sm:px-0 sm:pb-0 xl:min-h-72 xl:grid-cols-7 2xl:mt-24">
               {Array.from({ length: 7 }, (_, spot) => {
                 const spotHands = hands.filter((hand) => hand.spot === spot);
                 const activeHere = phase === "play" && current?.spot === spot;
                 const selected = phase === "bet" && selectedSpot === spot;
                 const bet = wagers[spot];
                 const spotOrder = wagers.slice(0, spot).filter(Boolean).length;
-                return <button key={spot} type="button" disabled={phase !== "bet"} onClick={() => setSelectedSpot(spot)} className={`relative min-h-40 w-32 min-w-32 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:min-h-44 sm:w-auto sm:min-w-0 ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}>
+                return <button key={spot} type="button" disabled={phase !== "bet"} onClick={() => setSelectedSpot(spot)} className={`relative min-h-44 w-36 min-w-36 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:min-h-52 sm:w-auto sm:min-w-0 xl:min-h-64 xl:px-2 xl:py-4 ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}>
                   <p className="mb-2 text-[.62rem] font-bold uppercase tracking-wider text-emerald-100/60">P{spotOwners[spot] + 1} · Spot {spot + 1}</p>
                   {spotHands.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{spotHands.map((hand) => {
                     const handIndex = hands.indexOf(hand);
                     return <div key={handIndex} className={phase === "play" && handIndex === activeHand ? "rounded-xl bg-amber-200/10 p-1" : "p-1"}>
-                      <div className="flex justify-center -space-x-7">{hand.cards.map((card, cardIndex) => <PlayingCard key={`${card.rank}-${card.suit}-${cardIndex}`} card={card} size="sm" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0 : 0} />)}</div>
-                      <p className="mt-1 text-[.62rem] font-semibold">${hand.bet} · {handLabel(hand.cards)}</p>
-                      {hand.status !== "playing" && <span className="text-[.55rem] font-bold uppercase text-emerald-100/55">{hand.status}</span>}
+                      <div className="flex justify-center -space-x-7 lg:-space-x-10 2xl:-space-x-12">{hand.cards.map((card, cardIndex) => <PlayingCard key={`${card.rank}-${card.suit}-${cardIndex}`} card={card} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0 : 0} />)}</div>
+                      <p className="mt-1 text-[.62rem] font-semibold">${hand.bet} · {hand.awaitingSplitCard ? "Waiting" : handLabel(hand.cards)}</p>
+                      {hand.awaitingSplitCard ? <span className="text-[.55rem] font-bold uppercase text-amber-200/70">Next to deal</span> : hand.status !== "playing" && <span className="text-[.55rem] font-bold uppercase text-emerald-100/55">{hand.status}</span>}
                     </div>;
                   })}</div> : <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full border-2 border-dashed ${selected ? "border-emerald-200 bg-emerald-200/10" : "border-emerald-100/20 bg-black/10"}`}>
                     {bet > 0 ? <div key={`${spot}-${bet}`} className="casino-chip-drop grid h-14 w-14 place-items-center rounded-full border-4 border-dashed border-amber-100 bg-gradient-to-br from-amber-400 to-orange-600 text-xs font-black text-zinc-950 shadow-[0_8px_18px_#0008]">${bet}</div> : <span className="text-[.6rem] font-semibold uppercase text-emerald-100/35">Bet</span>}
                   </div>}
-                  {phase === "bet" && bet > 0 && <p className={`mt-2 text-[.6rem] font-semibold ${bet === expectedWager ? "text-emerald-200" : "text-amber-200"}`}>{bet === expectedWager ? "On ramp" : `Target $${expectedWager}`}</p>}
+                  {phase === "bet" && bet > 0 && <p className={`mt-2 text-[.6rem] font-semibold ${bet === expectedWager ? "text-emerald-200" : "text-amber-200"}`}>${bet} · {bet === expectedWager ? "On ramp" : `Target $${expectedWager}`}</p>}
                 </button>;
               })}
             </div>
@@ -602,18 +644,17 @@ export function FullShoeGame() {
             {phase === "bet" && <div>
               <div className="mb-4 flex flex-wrap items-center justify-center gap-3"><span className="text-sm text-zinc-400">Selected: spot {selectedSpot + 1}</span><strong className="text-3xl">${wagers[selectedSpot]}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-emerald-200">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${totalWager} total</span></div>
               {players > 1 && <div className="mb-4 flex flex-wrap items-center justify-center gap-2"><span className="mr-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">Spot owner</span>{Array.from({ length: players }, (_, player) => <button key={player} type="button" aria-pressed={spotOwners[selectedSpot] === player} onClick={() => setSpotOwners((owners) => owners.map((owner, spot) => spot === selectedSpot ? player : owner))} className={`pressable min-h-10 rounded-full px-3 text-sm font-semibold ${spotOwners[selectedSpot] === player ? "bg-emerald-300 text-emerald-950" : "border border-white/10 bg-white/[.05] text-zinc-300"}`}>Player {player + 1}</button>)}</div>}
-              <div className="casino-chip-rail mx-auto flex max-w-xl flex-wrap items-end justify-center gap-2 rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-800/95 to-zinc-950/95 p-3 shadow-[inset_0_2px_0_#ffffff12,0_14px_32px_#0008] sm:gap-3 sm:p-4">{chipValues.map((value, index) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs ${["border-red-100 bg-gradient-to-br from-red-500 to-red-800", "border-blue-100 bg-gradient-to-br from-blue-500 to-blue-800", "border-emerald-100 bg-gradient-to-br from-emerald-500 to-emerald-800", "border-zinc-100 bg-gradient-to-br from-zinc-600 to-black"][index]}`}>${value}</button>)}</div>
+              <div className="casino-chip-rail mx-auto flex max-w-2xl flex-wrap items-end justify-center gap-2 rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-800/95 to-zinc-950/95 p-3 shadow-[inset_0_2px_0_#ffffff12,0_14px_32px_#0008] sm:gap-3 sm:p-4">{chipValues.map((value, index) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs xl:h-20 xl:w-20 xl:text-sm ${["border-red-100 bg-gradient-to-br from-red-500 to-red-800", "border-blue-100 bg-gradient-to-br from-blue-500 to-blue-800", "border-emerald-100 bg-gradient-to-br from-emerald-500 to-emerald-800", "border-zinc-100 bg-gradient-to-br from-zinc-600 to-black"][index]}`}>${value}</button>)}</div>
               <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(7).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="col-span-3 w-full sm:w-auto" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
             </div>}
             {phase === "insurance" && <div className="flex flex-wrap justify-center gap-3"><GhostButton disabled={dealing} onClick={() => chooseInsurance(false)}>Decline insurance</GhostButton><Button disabled={dealing || bankroll < insuranceTotal} onClick={() => chooseInsurance(true)}>Insure all spots for ${insuranceTotal}</Button></div>}
             {phase === "play" && current && <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">{legalActions(current).map((action) => <Button disabled={dealing} className="w-full sm:w-auto" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}</div>}
             {(phase === "dealing" || phase === "dealer") && <div className="flex min-h-12 items-center justify-center gap-3 text-sm font-medium text-emerald-100/70"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing" : "Cards in motion"}</div>}
-            {phase === "result" && <div className="text-center"><Button onClick={nextRound}>{cutReached ? "Finish shoe" : "Next round"}</Button></div>}
             {phase === "shoe-end" && <div className="text-center"><p className="mb-4 text-2xl font-semibold">Session result: {bankroll >= startingBankroll ? "+" : ""}${(bankroll - startingBankroll).toFixed(2)}</p><Button onClick={startShoe}>Shuffle another shoe</Button></div>}
           </div>
         </Panel>
 
-        <div className="space-y-5">
+        <div className="grid gap-5 md:grid-cols-2 2xl:block 2xl:space-y-5">
           <Panel>
             <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Discard tray</p><div className="mt-1 flex items-center gap-2 text-sm text-zinc-300"><span className={!visibleIntel.discard ? "select-none tracking-[.16em] text-zinc-600" : ""}>{visibleIntel.discard ? `${(discarded / 52).toFixed(2)} decks seen` : "•••"}</span><button type="button" aria-label={`${visibleIntel.discard ? "Hide" : "Reveal"} exact discard amount`} aria-pressed={Boolean(visibleIntel.discard)} onClick={() => setVisibleIntel((shown) => ({ ...shown, discard: !shown.discard }))} className="pressable grid h-7 w-7 place-items-center rounded-full text-xs text-zinc-500 hover:bg-white/10 hover:text-emerald-300"><i aria-hidden="true" className={`fas ${visibleIntel.discard ? "fa-eye-slash" : "fa-eye"}`} /></button></div></div><span className="text-xs text-zinc-500">Cut at {Math.round(penetration * 100)}%</span></div>
             <div className="mt-4 flex h-32 items-end rounded-b-2xl border-x-4 border-b-4 border-zinc-500/60 bg-black/25 p-2 sm:h-48">
@@ -628,6 +669,6 @@ export function FullShoeGame() {
           </Panel>
         </div>
       </div>
-    </>
+    </div>
   );
 }

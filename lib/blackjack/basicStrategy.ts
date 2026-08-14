@@ -1,6 +1,6 @@
 import { calculateHandValue, isPair, isSoft } from "./hand";
 import { Action, BlackjackRules, Card } from "./types";
-export interface Decision { action: Action; explanation: string }
+export interface Decision { action: Action; fallback?: Action; explanation: string }
 const upValue=(c:Card)=>c.rank==="A"?11:["K","Q","J"].includes(c.rank)?10:Number(c.rank);
 export function getBasicStrategyDecision({playerCards,dealerUpcard,rules}:{playerCards:Card[];dealerUpcard:Card;rules:BlackjackRules}):Decision {
   const total=calculateHandValue(playerCards), up=upValue(dealerUpcard), soft=isSoft(playerCards), pair=isPair(playerCards), pairRank=pair?playerCards[0].rank:undefined;
@@ -13,6 +13,8 @@ export function getBasicStrategyDecision({playerCards,dealerUpcard,rules}:{playe
   } else if(soft) { if(total>=20) action="S"; else if(total===19) action=rules.dealerHitsSoft17&&up===6?"D":"S"; else if(total===18) action=up<=6&&up>=(rules.dealerHitsSoft17?2:3)?"D":up<=8?"S":"H"; else if(total===17) action=[3,4,5,6].includes(up)?"D":"H"; else if([15,16].includes(total)) action=[4,5,6].includes(up)?"D":"H"; else if([13,14].includes(total)) action=[5,6].includes(up)?"D":"H";
   } else { if(total>=17) action="S"; else if(total>=13) action=up<=6?"S":"H"; else if(total===12) action=[4,5,6].includes(up)?"S":"H"; else if(total===11) action=up===11&&!rules.dealerHitsSoft17?"H":"D"; else if(total===10) action=up<=9?"D":"H"; else if(total===9) action=up>=3&&up<=6?"D":"H"; }
   const names={H:"Hit",S:"Stand",D:"Double",P:"Split",R:"Surrender"};
+  const fallback: Action | undefined = action === "D" ? soft && total >= 18 ? "S" : "H" : undefined;
   const kind=pair?"pair":soft?"soft hand":"hard hand";
-  return {action,explanation:`${total} (${kind}) vs dealer ${dealerUpcard.rank} is ${names[action]} under ${rules.decks}-deck ${rules.dealerHitsSoft17?"H17":"S17"} basic strategy.`};
+  const instruction = fallback ? `${names[action]} if allowed, otherwise ${names[fallback]}` : names[action];
+  return {action,fallback,explanation:`${total} (${kind}) vs dealer ${dealerUpcard.rank} is ${instruction} under ${rules.decks}-deck ${rules.dealerHitsSoft17?"H17":"S17"} basic strategy.`};
 }

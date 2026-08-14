@@ -1,6 +1,7 @@
 import {
   AdvantageResult,
   AdvantageRules,
+  HandCountPoint,
   RampPoint,
   calculateAdvantage,
   getCountProfile,
@@ -11,6 +12,7 @@ export interface CvcxScenario {
   bankroll: number;
   minimumBet: number;
   playerHands?: number;
+  handsByTrueCount?: HandCountPoint[];
   handsPerHour: number;
   hours: number;
   targetRisk: number;
@@ -27,6 +29,8 @@ export interface CvcxPerformance extends AdvantageResult {
   requiredBankroll: number;
   tripRiskOfRuin: number;
   chanceOfProfit: number;
+  certaintyEquivalentHourly: number;
+  certaintyEquivalentRatio: number;
 }
 
 const clamp = (value: number, minimum = 0, maximum = 1) =>
@@ -98,7 +102,7 @@ export function createOptimalRamp(
   rules: AdvantageRules,
   maxSpread: number,
   wongInAt: number | null,
-  simplify = true,
+  chipIncrement = 0.5,
 ): RampPoint[] {
   const rows = getCountProfile(rules);
   const eligible = rows.filter(
@@ -118,7 +122,10 @@ export function createOptimalRamp(
     const bounded = Math.min(Math.max(1, maxSpread), weight);
     return {
       trueCount: row.tc,
-      units: simplify ? Math.round(bounded * 2) / 2 : bounded,
+      units:
+        chipIncrement > 0
+          ? Math.round(bounded / chipIncrement) * chipIncrement
+          : bounded,
     };
   });
 }
@@ -132,6 +139,7 @@ export function analyzeCvcx(
     bankroll: scenario.bankroll,
     bettingUnit,
     playerHands: scenario.playerHands,
+    handsByTrueCount: scenario.handsByTrueCount,
     handsPerHour: scenario.handsPerHour,
     hours: scenario.hours,
     rules: scenario.rules,
@@ -151,7 +159,12 @@ export function analyzeCvcx(
     ...result,
     playedFrequency,
     handsPlayedPerHour:
-      scenario.handsPerHour * playedFrequency * (scenario.playerHands ?? 1),
+      scenario.handsPerHour *
+      result.rows.reduce(
+        (sum, row) =>
+          sum + (row.bet > 0 ? row.frequency * row.playerHands : 0),
+        0,
+      ),
     cScore,
     desirabilityIndex: Math.sqrt(cScore),
     requiredBankroll: requiredBankroll(
@@ -169,6 +182,14 @@ export function analyzeCvcx(
       result.standardDeviation > 0
         ? normalCdf(result.tripEv / result.standardDeviation)
         : Number(result.tripEv > 0),
+    certaintyEquivalentHourly:
+      (result.evPerRound - variance / (2 * scenario.bankroll)) *
+      scenario.handsPerHour,
+    certaintyEquivalentRatio:
+      result.evPerRound > 0
+        ? (result.evPerRound - variance / (2 * scenario.bankroll)) /
+          result.evPerRound
+        : 0,
   };
 }
 
@@ -182,7 +203,56 @@ export function riskSizedUnit(
     scenario.rules,
     ramp,
     scenario.playerHands,
+    scenario.handsByTrueCount,
   );
+}
+
+export function goalByHorizonProbability(
+  goal: number,
+  meanPerRound: number,
+  variancePerRound: number,
+  rounds: number,
+) {
+  if (goal <= 0) return 1;
+  if (rounds <= 0 || variancePerRound <= 0)
+    return Number(meanPerRound * rounds >= goal);
+  return clamp(
+    1 -
+      normalCdf(
+        (goal - meanPerRound * rounds) /
+          Math.sqrt(variancePerRound * rounds),
+      ),
+  );
+}
+
+export function roundsToGoalProbability(
+  goal: number,
+  probability: number,
+  meanPerRound: number,
+  variancePerRound: number,
+) {
+  if (goal <= 0) return 0;
+  if (meanPerRound <= 0 || variancePerRound < 0) return Infinity;
+  const target = clamp(probability, 0.500001, 0.999999);
+  let high = 1;
+  while (
+    high < 1_000_000_000 &&
+    goalByHorizonProbability(goal, meanPerRound, variancePerRound, high) <
+      target
+  )
+    high *= 2;
+  if (high >= 1_000_000_000) return Infinity;
+  let low = 0;
+  for (let index = 0; index < 64; index += 1) {
+    const middle = (low + high) / 2;
+    if (
+      goalByHorizonProbability(goal, meanPerRound, variancePerRound, middle) >=
+      target
+    )
+      high = middle;
+    else low = middle;
+  }
+  return Math.ceil(high);
 }
 
 export function resultPercentile(

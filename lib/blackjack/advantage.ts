@@ -13,10 +13,15 @@ export interface RampPoint {
   trueCount: number;
   units: number;
 }
+export interface HandCountPoint {
+  trueCount: number;
+  hands: number;
+}
 export interface AdvantageInput {
   bankroll: number;
   bettingUnit?: number;
   playerHands?: number;
+  handsByTrueCount?: HandCountPoint[];
   handsPerHour: number;
   hours: number;
   rules: AdvantageRules;
@@ -33,6 +38,7 @@ export interface CountRow {
   samples: number;
   bet: number;
   totalBet: number;
+  playerHands: number;
   units: number;
 }
 export interface AdvantageResult {
@@ -114,6 +120,21 @@ export function unitsAt(tc: number, ramp: RampPoint[]) {
       ramp[0]?.units ?? 1,
     );
 }
+export function handsAt(
+  tc: number,
+  schedule: HandCountPoint[] | undefined,
+  fallback = 1,
+) {
+  const hands = schedule
+    ? [...schedule]
+        .sort((a, b) => a.trueCount - b.trueCount)
+        .reduce(
+          (current, point) => (tc >= point.trueCount ? point.hands : current),
+          fallback,
+        )
+    : fallback;
+  return Math.min(7, Math.max(1, Math.floor(hands)));
+}
 export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
   return ramp.map((point) =>
     point.trueCount < 0 ? { ...point, units: 0 } : point,
@@ -121,9 +142,13 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
 }
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
-  const playerHands = Math.min(7, Math.max(1, Math.floor(input.playerHands ?? 1)));
   return getCountProfile(input.rules).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
+    const playerHands = handsAt(
+      row.tc,
+      input.handsByTrueCount,
+      input.playerHands,
+    );
     return {
       trueCount: row.tc,
       label: row.label,
@@ -135,13 +160,13 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
       samples: row.samples,
       bet: unit * units,
       totalBet: unit * units * playerHands,
+      playerHands,
       units,
     };
   });
 }
 export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
   const rows = calculateCountRows(input);
-  const playerHands = Math.min(7, Math.max(1, Math.floor(input.playerHands ?? 1)));
   let averageBet = 0,
     evPerRound = 0,
     secondMoment = 0;
@@ -150,7 +175,7 @@ export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
     evPerRound += row.frequency * row.advantage * row.totalBet;
     secondMoment +=
       row.frequency *
-      (playerHands * Math.pow(row.sdUnits * row.bet, 2) +
+      (row.playerHands * Math.pow(row.sdUnits * row.bet, 2) +
         Math.pow(row.advantage * row.totalBet, 2));
   }
   const variance = Math.max(0, secondMoment - evPerRound * evPerRound),
@@ -185,12 +210,14 @@ export function recommendUnit(
   rules: AdvantageRules,
   ramp: RampPoint[],
   playerHands = 1,
+  handsByTrueCount?: HandCountPoint[],
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
     bankroll: 1,
     bettingUnit: 1,
     playerHands,
+    handsByTrueCount,
     handsPerHour: 100,
     hours: 1,
     rules,

@@ -19,9 +19,11 @@ import {
   analyzeCvcx,
   createOptimalRamp,
   finiteHorizonRisk,
+  goalByHorizonProbability,
   goalBeforeRuinProbability,
   normalCdf,
   requiredBankroll,
+  roundsToGoalProbability,
 } from "./cvcx";
 const c = (rank: Card["rank"], suit: Card["suit"] = "spades"): Card => ({
   rank,
@@ -108,6 +110,25 @@ describe("strategy", () => {
         rules: DEFAULT_RULES,
       }).action,
     ).toBe("D"));
+  it("stands on multi-card soft 18 when doubling is unavailable", () => {
+    const decision = getBasicStrategyDecision({
+      playerCards: [c("A"), c("2"), c("5")],
+      dealerUpcard: c("2"),
+      rules: DEFAULT_RULES,
+    });
+    expect(decision.action).toBe("D");
+    expect(decision.fallback).toBe("S");
+    expect(decision.explanation).toContain("otherwise Stand");
+  });
+  it("hits lower soft doubles when doubling is unavailable", () => {
+    const decision = getBasicStrategyDecision({
+      playerCards: [c("A"), c("2"), c("4")],
+      dealerUpcard: c("3"),
+      rules: DEFAULT_RULES,
+    });
+    expect(decision.action).toBe("D");
+    expect(decision.fallback).toBe("H");
+  });
   it("applies the H17-only 15 vs Ace surrender rule", () => {
     const hand = [c("10"), c("5")];
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
@@ -194,11 +215,29 @@ describe("advantage model", () => {
     expect(three.riskOfRuin).toBeGreaterThanOrEqual(0);
     expect(three.riskOfRuin).toBeLessThanOrEqual(1);
   });
+  it("changes the number of hands at a true-count threshold", () => {
+    const result = calculateAdvantage({
+      bankroll: 10_000,
+      bettingUnit: 10,
+      playerHands: 1,
+      handsByTrueCount: [
+        { trueCount: -8, hands: 1 },
+        { trueCount: 2, hands: 2 },
+      ],
+      handsPerHour: 100,
+      hours: 4,
+      rules: DEFAULT_ADVANTAGE_RULES,
+      ramp: RAMPS["1-8"],
+    });
+    expect(result.rows.find((row) => row.trueCount === 1)?.playerHands).toBe(1);
+    expect(result.rows.find((row) => row.trueCount === 2)?.playerHands).toBe(2);
+    expect(result.rows.find((row) => row.trueCount === 2)?.totalBet).toBe(80);
+  });
 });
 
 describe("CVCX-style analysis", () => {
   it("builds a bounded ramp and respects a wong-in point", () => {
-    const ramp = createOptimalRamp(DEFAULT_ADVANTAGE_RULES, 8, 1, true);
+    const ramp = createOptimalRamp(DEFAULT_ADVANTAGE_RULES, 8, 1, 1);
     expect(ramp).toHaveLength(17);
     expect(ramp.find((row) => row.trueCount === 0)?.units).toBe(0);
     expect(ramp.find((row) => row.trueCount === 1)?.units).toBe(1);
@@ -224,6 +263,7 @@ describe("CVCX-style analysis", () => {
     expect(tenDollar.cScore).toBeCloseTo(twentyDollar.cScore, 10);
     expect(twentyDollar.hourlyEv).toBeCloseTo(tenDollar.hourlyEv * 2, 10);
     expect(tenDollar.requiredBankroll).toBeGreaterThan(0);
+    expect(Number.isFinite(tenDollar.certaintyEquivalentHourly)).toBe(true);
   });
 
   it("keeps probability and risk calculators numerically sane", () => {
@@ -237,5 +277,9 @@ describe("CVCX-style analysis", () => {
     expect(longRisk).toBeLessThanOrEqual(1);
     expect(goalBeforeRuinProbability(1_000, 1_000, 0, 100)).toBeCloseTo(0.5);
     expect(requiredBankroll(0.5, 100, 0.05)).toBeCloseTo(299.573, 2);
+    expect(goalByHorizonProbability(100, 1, 100, 100)).toBeCloseTo(0.5, 6);
+    const rounds = roundsToGoalProbability(100, 0.75, 1, 100);
+    expect(rounds).toBeGreaterThan(100);
+    expect(goalByHorizonProbability(100, 1, 100, rounds)).toBeGreaterThanOrEqual(0.75);
   });
 });
