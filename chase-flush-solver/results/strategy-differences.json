@@ -1,0 +1,536 @@
+{
+  "initial": [
+    {
+      "player": [
+        "2s",
+        "As",
+        "Kd"
+      ],
+      "dealer_visible": "Ad",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.4649168173498768
+    },
+    {
+      "player": [
+        "7c",
+        "Ac",
+        "Kh"
+      ],
+      "dealer_visible": "Ah",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.3904826494555917
+    },
+    {
+      "player": [
+        "Ac",
+        "8c",
+        "Ks"
+      ],
+      "dealer_visible": "As",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.3081615034189523
+    },
+    {
+      "player": [
+        "As",
+        "Kd",
+        "8s"
+      ],
+      "dealer_visible": "Ad",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.3081615034189523
+    },
+    {
+      "player": [
+        "8h",
+        "Ks",
+        "Ah"
+      ],
+      "dealer_visible": "As",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.3081615034189523
+    },
+    {
+      "player": [
+        "Ah",
+        "6h",
+        "Kc"
+      ],
+      "dealer_visible": "Ac",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.41796909862090625
+    },
+    {
+      "player": [
+        "6c",
+        "Kd",
+        "Ac"
+      ],
+      "dealer_visible": "Ad",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.41796909862090625
+    },
+    {
+      "player": [
+        "Ad",
+        "7d",
+        "Qc"
+      ],
+      "dealer_visible": "Ac",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.27818911006371816
+    },
+    {
+      "player": [
+        "7s",
+        "As",
+        "Qc"
+      ],
+      "dealer_visible": "Ac",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.27818911006371816
+    },
+    {
+      "player": [
+        "7d",
+        "Ad",
+        "Qs"
+      ],
+      "dealer_visible": "As",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.27818911006371816
+    },
+    {
+      "player": [
+        "Ac",
+        "8c",
+        "Qh"
+      ],
+      "dealer_visible": "Ah",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.23892883645941562
+    },
+    {
+      "player": [
+        "Ad",
+        "Qc",
+        "8d"
+      ],
+      "dealer_visible": "Ac",
+      "board": [],
+      "normal_action": "3x",
+      "known_action": "check",
+      "known_action_margin": 0.23892883645941562
+    }
+  ],
+  "two_card": [
+    {
+      "player": [
+        "Qc",
+        "Qh",
+        "2s"
+      ],
+      "dealer_visible": "Kh",
+      "board": [
+        "8h",
+        "Ah"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 0.7643649909011491
+    },
+    {
+      "player": [
+        "Qc",
+        "Th",
+        "Kh"
+      ],
+      "dealer_visible": "Kc",
+      "board": [
+        "Ac",
+        "4c"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.025525541203538
+    },
+    {
+      "player": [
+        "Qh",
+        "5c",
+        "9d"
+      ],
+      "dealer_visible": "Kh",
+      "board": [
+        "Ah",
+        "4h"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 0.7951888505514482
+    },
+    {
+      "player": [
+        "Qh",
+        "6h",
+        "Qc"
+      ],
+      "dealer_visible": "Kc",
+      "board": [
+        "Ac",
+        "Jc"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.1359216402783499
+    },
+    {
+      "player": [
+        "3c",
+        "Jh",
+        "Td"
+      ],
+      "dealer_visible": "Qh",
+      "board": [
+        "Ah",
+        "Kh"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 0.6107582211327788
+    },
+    {
+      "player": [
+        "Qd",
+        "Ks",
+        "Jh"
+      ],
+      "dealer_visible": "Kd",
+      "board": [
+        "3d",
+        "Ad"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.0783501643681372
+    },
+    {
+      "player": [
+        "2s",
+        "As",
+        "Kd"
+      ],
+      "dealer_visible": "Ad",
+      "board": [
+        "4d",
+        "Qd"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.485165300078327
+    },
+    {
+      "player": [
+        "5d",
+        "Kc",
+        "8d"
+      ],
+      "dealer_visible": "Ac",
+      "board": [
+        "Jc",
+        "Tc"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.5076486934592104
+    },
+    {
+      "player": [
+        "Qh",
+        "Kd",
+        "5h"
+      ],
+      "dealer_visible": "Ad",
+      "board": [
+        "4d",
+        "Qd"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.5426332678486556
+    },
+    {
+      "player": [
+        "5s",
+        "Kh",
+        "8s"
+      ],
+      "dealer_visible": "Ah",
+      "board": [
+        "Th",
+        "9h"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.58837392099073
+    },
+    {
+      "player": [
+        "6s",
+        "Kh",
+        "4s"
+      ],
+      "dealer_visible": "Ah",
+      "board": [
+        "4h",
+        "Qh"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.388411988025047
+    },
+    {
+      "player": [
+        "8c",
+        "Kh",
+        "4c"
+      ],
+      "dealer_visible": "Ah",
+      "board": [
+        "Qh",
+        "5h"
+      ],
+      "normal_action": "2x",
+      "known_action": "check",
+      "known_action_margin": 1.4437895307235615
+    }
+  ],
+  "final": [
+    {
+      "player": [
+        "9s",
+        "2h",
+        "6d"
+      ],
+      "dealer_visible": "Qs",
+      "board": [
+        "3d",
+        "Th",
+        "Ts",
+        "2s"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "8c",
+        "Qc",
+        "6s"
+      ],
+      "dealer_visible": "As",
+      "board": [
+        "Jc",
+        "5s",
+        "7s",
+        "Ks"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "Ts",
+        "8c",
+        "As"
+      ],
+      "dealer_visible": "Kc",
+      "board": [
+        "6h",
+        "2h",
+        "Qc",
+        "6c"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "2c",
+        "Ac",
+        "9s"
+      ],
+      "dealer_visible": "Js",
+      "board": [
+        "As",
+        "Td",
+        "6d",
+        "8s"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "6h",
+        "Tc",
+        "9c"
+      ],
+      "dealer_visible": "Kh",
+      "board": [
+        "8h",
+        "8d",
+        "9h",
+        "2h"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "Qd",
+        "2c",
+        "4s"
+      ],
+      "dealer_visible": "Ts",
+      "board": [
+        "8s",
+        "5c",
+        "3s",
+        "5s"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "5d",
+        "5h",
+        "7c"
+      ],
+      "dealer_visible": "9d",
+      "board": [
+        "Js",
+        "Qd",
+        "3d",
+        "Jd"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "2c",
+        "5d",
+        "6c"
+      ],
+      "dealer_visible": "Qd",
+      "board": [
+        "2d",
+        "As",
+        "Jd",
+        "Kd"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "5d",
+        "Qh",
+        "Qc"
+      ],
+      "dealer_visible": "Jd",
+      "board": [
+        "Ad",
+        "3d",
+        "Jh",
+        "Kc"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "4s",
+        "5d",
+        "Kh"
+      ],
+      "dealer_visible": "8s",
+      "board": [
+        "8c",
+        "Ts",
+        "2s",
+        "9s"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "Jh",
+        "7s",
+        "2h"
+      ],
+      "dealer_visible": "Js",
+      "board": [
+        "2s",
+        "As",
+        "7c",
+        "6s"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    },
+    {
+      "player": [
+        "8s",
+        "Th",
+        "4c"
+      ],
+      "dealer_visible": "Ks",
+      "board": [
+        "4s",
+        "5d",
+        "Js",
+        "3c"
+      ],
+      "normal_action": "1x",
+      "known_action": "fold",
+      "known_action_margin": 1.0
+    }
+  ]
+}

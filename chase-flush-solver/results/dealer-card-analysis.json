@@ -1,0 +1,794 @@
+{
+  "metadata": {
+    "git_commit": "6ee8e6c9ee047dd732e6ce90babd840f92b0ac2d",
+    "date": "2026-08-13T08:46:51.911543+00:00",
+    "rules_version": "Wizard of Odds Chase the Flush, accessed 2026-08-13",
+    "paytable": {
+      "4": 1.0,
+      "5": 5.0,
+      "6": 50.0,
+      "7": 250.0
+    },
+    "train_hands_per_policy": 2000000,
+    "evaluation_hands": 5000000,
+    "seed": 20260817,
+    "solver_type": "schedule-aware fitted backward induction",
+    "runtime_seconds": 159.37588629999664,
+    "cpu_count": 32,
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "validation": {
+    "applicable": false,
+    "target": null,
+    "passed": null,
+    "difference": null,
+    "tolerance": 0.003984932240872341,
+    "note": "Wizard analysis rows use 20:1 for six-card wins; displayed current paytable uses 50:1."
+  },
+  "wizard": {
+    "published_ev_per_ante_legacy_20_table": -0.023907,
+    "average_wager_legacy_20_strategy": 3.564878
+  },
+  "variants": {
+    "baseline": {
+      "hands": 5000000,
+      "mean": 0.0353626,
+      "variance": 20.668821020285442,
+      "standard_error": 0.002033166054226041,
+      "ci95": [
+        0.03137766775912766,
+        0.03934753224087234
+      ],
+      "average_wager": 3.5486478,
+      "edge_vs_ante": 0.0353626,
+      "edge_vs_initial_two_units": 0.0176813,
+      "edge_vs_average_total_wager": 0.009965091492032544
+    },
+    "final_only": {
+      "hands": 5000000,
+      "mean": 0.0893536,
+      "variance": 19.956780325523106,
+      "standard_error": 0.0019978378475503512,
+      "ci95": [
+        0.0854379097718504,
+        0.09326929022814962
+      ],
+      "average_wager": 3.4448058,
+      "edge_vs_ante": 0.0893536,
+      "edge_vs_initial_two_units": 0.0446768,
+      "edge_vs_average_total_wager": 0.02593864652689565
+    },
+    "from_2x": {
+      "hands": 5000000,
+      "mean": 0.1091694,
+      "variance": 20.08003465811057,
+      "standard_error": 0.00200399773742939,
+      "ci95": [
+        0.10524163660953875,
+        0.11309716339046125
+      ],
+      "average_wager": 3.4766316,
+      "edge_vs_ante": 0.1091694,
+      "edge_vs_initial_two_units": 0.0545847,
+      "edge_vs_average_total_wager": 0.03140091115779998
+    },
+    "full_exposed": {
+      "hands": 5000000,
+      "mean": 0.121625,
+      "variance": 20.376672834709566,
+      "standard_error": 0.00201874579056946,
+      "ci95": [
+        0.11766833095654212,
+        0.12558166904345786
+      ],
+      "average_wager": 3.5267404,
+      "edge_vs_ante": 0.121625,
+      "edge_vs_initial_two_units": 0.0608125,
+      "edge_vs_average_total_wager": 0.03448651905311772
+    }
+  },
+  "paired_information_value": {
+    "hands": 5000000,
+    "mean": 0.0862624,
+    "variance": 0.6825897348641871,
+    "standard_error": 0.0003694833514149689,
+    "ci95": [
+      0.08553822593833953,
+      0.08698657406166048
+    ],
+    "average_wager": 1.0,
+    "edge_vs_ante": 0.0862624,
+    "edge_vs_initial_two_units": 0.0431312,
+    "edge_vs_average_total_wager": 0.0862624
+  },
+  "actions": {
+    "baseline": {
+      "0": 801623,
+      "1": 1786208,
+      "2": 1279476,
+      "3": 1132693
+    },
+    "final_only": {
+      "0": 941560,
+      "1": 1907988,
+      "2": 1135315,
+      "3": 1015137
+    },
+    "from_2x": {
+      "0": 962658,
+      "1": 1632540,
+      "2": 1463788,
+      "3": 941014
+    },
+    "full_exposed": {
+      "0": 970990,
+      "1": 1571922,
+      "2": 1309484,
+      "3": 1147604
+    }
+  },
+  "information_value_by_exposed_rank": {
+    "2": {
+      "ev": {
+        "hands": 385753,
+        "mean": 0.3055659968943858,
+        "variance": 21.619701308737397,
+        "standard_error": 0.007486351058045945,
+        "ci95": [
+          0.2908930184449928,
+          0.32023897534377876
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.3055659968943858,
+        "edge_vs_initial_two_units": 0.1527829984471929,
+        "edge_vs_average_total_wager": 0.3055659968943858
+      },
+      "delta": {
+        "hands": 385753,
+        "mean": 0.04483179651227599,
+        "variance": 0.672034568611742,
+        "standard_error": 0.0013199003695788857,
+        "ci95": [
+          0.04224483932472034,
+          0.047418753699831645
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.04483179651227599,
+        "edge_vs_initial_two_units": 0.022415898256137996,
+        "edge_vs_average_total_wager": 0.04483179651227599
+      }
+    },
+    "3": {
+      "ev": {
+        "hands": 384911,
+        "mean": 0.2884199204491428,
+        "variance": 21.952577937989187,
+        "standard_error": 0.007552010803558188,
+        "ci95": [
+          0.27361825126331174,
+          0.3032215896349738
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.2884199204491428,
+        "edge_vs_initial_two_units": 0.1442099602245714,
+        "edge_vs_average_total_wager": 0.2884199204491428
+      },
+      "delta": {
+        "hands": 384911,
+        "mean": 0.04759022215525147,
+        "variance": 0.7083012712336915,
+        "standard_error": 0.0013565282714899786,
+        "ci95": [
+          0.044931475599120814,
+          0.05024896871138213
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.04759022215525147,
+        "edge_vs_initial_two_units": 0.023795111077625736,
+        "edge_vs_average_total_wager": 0.04759022215525147
+      }
+    },
+    "4": {
+      "ev": {
+        "hands": 383627,
+        "mean": 0.2741986356539034,
+        "variance": 21.153954751543342,
+        "standard_error": 0.00742576502659673,
+        "ci95": [
+          0.2596444036441171,
+          0.2887528676636897
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.2741986356539034,
+        "edge_vs_initial_two_units": 0.1370993178269517,
+        "edge_vs_average_total_wager": 0.2741986356539034
+      },
+      "delta": {
+        "hands": 383627,
+        "mean": 0.05130765039999791,
+        "variance": 0.6845498259168483,
+        "standard_error": 0.0013358200243310872,
+        "ci95": [
+          0.048689491262481635,
+          0.05392580953751419
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.05130765039999791,
+        "edge_vs_initial_two_units": 0.025653825199998957,
+        "edge_vs_average_total_wager": 0.05130765039999791
+      }
+    },
+    "5": {
+      "ev": {
+        "hands": 384522,
+        "mean": 0.23847530180327783,
+        "variance": 20.852876834555047,
+        "standard_error": 0.00736414604492114,
+        "ci95": [
+          0.22404184077833972,
+          0.25290876282821595
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.23847530180327783,
+        "edge_vs_initial_two_units": 0.11923765090163892,
+        "edge_vs_average_total_wager": 0.23847530180327783
+      },
+      "delta": {
+        "hands": 384522,
+        "mean": 0.05327393491139649,
+        "variance": 0.66095657569636,
+        "standard_error": 0.0013110699625917075,
+        "ci95": [
+          0.05070428500350454,
+          0.05584358481928844
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.05327393491139649,
+        "edge_vs_initial_two_units": 0.026636967455698244,
+        "edge_vs_average_total_wager": 0.05327393491139649
+      }
+    },
+    "6": {
+      "ev": {
+        "hands": 385177,
+        "mean": 0.2254106553610418,
+        "variance": 20.721364183307337,
+        "standard_error": 0.007334643311582281,
+        "ci95": [
+          0.21103501863089333,
+          0.23978629209119026
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.2254106553610418,
+        "edge_vs_initial_two_units": 0.1127053276805209,
+        "edge_vs_average_total_wager": 0.2254106553610418
+      },
+      "delta": {
+        "hands": 385177,
+        "mean": 0.059312991170293136,
+        "variance": 0.6239976930123463,
+        "standard_error": 0.0012728033769241036,
+        "ci95": [
+          0.056818342392121,
+          0.06180763994846527
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.059312991170293136,
+        "edge_vs_initial_two_units": 0.029656495585146568,
+        "edge_vs_average_total_wager": 0.059312991170293136
+      }
+    },
+    "7": {
+      "ev": {
+        "hands": 384937,
+        "mean": 0.2126633708892624,
+        "variance": 22.182853646144462,
+        "standard_error": 0.007591260210855702,
+        "ci95": [
+          0.19778477427871372,
+          0.2275419674998111
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.2126633708892624,
+        "edge_vs_initial_two_units": 0.1063316854446312,
+        "edge_vs_average_total_wager": 0.2126633708892624
+      },
+      "delta": {
+        "hands": 384937,
+        "mean": 0.06708630243390477,
+        "variance": 0.6178678100410115,
+        "standard_error": 0.0012669309806331633,
+        "ci95": [
+          0.06460316334096583,
+          0.06956944152684372
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.06708630243390477,
+        "edge_vs_initial_two_units": 0.03354315121695239,
+        "edge_vs_average_total_wager": 0.06708630243390477
+      }
+    },
+    "8": {
+      "ev": {
+        "hands": 384898,
+        "mean": 0.1893722492712355,
+        "variance": 20.867977266964587,
+        "standard_error": 0.007363212771222042,
+        "ci95": [
+          0.17494061742913533,
+          0.20380388111333567
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.1893722492712355,
+        "edge_vs_initial_two_units": 0.09468612463561775,
+        "edge_vs_average_total_wager": 0.1893722492712355
+      },
+      "delta": {
+        "hands": 384898,
+        "mean": 0.07263742601936098,
+        "variance": 0.6026838422833919,
+        "standard_error": 0.0012513302601426374,
+        "ci95": [
+          0.07018486377671634,
+          0.07508998826200561
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.07263742601936098,
+        "edge_vs_initial_two_units": 0.03631871300968049,
+        "edge_vs_average_total_wager": 0.07263742601936098
+      }
+    },
+    "9": {
+      "ev": {
+        "hands": 385153,
+        "mean": 0.17172136787198852,
+        "variance": 20.22613285261485,
+        "standard_error": 0.007246691699800618,
+        "ci95": [
+          0.15751811313331435,
+          0.1859246226106627
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.17172136787198852,
+        "edge_vs_initial_two_units": 0.08586068393599426,
+        "edge_vs_average_total_wager": 0.17172136787198852
+      },
+      "delta": {
+        "hands": 385153,
+        "mean": 0.08188434206665922,
+        "variance": 0.6093737839084354,
+        "standard_error": 0.001257839534480562,
+        "ci95": [
+          0.07941902188074676,
+          0.08434966225257168
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.08188434206665922,
+        "edge_vs_initial_two_units": 0.04094217103332961,
+        "edge_vs_average_total_wager": 0.08188434206665922
+      }
+    },
+    "10": {
+      "ev": {
+        "hands": 383748,
+        "mean": 0.13146127145939523,
+        "variance": 20.6281796125505,
+        "standard_error": 0.007331745639872423,
+        "ci95": [
+          0.11709131406143711,
+          0.14583122885735336
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.13146127145939523,
+        "edge_vs_initial_two_units": 0.06573063572969762,
+        "edge_vs_average_total_wager": 0.13146127145939523
+      },
+      "delta": {
+        "hands": 383748,
+        "mean": 0.09142458071442718,
+        "variance": 0.6280556200054074,
+        "standard_error": 0.001279310577034398,
+        "ci95": [
+          0.08891717805839867,
+          0.09393198337045568
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.09142458071442718,
+        "edge_vs_initial_two_units": 0.04571229035721359,
+        "edge_vs_average_total_wager": 0.09142458071442718
+      }
+    },
+    "11": {
+      "ev": {
+        "hands": 384415,
+        "mean": 0.06540587646163651,
+        "variance": 20.450146196673703,
+        "standard_error": 0.007293702511038828,
+        "ci95": [
+          0.05111048222605144,
+          0.07970127069722158
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.06540587646163651,
+        "edge_vs_initial_two_units": 0.032702938230818254,
+        "edge_vs_average_total_wager": 0.06540587646163651
+      },
+      "delta": {
+        "hands": 384415,
+        "mean": 0.10165576265234187,
+        "variance": 0.6550372673915928,
+        "standard_error": 0.0013053676383424913,
+        "ci95": [
+          0.09909728909460655,
+          0.1042142362100772
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.10165576265234187,
+        "edge_vs_initial_two_units": 0.050827881326170936,
+        "edge_vs_average_total_wager": 0.10165576265234187
+      }
+    },
+    "12": {
+      "ev": {
+        "hands": 384628,
+        "mean": -0.030216208908347805,
+        "variance": 17.964783614307024,
+        "standard_error": 0.006834245050530511,
+        "ci95": [
+          -0.04361108306890836,
+          -0.01682133474778725
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.030216208908347805,
+        "edge_vs_initial_two_units": -0.015108104454173902,
+        "edge_vs_average_total_wager": -0.030216208908347805
+      },
+      "delta": {
+        "hands": 384628,
+        "mean": 0.11742774836985347,
+        "variance": 0.674482702246923,
+        "standard_error": 0.001324234687600254,
+        "ci95": [
+          0.11483229607507839,
+          0.12002320066462854
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.11742774836985347,
+        "edge_vs_initial_two_units": 0.05871387418492673,
+        "edge_vs_average_total_wager": 0.11742774836985347
+      }
+    },
+    "13": {
+      "ev": {
+        "hands": 384409,
+        "mean": -0.15555827256906055,
+        "variance": 18.05471250966919,
+        "standard_error": 0.006853280620376878,
+        "ci95": [
+          -0.16899045576094518,
+          -0.1421260893771759
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.15555827256906055,
+        "edge_vs_initial_two_units": -0.07777913628453027,
+        "edge_vs_average_total_wager": -0.15555827256906055
+      },
+      "delta": {
+        "hands": 384409,
+        "mean": 0.13893795410617338,
+        "variance": 0.758325692517178,
+        "standard_error": 0.0014045302966606832,
+        "ci95": [
+          0.13618512530952315,
+          0.1416907829028236
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.13893795410617338,
+        "edge_vs_initial_two_units": 0.06946897705308669,
+        "edge_vs_average_total_wager": 0.13893795410617338
+      }
+    },
+    "14": {
+      "ev": {
+        "hands": 383822,
+        "mean": -0.3374923792799787,
+        "variance": 17.77295992054945,
+        "standard_error": 0.006804793471462464,
+        "ci95": [
+          -0.35082952940627804,
+          -0.3241552291536794
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.3374923792799787,
+        "edge_vs_initial_two_units": -0.16874618963998936,
+        "edge_vs_average_total_wager": -0.3374923792799787
+      },
+      "delta": {
+        "hands": 383822,
+        "mean": 0.19443648357832538,
+        "variance": 0.9562905616603393,
+        "standard_error": 0.0015784469950016276,
+        "ci95": [
+          0.1913427843166168,
+          0.19753018284003396
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.19443648357832538,
+        "edge_vs_initial_two_units": 0.09721824178916269,
+        "edge_vs_average_total_wager": 0.19443648357832538
+      }
+    }
+  },
+  "information_value_by_suit_relationship": {
+    "matches_player_dominant": {
+      "ev": {
+        "hands": 1158053,
+        "mean": 0.039146740261456085,
+        "variance": 17.67520916304016,
+        "standard_error": 0.003906771968216085,
+        "ci95": [
+          0.031489607907942106,
+          0.046803872614970064
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.039146740261456085,
+        "edge_vs_initial_two_units": 0.019573370130728043,
+        "edge_vs_average_total_wager": 0.039146740261456085
+      },
+      "delta": {
+        "hands": 1158053,
+        "mean": 0.08596411390497671,
+        "variance": 0.8420133003497647,
+        "standard_error": 0.0008526980264595186,
+        "ci95": [
+          0.08429285648342771,
+          0.08763537132652571
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.08596411390497671,
+        "edge_vs_initial_two_units": 0.04298205695248836,
+        "edge_vs_average_total_wager": 0.08596411390497671
+      }
+    },
+    "other_suit": {
+      "ev": {
+        "hands": 3841947,
+        "mean": 0.1464858833294681,
+        "variance": 21.188293657233896,
+        "standard_error": 0.00234840127215105,
+        "ci95": [
+          0.14188310141480412,
+          0.1510886652441321
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.1464858833294681,
+        "edge_vs_initial_two_units": 0.07324294166473405,
+        "edge_vs_average_total_wager": 0.1464858833294681
+      },
+      "delta": {
+        "hands": 3841947,
+        "mean": 0.08635231043010223,
+        "variance": 0.6345359021546368,
+        "standard_error": 0.00040639879828400225,
+        "ci95": [
+          0.08555578342210525,
+          0.08714883743809922
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.08635231043010223,
+        "edge_vs_initial_two_units": 0.04317615521505112,
+        "edge_vs_average_total_wager": 0.08635231043010223
+      }
+    },
+    "matches_no_player_card": {
+      "ev": {
+        "hands": 2194093,
+        "mean": 0.48674509239125235,
+        "variance": 28.145165181838074,
+        "standard_error": 0.0035815777631351977,
+        "ci95": [
+          0.47972532896767806,
+          0.49376485581482665
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.48674509239125235,
+        "edge_vs_initial_two_units": 0.24337254619562618,
+        "edge_vs_average_total_wager": 0.48674509239125235
+      },
+      "delta": {
+        "hands": 2194093,
+        "mean": 0.062083056643451304,
+        "variance": 0.5283293929134493,
+        "standard_error": 0.0004907099571183352,
+        "ci95": [
+          0.061121282800644196,
+          0.0630448304862584
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.062083056643451304,
+        "edge_vs_initial_two_units": 0.031041528321725652,
+        "edge_vs_average_total_wager": 0.062083056643451304
+      }
+    },
+    "matches_one_player_card": {
+      "ev": {
+        "hands": 2135050,
+        "mean": -0.39983560103978827,
+        "variance": 10.648656654857085,
+        "standard_error": 0.0022332810822500715,
+        "ci95": [
+          -0.4042127515283529,
+          -0.39545845055122364
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.39983560103978827,
+        "edge_vs_initial_two_units": -0.19991780051989413,
+        "edge_vs_average_total_wager": -0.39983560103978827
+      },
+      "delta": {
+        "hands": 2135050,
+        "mean": 0.12188988548277557,
+        "variance": 0.75191166774724,
+        "standard_error": 0.0005934435131271007,
+        "ci95": [
+          0.12072675757018757,
+          0.12305301339536358
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.12188988548277557,
+        "edge_vs_initial_two_units": 0.060944942741387786,
+        "edge_vs_average_total_wager": 0.12188988548277557
+      }
+    },
+    "matches_two_player_cards": {
+      "ev": {
+        "hands": 618517,
+        "mean": 0.30553404352669367,
+        "variance": 16.539521673687364,
+        "standard_error": 0.005171132339625962,
+        "ci95": [
+          0.2953988103817367,
+          0.3156692766716506
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.30553404352669367,
+        "edge_vs_initial_two_units": 0.15276702176334683,
+        "edge_vs_average_total_wager": 0.30553404352669367
+      },
+      "delta": {
+        "hands": 618517,
+        "mean": 0.056187622975601315,
+        "variance": 1.03879335625712,
+        "standard_error": 0.0012959515376383002,
+        "ci95": [
+          0.05364760463612101,
+          0.05872764131508162
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.056187622975601315,
+        "edge_vs_initial_two_units": 0.028093811487800657,
+        "edge_vs_average_total_wager": 0.056187622975601315
+      }
+    },
+    "higher_than_player_in_suit": {
+      "ev": {
+        "hands": 1285586,
+        "mean": -0.6218113762906565,
+        "variance": 9.749545117813494,
+        "standard_error": 0.0027538584249058424,
+        "ci95": [
+          -0.627208839621994,
+          -0.616413912959319
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.6218113762906565,
+        "edge_vs_initial_two_units": -0.31090568814532826,
+        "edge_vs_average_total_wager": -0.6218113762906565
+      },
+      "delta": {
+        "hands": 1285586,
+        "mean": 0.1832098358258413,
+        "variance": 0.6780510203123621,
+        "standard_error": 0.0007262407597738655,
+        "ci95": [
+          0.18178643009257955,
+          0.18463324155910305
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.1832098358258413,
+        "edge_vs_initial_two_units": 0.09160491791292065,
+        "edge_vs_average_total_wager": 0.1832098358258413
+      }
+    },
+    "not_higher_than_player_in_suit": {
+      "ev": {
+        "hands": 1520321,
+        "mean": 0.2233429650711922,
+        "variance": 17.48159744407834,
+        "standard_error": 0.003390961902249989,
+        "ci95": [
+          0.21669680186983498,
+          0.22998912827254941
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.2233429650711922,
+        "edge_vs_initial_two_units": 0.1116714825355961,
+        "edge_vs_average_total_wager": 0.2233429650711922
+      },
+      "delta": {
+        "hands": 1520321,
+        "mean": 0.03917856821026612,
+        "variance": 0.8980453902883103,
+        "standard_error": 0.00076856658159542,
+        "ci95": [
+          0.03767220539061807,
+          0.04068493102991417
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.03917856821026612,
+        "edge_vs_initial_two_units": 0.01958928410513306,
+        "edge_vs_average_total_wager": 0.03917856821026612
+      }
+    },
+    "high_card_9_to_A": {
+      "ev": {
+        "hands": 2306175,
+        "mean": -0.02568191919520418,
+        "variance": 19.213943066295876,
+        "standard_error": 0.0028864372450782654,
+        "ci95": [
+          -0.03133923223919244,
+          -0.020024606151215922
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": -0.02568191919520418,
+        "edge_vs_initial_two_units": -0.01284095959760209,
+        "edge_vs_average_total_wager": -0.02568191919520418
+      },
+      "delta": {
+        "hands": 2306175,
+        "mean": 0.12093791668021724,
+        "variance": 0.7149347496269669,
+        "standard_error": 0.0005567844187979884,
+        "ci95": [
+          0.11984663927222014,
+          0.12202919408821433
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.12093791668021724,
+        "edge_vs_initial_two_units": 0.06046895834010862,
+        "edge_vs_average_total_wager": 0.12093791668021724
+      }
+    },
+    "low_card_2_to_8": {
+      "ev": {
+        "hands": 2693825,
+        "mean": 0.24773398420461612,
+        "variance": 21.337609372465714,
+        "standard_error": 0.002814415348693922,
+        "ci95": [
+          0.24221783148363946,
+          0.2532501369255928
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.24773398420461612,
+        "edge_vs_initial_two_units": 0.12386699210230806,
+        "edge_vs_average_total_wager": 0.24773398420461612
+      },
+      "delta": {
+        "hands": 2693825,
+        "mean": 0.056576800645921695,
+        "variance": 0.6529889268813243,
+        "standard_error": 0.0004923435115380554,
+        "ci95": [
+          0.05561182509528515,
+          0.05754177619655824
+        ],
+        "average_wager": 1.0,
+        "edge_vs_ante": 0.056576800645921695,
+        "edge_vs_initial_two_units": 0.028288400322960847,
+        "edge_vs_average_total_wager": 0.056576800645921695
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "state": {
+    "player": ["Ks", "Js", "Ts"],
+    "dealer_visible": "9s",
+    "board": []
+  },
+  "method": "exact Numba nopython exhaustive backward induction",
+  "paytable": {"4": 1, "5": 5, "6": 50, "7": 250},
+  "terminal_states": 1104436080,
+  "actions": {
+    "3x": {"ev": 4.467089548541369, "standard_error": 0, "ci99_9": [4.467089548541369, 4.467089548541369]},
+    "check": {"ev": 3.773906393930919, "standard_error": 0, "ci99_9": [3.773906393930919, 3.773906393930919]}
+  },
+  "difference_3x_minus_check": {
+    "ev": 0.6931831546104501,
+    "standard_error": 0,
+    "ci99_9": [0.6931831546104501, 0.6931831546104501]
+  },
+  "optimal_action": "3x",
+  "measured_warm_runtime_seconds": 0.941,
+  "measured_states_per_second": 1173756620
+}
