@@ -1,0 +1,6 @@
+__pycache__/
+.pytest_cache/
+results/*
+!results/coefficients.json
+!results/validation.json
+!results/off-top-validation.json
