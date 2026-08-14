@@ -31,7 +31,7 @@ export const COEFFICIENT_METADATA = {
   totalRounds: 46734162152,
   model: "6/8 deck | H17 | DAS | RSA | LS | peek | 3:2 | one spot | split to 4 hands",
   trueCount: "floored using exact undealt cards; updated before playing decisions",
-  dataUrl: "/blackjack/data/blackjack-coefficients.json",
+  dataUrl: "/data/blackjack-coefficients.json",
 } as const;
 export const RAW_COEFFICIENTS: Record<string, readonly RawCoefficient[]> = {
   "6-4": [
