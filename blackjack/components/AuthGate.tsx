@@ -4,19 +4,21 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, ReactNode, useState } from "react";
 import { useAuth } from "@/lib/supabase/AuthProvider";
-import { Button, Panel } from "./ui";
+import { Button, GhostButton, Panel } from "./ui";
 
 const PUBLIC_PATHS = new Set(["/terms", "/privacy"]);
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/\/$/, "") || "/dashboard";
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string>();
   const [info, setInfo] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   if (PUBLIC_PATHS.has(path)) return <>{children}</>;
   if (loading) return null;
@@ -24,9 +26,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitting(true);
     setError(undefined);
     setInfo(undefined);
+    if (mode === "sign-up" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setSubmitting(true);
     const failure = mode === "sign-in" ? await signIn(email, password) : await signUp(email, password);
     setSubmitting(false);
     if (failure) {
@@ -34,6 +40,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
     if (mode === "sign-up") setInfo("Check your email to confirm your account, then sign in.");
+  };
+
+  const submitGoogle = async () => {
+    setError(undefined);
+    setInfo(undefined);
+    setGoogleSubmitting(true);
+    const failure = await signInWithGoogle();
+    if (failure) {
+      setGoogleSubmitting(false);
+      setError(failure);
+    }
+    // On success the browser navigates away to Google, so no need to clear `googleSubmitting`.
   };
 
   return (
@@ -71,6 +89,18 @@ export function AuthGate({ children }: { children: ReactNode }) {
                 className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-zinc-100 outline-none"
               />
             </label>
+            {mode === "sign-up" && (
+              <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+                Confirm password
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-zinc-100 outline-none"
+                />
+              </label>
+            )}
           </div>
           {error && (
             <p role="alert" className="mt-3 text-sm text-red-300">
@@ -78,10 +108,23 @@ export function AuthGate({ children }: { children: ReactNode }) {
             </p>
           )}
           {info && <p className="mt-3 text-sm text-emerald-300">{info}</p>}
-          <Button type="submit" disabled={submitting || !email || !password} className="mt-5 w-full">
+          <Button
+            type="submit"
+            disabled={submitting || !email || !password || (mode === "sign-up" && !confirmPassword)}
+            className="mt-5 w-full"
+          >
             {submitting ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Create account"}
           </Button>
         </form>
+        <div className="my-4 flex items-center gap-3 text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-600">
+          <span className="h-px flex-1 bg-white/[.09]" />
+          or
+          <span className="h-px flex-1 bg-white/[.09]" />
+        </div>
+        <GhostButton type="button" onClick={submitGoogle} disabled={googleSubmitting} className="w-full">
+          <i className="fa-brands fa-google mr-2" />
+          {googleSubmitting ? "Redirecting…" : "Continue with Google"}
+        </GhostButton>
         <button
           type="button"
           onClick={() => {
