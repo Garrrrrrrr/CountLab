@@ -63,7 +63,8 @@ hard scenarios, pages/friction, errors, Web Vitals, API distributions, data
 quality, safe exports, and a deliberately pseudonymous high-level visitor
 view. It does not expose user email addresses or stored answer text. See
 `docs/analytics.md` for the event catalog, ownership, retention, and operating
-notes.
+notes. Follow `docs/analytics-production-setup.md` for the complete Supabase,
+GitHub Actions, admin-access, Cron, verification, and troubleshooting runbook.
 
 Grant yourself access after your first sign-up by re-running the relevant
 statement in `supabase/schema.sql`, or directly:
