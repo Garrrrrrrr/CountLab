@@ -1,3 +1,4 @@
+import { CONTACT_EMAIL } from "@/lib/contact";
 import { Panel } from "./ui";
 
 export default function PrivacyPage() {
@@ -97,8 +98,8 @@ export default function PrivacyPage() {
             In guest mode, clearing your browser&rsquo;s site data for this
             domain (or using private/incognito mode) removes everything
             immediately. If you have an account, email{" "}
-            <a href="mailto:g.tse8888@gmail.com" className="text-emerald-300 hover:underline">
-              g.tse8888@gmail.com
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-emerald-300 hover:underline">
+              {CONTACT_EMAIL}
             </a>{" "}
             to request deletion; deleting the account removes your settings,
             drill history, and journal from the database. Export anything
@@ -123,8 +124,8 @@ export default function PrivacyPage() {
           <h2 className="font-semibold">Contact</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             Questions can be sent to{" "}
-            <a href="mailto:g.tse8888@gmail.com" className="text-emerald-300 hover:underline">
-              g.tse8888@gmail.com
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-emerald-300 hover:underline">
+              {CONTACT_EMAIL}
             </a>
             .
           </p>

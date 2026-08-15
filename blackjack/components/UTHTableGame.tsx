@@ -22,6 +22,7 @@ type WorkerResponse = { id: number; normal: UTHDecision; exposed: UTHDecision; e
 
 const normalizeAction = (action: string): "RAISE" | "CHECK" | "FOLD" => (action === "CHECK" ? "CHECK" : action === "FOLD" ? "FOLD" : "RAISE");
 const evText = (evs: Record<string, number>) => Object.entries(evs).map(([action, ev]) => `${action} ${ev >= 0 ? "+" : ""}${ev.toFixed(3)}`).join(" · ");
+const money = (value: number) => (value % 1 === 0 ? value : value.toFixed(2));
 
 export function UTHTableGame() {
   const [bankroll, setBankroll] = useState(1000),
@@ -133,9 +134,9 @@ export function UTHTableGame() {
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${ante * 4}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${ante * 3}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+            {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${money(ante * 4)}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${money(ante * 3)}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+            {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
+            {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
             {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
           </div>
           {(phase === "preflop" || phase === "flop" || phase === "river") && (

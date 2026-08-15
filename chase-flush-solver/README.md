@@ -1,7 +1,7 @@
 # Chase the Flush solver
 
 An auditable Python research engine for the Chase the Flush tab at
-`garricktse.com/blackjack/chase-flush/`. It models one standard 52-card deck and
+the site's `/blackjack/chase-flush/` tab. It models one standard 52-card deck and
 does not include the optional Same Suit bet.
 
 ## Rules

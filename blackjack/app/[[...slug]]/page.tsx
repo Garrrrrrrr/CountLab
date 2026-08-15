@@ -1,37 +1,10 @@
 import DynamicPage from "@/components/DynamicPage";
-
-const routes = [
-  [],
-  ["dashboard"],
-  ["cvcx"],
-  ["simulation"],
-  ["journal"],
-  ["analysis"],
-  ["bankroll"],
-  ["chase-flush"],
-  ["ultimate-texas-holdem"],
-  ["training", "running-count"],
-  ["training", "true-count"],
-  ["training", "basic-strategy"],
-  ["training", "deviations"],
-  ["training", "full-shoe"],
-  ["training", "missing-card"],
-  ["training", "deck-estimation"],
-  ["training", "benchmark"],
-  ["reference"],
-  ["reference", "basic-strategy"],
-  ["reference", "deviations"],
-  ["statistics"],
-  ["settings"],
-  ["terms"],
-  ["privacy"],
-  ["admin"],
-];
+import { ROUTES } from "@/lib/routes";
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return routes.map((slug) => ({ slug }));
+  return ROUTES.map((slug) => ({ slug }));
 }
 
 export default function Page() {

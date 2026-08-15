@@ -1,0 +1,28 @@
+/** Every statically-generated route, as slug segments. Shared by the catch-all
+ * page's generateStaticParams and by app/sitemap.ts, so they can't drift. */
+export const ROUTES: string[][] = [
+  [],
+  ["dashboard"],
+  ["cvcx"],
+  ["simulation"],
+  ["journal"],
+  ["analysis"],
+  ["bankroll"],
+  ["chase-flush"],
+  ["ultimate-texas-holdem"],
+  ["training", "running-count"],
+  ["training", "true-count"],
+  ["training", "basic-strategy"],
+  ["training", "deviations"],
+  ["training", "full-shoe"],
+  ["training", "deck-estimation"],
+  ["training", "benchmark"],
+  ["reference"],
+  ["reference", "basic-strategy"],
+  ["reference", "deviations"],
+  ["statistics"],
+  ["settings"],
+  ["terms"],
+  ["privacy"],
+  ["admin"],
+];

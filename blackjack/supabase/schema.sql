@@ -325,9 +325,11 @@ create policy "admin_users self select" on admin_users for select using (auth.ui
 drop policy if exists "analytics_events admin select" on analytics_events;
 create policy "analytics_events admin select" on analytics_events for select using (is_admin());
 
-insert into admin_users (user_id)
-select id from auth.users where email = 'g.tse8888@gmail.com'
-on conflict do nothing;
+-- No admin is seeded by default. Grant access by running the statement below
+-- with your own address, once that account has signed up at least once:
+--   insert into admin_users (user_id)
+--   select id from auth.users where email = 'you@example.com'
+--   on conflict do nothing;
 
 -- Admin directory: who did what, when ---------------------------------------
 -- These run as security definer (bypassing RLS, and able to read auth.users

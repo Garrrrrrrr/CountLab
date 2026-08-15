@@ -17,7 +17,7 @@ catalogs can be added without rewriting UI components.
 - Full Shoe / realistic combined practice
 - Basic Strategy
 - Deviations
-- Running Count, True Count, Missing Card, and Deck Estimation
+- Running Count, True Count, and Deck Estimation
 - Betting trainer
 - EV & Risk Lab
 - Bankroll and risk tools

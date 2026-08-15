@@ -152,7 +152,23 @@ export default function AdminPage() {
     .slice(0, 12);
 
   const clickCount = events.filter((e) => e.event === "ui_click").length;
-  const rageClickCount = events.filter((e) => e.event === "rage_click").length;
+  const rageClicks = events.filter((e) => e.event === "rage_click");
+  const rageClickCount = rageClicks.length;
+
+  const rageClickLocations = Object.entries(
+    rageClicks.reduce<Record<string, { path: string; label: string; count: number }>>((all, e) => {
+      const props = e.properties as { label?: string; selector?: string } | null;
+      const path = e.path || "(unknown)";
+      const label = props?.selector || props?.label || "unknown element";
+      const key = `${path} · ${label}`;
+      all[key] ??= { path, label, count: 0 };
+      all[key].count += 1;
+      return all;
+    }, {}),
+  )
+    .map(([, v]) => v)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15);
 
   const byPath = Object.entries(
     events
@@ -269,6 +285,39 @@ export default function AdminPage() {
           </div>
         </Panel>
       </div>
+
+      <Panel className="mt-6">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Rage click locations</h2>
+          <p className="text-xs text-zinc-500">Where visitors clicked 3+ times in the same spot within 0.8s — a sign something looked clickable but didn&apos;t respond.</p>
+        </div>
+        {rageClickLocations.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-zinc-500">
+                <tr>
+                  {["Page", "Element", "Rage clicks"].map((x) => (
+                    <th className="pb-3 pr-4 font-medium" key={x}>
+                      {x}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rageClickLocations.map((loc) => (
+                  <tr key={`${loc.path}·${loc.label}`} className="border-t border-white/[.06]">
+                    <td className="py-3 pr-4 font-medium">{loc.path}</td>
+                    <td className="py-3 pr-4 text-zinc-400">{loc.label}</td>
+                    <td className="py-3 pr-4 text-amber-300">{loc.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-10 text-center text-zinc-500">{loading ? "Loading…" : "No rage clicks recorded — nothing looked broken."}</div>
+        )}
+      </Panel>
 
       <Panel className="mt-6">
         <div className="mb-5 flex items-center justify-between">

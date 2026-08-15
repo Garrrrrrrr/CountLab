@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTACT_EMAIL } from "@/lib/contact";
 import { Panel } from "./ui";
 
 export default function TermsPage() {
@@ -9,8 +10,8 @@ export default function TermsPage() {
       <div className="mt-7 space-y-5">
         <Panel>
           <p className="text-sm leading-6 text-zinc-300">
-            CountLab is a personal, non-commercial project built by Garrick
-            Tse for practicing Hi-Lo card counting and blackjack basic
+            CountLab is a personal, non-commercial project for practicing
+            Hi-Lo card counting and blackjack basic
             strategy. These terms are written in plain language rather than
             formal legal drafting, and they are not a substitute for legal
             advice. By using CountLab, you agree to the points below.
@@ -95,7 +96,8 @@ export default function TermsPage() {
         <Panel>
           <h2 className="font-semibold">Limitation of liability</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            To the fullest extent permitted by law, Garrick Tse is not liable
+            To the fullest extent permitted by law, the maintainer of CountLab
+            is not liable
             for any loss or damage &mdash; including gambling losses,
             data loss, account loss, or consequences of a casino&rsquo;s
             response to card counting &mdash; arising from your use of this
@@ -115,8 +117,8 @@ export default function TermsPage() {
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             Questions about these terms, or requests to delete your account
             and its data, can be sent to{" "}
-            <a href="mailto:g.tse8888@gmail.com" className="text-emerald-300 hover:underline">
-              g.tse8888@gmail.com
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-emerald-300 hover:underline">
+              {CONTACT_EMAIL}
             </a>
             .
           </p>
