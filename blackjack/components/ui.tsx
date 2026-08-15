@@ -30,6 +30,23 @@ export const GhostButton = ({
     className={`pressable min-h-11 rounded-xl border border-white/[.09] bg-white/[.055] px-4 py-2.5 font-medium text-zinc-100 shadow-sm backdrop-blur-xl hover:bg-white/[.1] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
   />
 );
+export const MobileActionDock = ({
+  children,
+  className = "",
+  label = "Available actions",
+}: {
+  children: ReactNode;
+  className?: string;
+  label?: string;
+}) => (
+  <div
+    role="group"
+    aria-label={label}
+    className={`mobile-action-dock lg:hidden ${className}`}
+  >
+    {children}
+  </div>
+);
 export const Select = ({
   label,
   children,

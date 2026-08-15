@@ -14,6 +14,7 @@ function makeSession(overrides: Partial<JournalSession> = {}): JournalSession {
   return {
     id: "s1",
     createdAt: "2026-08-01T12:00:00.000Z",
+    bankrollId: "main",
     date: "2026-08-01",
     hours: 4,
     handsPerHour: 100,

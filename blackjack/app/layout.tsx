@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "CountLab · Blackjack Training",
     description: DESCRIPTION,
   },
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/icon-192.png" },
   appleWebApp: { capable: true, title: "CountLab", statusBarStyle: "black-translucent" },
 };
 

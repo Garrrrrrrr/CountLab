@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
+import { Bankroll, BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
 import { track } from "@/lib/analytics/track";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import {
@@ -18,7 +18,13 @@ import {
   theoreticalSessionOutcome,
 } from "@/lib/blackjack/journalAnalysis";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
-import { Button, GhostButton, Metric, NumberField, Panel, Select } from "./ui";
+import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
+import { simulateShoeSession, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
+import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
+import { ConfirmModal } from "./ConfirmModal";
+import { ShoeExplorer } from "./ShoeExplorer";
+import { HandReplayer } from "./HandReplayer";
+import { ShareCard } from "./ShareCard";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
@@ -60,9 +66,20 @@ function AssessmentBadge({ assessment }: { assessment: SessionAssessment }) {
 export function SessionJournal() {
   const [sessions, setSessions] = useState<JournalSession[]>([]);
   const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
+  const [bankrolls, setBankrolls] = useState<Bankroll[]>([]);
+  const [selectedBankrollId, setSelectedBankrollId] = useState<string | "all">("all");
+  const [newBankrollName, setNewBankrollName] = useState("");
+  const [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]);
+  const [venuePresetName, setVenuePresetName] = useState("");
+  const [shoeReplay, setShoeReplay] = useState<{ sessionId: string; result: ShoeSimulationResult }>();
+  const [shoeReplayLoading, setShoeReplayLoading] = useState<string>();
+  const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
+  const [shareSession, setShareSession] = useState<JournalSession>();
   const [range, setRange] = useState<number | "all">(30);
   const [notice, setNotice] = useState<string>();
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const importCsvInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "session"; id: string; date: string } | { kind: "transaction"; id: string } | { kind: "bankroll"; id: string; name: string }>();
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
@@ -88,6 +105,7 @@ export function SessionJournal() {
     const refresh = () => {
       setSessions(journalLibrary.sessions());
       setTransactions(journalLibrary.transactions());
+      setBankrolls(journalLibrary.bankrolls());
     };
     refresh();
     addEventListener(journalLibrary.event, refresh);
@@ -95,14 +113,23 @@ export function SessionJournal() {
     return () => removeEventListener(journalLibrary.event, refresh);
   }, []);
 
+  useEffect(() => {
+    const refresh = () => setVenuePresets(venuePresetLibrary.presets());
+    refresh();
+    addEventListener(venuePresetLibrary.event, refresh);
+    return () => removeEventListener(venuePresetLibrary.event, refresh);
+  }, []);
+
   const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks }), [decks, dealt]);
   const draftSession = useMemo(() => ({ rules, ramp, bettingUnit, playerHands, handsPerHour, hours }), [rules, ramp, bettingUnit, playerHands, handsPerHour, hours]);
   const draftOutcome = useMemo(() => theoreticalSessionOutcome(draftSession), [draftSession]);
 
-  const inRange = useMemo(() => sessionsInRange(sessions, range), [sessions, range]);
+  const scopedSessions = useMemo(() => selectedBankrollId === "all" ? sessions : sessions.filter((session) => session.bankrollId === selectedBankrollId), [sessions, selectedBankrollId]);
+  const scopedTransactions = useMemo(() => selectedBankrollId === "all" ? transactions : transactions.filter((transaction) => transaction.bankrollId === selectedBankrollId), [transactions, selectedBankrollId]);
+  const inRange = useMemo(() => sessionsInRange(scopedSessions, range), [scopedSessions, range]);
   const aggregate: JournalAggregate = useMemo(() => aggregateJournal(inRange), [inRange]);
   const cumulative = useMemo(() => journalCumulativeSeries(inRange), [inRange]);
-  const bankroll = useMemo(() => currentBankroll(sessions, transactions), [sessions, transactions]);
+  const bankroll = useMemo(() => currentBankroll(scopedSessions, scopedTransactions), [scopedSessions, scopedTransactions]);
 
   const chooseSpread = (name: string) => {
     setSpread(name);
@@ -130,6 +157,44 @@ export function SessionJournal() {
     setSpread("Custom");
     track("journal_prefilled_from_template", { name: template.name });
   };
+  const loadVenuePreset = (id: string) => {
+    const preset = venuePresets.find((item) => item.id === id);
+    if (!preset) return;
+    const nextDecks = preset.rules.decks === 8 ? 8 : 6;
+    setDecks(nextDecks);
+    setDealt(Number((preset.rules.penetration * nextDecks).toFixed(2)));
+    setRamp(expandRamp(preset.ramp));
+    setSpread("Custom");
+  };
+  const saveVenuePreset = () => {
+    const name = venuePresetName.trim();
+    if (!name) return;
+    venuePresetLibrary.savePreset(name, rules, ramp);
+    setVenuePresetName("");
+    setNotice(`Venue preset "${name}" saved.`);
+  };
+  const simulateSessionShoe = async (session: JournalSession) => {
+    setShoeReplayLoading(session.id);
+    setSelectedShoeIndex(undefined);
+    try {
+      const handsToSimulate = Math.max(1, Math.min(Math.round(session.handsPerHour * session.hours), 2000));
+      const result = await simulateShoeSession({
+        bankroll: 1_000_000_000,
+        bettingUnit: session.bettingUnit,
+        playerHands: session.playerHands,
+        roundsPerHour: session.handsPerHour,
+        handsToSimulate,
+        highSpeed: false,
+        seed: Math.floor(Math.random() * 2 ** 31),
+        rules: session.rules,
+        ramp: session.ramp,
+        deviationGroups: ["i18", "fab4"],
+      });
+      setShoeReplay({ sessionId: session.id, result });
+    } finally {
+      setShoeReplayLoading(undefined);
+    }
+  };
 
   const logSession = () => {
     sessionForm.submitted();
@@ -145,6 +210,7 @@ export function SessionJournal() {
       netResult,
       expenses,
       notes: notes.trim() || undefined,
+      bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId,
     });
     setNetResult(0);
     setExpenses(0);
@@ -154,9 +220,17 @@ export function SessionJournal() {
   };
   const logTransaction = () => {
     transactionForm.submitted();
-    journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount) });
+    journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount), bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
     setNotice(`${transactionType === "deposit" ? "Deposit" : "Withdrawal"} recorded.`);
     transactionForm.succeeded();
+  };
+  const addBankroll = () => {
+    const name = newBankrollName.trim();
+    if (!name) return;
+    const created = journalLibrary.addBankroll(name);
+    setNewBankrollName("");
+    setSelectedBankrollId(created.id);
+    setNotice(`Bankroll "${name}" created.`);
   };
   const exportJournal = () => {
     const url = URL.createObjectURL(new Blob([journalLibrary.exportData()], { type: "application/json" }));
@@ -178,6 +252,33 @@ export function SessionJournal() {
       if (importInputRef.current) importInputRef.current.value = "";
     }
   };
+  const downloadCsv = (csv: string, name: string) => {
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `countlab-${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const exportSessionsCsv = () => {
+    downloadCsv(journalLibrary.exportSessionsCsv(), "journal-sessions");
+    setNotice("Sessions exported as CSV.");
+  };
+  const exportTransactionsCsv = () => {
+    downloadCsv(journalLibrary.exportTransactionsCsv(), "journal-transactions");
+    setNotice("Transactions exported as CSV.");
+  };
+  const importSessionsCsv = async (file?: File) => {
+    if (!file) return;
+    try {
+      const imported = journalLibrary.importSessionsCsv(await file.text());
+      setNotice(`Imported ${imported} session${imported === 1 ? "" : "s"} from CSV.`);
+    } catch (importError) {
+      setNotice(importError instanceof Error ? importError.message : "The sessions CSV could not be imported.");
+    } finally {
+      if (importCsvInputRef.current) importCsvInputRef.current.value = "";
+    }
+  };
 
   return (
     <>
@@ -187,8 +288,48 @@ export function SessionJournal() {
           <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
         </div>
-        <Metric label="Current bankroll" value={money(bankroll, 0)} sub={`${sessions.length} session${sessions.length === 1 ? "" : "s"} logged`} />
+        <Metric label="Current bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"} logged`} />
       </div>
+
+      <Panel className="mb-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Bankroll</p>
+            <div className="mt-2 max-w-xs">
+              <Select label="" aria-label="Selected bankroll" value={selectedBankrollId} onChange={(event) => setSelectedBankrollId(event.target.value)}>
+                <option value="all">All bankrolls</option>
+                {bankrolls.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </Select>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <GhostButton onClick={addBankroll} disabled={!newBankrollName.trim()}><i className="fa-solid fa-plus mr-2" />Add</GhostButton>
+            {selectedBankrollId !== "all" && (
+              <>
+                <GhostButton
+                  onClick={() => {
+                    const current = bankrolls.find((item) => item.id === selectedBankrollId);
+                    const name = current ? prompt("Rename bankroll", current.name) : null;
+                    if (name?.trim()) journalLibrary.renameBankroll(selectedBankrollId, name.trim());
+                  }}
+                >
+                  Rename
+                </GhostButton>
+                <GhostButton
+                  className="text-red-300 hover:bg-red-400/10"
+                  onClick={() => {
+                    const current = bankrolls.find((item) => item.id === selectedBankrollId);
+                    if (current) setPendingDelete({ kind: "bankroll", id: current.id, name: current.name });
+                  }}
+                >
+                  Delete
+                </GhostButton>
+              </>
+            )}
+          </div>
+        </div>
+      </Panel>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.7fr)]">
         <Panel>
@@ -203,6 +344,18 @@ export function SessionJournal() {
               </Select>
             </div>
           )}
+          <div className="mt-4">
+            {venuePresets.length > 0 && (
+              <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
+                <option value="">Choose a venue…</option>
+                {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+              </Select>
+            )}
+            <div className="mt-2 flex gap-2">
+              <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+              <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
+            </div>
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
             <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Location (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Local only" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
@@ -223,7 +376,7 @@ export function SessionJournal() {
           </div>
           <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
           <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
-          <Button className="mt-4 w-full" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+          <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
           </div>
         </Panel>
 
@@ -282,7 +435,13 @@ export function SessionJournal() {
                         <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
                         <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
                         <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
-                        <td className="py-2.5 text-right"><button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => { if (confirm(`Delete the session logged on ${session.date}?`)) journalLibrary.deleteSession(session.id); }} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button></td>
+                        <td className="py-2.5 text-right whitespace-nowrap">
+                          <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
+                          <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
+                            {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
+                          </button>
+                          <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -290,6 +449,27 @@ export function SessionJournal() {
               </table>
             )}
           </Panel>
+
+          {shoeReplay && (
+            <Panel>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Simulated shoes for this session</h2>
+                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                    A representative simulation using this session&apos;s rules, ramp, and betting unit — not your actual historical hands. CountLab never recorded the real cards from this session, so this shows what a session like it typically looks like.
+                  </p>
+                </div>
+                <GhostButton onClick={() => { setShoeReplay(undefined); setSelectedShoeIndex(undefined); }}>Close</GhostButton>
+              </div>
+              <div className="mt-4">
+                {selectedShoeIndex === undefined ? (
+                  <ShoeExplorer shoes={shoeReplay.result.shoes} onSelectShoe={setSelectedShoeIndex} />
+                ) : (
+                  <HandReplayer shoe={shoeReplay.result.shoes[selectedShoeIndex]} onBack={() => setSelectedShoeIndex(undefined)} />
+                )}
+              </div>
+            </Panel>
+          )}
 
           <Panel>
             <div onChange={() => transactionForm.start("inputs")}>
@@ -301,13 +481,13 @@ export function SessionJournal() {
               <NumberField label="Amount" value={transactionAmount} min={0} prefix="$" onValueChange={setTransactionAmount} />
               <div className="flex items-end"><GhostButton className="w-full" onClick={logTransaction}>Record</GhostButton></div>
             </div>
-            {transactions.length > 0 && (
+            {scopedTransactions.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {[...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map((transaction) => (
+                {[...scopedTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map((transaction) => (
                   <span key={transaction.id} className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-1.5 text-xs text-zinc-300">
                     <span className={transaction.type === "deposit" ? "text-emerald-300" : "text-amber-300"}>{transaction.type === "deposit" ? "+" : "−"}{money(transaction.amount, 0)}</span>
                     {shortDate(transaction.date)}
-                    <button type="button" aria-label="Delete transaction" onClick={() => journalLibrary.deleteTransaction(transaction.id)} className="text-zinc-600 hover:text-red-300"><i className="fa-solid fa-xmark" /></button>
+                    <button type="button" aria-label="Delete transaction" onClick={() => setPendingDelete({ kind: "transaction", id: transaction.id })} className="text-zinc-600 hover:text-red-300"><i className="fa-solid fa-xmark" /></button>
                   </span>
                 ))}
               </div>
@@ -317,11 +497,15 @@ export function SessionJournal() {
 
           <Panel>
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. Export a portable backup before clearing site data.</p>
+              <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={exportJournal} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export</button>
-                <button type="button" onClick={() => importInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import</button>
+                <button type="button" onClick={exportJournal} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
+                <button type="button" onClick={() => importInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
                 <input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importJournal(event.target.files?.[0])} className="hidden" />
+                <button type="button" onClick={exportSessionsCsv} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
+                <button type="button" onClick={exportTransactionsCsv} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
+                <button type="button" onClick={() => importCsvInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
+                <input ref={importCsvInputRef} type="file" accept="text/csv,.csv" onChange={(event) => void importSessionsCsv(event.target.files?.[0])} className="hidden" />
                 {notice && <span role="status" className="text-xs text-emerald-300">{notice}</span>}
               </div>
             </div>
@@ -329,6 +513,43 @@ export function SessionJournal() {
         </div>
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation are computed from the audited true-count profile for the exact rules and ramp entered per session, using the same engine as the Game &amp; Bankroll Lab. They are not fit to your results.</p>
+      <MobileActionDock label="Session journal actions">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+          <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>
+          <Button onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+        </div>
+      </MobileActionDock>
+      <ConfirmModal
+        open={pendingDelete !== undefined}
+        title={pendingDelete?.kind === "session" ? "Delete session?" : pendingDelete?.kind === "bankroll" ? "Delete bankroll?" : "Delete transaction?"}
+        description={
+          pendingDelete?.kind === "session"
+            ? `This permanently deletes the session logged on ${pendingDelete.date}.`
+            : pendingDelete?.kind === "bankroll"
+              ? `This deletes "${pendingDelete.name}". Its sessions and transactions move to your other bankroll instead of being deleted.`
+              : "This permanently deletes the transaction."
+        }
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setPendingDelete(undefined)}
+        onConfirm={() => {
+          if (pendingDelete?.kind === "session") journalLibrary.deleteSession(pendingDelete.id);
+          else if (pendingDelete?.kind === "transaction") journalLibrary.deleteTransaction(pendingDelete.id);
+          else if (pendingDelete?.kind === "bankroll") {
+            journalLibrary.deleteBankroll(pendingDelete.id);
+            setSelectedBankrollId("all");
+          }
+          setPendingDelete(undefined);
+        }}
+      />
+      {shareSession && (
+        <ShareCard
+          session={shareSession}
+          outcome={theoreticalSessionOutcome(shareSession)}
+          bankrollName={bankrolls.find((item) => item.id === shareSession.bankrollId)?.name}
+          onClose={() => setShareSession(undefined)}
+        />
+      )}
     </>
   );
 }

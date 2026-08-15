@@ -2,6 +2,7 @@
 import Image from "next/image";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PlayingCard } from "./PlayingCard";
 import { SessionSummary } from "./SessionSummary";
@@ -26,8 +27,9 @@ import { DEVIATION_ACTION_NAMES, DeviationAction } from "@/lib/blackjack/deviati
 import { runningCount, signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
 import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
-import { CountingErrorCategory, makeSession, Mistake, Session, storage } from "@/lib/statistics/storage";
+import { CountingErrorCategory, DrillType, makeSession, Mistake, Session, storage } from "@/lib/statistics/storage";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
+import { consumePracticeFocus, dueItemKeys, recordAnswer, setPracticeFocus } from "@/lib/statistics/spacedRepetition";
 import { track } from "@/lib/analytics/track";
 import rawDeckEstimationPhotos from "@/public/deck-estimation/manifest.json";
 
@@ -40,7 +42,7 @@ const inputClass = "field min-h-11 w-full rounded-xl px-3 text-center text-lg te
 const actionNames: Record<DeviationAction, string> = { ...DEVIATION_ACTION_NAMES };
 
 function Heading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <div className="mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p className="mt-2 max-w-3xl text-zinc-400">{description}</p></div>;
+  return <div className="mb-5 sm:mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">{description}</p></div>;
 }
 
 function addCategory(all: Record<string, { correct: number; total: number }>, key: string, correct: boolean) {
@@ -186,7 +188,7 @@ export function RunningCountDrill() {
         {phase === "show" && <CardGroup cards={visible} seed={cursor} />}
         {phase === "interruption" && <div className="grid min-h-64 place-items-center text-center"><div><p className="text-5xl">☎</p><h2 className="mt-4 text-xl font-semibold">Interruption</h2><p className="mt-2 text-zinc-400">Hold the count while attention moves away from the table.</p><Button className="mt-5 min-h-11" onClick={() => { setSize(pickSize()); setPhase("show"); }}>Return to the table</Button></div></div>}
         {phase === "paused" && <div className="grid min-h-64 place-items-center"><Button className="min-h-11" onClick={() => { pausedTotal.current += Date.now() - pausedAt.current; setPhase("show"); }}>Resume session</Button></div>}
-        {phase === "answer" && <form className="mx-auto max-w-sm py-16 text-center" onSubmit={(e) => { e.preventDefault(); submit(); }}><h2 className="text-xl font-semibold">Running count after {cursor} cards?</h2><input autoFocus inputMode="numeric" aria-label="Running count" className={`${inputClass} mt-5`} value={answer} onChange={(e) => setAnswer(e.target.value)} /><Button className="mt-4 hidden min-h-11 w-full sm:block">Check count</Button><NumericPad value={answer} onChange={setAnswer} onSubmit={submit} /></form>}
+        {phase === "answer" && <form className="mx-auto max-w-sm py-6 text-center sm:py-16" onSubmit={(e) => { e.preventDefault(); submit(); }}><h2 className="text-xl font-semibold">Running count after {cursor} cards?</h2><input inputMode="numeric" aria-label="Running count" className={`${inputClass} mt-5`} value={answer} onChange={(e) => setAnswer(e.target.value)} /><Button className="mt-4 hidden min-h-11 w-full sm:block">Check count</Button><NumericPad value={answer} onChange={setAnswer} onSubmit={submit} /></form>}
         {phase === "feedback" && <div aria-live="polite" className="grid min-h-64 place-items-center text-center"><div><p className="text-2xl font-semibold">{message}</p><Button className="mt-5 min-h-11" onClick={() => { setSize(pickSize()); setPhase("show"); }}>Continue</Button></div></div>}
       </Panel>
       <div className="space-y-3"><Metric label="Cards seen" value={`${cursor} / ${cards.length}`} /><Metric label="Total time" value={`${(elapsed / 1000).toFixed(1)}s`} /><Metric label="Current speed" value={`${(cursor / Math.max(1, elapsed / 1000)).toFixed(1)} cards/s`} /><Metric label="Checkpoints" value={`${correct} / ${checks}`} />{phase === "show" && <GhostButton className="min-h-11 w-full" onClick={() => { pausedAt.current = Date.now(); setPhase("paused"); }}>Pause</GhostButton>}<GhostButton className="min-h-11 w-full" onClick={endDrill}>End drill</GhostButton></div>
@@ -205,7 +207,8 @@ type TrueCountSaved = {
 export function TrueCountDrill() {
   const settings = storage.settings();
   const [saved] = useState(() => loadDrillProgress<TrueCountSaved>("True Count"));
-  const [decks, setDecks] = useState(saved?.decks ?? settings.decks), [resolution, setResolution] = useState<DeckResolution>(saved?.resolution ?? 0.5), [mode, setMode] = useState<"division" | "combined">(saved?.mode ?? "combined"), [focus, setFocus] = useState<TrueCountFocus>(saved?.focus ?? "adaptive");
+  const [pendingFocus] = useState(() => saved ? undefined : consumePracticeFocus("True Count"));
+  const [decks, setDecks] = useState(saved?.decks ?? settings.decks), [resolution, setResolution] = useState<DeckResolution>(saved?.resolution ?? 0.5), [mode, setMode] = useState<"division" | "combined">(saved?.mode ?? "combined"), [focus, setFocus] = useState<TrueCountFocus>(saved?.focus ?? (pendingFocus as TrueCountFocus) ?? "adaptive");
   const [feedbackMode, setFeedbackMode] = useState(saved?.feedbackMode ?? settings.countingFeedback), [phase, setPhase] = useState<"setup" | "question" | "feedback" | "done">(saved?.phase ?? "setup"), [question, setQuestion] = useState<TrueCountScenario | undefined>(saved?.question);
   const [tcAnswer, setTcAnswer] = useState(saved?.tcAnswer ?? ""), [deckAnswer, setDeckAnswer] = useState(saved?.deckAnswer ?? ""), [index, setIndex] = useState(saved?.index ?? 0), [correct, setCorrect] = useState(saved?.correct ?? 0), [streak, setStreak] = useState(saved?.streak ?? 0), [best, setBest] = useState(saved?.best ?? 0), [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}), [message, setMessage] = useState(saved?.message ?? ""), [result, setResult] = useState<Session>();
   const started = useRef(0), answerStarted = useRef(Date.now()), totalMs = useRef(saved?.totalMs ?? 0), target = settings.countingSessionQuestions;
@@ -217,9 +220,14 @@ export function TrueCountDrill() {
   const nextQuestion = () => {
     let scenarioFocus: Exclude<typeof focus, "adaptive"> = focus === "adaptive" ? "all" : focus;
     if (focus === "adaptive") {
-      const history = storage.sessions().filter((session) => session.drill === "True Count").flatMap((session) => Object.entries(session.categories ?? {}));
-      const weakest = history.sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total)[0]?.[0] ?? "";
-      scenarioFocus = weakest.includes("negative") ? "negative" : weakest.includes("positive") ? "positive" : weakest.includes("zero") ? "zero" : "all";
+      const due = dueItemKeys("True Count", ["negative", "positive", "zero"]);
+      if (due.length > 0) {
+        scenarioFocus = due[0] as "negative" | "positive" | "zero";
+      } else {
+        const history = storage.sessions().filter((session) => session.drill === "True Count").flatMap((session) => Object.entries(session.categories ?? {}));
+        const weakest = history.sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total)[0]?.[0] ?? "";
+        scenarioFocus = weakest.includes("negative") ? "negative" : weakest.includes("positive") ? "positive" : weakest.includes("zero") ? "zero" : "all";
+      }
     }
     const q = makeTrueCountScenario({ decks, resolution, rounding: settings.rounding, focus: scenarioFocus }); setQuestion(q); setTcAnswer(""); setDeckAnswer(""); answerStarted.current = Date.now(); setPhase("question");
     track("question_presented", { drill: "True Count", category: scenarioFocus, scenario: `${q.runningCount < 0 ? "negative" : q.runningCount > 0 ? "positive" : "zero"}_${resolution}_deck`, attempt: index + 1 });
@@ -228,7 +236,9 @@ export function TrueCountDrill() {
   const submit = () => {
     if (!question) return; const responseTimeMs = Date.now() - answerStarted.current; totalMs.current += responseTimeMs;
     const tcOk = Number(tcAnswer) === question.answer, deckOk = mode === "division" || Math.abs(Number(deckAnswer) - question.estimatedDecksRemaining) < 0.001, ok = tcOk && deckOk;
-    const label = `${question.runningCount < 0 ? "negative" : question.runningCount > 0 ? "positive" : "zero"}, ${resolution}-deck divisor`, nextCategories = addCategory(categories, label, ok);
+    const bucket = question.runningCount < 0 ? "negative" : question.runningCount > 0 ? "positive" : "zero";
+    const label = `${bucket}, ${resolution}-deck divisor`, nextCategories = addCategory(categories, label, ok);
+    if (focus === "adaptive") recordAnswer("True Count", bucket, ok);
     const category: CountingErrorCategory = !deckOk ? "deck estimate" : classifyTrueCountError(question.runningCount, question.estimatedDecksRemaining, question.answer, Number(tcAnswer));
     const nextMistakes = ok ? mistakes : [...mistakes, { question: `RC ${signed(question.runningCount)} with ${question.estimatedDecksRemaining} decks remaining`, userAnswer: `TC ${tcAnswer || "blank"}${mode === "combined" ? `, ${deckAnswer || "blank"} decks` : ""}`, correctAnswer: `TC ${signed(question.answer)}, ${question.estimatedDecksRemaining} decks`, explanation: `${signed(question.runningCount)} ÷ ${question.estimatedDecksRemaining} = ${(question.runningCount / question.estimatedDecksRemaining).toFixed(2)}. ${settings.rounding === "floor" ? "Floor moves toward negative infinity, so -1.2 becomes -2." : settings.rounding === "truncate" ? "Truncate drops the decimal toward zero, so -1.2 becomes -1." : "Round to the nearest integer."}`, category }];
     const nextCorrect = correct + Number(ok), nextStreak = ok ? streak + 1 : 0, nextIndex = index + 1;
@@ -247,6 +257,70 @@ export function TrueCountDrill() {
       {phase === "setup" ? <Panel className="max-w-4xl"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Select label="Mode" value={mode} onChange={(e) => { const next = e.target.value as typeof mode; track("practice_mode_changed", { drill: "True Count", from: mode, to: next }); setMode(next); }}><option value="combined">Tray estimate + division</option><option value="division">Division only</option></Select><Select label="Shoe" value={decks} onChange={(e) => setDecks(+e.target.value)}>{[1, 2, 4, 6, 8].map((x) => <option key={x}>{x} decks</option>)}</Select><Select label="Deck resolution" value={resolution} onChange={(e) => { const next = +e.target.value as DeckResolution; track("difficulty_changed", { drill: "True Count", from: String(resolution), to: String(next) }); setResolution(next); }}><option value="1">Full deck</option><option value="0.5">Half deck</option><option value="0.25">Quarter deck</option></Select><Select label="Scenario focus" value={focus} onChange={(e) => { const next = e.target.value as typeof focus; track("difficulty_changed", { drill: "True Count", from: focus, to: next }); setFocus(next); }}><option value="adaptive">Adaptive weak spots</option><option value="all">Mixed realistic</option><option value="positive">Positive counts</option><option value="negative">Negative counts</option><option value="zero">Zero counts</option><option value="index">Near index boundaries</option><option value="last-deck">Last-deck precision</option></Select><Select label="Feedback" value={feedbackMode} onChange={(e) => setFeedbackMode(e.target.value as typeof feedbackMode)}><option value="immediate">Immediate</option><option value="end">End of session</option></Select></div><p className="mt-5 text-sm text-zinc-400">Rounding: <b className="text-white">{settings.rounding}</b>. Floor sends negative decimals down; truncate sends them toward zero.</p><Button className="mt-5 min-h-11" onClick={start}>Start {target} questions</Button></Panel> : question && <div className="grid gap-5 lg:grid-cols-[1fr_18rem]"><Panel>
       {phase === "feedback" ? <div aria-live="polite" className="grid min-h-80 place-items-center text-center"><div><p className="text-2xl font-semibold">{message}</p><p className="mt-2 text-zinc-400">{signed(question.runningCount)} ÷ {question.estimatedDecksRemaining} = {(question.runningCount / question.estimatedDecksRemaining).toFixed(2)}</p><Button className="mt-5 min-h-11" onClick={nextQuestion}>Next question</Button></div></div> : <form onSubmit={(e) => { e.preventDefault(); submit(); }}><div className="grid gap-6 md:grid-cols-2">{mode === "combined" && <TrayVisual totalDecks={question.totalDecks} remainingDecks={question.exactDecksRemaining} />}<div className="grid place-items-center rounded-2xl bg-black/20 p-6 text-center"><p className="text-sm text-zinc-500">Running count</p><p className="mt-2 text-6xl font-semibold">{signed(question.runningCount)}</p>{mode === "division" && <p className="mt-3 text-zinc-400">Estimated decks remaining: {question.estimatedDecksRemaining}</p>}</div></div><div className="mx-auto mt-7 grid max-w-xl gap-4 sm:grid-cols-2">{mode === "combined" && <label className="text-sm text-zinc-400">Decks remaining<input inputMode="decimal" aria-label="Estimated decks remaining" className={`${inputClass} mt-2`} value={deckAnswer} onChange={(e) => setDeckAnswer(e.target.value)} /></label>}<label className="text-sm text-zinc-400">True count<input autoFocus inputMode="numeric" aria-label="True count" className={`${inputClass} mt-2`} value={tcAnswer} onChange={(e) => setTcAnswer(e.target.value)} /></label></div><Button className="mx-auto mt-5 hidden min-h-11 sm:block">Check answer</Button><NumericPad value={tcAnswer} onChange={setTcAnswer} onSubmit={submit} /></form>}
     </Panel><div className="space-y-3"><Metric label="Question" value={`${index + 1} / ${target}`} /><Metric label="Accuracy" value={`${index ? Math.round(correct / index * 100) : 0}%`} /><Metric label="Best streak" value={best} /><GhostButton className="min-h-11 w-full" onClick={endDrill}>End drill</GhostButton></div></div>}
+  </>;
+}
+
+const PROFICIENCY_TEST_QUESTIONS = 50;
+const PROFICIENCY_TEST_SECONDS = 300;
+
+export function ProficiencyTest() {
+  const settings = storage.settings();
+  const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
+  const [question, setQuestion] = useState<TrueCountScenario>();
+  const [answer, setAnswer] = useState("");
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [best, setBest] = useState(0);
+  const [mistakes, setMistakes] = useState<Mistake[]>([]);
+  const [secondsLeft, setSecondsLeft] = useState(PROFICIENCY_TEST_SECONDS);
+  const [result, setResult] = useState<Session>();
+  const answerStarted = useRef(Date.now());
+  const totalMs = useRef(0);
+
+  const finish = (askedCount: number, gotCorrect: number, bestStreak: number, finalMistakes: Mistake[]) => {
+    const session = makeSession("True Count", askedCount, gotCorrect, totalMs.current, bestStreak, finalMistakes, undefined, undefined, ["proficiency-test"]);
+    storage.addSession(session);
+    setResult(session);
+    setPhase("done");
+  };
+  const nextQuestion = (askedCount: number) => {
+    if (askedCount >= PROFICIENCY_TEST_QUESTIONS) return finish(askedCount, correct, best, mistakes);
+    const q = makeTrueCountScenario({ decks: settings.decks, resolution: 0.5, rounding: settings.rounding, focus: "all" });
+    setQuestion(q);
+    setAnswer("");
+    answerStarted.current = Date.now();
+  };
+  const start = () => {
+    setIndex(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setSecondsLeft(PROFICIENCY_TEST_SECONDS); totalMs.current = 0;
+    setPhase("running");
+    nextQuestion(0);
+    track("drill_started", { drill: "True Count", decks: settings.decks, resolution: 0.5, mode: "combined", focus: "all" });
+  };
+  const submit = () => {
+    if (!question) return;
+    const responseTimeMs = Date.now() - answerStarted.current;
+    totalMs.current += responseTimeMs;
+    const ok = Number(answer) === question.answer;
+    const nextCorrect = correct + Number(ok), nextStreak = ok ? streak + 1 : 0, nextIndex = index + 1;
+    const nextMistakes = ok ? mistakes : [...mistakes, { question: `RC ${signed(question.runningCount)} with ${question.estimatedDecksRemaining} decks remaining`, userAnswer: `TC ${answer || "blank"}`, correctAnswer: `TC ${signed(question.answer)}`, explanation: `${signed(question.runningCount)} ÷ ${question.estimatedDecksRemaining} = ${(question.runningCount / question.estimatedDecksRemaining).toFixed(2)}.` }];
+    setCorrect(nextCorrect); setStreak(nextStreak); setBest(Math.max(best, nextStreak)); setMistakes(nextMistakes); setIndex(nextIndex);
+    nextQuestion(nextIndex);
+  };
+  useEffect(() => {
+    if (phase !== "running") return;
+    const timer = setInterval(() => setSecondsLeft((value) => value - 1), 1000);
+    return () => clearInterval(timer);
+  }, [phase]);
+  useEffect(() => {
+    if (phase === "running" && secondsLeft <= 0) finish(index, correct, best, mistakes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsLeft, phase]);
+  if (phase === "done" && result) return <SessionSummary session={result} onNew={() => setPhase("setup")} />;
+  return <><Heading eyebrow="Timed test" title="Counting Proficiency Test" description={`${PROFICIENCY_TEST_QUESTIONS} true-count questions or ${PROFICIENCY_TEST_SECONDS / 60} minutes, whichever comes first. No hints, no pausing.`} />
+    {phase === "setup" ? <Panel className="max-w-4xl"><p className="text-sm text-zinc-400">This is a fixed-length benchmark: mixed positive, negative, and zero counts at your saved deck count and rounding rule. Results are saved to your True Count history, tagged as a proficiency test.</p><Button className="mt-5 min-h-11" onClick={start}>Start test</Button></Panel> : question && <div className="grid gap-5 lg:grid-cols-[1fr_18rem]"><Panel>
+      <form onSubmit={(e) => { e.preventDefault(); submit(); }}><div className="grid place-items-center rounded-2xl bg-black/20 p-6 text-center"><p className="text-sm text-zinc-500">Running count</p><p className="mt-2 text-6xl font-semibold">{signed(question.runningCount)}</p><p className="mt-3 text-zinc-400">Estimated decks remaining: {question.estimatedDecksRemaining}</p></div><div className="mx-auto mt-7 max-w-xs"><label className="text-sm text-zinc-400">True count<input autoFocus inputMode="numeric" aria-label="True count" className={`${inputClass} mt-2`} value={answer} onChange={(e) => setAnswer(e.target.value)} /></label></div><Button className="mx-auto mt-5 hidden min-h-11 sm:block">Check answer</Button><NumericPad value={answer} onChange={setAnswer} onSubmit={submit} /></form>
+    </Panel><div className="space-y-3"><Metric label="Time left" value={`${Math.floor(Math.max(0, secondsLeft) / 60)}:${String(Math.max(0, secondsLeft) % 60).padStart(2, "0")}`} /><Metric label="Question" value={`${index + 1} / ${PROFICIENCY_TEST_QUESTIONS}`} /><Metric label="Accuracy" value={`${index ? Math.round(correct / index * 100) : 0}%`} /><Metric label="Best streak" value={best} /></div></div>}
   </>;
 }
 
@@ -354,9 +428,41 @@ export function FullShoeDrill() {
   </>;
 }
 
+const WEAK_SPOT_DRILLS: { drill: DrillType; label: string; href: string; categories: string[] }[] = [
+  { drill: "True Count", label: "True Count", href: "/training/true-count", categories: ["positive", "negative", "zero"] },
+  { drill: "Basic Strategy", label: "Basic Strategy", href: "/training/basic-strategy", categories: ["Hard totals", "Soft totals", "Pairs", "Surrender"] },
+];
+
 export function CountingBenchmark() {
+  const router = useRouter();
   const [sessions, setSessions] = useState<Session[]>([]);
   useEffect(() => { const load = () => setSessions(storage.sessions()); load(); addEventListener("hilo-storage", load); return () => removeEventListener("hilo-storage", load); }, []);
   const mastery = useMemo(() => countingMastery(sessions), [sessions]);
-  return <><Heading eyebrow="Mastery check" title="Counting Benchmark" description="Use consistent performance targets to decide what to practice next. Results update from your saved drill history." /><div className="grid gap-5 lg:grid-cols-[18rem_1fr]"><Metric label="Counting mastery" value={`${mastery.score}%`} sub={mastery.score === 100 ? "All benchmarks met" : "Based on latest sessions"} /><Panel><div className="space-y-3">{mastery.checks.map((check) => <Link key={check.label} href={check.href} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>{check.label}</span><span className={check.met ? "text-emerald-400" : "text-amber-300"}>{check.met ? "Met" : "Practice"}</span></Link>)}</div>{mastery.score < 100 && <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"><p className="text-sm text-zinc-400">Recommended next drill</p><Link className="mt-1 inline-block font-semibold text-emerald-300" href={mastery.next.href}>{mastery.next.label} →</Link></div>}</Panel></div></>;
+  const weakSpots = useMemo(() => {
+    const rows: { drill: DrillType; label: string; href: string; category: string; accuracy: number; total: number }[] = [];
+    for (const { drill, label, href, categories } of WEAK_SPOT_DRILLS) {
+      const totals = sessions
+        .filter((session) => session.drill === drill)
+        .flatMap((session) => Object.entries(session.categories ?? {}))
+        .reduce<Record<string, { correct: number; total: number }>>((all, [name, value]) => {
+          if (!categories.some((category) => name === category || name.startsWith(category))) return all;
+          const key = categories.find((category) => name === category || name.startsWith(category))!;
+          all[key] ??= { correct: 0, total: 0 };
+          all[key].correct += value.correct;
+          all[key].total += value.total;
+          return all;
+        }, {});
+      for (const [category, { correct, total }] of Object.entries(totals)) {
+        if (total < 3) continue;
+        rows.push({ drill, label, href, category, accuracy: correct / total, total });
+      }
+    }
+    return rows.sort((a, b) => a.accuracy - b.accuracy).slice(0, 6);
+  }, [sessions]);
+  const practiceWeakSpot = (row: (typeof weakSpots)[number]) => {
+    setPracticeFocus(row.drill, row.category);
+    router.push(row.href);
+  };
+  return <><Heading eyebrow="Mastery check" title="Counting Benchmark" description="Use consistent performance targets to decide what to practice next. Results update from your saved drill history." /><div className="grid gap-5 lg:grid-cols-[18rem_1fr]"><Metric label="Counting mastery" value={`${mastery.score}%`} sub={mastery.score === 100 ? "All benchmarks met" : "Based on latest sessions"} /><Panel><div className="space-y-3">{mastery.checks.map((check) => <Link key={check.label} href={check.href} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>{check.label}</span><span className={check.met ? "text-emerald-400" : "text-amber-300"}>{check.met ? "Met" : "Practice"}</span></Link>)}</div>{mastery.score < 100 && <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"><p className="text-sm text-zinc-400">Recommended next drill</p><Link className="mt-1 inline-block font-semibold text-emerald-300" href={mastery.next.href}>{mastery.next.label} →</Link></div>}<Link href="/training/proficiency-test" className="mt-3 flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>Timed proficiency test</span><span className="text-zinc-500">50Q / 5 min →</span></Link></Panel></div>
+  {weakSpots.length > 0 && <Panel className="mt-5"><h2 className="font-semibold">Weak spots</h2><p className="mt-1 text-xs text-zinc-500">Your lowest-accuracy categories across saved sessions. Click one to jump straight into a focused drill.</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{weakSpots.map((row) => <button key={`${row.drill}:${row.category}`} type="button" onClick={() => practiceWeakSpot(row)} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 text-left hover:bg-white/[.06]"><span><span className="block text-sm font-medium text-zinc-100">{row.category}</span><span className="text-xs text-zinc-500">{row.label} · {row.total} seen</span></span><span className="font-semibold text-amber-300">{Math.round(row.accuracy * 100)}%</span></button>)}</div></Panel>}</>;
 }

@@ -111,8 +111,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="grid min-h-dvh place-items-center p-4">
-      <Panel className="w-full max-w-sm">
+    <div className="grid min-h-svh w-full min-w-0 place-items-center overflow-x-hidden px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
+      <Panel className="w-full min-w-0 max-w-sm">
         <div className="mb-5 flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-[.9rem] bg-gradient-to-br from-[#b4f27d] to-[#65c875] text-lg font-bold text-[#112010]">
             A♠
@@ -130,7 +130,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
               Email
               <input
                 type="email"
-                autoFocus
                 autoComplete="email"
                 value={email}
                 onChange={(event) => { formAnalytics.start("email"); setEmail(event.target.value); }}

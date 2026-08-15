@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/stamp-sw-version.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run"

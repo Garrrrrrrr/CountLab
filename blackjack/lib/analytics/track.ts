@@ -293,6 +293,7 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "simulation_template_saved":
     case "journal_session_added":
     case "journal_transaction_added":
+    case "journal_bankroll_added":
       analytics.track("result_saved", { feature: event.startsWith("cvcx") ? "game_bankroll_lab" : event.startsWith("journal") ? "session_journal" : "session_simulator", kind: event.replace(/_(saved|added)$/, "") });
       return;
     case "cvcx_template_loaded":
@@ -308,6 +309,7 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "cvcx_template_deleted":
     case "journal_session_deleted":
     case "journal_transaction_deleted":
+    case "journal_bankroll_deleted":
       analytics.track("data_cleared", { scope: event.replace(/_deleted$/, "") });
       if (event.startsWith("journal")) analytics.track("history_deleted", { feature: "session_journal", kind: event });
       return;
