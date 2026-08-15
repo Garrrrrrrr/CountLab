@@ -44,6 +44,13 @@ const spreadUnits = (spread: Spread, tc: number) => {
 
 const money = (value: number) => (value % 1 === 0 ? `${value}` : value.toFixed(2));
 const rankForIndex = (card: Card) => (["J", "Q", "K"].includes(card.rank) ? "10" : card.rank);
+// Each card in a hand is dealt slightly lower and more rotated than the one
+// before it, so a hand reads as cards stacked diagonally on the felt rather
+// than a flat overlapping row. `extraRotate` layers in the table-arc tilt so
+// a spot's whole hand also leans a few degrees toward the dealer.
+const cardCascade = (index: number, extraRotate = 0) => ({
+  transform: `translateY(${index * 7}px) rotate(${index * 5 + extraRotate}deg)`,
+});
 const pause = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 function sound(kind: "deal" | "chip" | "good" | "bad" | "win", enabled: boolean) {
@@ -713,7 +720,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     { label: "Cards discarded", value: discarded, intel: "discard" },
   ];
   return (
-    <div className="xl:-mx-4 2xl:-mx-10">
+    <div className="xl:-mx-8 2xl:-mx-8">
       <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-5 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread}</p>
@@ -739,7 +746,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
             <div className="relative text-center">
               <p className="mb-2 text-xs font-bold uppercase tracking-[.2em] text-emerald-100/60">Dealer {dealer.length && !holeHidden ? `· ${calculateHandValue(dealer)}` : ""}</p>
               <div className="flex min-h-24 justify-center -space-x-5">
-                {dealer.map((card, index) => <div key={`${card.rank}-${card.suit}-${index}`} style={{ transform: `rotate(${(index - (dealer.length - 1) / 2) * 7}deg)` }}>
+                {dealer.map((card, index) => <div key={`${card.rank}-${card.suit}-${index}`} style={cardCascade(index)}>
                   <PlayingCard card={card} hidden={index === 1 && holeHidden} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? index === 0 ? occupiedSpots : index === 1 ? occupiedSpots * 2 + 1 : 0 : 0} flip={index === 1 && !holeHidden} />
                 </div>)}
               </div>
@@ -767,7 +774,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
                   {spotHands.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{spotHands.map((hand) => {
                     const handIndex = hands.indexOf(hand);
                     return <div key={handIndex} className={phase === "play" && handIndex === activeHand ? "rounded-xl bg-amber-200/10 p-1" : "p-1"}>
-                      <div className="flex justify-center -space-x-7 lg:-space-x-10 2xl:-space-x-12">{hand.cards.map((card, cardIndex) => <div key={`${card.rank}-${card.suit}-${cardIndex}`} style={{ transform: `rotate(${(cardIndex - (hand.cards.length - 1) / 2) * 8 + arc.rotate}deg)` }}>
+                      <div className="flex justify-center -space-x-7 lg:-space-x-10 2xl:-space-x-12">{hand.cards.map((card, cardIndex) => <div key={`${card.rank}-${card.suit}-${cardIndex}`} style={cardCascade(cardIndex, arc.rotate)}>
                         <PlayingCard card={card} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0 : 0} />
                       </div>)}</div>
                       <p className="mt-1 text-[.62rem] font-semibold">${money(hand.bet)} · {hand.awaitingSplitCard ? "Waiting" : handLabel(hand.cards)}</p>

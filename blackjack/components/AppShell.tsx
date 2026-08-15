@@ -234,7 +234,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
         </header>
-        <div className="mx-auto max-w-[90rem] p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20">
+        <div className={`mx-auto p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20 ${fullShoeActive ? "max-w-[130rem]" : "max-w-[90rem]"}`}>
           <div className={fullShoeActive ? undefined : "hidden"} aria-hidden={!fullShoeActive}>
             <FullShoeGame active={fullShoeActive} />
           </div>
