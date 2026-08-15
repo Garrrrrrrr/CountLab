@@ -1,12 +1,13 @@
 import { supabase } from "./client";
-import { storage, type Session, type Settings } from "../statistics/storage";
+import { storage, type DrillProgress, type Session, type Settings } from "../statistics/storage";
 import { journalLibrary, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
 
 /** Pulls this user's rows from Supabase and merges them into the local cache. Called once on sign-in. */
 export async function pullRemoteData(userId: string): Promise<void> {
-  const [settingsRes, sessionsRes, journalSessionsRes, transactionsRes] = await Promise.all([
+  const [settingsRes, sessionsRes, progressRes, journalSessionsRes, transactionsRes] = await Promise.all([
     supabase.from("settings").select("data").eq("user_id", userId).maybeSingle(),
     supabase.from("drill_sessions").select("*").eq("user_id", userId),
+    supabase.from("drill_progress").select("*").eq("user_id", userId),
     supabase.from("journal_sessions").select("*").eq("user_id", userId),
     supabase.from("journal_transactions").select("*").eq("user_id", userId),
   ]);
@@ -29,6 +30,15 @@ export async function pullRemoteData(userId: string): Promise<void> {
       tags: row.tags ?? undefined,
     }));
     storage.mergeRemoteSessions(sessions);
+  }
+
+  if (progressRes.data) {
+    const progress: DrillProgress[] = progressRes.data.map((row) => ({
+      drill: row.drill,
+      state: row.state,
+      updatedAt: row.updated_at,
+    }));
+    storage.mergeRemoteProgress(progress);
   }
 
   if (journalSessionsRes.data) {

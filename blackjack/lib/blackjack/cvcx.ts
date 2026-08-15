@@ -3,7 +3,9 @@ import {
   AdvantageRules,
   HandCountPoint,
   RampPoint,
+  adjustAdvantage,
   calculateAdvantage,
+  estimateOffTopEdge,
   getCountProfile,
   recommendUnit,
 } from "./advantage";
@@ -19,6 +21,10 @@ export interface CvcxScenario {
   maxSpread: number;
   wongInAt: number | null;
   rules: AdvantageRules;
+  /** Flat edge-percentage shift from rule toggles that depart from the audited baseline. Default 0. */
+  ruleAdjustment?: number;
+  /** 0-1 multiplier on the count-dependent portion of edge. Default 1 (perfect play). */
+  deviationSkill?: number;
 }
 
 export interface CvcxPerformance extends AdvantageResult {
@@ -103,22 +109,26 @@ export function createOptimalRamp(
   maxSpread: number,
   wongInAt: number | null,
   chipIncrement = 0.5,
+  ruleAdjustment = 0,
+  deviationSkill = 1,
 ): RampPoint[] {
   const rows = getCountProfile(rules);
+  const offTop = estimateOffTopEdge(rules);
+  const adv = (row: { adv: number }) => adjustAdvantage(offTop, row.adv, ruleAdjustment, deviationSkill);
   const eligible = rows.filter(
     (row) => wongInAt === null || row.tc >= wongInAt,
   );
   const positive = eligible
     .map((row) => ({
       tc: row.tc,
-      kellyWeight: Math.max(0, row.adv / row.sd ** 2),
+      kellyWeight: Math.max(0, adv(row) / row.sd ** 2),
     }))
     .filter((row) => row.kellyWeight > 0);
   const baseline = positive[0]?.kellyWeight ?? 1;
   return rows.map((row) => {
     if (wongInAt !== null && row.tc < wongInAt)
       return { trueCount: row.tc, units: 0 };
-    const weight = Math.max(1, Math.max(0, row.adv / row.sd ** 2) / baseline);
+    const weight = Math.max(1, Math.max(0, adv(row) / row.sd ** 2) / baseline);
     const bounded = Math.min(Math.max(1, maxSpread), weight);
     return {
       trueCount: row.tc,
@@ -144,6 +154,8 @@ export function analyzeCvcx(
     hours: scenario.hours,
     rules: scenario.rules,
     ramp,
+    ruleAdjustment: scenario.ruleAdjustment,
+    deviationSkill: scenario.deviationSkill,
   });
   const variance = result.sdPerRound ** 2;
   const playedFrequency = result.rows.reduce(
@@ -204,6 +216,8 @@ export function riskSizedUnit(
     ramp,
     scenario.playerHands,
     scenario.handsByTrueCount,
+    scenario.ruleAdjustment,
+    scenario.deviationSkill,
   );
 }
 

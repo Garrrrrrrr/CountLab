@@ -29,6 +29,7 @@ import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, Panel, Select } from "./ui";
 import { SessionSummary } from "./SessionSummary";
 import { FullShoeGame } from "./FullShoeGame";
+import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 const names: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -540,16 +541,21 @@ function randomStrategyQuestion(preferred?: StrategyCategory) {
     : randomCard();
   return { player, dealer };
 }
+type StrategySaved = {
+  q: number; mode: "standard" | "adaptive"; correctCount: number; streak: number; best: number;
+  totalMs: number; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
+};
 export function StrategyDrill() {
   const settings = useSavedSettings();
-  const [q, setQ] = useState(0),
-    [mode, setMode] = useState<"standard" | "adaptive">("standard"),
-    [correctCount, setCorrectCount] = useState(0),
-    [streak, setStreak] = useState(0),
-    [best, setBest] = useState(0),
-    [totalMs, setTotalMs] = useState(0),
-    [mistakes, setMistakes] = useState<Mistake[]>([]),
-    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}),
+  const [saved] = useState(() => loadDrillProgress<StrategySaved>("Basic Strategy"));
+  const [q, setQ] = useState(saved?.q ?? 0),
+    [mode, setMode] = useState<"standard" | "adaptive">(saved?.mode ?? "standard"),
+    [correctCount, setCorrectCount] = useState(saved?.correctCount ?? 0),
+    [streak, setStreak] = useState(saved?.streak ?? 0),
+    [best, setBest] = useState(saved?.best ?? 0),
+    [totalMs, setTotalMs] = useState(saved?.totalMs ?? 0),
+    [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []),
+    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
@@ -593,6 +599,21 @@ export function StrategyDrill() {
       : data.player.some((card) => card.rank === "A")
         ? "Soft totals"
         : "Hard totals";
+  useDrillProgress("Basic Strategy", !session, {
+    q, mode, correctCount, streak, best, totalMs, mistakes, categories,
+  } satisfies StrategySaved);
+  const finish = (
+    askedCount = q,
+    gotCorrect = correctCount,
+    totalTime = totalMs,
+    bestStreak = best,
+    finalMistakes = mistakes,
+    finalCategories = categories,
+  ) => {
+    setSession(record("Basic Strategy", askedCount, gotCorrect, totalTime, bestStreak, finalMistakes, finalCategories));
+    storage.clearProgress("Basic Strategy");
+  };
+  const endDrill = () => finish();
   const choose = useCallback(
     (a: Action) => {
       if (session) return;
@@ -631,7 +652,7 @@ export function StrategyDrill() {
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
       if (q === 9) {
-        setSession(record("Basic Strategy", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+        finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
         setQ((current) => current + 1);
         setStarted(Date.now());
@@ -681,11 +702,14 @@ export function StrategyDrill() {
         title="Basic Strategy"
         description={`${rules.decks}-deck, ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "no DAS"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}.`}
       />
-      <div className="mb-4 max-w-xs">
-        <Select label="Practice mode" value={mode} onChange={(event) => setMode(event.target.value as "standard" | "adaptive")}>
-          <option value="standard">Balanced</option>
-          <option value="adaptive">Adaptive to weak categories</option>
-        </Select>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div className="max-w-xs">
+          <Select label="Practice mode" value={mode} onChange={(event) => setMode(event.target.value as "standard" | "adaptive")}>
+            <option value="standard">Balanced</option>
+            <option value="adaptive">Adaptive to weak categories</option>
+          </Select>
+        </div>
+        <GhostButton onClick={endDrill}>End drill</GhostButton>
       </div>
       {feedback && (
         <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
@@ -737,15 +761,20 @@ export function StrategyDrill() {
   );
 }
 
+type DeviationSaved = {
+  q: number; correctCount: number; streak: number; best: number;
+  totalMs: number; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
+};
 export function DeviationDrill() {
   const settings = useSavedSettings();
-  const [q, setQ] = useState(0),
-    [correctCount, setCorrectCount] = useState(0),
-    [streak, setStreak] = useState(0),
-    [best, setBest] = useState(0),
-    [totalMs, setTotalMs] = useState(0),
-    [mistakes, setMistakes] = useState<Mistake[]>([]),
-    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}),
+  const [saved] = useState(() => loadDrillProgress<DeviationSaved>("Deviations"));
+  const [q, setQ] = useState(saved?.q ?? 0),
+    [correctCount, setCorrectCount] = useState(saved?.correctCount ?? 0),
+    [streak, setStreak] = useState(saved?.streak ?? 0),
+    [best, setBest] = useState(saved?.best ?? 0),
+    [totalMs, setTotalMs] = useState(saved?.totalMs ?? 0),
+    [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []),
+    [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [feedback, setFeedback] = useState<{
@@ -790,6 +819,21 @@ export function DeviationDrill() {
       () => (d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"]),
       [d.hand],
     );
+  useDrillProgress("Deviations", !session, {
+    q, correctCount, streak, best, totalMs, mistakes, categories,
+  } satisfies DeviationSaved);
+  const finish = (
+    askedCount = q,
+    gotCorrect = correctCount,
+    totalTime = totalMs,
+    bestStreak = best,
+    finalMistakes = mistakes,
+    finalCategories = categories,
+  ) => {
+    setSession(record("Deviations", askedCount, gotCorrect, totalTime, bestStreak, finalMistakes, finalCategories));
+    storage.clearProgress("Deviations");
+  };
+  const endDrill = () => finish();
   const chooseDeviation = useCallback(
     (chosen: DeviationAction) => {
       if (session) return;
@@ -832,7 +876,7 @@ export function DeviationDrill() {
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
       if (q === 9) {
-        setSession(record("Deviations", 10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories));
+        finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
         setQ((current) => current + 1);
         setStarted(Date.now());
@@ -880,11 +924,14 @@ export function DeviationDrill() {
   }
   return (
     <>
-      <Title
-        eyebrow={`Index play ${q + 1}`}
-        title="Hi-Lo Deviations"
-        description="Decide whether the current true count activates the index play."
-      />
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <Title
+          eyebrow={`Index play ${q + 1}`}
+          title="Hi-Lo Deviations"
+          description="Decide whether the current true count activates the index play."
+        />
+        <GhostButton onClick={endDrill}>End drill</GhostButton>
+      </div>
       {feedback && (
         <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
@@ -954,23 +1001,37 @@ export function DeviationDrill() {
   );
 }
 
+function dealMissingCards(count: number): Card[] {
+  const shoe = new BlackjackShoe(1),
+    arr: Card[] = [];
+  for (let i = 0; i < count; i++) {
+    const c = shoe.deal();
+    if (c) arr.push(c);
+  }
+  return arr;
+}
+type MissingCardSaved = {
+  mode: "rank" | "exact"; count: number; q: number; missing: Card[]; selected: string[]; result?: string;
+};
 export function MissingCardDrill() {
   const settings = useSavedSettings();
-  const [mode, setMode] = useState<"rank" | "exact">("rank"),
-    [count, setCount] = useState(1),
-    [q, setQ] = useState(0),
-    [selected, setSelected] = useState<string[]>([]),
-    [result, setResult] = useState<string>(),
+  const [saved] = useState(() => loadDrillProgress<MissingCardSaved>("Missing Card"));
+  const [mode, setMode] = useState<"rank" | "exact">(saved?.mode ?? "rank"),
+    [count, setCount] = useState(saved?.count ?? 1),
+    [q, setQ] = useState(saved?.q ?? 0),
+    [missing, setMissing] = useState<Card[]>(() => saved?.missing ?? dealMissingCards(saved?.count ?? 1)),
+    [selected, setSelected] = useState<string[]>(saved?.selected ?? []),
+    [result, setResult] = useState<string | undefined>(saved?.result),
     [started, setStarted] = useState(Date.now());
-  const missing = useMemo(() => {
-    const shoe = new BlackjackShoe(1),
-      arr: Card[] = [];
-    for (let i = 0; i < count; i++) {
-      const c = shoe.deal();
-      if (c) arr.push(c);
-    }
-    return arr;
-  }, [q, count]);
+  useDrillProgress("Missing Card", true, { mode, count, q, missing, selected, result } satisfies MissingCardSaved);
+  const endDrill = () => {
+    storage.clearProgress("Missing Card");
+    setQ(0);
+    setSelected([]);
+    setResult(undefined);
+    setMissing(dealMissingCards(count));
+    setStarted(Date.now());
+  };
   const options =
     mode === "rank"
       ? RANKS.map(String)
@@ -1004,11 +1065,14 @@ export function MissingCardDrill() {
   };
   return (
     <>
-      <Title
-        eyebrow="Observation drill"
-        title="Missing Card"
-        description="A full deck was checked, shuffled, and the selected number of cards removed. Identify them."
-      />
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <Title
+          eyebrow="Observation drill"
+          title="Missing Card"
+          description="A full deck was checked, shuffled, and the selected number of cards removed. Identify them."
+        />
+        <GhostButton onClick={endDrill}>End drill</GhostButton>
+      </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_280px]">
         <Panel>
           <p className="mb-4 text-zinc-400">
@@ -1045,6 +1109,7 @@ export function MissingCardDrill() {
                   setQ((x) => x + 1);
                   setSelected([]);
                   setResult(undefined);
+                  setMissing(dealMissingCards(count));
                   setStarted(Date.now());
                 }}
               >
@@ -1078,8 +1143,11 @@ export function MissingCardDrill() {
               label="Cards removed"
               value={count}
               onChange={(e) => {
-                setCount(+e.target.value);
+                const next = +e.target.value;
+                setCount(next);
                 setSelected([]);
+                setResult(undefined);
+                setMissing(dealMissingCards(next));
               }}
             >
               {[1, 2, 3, 5].map((x) => (
