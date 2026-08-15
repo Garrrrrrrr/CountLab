@@ -587,7 +587,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   // the top, the center spot sits farthest away at the bottom, and every
   // spot's cards tilt a few degrees toward the dealer to match.
   const tableArc = useMemo(() => {
-    const angleRange = 75;
+    const angleRange = 78;
     const topNear = 34;
     const topFar = 92;
     const cosNear = Math.cos((angleRange * Math.PI) / 180);
@@ -596,7 +596,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       const angleRad = (angleDeg * Math.PI) / 180;
       const factor = (Math.cos(angleRad) - cosNear) / (1 - cosNear);
       return {
-        left: 50 + Math.sin(angleRad) * 40,
+        left: 50 + Math.sin(angleRad) * 44,
         top: topNear + factor * (topFar - topNear),
         rotate: angleDeg * 0.12,
       };
