@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { PlayingCard } from "@/components/PlayingCard";
 import { Card, Rank, Suit } from "@/lib/blackjack/types";
-import { chipColorClasses, chipLabel } from "@/lib/blackjack/chips";
+import { chipColorClasses, chipLabel, chipOptions } from "@/lib/blackjack/chips";
 import { Metric, Panel } from "@/components/ui";
 
 const suits: Record<string, Suit> = {
@@ -19,8 +19,6 @@ export function gameCard(card: number, name: (card: number) => string): Card {
     suit: suits[text[1]],
   };
 }
-
-export const chipOptions = [0.5, 1, 5, 25, 100, 500, 1000] as const;
 
 export function CasinoChip({
   value,

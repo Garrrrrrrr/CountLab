@@ -8,7 +8,7 @@ import { signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
 import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
 import type { LiveEvResult } from "@/lib/blackjack/liveEv";
-import { chipColorClasses, chipLabel } from "@/lib/blackjack/chips";
+import { chipColorClasses, chipLabel, chipOptions } from "@/lib/blackjack/chips";
 import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, NumberField, Panel, Select } from "./ui";
 import { CoachPanel, EvMetrics, type CoachNote } from "./CasinoGameUI";
@@ -579,7 +579,9 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     }
   };
 
-  const chipValues = useMemo(() => Array.from(new Set([unit, unit * 2, unit * 5, unit * 10])).sort((a, b) => a - b), [unit]);
+  // Real casino chip denominations — build any bet by clicking several, same
+  // as at an actual table, instead of scaling with the training "unit".
+  const chipValues: readonly number[] = chipOptions;
   // Positions each of the 7 spots on a semicircle curving around the dealer,
   // like a real table's rail: the two end spots sit close to the dealer near
   // the top, the center spot sits farthest away at the bottom, and every
