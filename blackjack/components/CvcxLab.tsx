@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Area,
   AreaChart,
@@ -36,7 +37,15 @@ import {
   COEFFICIENT_METADATA,
   GAME_OPTIONS,
 } from "@/lib/blackjack/coefficients";
-import { Button, GhostButton, Metric, NumberField, Panel, Select } from "./ui";
+import {
+  DEVIATION_SKILL,
+  isEstimated,
+  sumRuleAdjustment,
+} from "@/lib/blackjack/ruleAdjustments";
+import { cvcxLibrary, CvcxTemplate, CvcxTemplateConfig } from "@/lib/blackjack/cvcxLibrary";
+import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
+import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
+import { Button, GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
 
 type View = "viewer" | "ramp" | "risk" | "compare";
 const money = (value: number, digits = 0) =>
@@ -235,6 +244,7 @@ function TutorialDialog({
 }
 
 export function CvcxLab() {
+  const router = useRouter();
   const [view, setView] = useState<View>("viewer"),
     [helpTopic, setHelpTopic] = useState<View | null>(null),
     [bankroll, setBankroll] = useState(25000),
@@ -254,7 +264,39 @@ export function CvcxLab() {
     [chipIncrement, setChipIncrement] = useState(0.5),
     [extraHandsAt, setExtraHandsAt] = useState<number | null>(null),
     [highCountHands, setHighCountHands] = useState(2),
-    [goalProbability, setGoalProbability] = useState(0.75);
+    [goalProbability, setGoalProbability] = useState(0.75),
+    [dealerHitsSoft17, setDealerHitsSoft17] = useState(true),
+    [doubleAfterSplit, setDoubleAfterSplit] = useState(true),
+    [resplitAces, setResplitAces] = useState(true),
+    [lateSurrender, setLateSurrender] = useState(true),
+    [europeanNoHoleCard, setEuropeanNoHoleCard] = useState(false),
+    [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5),
+    [deviationSkillLevel, setDeviationSkillLevel] = useState<keyof typeof DEVIATION_SKILL>("perfect"),
+    [cvcxTemplateName, setCvcxTemplateName] = useState(""),
+    [cvcxTemplates, setCvcxTemplates] = useState<CvcxTemplate[]>([]),
+    [cvcxNotice, setCvcxNotice] = useState<string>();
+
+  useEffect(() => {
+    const refresh = () => setCvcxTemplates(cvcxLibrary.templates());
+    refresh();
+    addEventListener(cvcxLibrary.event, refresh);
+    return () => removeEventListener(cvcxLibrary.event, refresh);
+  }, []);
+
+  const ruleFlags = useMemo(
+      () => ({
+        dealerStandsSoft17: !dealerHitsSoft17,
+        noDoubleAfterSplit: !doubleAfterSplit,
+        noResplitAces: !resplitAces,
+        noLateSurrender: !lateSurrender,
+        europeanNoHoleCard,
+        blackjackPays6to5: blackjackPayout === 1.2,
+      }),
+      [dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout],
+    ),
+    ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleFlags), [ruleFlags]),
+    deviationSkill = DEVIATION_SKILL[deviationSkillLevel],
+    estimated = isEstimated(ruleFlags, deviationSkill);
 
   const handsByTrueCount = useMemo(
     () =>
@@ -272,8 +314,13 @@ export function CvcxLab() {
         ...DEFAULT_ADVANTAGE_RULES,
         decks,
         penetration: dealt / decks,
+        dealerHitsSoft17,
+        doubleAfterSplit,
+        resplitAces,
+        lateSurrender,
+        blackjackPayout,
       }),
-      [decks, dealt],
+      [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout],
     ),
     scenario: CvcxScenario = useMemo(
       () => ({
@@ -287,12 +334,14 @@ export function CvcxLab() {
         maxSpread,
         wongInAt,
         rules,
+        ruleAdjustment,
+        deviationSkill,
       }),
-      [bankroll, baseBet, playerHands, handsByTrueCount, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules],
+      [bankroll, baseBet, playerHands, handsByTrueCount, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, deviationSkill],
     ),
     optimalRamp = useMemo(
-      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement),
-      [rules, maxSpread, wongInAt, chipIncrement],
+      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill),
+      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill],
     ),
     custom = useMemo(
       () => analyzeCvcx(scenario, ramp, baseBet),
@@ -332,6 +381,63 @@ export function CvcxLab() {
           : point,
       ),
     );
+  };
+  const scaleRamp = (factor: number) => {
+    setRampName("Custom");
+    setRamp((current) => current.map((point) => ({ ...point, units: Math.max(0, point.units * factor) })));
+  };
+
+  const currentCvcxConfig = (): CvcxTemplateConfig => ({
+    decks, dealt, bankroll, baseBet, playerHands, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
+    rampName, ramp, chipIncrement, extraHandsAt, highCountHands,
+    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, deviationSkillLevel,
+  });
+  const saveCvcxTemplate = () => {
+    const saved = cvcxLibrary.saveTemplate(currentCvcxConfig(), cvcxTemplateName);
+    setCvcxTemplateName(saved.name);
+    setCvcxNotice(`Saved “${saved.name}”.`);
+  };
+  const loadCvcxTemplate = (template: CvcxTemplate) => {
+    const config = template.config;
+    setDecks(config.decks);
+    setDealt(config.dealt);
+    setBankroll(config.bankroll);
+    setBaseBet(config.baseBet);
+    setPlayerHands(config.playerHands);
+    setHandsPerHour(config.handsPerHour);
+    setHours(config.hours);
+    setTargetRisk(config.targetRisk);
+    setMaxSpread(config.maxSpread);
+    setWongInAt(config.wongInAt);
+    setRampName(config.rampName);
+    setRamp(config.ramp);
+    setChipIncrement(config.chipIncrement);
+    setExtraHandsAt(config.extraHandsAt);
+    setHighCountHands(config.highCountHands);
+    setDealerHitsSoft17(config.dealerHitsSoft17);
+    setDoubleAfterSplit(config.doubleAfterSplit);
+    setResplitAces(config.resplitAces);
+    setLateSurrender(config.lateSurrender);
+    setEuropeanNoHoleCard(config.europeanNoHoleCard);
+    setBlackjackPayout(config.blackjackPayout);
+    setDeviationSkillLevel(config.deviationSkillLevel);
+    setCvcxTemplateName(template.name);
+    setCvcxNotice(`Loaded “${template.name}”.`);
+  };
+  const testInSessionSimulator = () => {
+    const sessionConfig: SessionSimulationConfig = {
+      bankroll,
+      bettingUnit: baseBet,
+      playerHands,
+      rounds: 100_000,
+      paths: 50,
+      roundsPerHour: handsPerHour,
+      seed: `cvcx-${Date.now()}`,
+      rules,
+      ramp,
+    };
+    simulationLibrary.saveTemplate(sessionConfig, cvcxTemplateName || `${rules.decks}D · ${Math.round(rules.penetration * 100)}% from Lab`);
+    router.push("/simulation");
   };
 
   const projection = useMemo(
@@ -433,6 +539,36 @@ export function CvcxLab() {
         </div>
       </div>
 
+      <details className="surface group mb-5 rounded-2xl border border-white/[.07]">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-300/10 text-sky-300"><i className="fa-solid fa-floppy-disk" aria-hidden="true" /></span>
+          <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Templates</h2><p className="truncate text-xs text-zinc-500">{cvcxTemplates.length} saved scenario{cvcxTemplates.length === 1 ? "" : "s"}</p></div>
+          <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="border-t border-white/[.06] p-4 sm:p-5">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input value={cvcxTemplateName} onChange={(event) => setCvcxTemplateName(event.target.value)} placeholder="Scenario name" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <GhostButton onClick={saveCvcxTemplate}><i className="fa-solid fa-floppy-disk mr-2" aria-hidden="true" />Save Template</GhostButton>
+          </div>
+          {cvcxNotice && <p role="status" className="mt-2 text-xs text-emerald-300">{cvcxNotice}</p>}
+          <div className="mt-3 space-y-2">
+            {cvcxTemplates.length === 0 && <p className="rounded-xl border border-dashed border-white/[.08] p-3 text-xs text-zinc-600">No saved scenarios yet.</p>}
+            {cvcxTemplates.map((template) => (
+              <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5">
+                <button type="button" onClick={() => loadCvcxTemplate(template)} className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-sm font-medium text-zinc-200">{template.name}</span>
+                  <span className="text-xs text-zinc-600">{template.config.decks}D · {Math.round((template.config.dealt / template.config.decks) * 100)}% · 1–{Math.max(...template.config.ramp.map((point) => point.units))}</span>
+                </button>
+                <span className="text-xs font-semibold text-emerald-300">Load Template</span>
+                <button type="button" aria-label={`Delete ${template.name}`} onClick={() => { if (confirm(`Delete scenario “${template.name}”?`)) cvcxLibrary.deleteTemplate(template.id); }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
+                  <i className="fa-solid fa-trash-can" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </details>
+
       <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-white/[.07] bg-black/20 p-1.5 sm:grid-cols-4">
         {views.map(([id, label, icon]) => (
           <div key={id} className={`grid grid-cols-[1fr_2.75rem] rounded-xl ${view === id ? "bg-white/[.1] text-white shadow-sm" : "text-zinc-500"}`}>
@@ -487,8 +623,9 @@ export function CvcxLab() {
               Change the game, bankroll, pace, or playing policy. Results update instantly.
             </p>
           </div>
-          <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">
-            H17 · DAS · RSA · LS · peek · 3:2 · {playerHands} hand{playerHands === 1 ? "" : "s"}
+          <span className={`rounded-full px-3 py-1 text-xs ${estimated ? "border border-amber-300/20 bg-amber-300/[.08] text-amber-300" : "bg-white/[.05] text-zinc-400"}`}>
+            {estimated && <i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />}
+            {dealerHitsSoft17 ? "H17" : "S17"} · {doubleAfterSplit ? "DAS" : "no DAS"} · {resplitAces ? "RSA" : "no RSA"} · {lateSurrender ? "LS" : "no LS"} · {europeanNoHoleCard ? "ENHC" : "peek"} · {blackjackPayout === 1.5 ? "3:2" : "6:5"} · {playerHands} hand{playerHands === 1 ? "" : "s"}
           </span>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
@@ -512,7 +649,40 @@ export function CvcxLab() {
           <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
           <NumberField label="Base bet" value={baseBet} min={0.01} prefix="$" onValueChange={setBaseBet} />
         </div>
-        <details className="mt-5 border-t border-white/[.07] pt-4">
+        <details className="mt-5 border-t border-white/[.07] pt-4" open>
+          <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
+            <span><i className="fa-solid fa-table-cells mr-2 text-emerald-400" aria-hidden="true" />Table rules</span>
+            <span className="text-xs text-zinc-500">departing from the audited baseline is estimated</span>
+          </summary>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
+            <Switch label="Double after split" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
+            <Switch label="Resplit aces" checked={resplitAces} onChange={setResplitAces} />
+            <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
+            <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>
+              <option value="peek">American hole card</option>
+              <option value="enhc">European no hole card</option>
+            </Select>
+            <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(+event.target.value as 1.5 | 1.2)}>
+              <option value={1.5}>3:2</option>
+              <option value={1.2}>6:5</option>
+            </Select>
+            <Select label="Deviations" value={deviationSkillLevel} onChange={(event) => setDeviationSkillLevel(event.target.value as keyof typeof DEVIATION_SKILL)}>
+              <option value="beginner">Beginner (70%)</option>
+              <option value="intermediate">Intermediate (82%)</option>
+              <option value="pro">Pro (92%)</option>
+              <option value="perfect">Perfect (100%)</option>
+            </Select>
+          </div>
+          {estimated && (
+            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+              <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+              The audited simulation only covers H17 · DAS · RSA · LS · American peek · 3:2 · perfect deviation play. These results include an estimated adjustment ({(ruleAdjustment * 100).toFixed(2)}
+              {ruleAdjustment >= 0 ? "pp" : "pp"} rule delta{deviationSkill < 1 ? `, ${Math.round(deviationSkill * 100)}% deviation skill` : ""}) rather than a resimulated audit.
+            </p>
+          )}
+        </details>
+        <details className="mt-4 border-t border-white/[.07] pt-4">
           <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
             <span><i className="fa-solid fa-sliders mr-2 text-emerald-400" aria-hidden="true" />Advanced playing and risk controls</span>
             <span className="text-xs text-zinc-500">hands, pace, RoR, Wonging, rounding</span>
@@ -550,10 +720,10 @@ export function CvcxLab() {
       {view === "viewer" && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="Hourly EV" value={money(custom.hourlyEv, 2)} sub={`${percent(custom.playerEdge, 3, true)} player edge`} />
-            <Metric label="Lifetime RoR" value={percent(custom.riskOfRuin)} sub={`${percent(custom.tripRiskOfRuin)} over this trip`} />
-            <Metric label="c-SCORE" value={custom.cScore.toFixed(2)} sub={`DI ${custom.desirabilityIndex.toFixed(2)}`} />
-            <Metric label="N₀" value={`${compact(custom.nZeroRounds)} rounds`} sub={`${compact(custom.nZeroHours)} observed hr`} />
+            <Metric label="Hourly EV" value={money(custom.hourlyEv, 2)} sub={`${percent(custom.playerEdge, 3, true)} player edge${estimated ? " · est." : ""}`} />
+            <Metric label="Lifetime RoR" value={percent(custom.riskOfRuin)} sub={`${percent(custom.tripRiskOfRuin)} over this trip${estimated ? " · est." : ""}`} />
+            <Metric label="c-SCORE" value={custom.cScore.toFixed(2)} sub={`DI ${custom.desirabilityIndex.toFixed(2)}${estimated ? " · est." : ""}`} />
+            <Metric label="N₀" value={`${compact(custom.nZeroRounds)} rounds`} sub={`${compact(custom.nZeroHours)} observed hr${estimated ? " · est." : ""}`} />
             <Metric label="Average total action" value={money(custom.averageBet, 2)} sub={`${percent(custom.playedFrequency, 1)} rounds played · ${playerHands} hand${playerHands === 1 ? "" : "s"}`} />
             <Metric label="Trip EV" value={money(custom.tripEv, 0)} sub={`${percent(custom.chanceOfProfit)} chance of profit`} />
             <Metric label="Risk-adjusted EV" value={money(custom.certaintyEquivalentHourly, 2)} sub={`${percent(custom.certaintyEquivalentRatio, 0)} CE / win rate`} />
@@ -580,7 +750,7 @@ export function CvcxLab() {
               </div>
             </Panel>
             <Panel>
-              <div className="flex items-center justify-between gap-3"><div><h2 className="font-semibold">Optimal vs. custom</h2><p className="mt-1 text-sm text-zinc-500">Risk-sized Kelly-weight ramp.</p></div><GhostButton onClick={useOptimal} className="px-3 text-xs">Use optimal</GhostButton></div>
+              <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Optimal vs. custom</h2><p className="mt-1 text-sm text-zinc-500">Risk-sized Kelly-weight ramp.</p></div><div className="flex gap-2"><GhostButton onClick={useOptimal} className="px-3 text-xs">Use optimal</GhostButton><GhostButton onClick={testInSessionSimulator} className="px-3 text-xs"><i className="fa-solid fa-dice mr-2" aria-hidden="true" />Test in Session Simulator</GhostButton></div></div>
               <div className="mt-5 overflow-x-auto">
                 <table className="w-full min-w-[400px] text-right text-sm">
                   <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Schedule</th><th className="pb-3">Base</th><th className="pb-3">$/hr</th><th className="pb-3">RoR</th><th className="pb-3">SCORE</th></tr></thead>
@@ -615,10 +785,17 @@ export function CvcxLab() {
             <div className="mt-5 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200"><b>{money(optimalUnit, 2)}</b> risk-sized base bet per hand for {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} at a {percent(targetRisk)} lifetime RoR target.</div>
           </Panel>
           <Panel className="overflow-x-auto">
-            <div className="mb-4"><h2 className="font-semibold">Bets by true count</h2><p className="mt-1 text-sm text-zinc-500">Zero-dollar buckets are observed but not played.</p></div>
-            <table className="w-full min-w-[860px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Hands</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
-              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div><h2 className="font-semibold">Bets by true count</h2><p className="mt-1 text-sm text-zinc-500">Zero-dollar buckets are observed but not played.</p></div>
+              <div className="flex gap-2 text-xs">
+                <button type="button" onClick={() => scaleRamp(0.5)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">½X</button>
+                <button type="button" onClick={() => scaleRamp(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">2X</button>
+                <button type="button" onClick={() => setPreset(Object.hasOwn(RAMPS, rampName) ? rampName : "1-8")} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset to defaults</button>
+              </div>
+            </div>
+            <table className="w-full min-w-[940px] text-right text-sm">
+              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Hands</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Quick set</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
+              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td className="whitespace-nowrap py-2"><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet)} className="rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">1X</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet * 2)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">2X</button></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
             </table>
           </Panel>
           <Panel className="xl:col-span-2">
@@ -686,7 +863,8 @@ export function CvcxLab() {
       )}
 
       <p className="mt-5 text-xs leading-5 text-zinc-500">
-        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds. Multiple-hand results retain shared true-count-state variance and treat hand outcomes as conditionally independent; dealer-result covariance is unavailable. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2 · perfect deviation play). Multiple-hand results retain shared true-count-state variance and treat hand outcomes as conditionally independent; dealer-result covariance is unavailable. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+        {estimated && " Table rules and deviation skill currently set away from that baseline apply a flat literature-estimated edge adjustment rather than a resimulated audit — treat those numbers as directional, not audited."}
       </p>
       {helpTopic && (
         <TutorialDialog

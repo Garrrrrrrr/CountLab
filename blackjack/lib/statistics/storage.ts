@@ -44,6 +44,11 @@ export interface Session {
   metrics?: Record<string, string | number | boolean>;
   tags?: string[];
 }
+export interface DrillProgress<T = unknown> {
+  drill: DrillType;
+  state: T;
+  updatedAt: string;
+}
 export interface Settings {
   decks: number;
   rounding: "floor" | "truncate" | "nearest";
@@ -77,7 +82,12 @@ export const DEFAULT_SETTINGS: Settings = {
   penetration: 0.75,
 };
 const SESSION_KEY = "hilo:sessions",
-  SETTINGS_KEY = "hilo:settings";
+  SETTINGS_KEY = "hilo:settings",
+  PROGRESS_PREFIX = "hilo:progress:";
+
+function progressKey(drill: DrillType) {
+  return `${PROGRESS_PREFIX}${drill}`;
+}
 
 function pushSession(s: Session) {
   const user = getCurrentUser();
@@ -101,6 +111,30 @@ function pushSession(s: Session) {
     })
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync drill session", error);
+    });
+}
+
+function pushProgress(p: DrillProgress) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("drill_progress")
+    .upsert({ user_id: user.id, drill: p.drill, state: p.state, updated_at: p.updatedAt })
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync drill progress", error);
+    });
+}
+
+function pushProgressClear(drill: DrillType) {
+  const user = getCurrentUser();
+  if (!user) return;
+  supabase
+    .from("drill_progress")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("drill", drill)
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to clear drill progress", error);
     });
 }
 
@@ -148,6 +182,35 @@ export const storage = {
     window.dispatchEvent(new Event("hilo-storage"));
     pushSettings(s);
   },
+  progress<T = unknown>(drill: DrillType): DrillProgress<T> | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(progressKey(drill));
+      return raw ? (JSON.parse(raw) as DrillProgress<T>) : null;
+    } catch {
+      return null;
+    }
+  },
+  saveProgress<T>(drill: DrillType, state: T) {
+    const progress: DrillProgress<T> = { drill, state, updatedAt: new Date().toISOString() };
+    localStorage.setItem(progressKey(drill), JSON.stringify(progress));
+    pushProgress(progress);
+  },
+  clearProgress(drill: DrillType) {
+    localStorage.removeItem(progressKey(drill));
+    pushProgressClear(drill);
+  },
+  /** Merge progress pulled from Supabase into the local cache, keeping whichever copy is newer. */
+  mergeRemoteProgress(remote: DrillProgress[]) {
+    if (typeof window === "undefined") return;
+    for (const p of remote) {
+      const local = this.progress(p.drill);
+      if (!local || new Date(p.updatedAt) > new Date(local.updatedAt)) {
+        localStorage.setItem(progressKey(p.drill), JSON.stringify(p));
+      }
+    }
+    window.dispatchEvent(new Event("hilo-storage"));
+  },
   /** Merge sessions pulled from Supabase into the local cache without re-pushing them. */
   mergeRemoteSessions(remote: Session[]) {
     const merged = [...remote, ...this.sessions()]
@@ -165,6 +228,9 @@ export const storage = {
   clearAll() {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(SETTINGS_KEY);
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(PROGRESS_PREFIX)) localStorage.removeItem(key);
+    }
     window.dispatchEvent(new Event("hilo-storage"));
   },
   exportData() {

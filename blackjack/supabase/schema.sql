@@ -25,6 +25,14 @@ create table if not exists drill_sessions (
   created_at timestamptz not null default now()
 );
 
+create table if not exists drill_progress (
+  user_id uuid not null references auth.users on delete cascade,
+  drill text not null,
+  state jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, drill)
+);
+
 create table if not exists journal_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
@@ -53,11 +61,13 @@ create table if not exists journal_transactions (
 );
 
 create index if not exists drill_sessions_user_id_idx on drill_sessions (user_id);
+create index if not exists drill_progress_user_id_idx on drill_progress (user_id);
 create index if not exists journal_sessions_user_id_idx on journal_sessions (user_id);
 create index if not exists journal_transactions_user_id_idx on journal_transactions (user_id);
 
 alter table settings enable row level security;
 alter table drill_sessions enable row level security;
+alter table drill_progress enable row level security;
 alter table journal_sessions enable row level security;
 alter table journal_transactions enable row level security;
 
@@ -70,6 +80,11 @@ create policy "drill_sessions owner select" on drill_sessions for select using (
 create policy "drill_sessions owner insert" on drill_sessions for insert with check (auth.uid() = user_id);
 create policy "drill_sessions owner update" on drill_sessions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "drill_sessions owner delete" on drill_sessions for delete using (auth.uid() = user_id);
+
+create policy "drill_progress owner select" on drill_progress for select using (auth.uid() = user_id);
+create policy "drill_progress owner insert" on drill_progress for insert with check (auth.uid() = user_id);
+create policy "drill_progress owner update" on drill_progress for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "drill_progress owner delete" on drill_progress for delete using (auth.uid() = user_id);
 
 create policy "journal_sessions owner select" on journal_sessions for select using (auth.uid() = user_id);
 create policy "journal_sessions owner insert" on journal_sessions for insert with check (auth.uid() = user_id);

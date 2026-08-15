@@ -26,6 +26,10 @@ export interface AdvantageInput {
   hours: number;
   rules: AdvantageRules;
   ramp: RampPoint[];
+  /** Flat edge-percentage shift applied to every count row, e.g. from RULE_DELTAS. Default 0. */
+  ruleAdjustment?: number;
+  /** 0-1 multiplier on the count-dependent portion of edge, modeling imperfect deviation play. Default 1 (perfect play). */
+  deviationSkill?: number;
 }
 export interface CountRow {
   trueCount: number;
@@ -140,8 +144,15 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
     point.trueCount < 0 ? { ...point, units: 0 } : point,
   );
 }
+/** Shifts a raw audited advantage toward the off-top edge by (1 - deviationSkill), then applies a flat rule delta. */
+export function adjustAdvantage(offTopEdge: number, rawAdvantage: number, ruleAdjustment = 0, deviationSkill = 1) {
+  return offTopEdge + deviationSkill * (rawAdvantage - offTopEdge) + ruleAdjustment;
+}
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
+  const offTop = estimateOffTopEdge(input.rules);
+  const skill = input.deviationSkill ?? 1;
+  const ruleAdjustment = input.ruleAdjustment ?? 0;
   return getCountProfile(input.rules).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
@@ -153,7 +164,7 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
       trueCount: row.tc,
       label: row.label,
       frequency: row.p,
-      advantage: row.adv,
+      advantage: adjustAdvantage(offTop, row.adv, ruleAdjustment, skill),
       sdUnits: row.sd,
       standardError: row.standardError,
       ci95: row.ci95,
@@ -211,6 +222,8 @@ export function recommendUnit(
   ramp: RampPoint[],
   playerHands = 1,
   handsByTrueCount?: HandCountPoint[],
+  ruleAdjustment = 0,
+  deviationSkill = 1,
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
@@ -222,6 +235,8 @@ export function recommendUnit(
     hours: 1,
     rules,
     ramp,
+    ruleAdjustment,
+    deviationSkill,
   });
   if (result.evPerRound <= 0) return 0;
   return Math.max(
