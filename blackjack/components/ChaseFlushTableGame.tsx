@@ -36,6 +36,7 @@ const flushName = (cards: number[]) => {
 };
 const normalizeAction = (action: string): "BET" | "CHECK" | "FOLD" => (action === "check" ? "CHECK" : action === "fold" ? "FOLD" : "BET");
 const evText = (evs: Record<string, number>) => Object.entries(evs).map(([action, ev]) => `${action} ${ev >= 0 ? "+" : ""}${ev.toFixed(3)}`).join(" · ");
+const money = (value: number) => (value % 1 === 0 ? value : value.toFixed(2));
 
 export function ChaseFlushTableGame({
   sixCardPayout,
@@ -91,7 +92,7 @@ export function ChaseFlushTableGame({
 
   const deal = () => {
     if (ante <= 0) return setMessage("Place an Ante first.");
-    if (ante * 5 > bankroll) return setMessage(`Keep at least $${ante * 5} available for Ante, X-Tra, and a possible 3x All-In bet.`);
+    if (ante * 5 > bankroll) return setMessage(`Keep at least $${money(ante * 5)} available for Ante, X-Tra, and a possible 3x All-In bet.`);
     const deck = shuffledDeck();
     const nextPlayer = deck.slice(0, 3);
     const nextDealer = deck.slice(3, 6);
@@ -155,9 +156,9 @@ export function ChaseFlushTableGame({
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "opening" && <><Button onClick={() => { judge("BET", "opening"); finish(3); }}>Bet 3x · ${ante * 3}</Button><GhostButton onClick={() => { judge("CHECK", "opening"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => { track("chase_flush_ev_requested", { street: "opening" }); requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400); }}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "board" && <><Button onClick={() => { judge("BET", "board"); finish(2); }}>Bet 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK", "board"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("BET", "river"); finish(1); }}>Bet 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+            {phase === "opening" && <><Button onClick={() => { judge("BET", "opening"); finish(3); }}>Bet 3x · ${money(ante * 3)}</Button><GhostButton onClick={() => { judge("CHECK", "opening"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => { track("chase_flush_ev_requested", { street: "opening" }); requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400); }}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+            {phase === "board" && <><Button onClick={() => { judge("BET", "board"); finish(2); }}>Bet 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "board"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
+            {phase === "river" && <><Button onClick={() => { judge("BET", "river"); finish(1); }}>Bet 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
             {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
           </div>
           {(phase === "opening" || phase === "board" || phase === "river") && (

@@ -39,7 +39,6 @@ const DeckEstimationDrill = dynamicPage(() => import("@/components/CountingDrill
 const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.CountingBenchmark })));
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
-const MissingCardDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.MissingCardDrill })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
@@ -80,7 +79,6 @@ function Dashboard() {
     "Basic Strategy": "/training/basic-strategy",
     Deviations: "/training/deviations",
     "Full Shoe": "/training/full-shoe",
-    "Missing Card": "/training/missing-card",
     "Deck Estimation": "/training/deck-estimation",
     "Counting Benchmark": "/training/benchmark",
   };
@@ -760,7 +758,6 @@ export default function DynamicPage() {
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
     "training/full-shoe": null,
-    "training/missing-card": <MissingCardDrill />,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
     reference: <HiLoReference />,

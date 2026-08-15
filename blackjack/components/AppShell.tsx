@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 import { track } from "@/lib/analytics/track";
-import { initAutocapture, resetScrollDepth } from "@/lib/analytics/autocapture";
+import { startAutocapture, resetScrollDepth } from "@/lib/analytics/autocapture";
 import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
@@ -39,7 +39,6 @@ const groups = [
       ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
       ["Deviations", "/training/deviations", "fa-code-branch"],
-      ["Missing Card", "/training/missing-card", "fa-eye"],
       ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
       ["Counting Benchmark", "/training/benchmark", "fa-medal"],
     ],
@@ -76,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
   useEffect(() => {
-    initAutocapture();
+    startAutocapture();
   }, []);
   useEffect(() => {
     track("page_view");
@@ -222,11 +221,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
-            aria-label="Return to Garrick Tse portfolio"
+            aria-label="Return to portfolio"
             className="pressable grid min-h-11 min-w-11 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
           >
             <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
-            <span className="hidden sm:inline">Garrick Tse</span>
+            <span className="hidden sm:inline">Portfolio</span>
           </a>
           <Link
             href="/settings"

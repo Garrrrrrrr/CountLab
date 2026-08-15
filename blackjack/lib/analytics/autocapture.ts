@@ -1,89 +1,140 @@
-import { track } from "./track";
+import { analytics } from "./client";
+import { ANALYTICS_CONFIG } from "./config";
+import { clampString, normalizeRoute } from "./redact";
+import type { NavigationType } from "./types";
 
-const MAX_LABEL_LENGTH = 80;
-const RAGE_CLICK_WINDOW_MS = 800;
-const RAGE_CLICK_RADIUS_PX = 30;
-const RAGE_CLICK_THRESHOLD = 3;
-const SCROLL_DEPTH_THRESHOLDS = [25, 50, 75, 100];
-
-const CLICKABLE_SELECTOR = [
+const INTERACTIVE = [
   "a",
   "button",
   '[role="button"]',
+  '[role="tab"]',
+  '[role="switch"]',
   'input[type="button"]',
   'input[type="submit"]',
   'input[type="checkbox"]',
   'input[type="radio"]',
   "select",
   "summary",
-  "[data-track]",
+  "[data-analytics-id]",
 ].join(", ");
 
-let initialized = false;
-let seenScrollDepths = new Set<number>();
-const recentClicks: { x: number; y: number; time: number }[] = [];
+let started = false;
+let lastMutationAt = 0;
+let seenDepths = new Set<number>();
+const recentClicks: Array<{ x: number; y: number; at: number }> = [];
 
-function elementLabel(el: HTMLElement): string {
-  const aria = el.getAttribute("aria-label");
-  if (aria?.trim()) return aria.trim().slice(0, MAX_LABEL_LENGTH);
-  if (el instanceof HTMLInputElement) return (el.value || el.type || "input").slice(0, MAX_LABEL_LENGTH);
-  const text = el.textContent?.replace(/\s+/g, " ").trim();
-  if (text) return text.slice(0, MAX_LABEL_LENGTH);
-  const title = el.getAttribute("title");
-  return (title || el.tagName.toLowerCase()).slice(0, MAX_LABEL_LENGTH);
+/**
+ * Prefers an explicit `data-analytics-id`. DOM-derived labels are a fallback
+ * only: they drift whenever copy changes, so they must not become the
+ * long-term identifier for anything that matters (see docs/analytics.md §6).
+ */
+function semanticId(element: HTMLElement): string | undefined {
+  const own = element.dataset.analyticsId;
+  if (own) return clampString(own, 60);
+  const ancestor = element.closest<HTMLElement>("[data-analytics-id]");
+  return ancestor?.dataset.analyticsId ? clampString(ancestor.dataset.analyticsId, 60) : undefined;
 }
 
-function handleClick(event: MouseEvent) {
+function visibleLabel(element: HTMLElement): string {
+  const aria = element.getAttribute("aria-label")?.trim();
+  if (aria) return clampString(aria, 60);
+  if (element instanceof HTMLInputElement) return clampString(element.type || "input", 60);
+  const text = element.textContent?.replace(/\s+/g, " ").trim();
+  if (text) return clampString(text, 60);
+  return clampString(element.getAttribute("title") || element.tagName.toLowerCase(), 60);
+}
+
+function navMechanism(element: HTMLElement): NavigationType | undefined {
+  const surface = element.closest<HTMLElement>("[data-analytics-nav]")?.dataset.analyticsNav;
+  if (surface === "sidebar") return "sidebar";
+  if (surface === "bottom") return "bottom_nav";
+  return undefined;
+}
+
+function linkTarget(element: HTMLElement): { href_route?: string; outbound_domain?: string } {
+  if (!(element instanceof HTMLAnchorElement)) return {};
+  try {
+    const url = new URL(element.href, window.location.href);
+    if (url.origin !== window.location.origin) return { outbound_domain: clampString(url.hostname, 100) };
+    return { href_route: normalizeRoute(url.pathname) };
+  } catch {
+    return {};
+  }
+}
+
+function detectRageClick(x: number, y: number, base: { analytics_id?: string; label: string; element: string }): void {
+  const at = Date.now();
+  while (recentClicks.length && at - recentClicks[0].at > ANALYTICS_CONFIG.rageClickWindowMs) recentClicks.shift();
+  recentClicks.push({ x, y, at });
+  const cluster = recentClicks.filter((click) => Math.hypot(click.x - x, click.y - y) < ANALYTICS_CONFIG.rageClickRadiusPx);
+  if (cluster.length !== ANALYTICS_CONFIG.rageClickThreshold) return;
+  analytics.track("rage_click_detected", {
+    ...base,
+    x_percent: Math.round((x / window.innerWidth) * 100),
+    y_percent: Math.round((y / window.innerHeight) * 100),
+  });
+}
+
+/**
+ * A click that produced no DOM mutation and no navigation looked interactive
+ * but did nothing — the clearest automatic signal of a broken affordance.
+ */
+function detectDeadClick(clickedAt: number, routeBefore: string, base: { analytics_id?: string; label: string; element: string }): void {
+  window.setTimeout(() => {
+    const mutated = lastMutationAt > clickedAt;
+    const navigated = normalizeRoute(window.location.pathname) !== routeBefore;
+    if (mutated || navigated) return;
+    analytics.track("dead_click_detected", base);
+  }, ANALYTICS_CONFIG.deadClickWindowMs);
+}
+
+function handleClick(event: MouseEvent): void {
   const target = event.target instanceof Element ? event.target : null;
-  const el = target?.closest<HTMLElement>(CLICKABLE_SELECTOR);
-  if (!el || (el as { disabled?: boolean }).disabled) return;
+  const element = target?.closest<HTMLElement>(INTERACTIVE);
+  if (!element) return;
 
-  const tag = el.tagName.toLowerCase();
-  const label = elementLabel(el);
-  const trackName = el.dataset.track;
+  const base = {
+    analytics_id: semanticId(element),
+    label: visibleLabel(element),
+    element: element.tagName.toLowerCase(),
+  };
+  const component = element.closest<HTMLElement>("[data-analytics-component]")?.dataset.analyticsComponent;
+  const mechanism = navMechanism(element);
+  if (mechanism) analytics.setNavigationHint(mechanism);
 
-  if (tag === "a") {
-    const anchor = el as HTMLAnchorElement;
-    let outbound = false;
-    let hostname: string | undefined;
-    try {
-      const url = new URL(anchor.href, window.location.href);
-      outbound = url.origin !== window.location.origin;
-      hostname = outbound ? url.hostname : undefined;
-    } catch {
-      // Not a resolvable URL (e.g. a bare `#` anchor); leave outbound false.
-    }
-    track("ui_click", { tag, label, trackName, outbound, hostname });
-    if (outbound) track("outbound_link_click", { hostname, label });
-  } else {
-    track("ui_click", { tag, label, trackName });
+  const disabled = (element as HTMLButtonElement).disabled;
+  if (!disabled) {
+    analytics.track("element_clicked", { ...base, component, ...linkTarget(element) });
   }
 
-  const now = Date.now();
-  while (recentClicks.length && now - recentClicks[0].time > RAGE_CLICK_WINDOW_MS) recentClicks.shift();
-  recentClicks.push({ x: event.clientX, y: event.clientY, time: now });
-  const cluster = recentClicks.filter((c) => Math.hypot(c.x - event.clientX, c.y - event.clientY) < RAGE_CLICK_RADIUS_PX);
-  if (cluster.length === RAGE_CLICK_THRESHOLD) track("rage_click", { tag, label });
+  detectRageClick(event.clientX, event.clientY, base);
+  if (!disabled) detectDeadClick(Date.now(), normalizeRoute(window.location.pathname), base);
 }
 
-function handleScroll() {
+function handleScroll(): void {
   const doc = document.documentElement;
   const scrollable = doc.scrollHeight - doc.clientHeight;
   if (scrollable <= 0) return;
   const percent = Math.round((window.scrollY / scrollable) * 100);
-  for (const threshold of SCROLL_DEPTH_THRESHOLDS) {
-    if (percent >= threshold && !seenScrollDepths.has(threshold)) {
-      seenScrollDepths.add(threshold);
-      track("scroll_depth", { depth: threshold });
+  for (const depth of ANALYTICS_CONFIG.scrollDepths) {
+    if (percent >= depth && !seenDepths.has(depth)) {
+      seenDepths.add(depth);
+      analytics.track("scroll_depth_reached", { depth, route: analytics.route });
     }
   }
 }
 
-/** Call once, on mount, to start capturing clicks and scroll depth app-wide. */
-export function initAutocapture(): void {
-  if (initialized || typeof window === "undefined") return;
-  initialized = true;
+/** Installs the document-level listeners. Safe to call more than once. */
+export function startAutocapture(): void {
+  if (started || typeof window === "undefined") return;
+  started = true;
+
   document.addEventListener("click", handleClick, { capture: true });
+
+  new MutationObserver(() => {
+    lastMutationAt = Date.now();
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+
   let ticking = false;
   document.addEventListener(
     "scroll",
@@ -99,7 +150,7 @@ export function initAutocapture(): void {
   );
 }
 
-/** Call on every route change so scroll-depth milestones are re-armed for the new page. */
+/** Re-arms scroll milestones for a new route. */
 export function resetScrollDepth(): void {
-  seenScrollDepths = new Set();
+  seenDepths = new Set();
 }
