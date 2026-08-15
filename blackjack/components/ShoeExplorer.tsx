@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { SimulatedShoe } from "@/lib/blackjack/shoeSimulation";
 import { Button, Metric, Panel } from "./ui";
+import { track } from "@/lib/analytics/track";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
@@ -71,7 +72,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
                 <td>{shoe.tcMin.toFixed(1)}</td>
                 <td>{shoe.tcMax.toFixed(1)}</td>
                 <td className="py-2 text-right">
-                  <Button className="min-h-8 px-3 py-1.5 text-xs" onClick={() => onSelectShoe(index)}>View</Button>
+                  <Button className="min-h-8 px-3 py-1.5 text-xs" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }}>View</Button>
                 </td>
               </tr>
             ))}

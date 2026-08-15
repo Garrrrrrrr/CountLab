@@ -22,6 +22,7 @@ import {
   gameCard,
   type CoachNote,
 } from "@/components/CasinoGameUI";
+import { track } from "@/lib/analytics/track";
 
 type Phase = "betting" | "opening" | "board" | "river" | "result";
 type Reveal = "all" | "from2" | "final" | "none";
@@ -102,8 +103,9 @@ export function ChaseFlushTableGame({
     setMessage("Bet 3x now, or check for the first two community cards.");
     setNote(undefined);
     requestDecision({ player: nextPlayer, board: [], dealerVisible: revealAt("opening") ? nextDealer[0] : undefined }, 64);
+    track("chase_flush_hand_dealt", { ante, bankroll, sixCardPayout });
   };
-  const judge = (choice: "BET" | "CHECK" | "FOLD") => {
+  const judge = (choice: "BET" | "CHECK" | "FOLD", street: "opening" | "board" | "river") => {
     if (!decision) return;
     const expected = normalizeAction(decision.action);
     const ok = choice === expected;
@@ -112,6 +114,7 @@ export function ChaseFlushTableGame({
       : `Solver favors ${decision.action}.`;
     setNote({ ok, title: ok ? "Correct decision" : `Solver favors ${decision.action}`, detail });
     setCoachStats((value) => ({ correct: value.correct + Number(ok), total: value.total + 1 }));
+    track("chase_flush_decision", { street, choice, expected, ok, method: decision.method });
   };
   const finish = (multiplier: number, folded = false) => {
     const playerCards = [...player, ...board];
@@ -126,6 +129,7 @@ export function ChaseFlushTableGame({
     setMessage(`${result}: ${net >= 0 ? "+" : ""}$${net.toFixed(2)} · ${flushName(playerCards)} vs ${flushName(dealerCards)}`);
     setStats((value) => ({ rounds: value.rounds + 1, wins: value.wins + Number(net > 0), net: value.net + net }));
     setHistory((rows) => [{ id: Date.now(), result, net, bankroll: nextBankroll, detail: `${flushName(playerCards)} · Ante ${breakdown.ante >= 0 ? "+" : ""}${breakdown.ante} · X-Tra ${breakdown.xtra >= 0 ? "+" : ""}${breakdown.xtra} · All-In ${breakdown.allIn >= 0 ? "+" : ""}${breakdown.allIn}` }, ...rows]);
+    track("chase_flush_hand_resolved", { result, net, multiplier, folded, breakdown, playerHand: flushName(playerCards), dealerHand: flushName(dealerCards), nextBankroll });
   };
   const nextRound = () => {
     setPhase("betting"); setPlayer([]); setDealer([]); setBoard([]); setAllInMultiplier(0);
@@ -151,9 +155,9 @@ export function ChaseFlushTableGame({
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "opening" && <><Button onClick={() => { judge("BET"); finish(3); }}>Bet 3x · ${ante * 3}</Button><GhostButton onClick={() => { judge("CHECK"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400)}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "board" && <><Button onClick={() => { judge("BET"); finish(2); }}>Bet 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("BET"); finish(1); }}>Bet 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+            {phase === "opening" && <><Button onClick={() => { judge("BET", "opening"); finish(3); }}>Bet 3x · ${ante * 3}</Button><GhostButton onClick={() => { judge("CHECK", "opening"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => { track("chase_flush_ev_requested", { street: "opening" }); requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400); }}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+            {phase === "board" && <><Button onClick={() => { judge("BET", "board"); finish(2); }}>Bet 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK", "board"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
+            {phase === "river" && <><Button onClick={() => { judge("BET", "river"); finish(1); }}>Bet 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
             {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
           </div>
           {(phase === "opening" || phase === "board" || phase === "river") && (

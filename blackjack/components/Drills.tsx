@@ -30,6 +30,7 @@ import { Button, GhostButton, Panel, Select } from "./ui";
 import { SessionSummary } from "./SessionSummary";
 import { FullShoeGame } from "./FullShoeGame";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
+import { track } from "@/lib/analytics/track";
 const names: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -651,6 +652,7 @@ export function StrategyDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
+      track("basic_strategy_answered", { ok, chosen: a, correct: decision.action, category, mode });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -875,6 +877,7 @@ export function DeviationDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
+      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -1053,6 +1056,7 @@ export function MissingCardDrill() {
       duration = Date.now() - started;
     setResult(ok ? "Correct!" : `Missing: ${expected.join(", ")}`);
     feedbackTone(ok, settings.sound);
+    track("missing_card_answered", { ok, mode, count });
     record(
       "Missing Card",
       1,

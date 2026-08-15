@@ -15,6 +15,7 @@ import {
   gameCard,
   type CoachNote,
 } from "@/components/CasinoGameUI";
+import { track } from "@/lib/analytics/track";
 
 type Phase = "betting" | "preflop" | "flop" | "river" | "result";
 type WorkerResponse = { id: number; normal: UTHDecision; exposed: UTHDecision; error?: string };
@@ -57,6 +58,7 @@ export function UTHTableGame() {
 
   const requestDecision = (state: UTHState, samples = 256, mode?: "solve") => {
     if (!worker.current) return;
+    if (mode === "solve") track("uth_ev_requested", { boardCards: state.board.length });
     setDecisionLoading(true);
     setDecision(undefined);
     worker.current.postMessage({ id: ++requestId.current, state, samples, mode });
@@ -75,8 +77,9 @@ export function UTHTableGame() {
     setMessage("Raise 3x or 4x, or check to see the flop.");
     setNote(undefined);
     setDecision(referenceOpening({ player: nextPlayer, board: [] }));
+    track("uth_hand_dealt", { ante, trips, bankroll });
   };
-  const judge = (choice: "RAISE" | "CHECK" | "FOLD") => {
+  const judge = (choice: "RAISE" | "CHECK" | "FOLD", street: "preflop" | "flop" | "river") => {
     if (!decision) return;
     const expected = normalizeAction(decision.action);
     const ok = choice === expected;
@@ -87,6 +90,7 @@ export function UTHTableGame() {
         : `Solver favors ${decision.action}.`;
     setNote({ ok, title: ok ? "Correct decision" : `Solver favors ${decision.action}`, detail });
     setCoachStats((value) => ({ correct: value.correct + Number(ok), total: value.total + 1 }));
+    track("uth_decision", { street, choice, expected, ok, method: decision.method });
   };
   const finish = (multiplier: number, folded = false) => {
     const playerHand = evaluate([...player, ...board]);
@@ -102,6 +106,7 @@ export function UTHTableGame() {
     setMessage(`${result}: ${net >= 0 ? "+" : ""}$${net.toFixed(2)} · ${pokerHandName(playerHand)} vs ${pokerHandName(dealerHand)}`);
     setStats((value) => ({ rounds: value.rounds + 1, wins: value.wins + Number(net > 0), net: value.net + net }));
     setHistory((rows) => [{ id: Date.now(), result, net, bankroll: nextBankroll, detail: `${pokerHandName(playerHand)} · ${multiplier ? `${multiplier}x Play` : "Fold"}${trips ? ` · Trips ${uthTripsNet(playerHand) >= 0 ? "paid" : "lost"}` : ""}` }, ...rows]);
+    track("uth_hand_resolved", { result, net, mainNet, tripsNet, multiplier, folded, playerHand: pokerHandName(playerHand), dealerHand: pokerHandName(dealerHand), nextBankroll });
   };
   const nextRound = () => {
     setPhase("betting");
@@ -128,9 +133,9 @@ export function UTHTableGame() {
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
             {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "preflop" && <><Button onClick={() => { judge("RAISE"); finish(4); }}>Raise 4x · ${ante * 4}</Button><GhostButton onClick={() => { judge("RAISE"); finish(3); }}>Raise 3x · ${ante * 3}</GhostButton><GhostButton onClick={() => { judge("CHECK"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "flop" && <><Button onClick={() => { judge("RAISE"); finish(2); }}>Raise 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("RAISE"); finish(1); }}>Raise 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+            {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${ante * 4}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${ante * 3}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+            {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${ante * 2}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
+            {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${ante}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
             {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
           </div>
           {(phase === "preflop" || phase === "flop" || phase === "river") && (

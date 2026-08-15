@@ -12,6 +12,7 @@ import { chipColorClasses, chipLabel, chipOptions } from "@/lib/blackjack/chips"
 import { PlayingCard } from "./PlayingCard";
 import { Button, GhostButton, NumberField, Panel, Select } from "./ui";
 import { CoachPanel, EvMetrics, type CoachNote } from "./CasinoGameUI";
+import { track } from "@/lib/analytics/track";
 
 type Phase = "setup" | "bet" | "dealing" | "insurance" | "play" | "dealer" | "shoe-end";
 type HandStatus = "playing" | "stood" | "busted" | "surrendered";
@@ -95,10 +96,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [startingBankroll, setStartingBankroll] = useState(1000);
   const [players, setPlayers] = useState(1);
   const [bankroll, setBankroll] = useState(1000);
-  const [wagers, setWagers] = useState<number[]>(() => Array(7).fill(0));
-  const [lastWagers, setLastWagers] = useState<number[]>(() => Array(7).fill(0));
-  const [selectedSpot, setSelectedSpot] = useState(3);
-  const [spotOwners, setSpotOwners] = useState<number[]>(() => Array(7).fill(0));
+  const [wagers, setWagers] = useState<number[]>(() => Array(5).fill(0));
+  const [lastWagers, setLastWagers] = useState<number[]>(() => Array(5).fill(0));
+  const [selectedSpot, setSelectedSpot] = useState(2);
+  const [spotOwners, setSpotOwners] = useState<number[]>(() => Array(5).fill(0));
   const [chipHistory, setChipHistory] = useState<Array<{ spot: number; value: number }>>([]);
   const [dealer, setDealer] = useState<Card[]>([]);
   const [hands, setHands] = useState<PlayerHand[]>([]);
@@ -182,8 +183,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     setRound(1);
     setHands([]);
     setDealer([]);
-    setWagers(Array(7).fill(0));
-    setLastWagers(Array(7).fill(0));
+    setWagers(Array(5).fill(0));
+    setLastWagers(Array(5).fill(0));
     setChipHistory([]);
     setInsuranceBet(0);
     setStats({ correct: 0, total: 0, betErrors: 0, playErrors: 0 });
@@ -194,6 +195,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     setEvLoading(false);
     setRoundMessage("Choose your wager. The coach expects the highlighted amount.");
     setPhase("bet");
+    track("full_shoe_started", { decks: rules.decks, penetration, spread, blackjackPayout, startingBankroll });
   };
 
   const draw = () => shoe.current?.deal();
@@ -236,7 +238,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     const reachedCut =
       (shoe.current?.cardsRemaining() ?? cardsTotal) <=
       cardsTotal * (1 - penetration);
-    setWagers(Array(7).fill(0));
+    setWagers(Array(5).fill(0));
     setChipHistory([]);
     setInsuranceBet(0);
     setDealing(false);
@@ -252,6 +254,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       setPhase("bet");
     }
     sound(returned > settledHands.reduce((sum, hand) => sum + hand.bet, 0) ? "win" : "deal", soundEnabled);
+    track("full_shoe_hand_settled", { round, outcomes, returned, finalBankroll, reachedCut, dealerTotal, dealerBust, dealerNatural });
   };
 
   const playDealer = async (settledHands = hands, dealerCards = dealer, insurance = insuranceBet) => {
@@ -296,6 +299,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         : `At TC ${signed(tc)}, your ${spread} ramp calls for $${expectedWager} per occupied spot. Check the highlighted betting circles.`,
       "bet",
     );
+    track("full_shoe_hand_dealt", { round, totalWager, spots: activeBets.length, spread, expectedWager, betOk, tc });
     const firstCards = activeBets.map(() => draw());
     const d1 = draw();
     const secondCards = activeBets.map(() => draw());
@@ -368,6 +372,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     );
     const maximumInsurance = hands.reduce((sum, hand) => sum + hand.bet / 2, 0);
     const stake = take ? Math.min(maximumInsurance, bankroll) : 0;
+    track("full_shoe_insurance_decision", { take, correct, ok: take === correct, tc, stake });
     await resolveInsuranceDecision(stake, take ? `Insurance placed: $${money(stake)}. Dealer does not have blackjack.` : "No dealer blackjack. Play your hand.");
   };
 
@@ -387,6 +392,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     );
     const evenMoneyStake = hands.filter((hand) => hand.status === "stood").reduce((sum, hand) => sum + hand.bet / 2, 0);
     const stake = Math.min(evenMoneyStake, bankroll);
+    track("full_shoe_even_money_decision", { correct, tc, stake });
     await resolveInsuranceDecision(stake, `Even money locked in for $${money(stake)}. Play the rest of the table.`);
   };
 
@@ -425,6 +431,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
 
   const requestEv = (hand: PlayerHand) => {
     if (!evWorker.current || !shoe.current || !dealer[0]) return;
+    track("full_shoe_ev_requested", { total: calculateHandValue(hand.cards), tc });
     evSignatureRef.current = handSignature(hand);
     const id = ++evRequestId.current;
     setEvLoading(true);
@@ -518,6 +525,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       ok ? expected.explanation : `You chose ${ACTION_NAMES[action]}. ${expected.explanation}`,
       "play",
     );
+    track("full_shoe_playing_decision", { action, expected: expected.action, ok, evAssisted: Boolean(evReady), total: calculateHandValue(hand.cards), tc });
     setDealing(true);
     const nextHands = hands.map((item) => ({ ...item, cards: [...item.cards] }));
     const next = nextHands[activeHand];
@@ -589,7 +597,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   // Real casino chip denominations — build any bet by clicking several, same
   // as at an actual table, instead of scaling with the training "unit".
   const chipValues: readonly number[] = chipOptions;
-  // Positions each of the 7 spots on a semicircle curving around the dealer,
+  // Positions each of the 5 spots on a semicircle curving around the dealer,
   // like a real table's rail: the two end spots sit close to the dealer near
   // the top, the center spot sits farthest away at the bottom, and every
   // spot's cards tilt a few degrees toward the dealer to match.
@@ -598,8 +606,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     const topNear = 34;
     const topFar = 92;
     const cosNear = Math.cos((angleRange * Math.PI) / 180);
-    return Array.from({ length: 7 }, (_, spot) => {
-      const angleDeg = -angleRange + (spot / 6) * angleRange * 2;
+    return Array.from({ length: 5 }, (_, spot) => {
+      const angleDeg = -angleRange + (spot / 4) * angleRange * 2;
       const angleRad = (angleDeg * Math.PI) / 180;
       const factor = (Math.cos(angleRad) - cosNear) / (1 - cosNear);
       return {
@@ -695,7 +703,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
           <div className="space-y-4">
             <NumberField label="Shared starting bankroll" prefix="$" min={100} step={100} value={startingBankroll} onValueChange={setStartingBankroll} />
             <Select label="Players" value={players} onChange={(event) => { const count = +event.target.value; setPlayers(count); setSpotOwners((owners) => owners.map((owner, spot) => owner < count ? owner : spot % count)); }}>
-              {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} player{value === 1 ? "" : "s"}</option>)}
+              {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} player{value === 1 ? "" : "s"}</option>)}
             </Select>
             <NumberField label="One unit" prefix="$" min={1} step={5} value={unit} onValueChange={setUnit} />
             <Select label="Bet spread" value={spread} onChange={(event) => setSpread(event.target.value as Spread)}>
@@ -751,11 +759,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
                 </div>)}
               </div>
             </div>
-            {/* Below sm this stays a horizontally-scrolling row (7 spots don't fit a small screen);
+            {/* Below sm this stays a horizontally-scrolling row (5 spots don't fit a small screen);
                 at sm+ it becomes a semicircle around the dealer via the --spot-left/--spot-top
                 custom properties computed in tableArc. */}
             <div className="casino-spots relative -mx-3 mt-12 flex min-h-52 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-4 sm:absolute sm:inset-0 sm:mx-0 sm:mt-0 sm:block sm:min-h-0 sm:overflow-visible sm:px-0 sm:pb-0">
-              {Array.from({ length: 7 }, (_, spot) => {
+              {Array.from({ length: 5 }, (_, spot) => {
                 const spotHands = hands.filter((hand) => hand.spot === spot);
                 const activeHere = phase === "play" && current?.spot === spot;
                 const selected = phase === "bet" && selectedSpot === spot;
@@ -768,7 +776,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
                   disabled={phase !== "bet"}
                   onClick={() => setSelectedSpot(spot)}
                   style={{ "--spot-left": `${arc.left}%`, "--spot-top": `${arc.top}%` } as CSSProperties}
-                  className={`relative min-h-44 w-36 min-w-36 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:absolute sm:left-[var(--spot-left)] sm:top-[var(--spot-top)] sm:min-h-52 sm:w-32 sm:min-w-0 sm:-translate-x-1/2 sm:-translate-y-1/2 xl:min-h-64 xl:w-36 xl:px-2 xl:py-4 2xl:w-40 ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}
+                  className={`relative min-h-44 w-40 min-w-40 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:absolute sm:left-[var(--spot-left)] sm:top-[var(--spot-top)] sm:min-h-56 sm:w-40 sm:min-w-0 sm:-translate-x-1/2 sm:-translate-y-1/2 xl:min-h-72 xl:w-44 xl:px-2 xl:py-4 2xl:w-48 ${activeHere ? "bg-emerald-200/10 ring-2 ring-amber-300 shadow-[0_0_32px_#fbbf2440]" : selected ? "bg-white/[.06] ring-2 ring-emerald-300" : "ring-1 ring-white/10"}`}
                 >
                   <p className="mb-2 text-[.62rem] font-bold uppercase tracking-wider text-emerald-100/60">P{spotOwners[spot] + 1} · Spot {spot + 1}</p>
                   {spotHands.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{spotHands.map((hand) => {
@@ -794,7 +802,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               <div className="mb-4 flex flex-wrap items-center justify-center gap-3"><span className="text-sm text-zinc-400">Selected: spot {selectedSpot + 1}</span><strong className="text-3xl">${money(wagers[selectedSpot])}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-emerald-200">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${money(totalWager)} total</span></div>
               {players > 1 && <div className="mb-4 flex flex-wrap items-center justify-center gap-2"><span className="mr-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">Spot owner</span>{Array.from({ length: players }, (_, player) => <button key={player} type="button" aria-pressed={spotOwners[selectedSpot] === player} onClick={() => setSpotOwners((owners) => owners.map((owner, spot) => spot === selectedSpot ? player : owner))} className={`pressable min-h-10 rounded-full px-3 text-sm font-semibold ${spotOwners[selectedSpot] === player ? "bg-emerald-300 text-emerald-950" : "border border-white/10 bg-white/[.05] text-zinc-300"}`}>Player {player + 1}</button>)}</div>}
               <div className="casino-chip-rail mx-auto flex max-w-2xl flex-wrap items-end justify-center gap-2 rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-800/95 to-zinc-950/95 p-3 shadow-[inset_0_2px_0_#ffffff12,0_14px_32px_#0008] sm:gap-3 sm:p-4">{chipValues.map((value) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs xl:h-20 xl:w-20 xl:text-sm ${chipColorClasses(value)}`}>{chipLabel(value)}</button>)}</div>
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(7).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="col-span-3 w-full sm:w-auto" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(5).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="col-span-3 w-full sm:w-auto" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
             </div>}
             {phase === "insurance" && <div className="text-center">
               {hasBlackjack && <p className="mb-3 text-sm text-amber-200">Blackjack! Take even money for a guaranteed win, or decline and play it out for 3:2.</p>}
