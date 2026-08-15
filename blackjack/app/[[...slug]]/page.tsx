@@ -25,6 +25,7 @@ const routes = [
   ["settings"],
   ["terms"],
   ["privacy"],
+  ["admin"],
 ];
 
 export const dynamicParams = false;

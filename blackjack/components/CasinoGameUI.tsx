@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { PlayingCard } from "@/components/PlayingCard";
 import { Card, Rank, Suit } from "@/lib/blackjack/types";
+import { chipColorClasses, chipLabel } from "@/lib/blackjack/chips";
 import { Metric, Panel } from "@/components/ui";
 
 const suits: Record<string, Suit> = {
@@ -19,14 +20,7 @@ export function gameCard(card: number, name: (card: number) => string): Card {
   };
 }
 
-export const chipOptions = [1, 5, 25, 100, 500] as const;
-const chipColor: Record<number, string> = {
-  1: "border-zinc-300 bg-zinc-100 text-zinc-950",
-  5: "border-red-300 bg-red-600 text-white",
-  25: "border-emerald-300 bg-emerald-700 text-white",
-  100: "border-zinc-500 bg-zinc-950 text-white",
-  500: "border-violet-300 bg-violet-700 text-white",
-};
+export const chipOptions = [0.5, 1, 5, 25, 100, 500, 1000] as const;
 
 export function CasinoChip({
   value,
@@ -40,12 +34,12 @@ export function CasinoChip({
   return (
     <button
       type="button"
-      aria-label={`Select $${value} chip`}
+      aria-label={`Select ${chipLabel(value)} chip`}
       aria-pressed={selected}
       onClick={onClick}
-      className={`pressable grid h-14 w-14 shrink-0 place-items-center rounded-full border-[5px] border-dashed text-xs font-black shadow-[0_7px_16px_#0008] ring-2 ring-black/30 ${chipColor[value] ?? chipColor[1]} ${selected ? "-translate-y-1 ring-4 ring-[#a8ee72]" : ""}`}
+      className={`pressable grid h-14 w-14 shrink-0 place-items-center rounded-full border-[5px] border-dashed text-xs font-black shadow-[0_7px_16px_#0008] ring-2 ring-black/30 ${chipColorClasses(value)} ${selected ? "-translate-y-1 ring-4 ring-[#a8ee72]" : ""}`}
     >
-      ${value}
+      {chipLabel(value)}
     </button>
   );
 }
@@ -91,7 +85,7 @@ export function BetSpot({
         onClick={onAdd}
         className={`pressable mx-auto grid h-24 w-24 place-items-center rounded-full border-2 text-center ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
       >
-        <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount}</b></span>
+        <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
       </button>
       {detail && <p className="mt-1 text-[.65rem] text-zinc-500">{detail}</p>}
       {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-8 px-2 text-xs text-zinc-500 hover:text-white">Clear</button>}
