@@ -141,9 +141,7 @@ export const Switch = ({
   disabled?: boolean;
   className?: string;
 }) => (
-  <label
-    className={`flex min-h-11 min-w-0 items-center justify-between gap-3 text-[.8rem] font-medium text-zinc-400 ${className}`}
-  >
+  <div className={`grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400 ${className}`}>
     <span className="truncate">{label}</span>
     <button
       type="button"
@@ -152,13 +150,16 @@ export const Switch = ({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`pressable relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "bg-[#a8ee72]" : "bg-white/[.12]"}`}
+      className={`pressable flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl border px-3 shadow-[inset_0_1px_0_rgba(255,255,255,.025)] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#a8ee72]/40 disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-[#a8ee72]/25 bg-[#a8ee72]/[.07]" : "border-white/[.09] bg-black/30 hover:border-white/[.14] hover:bg-black/40"}`}
     >
-      <span
-        className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${checked ? "translate-x-[1.375rem]" : "translate-x-0.5"}`}
-      />
+      <span className={checked ? "text-[#a8ee72]" : "text-zinc-500"}>{checked ? "On" : "Off"}</span>
+      <span aria-hidden="true" className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${checked ? "border-[#a8ee72]/60 bg-[#a8ee72]" : "border-white/[.09] bg-white/[.1]"}`}>
+        <span
+          className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-[0_2px_7px_rgba(0,0,0,.35)] transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
+        />
+      </span>
     </button>
-  </label>
+  </div>
 );
 export const Metric = ({
   label,
