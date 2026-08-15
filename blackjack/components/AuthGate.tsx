@@ -2,15 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { Button, GhostButton, Panel } from "./ui";
 
 const PUBLIC_PATHS = new Set(["/terms", "/privacy"]);
 
+// Supabase Auth already rate-limits sign-in/sign-up server-side; this is a
+// client-side complement that slows down credential guessing directly in the
+// browser (e.g. someone driving the form from the console) with an
+// escalating lockout, independent of that server-side limit.
+const LOCK_THRESHOLD = 5;
+const lockDurationMs = (strikes: number) =>
+  Math.min(30_000 * 2 ** Math.floor(strikes / LOCK_THRESHOLD - 1), 5 * 60_000);
+
 export function AuthGate({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/\/$/, "") || "/dashboard";
-  const { user, loading, signIn, signUp, signInWithGoogle } = useAuth();
+  const { user, loading, guest, continueAsGuest, signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,15 +27,32 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [info, setInfo] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [strikes, setStrikes] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (lockedUntil <= Date.now()) return;
+    const id = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= lockedUntil) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
 
   if (PUBLIC_PATHS.has(path)) return <>{children}</>;
   if (loading) return null;
-  if (user) return <>{children}</>;
+  if (user || guest) return <>{children}</>;
+
+  const lockedForMs = Math.max(0, lockedUntil - now);
+  const locked = lockedForMs > 0;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError(undefined);
     setInfo(undefined);
+    if (locked) return;
     if (mode === "sign-up" && password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -36,9 +61,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
     const failure = mode === "sign-in" ? await signIn(email, password) : await signUp(email, password);
     setSubmitting(false);
     if (failure) {
-      setError(failure);
+      const nextStrikes = strikes + 1;
+      setStrikes(nextStrikes);
+      if (nextStrikes % LOCK_THRESHOLD === 0) {
+        const until = Date.now() + lockDurationMs(nextStrikes);
+        setLockedUntil(until);
+        setNow(Date.now());
+        setError(`Too many failed attempts. Try again in ${Math.ceil(lockDurationMs(nextStrikes) / 1000)}s.`);
+      } else {
+        setError(failure);
+      }
       return;
     }
+    setStrikes(0);
+    setLockedUntil(0);
     if (mode === "sign-up") setInfo("Check your email to confirm your account, then sign in.");
   };
 
@@ -110,10 +146,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
           {info && <p className="mt-3 text-sm text-emerald-300">{info}</p>}
           <Button
             type="submit"
-            disabled={submitting || !email || !password || (mode === "sign-up" && !confirmPassword)}
+            disabled={submitting || locked || !email || !password || (mode === "sign-up" && !confirmPassword)}
             className="mt-5 w-full"
           >
-            {submitting ? "Please wait…" : mode === "sign-in" ? "Sign in" : "Create account"}
+            {locked
+              ? `Try again in ${Math.ceil(lockedForMs / 1000)}s`
+              : submitting
+                ? "Please wait…"
+                : mode === "sign-in"
+                  ? "Sign in"
+                  : "Create account"}
           </Button>
         </form>
         <div className="my-4 flex items-center gap-3 text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-600">
@@ -135,6 +177,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
           className="mt-4 w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
         >
           {mode === "sign-in" ? "Need an account? Sign up" : "Already have an account? Sign in"}
+        </button>
+        <button
+          type="button"
+          onClick={continueAsGuest}
+          className="mt-2 w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+        >
+          Continue as guest — data stays on this device only
         </button>
         <p className="mt-5 text-center text-xs text-zinc-600">
           <Link href="/terms" className="hover:text-zinc-400">Terms</Link>

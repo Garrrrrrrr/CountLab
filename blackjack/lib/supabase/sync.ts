@@ -78,3 +78,9 @@ export function clearLocalUserData(): void {
   storage.clearAll();
   journalLibrary.clear();
 }
+
+/** Pushes locally cached data (e.g. recorded while browsing as a guest) to the just-signed-in account. */
+export function pushLocalDataToRemote(): void {
+  storage.pushLocalToRemote();
+  journalLibrary.pushAllToRemote();
+}

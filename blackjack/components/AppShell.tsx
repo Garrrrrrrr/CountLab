@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
+import { track } from "@/lib/analytics/track";
+import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
 const groups = [
@@ -70,7 +72,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     [open, setOpen] = useState(false),
     [rules, setRules] = useState(DEFAULT_SETTINGS),
     toggle = useRef<HTMLButtonElement>(null),
-    navigation = useRef<HTMLElement>(null);
+    navigation = useRef<HTMLElement>(null),
+    isAdmin = useIsAdmin();
+  useEffect(() => {
+    track("page_view");
+  }, [path]);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -186,6 +192,23 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           ))}
+          {isAdmin && (
+            <div>
+              <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-zinc-600">
+                Admin
+              </p>
+              <div className="space-y-1">
+                <Link
+                  onClick={() => setOpen(false)}
+                  href="/admin"
+                  className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === "/admin" ? "bg-white/[.09] text-white shadow-[0_1px_0_rgba(255,255,255,.05)_inset]" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}
+                >
+                  <i className="fa-solid fa-chart-simple w-4 text-center text-[.78rem]" />
+                  Analytics
+                </Link>
+              </div>
+            </div>
+          )}
         </nav>
       </aside>
       <main className="min-h-dvh min-w-0 lg:pl-[17rem]">

@@ -30,6 +30,33 @@ and the "Data sync" note in `lib/statistics/storage.ts` /
 run `supabase/schema.sql` in its SQL editor, and enable the Email provider
 under Authentication → Providers.
 
+`supabase/schema.sql` also defines per-user rate limits and row size caps
+enforced by Postgres triggers, so they hold even for direct PostgREST calls
+that skip the app. If you already ran an older copy of this file, re-run it —
+every statement is idempotent (`create or replace`, `drop ... if exists` then
+`create`) and safe to apply on top of an existing schema.
+
+### Analytics and the admin dashboard
+
+Every meaningful user action (page views, sign-in/sign-up/sign-out, drills
+completed, journal entries and transactions added or removed, settings
+saved, data exported/imported/cleared) is recorded to the `analytics_events`
+table defined in `supabase/schema.sql` — see `lib/analytics/track.ts`. Guests
+are tracked too, under a per-device anonymous id, so no account is required
+for an event to show up.
+
+Only accounts listed in `admin_users` can read that table back, via the
+`/admin` page (`components/AdminPage.tsx`). Grant yourself access after your
+first sign-up by re-running the last statement in `supabase/schema.sql`, or
+directly:
+
+```sql
+insert into admin_users (user_id) select id from auth.users where email = 'you@example.com';
+```
+
+The nav only shows the "Analytics" link once `is_admin()` returns true for
+the signed-in user.
+
 **Local development:** create `blackjack/.env.local` (gitignored) with:
 
 ```

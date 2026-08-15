@@ -1,6 +1,7 @@
 import type { AdvantageRules, RampPoint } from "./advantage";
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
+import { track } from "../analytics/track";
 
 export interface JournalSession {
   id: string;
@@ -178,22 +179,26 @@ export const journalLibrary = {
     const next = [record, ...this.sessions(store)].slice(0, MAX_SESSIONS);
     write(SESSIONS_KEY, next, store);
     pushJournalSession(record);
+    track("journal_session_added", { netResult: record.netResult, hours: record.hours });
     return record;
   },
   deleteSession(id: string, store?: StorageLike) {
     write(SESSIONS_KEY, this.sessions(store).filter((session) => session.id !== id), store);
     deleteRemoteJournalSession(id);
+    track("journal_session_deleted");
   },
   addTransaction(transaction: Omit<BankrollTransaction, "id" | "createdAt">, store?: StorageLike, now = new Date()) {
     const record: BankrollTransaction = { ...transaction, id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.transactions(store)].slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, next, store);
     pushTransaction(record);
+    track("journal_transaction_added", { type: record.type, amount: record.amount });
     return record;
   },
   deleteTransaction(id: string, store?: StorageLike) {
     write(TRANSACTIONS_KEY, this.transactions(store).filter((transaction) => transaction.id !== id), store);
     deleteRemoteTransaction(id);
+    track("journal_transaction_deleted");
   },
   /** Merge rows pulled from Supabase into the local cache without re-pushing them. */
   mergeRemoteSessions(remote: JournalSession[], store?: StorageLike) {
@@ -208,7 +213,13 @@ export const journalLibrary = {
       .slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, merged, store);
   },
+  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. */
+  pushAllToRemote(store?: StorageLike) {
+    for (const session of this.sessions(store)) pushJournalSession(session);
+    for (const transaction of this.transactions(store)) pushTransaction(transaction);
+  },
   exportData(store?: StorageLike) {
+    track("data_exported", { scope: "journal" });
     return JSON.stringify({
       version: 1,
       exportedAt: new Date().toISOString(),
@@ -224,6 +235,7 @@ export const journalLibrary = {
     const transactions = [...parsed.transactions, ...this.transactions(store)].filter((transaction, index, all) => all.findIndex((candidate) => candidate.id === transaction.id) === index).slice(0, MAX_TRANSACTIONS);
     write(SESSIONS_KEY, sessions, store);
     write(TRANSACTIONS_KEY, transactions, store);
+    track("data_imported", { scope: "journal", sessions: sessions.length, transactions: transactions.length });
     return { sessions: sessions.length, transactions: transactions.length };
   },
   clear(store?: StorageLike) {
@@ -231,6 +243,7 @@ export const journalLibrary = {
     target?.removeItem(SESSIONS_KEY);
     target?.removeItem(TRANSACTIONS_KEY);
     if (typeof window !== "undefined") window.dispatchEvent(new Event(JOURNAL_EVENT));
+    track("data_cleared", { scope: "journal" });
   },
 };
 

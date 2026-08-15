@@ -1,5 +1,6 @@
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
+import { track } from "../analytics/track";
 
 export type DrillType =
   | "Running Count"
@@ -163,6 +164,7 @@ export const storage = {
     localStorage.setItem(SESSION_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("hilo-storage"));
     pushSession(s);
+    track("drill_session_completed", { drill: s.drill, questions: s.questions, accuracy: s.accuracy, bestStreak: s.bestStreak });
   },
   settings(): Settings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
@@ -181,6 +183,7 @@ export const storage = {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     window.dispatchEvent(new Event("hilo-storage"));
     pushSettings(s);
+    track("settings_saved");
   },
   progress<T = unknown>(drill: DrillType): DrillProgress<T> | null {
     if (typeof window === "undefined") return null;
@@ -234,6 +237,7 @@ export const storage = {
     window.dispatchEvent(new Event("hilo-storage"));
   },
   exportData() {
+    track("data_exported", { scope: "sessions" });
     return JSON.stringify(
       { version: 1, exportedAt: new Date().toISOString(), settings: this.settings(), sessions: this.sessions() },
       null,
@@ -250,10 +254,23 @@ export const storage = {
     localStorage.setItem(SESSION_KEY, JSON.stringify(parsed.sessions.slice(0, 500)));
     if (parsed.settings) this.saveSettings({ ...DEFAULT_SETTINGS, ...parsed.settings });
     window.dispatchEvent(new Event("hilo-storage"));
+    track("data_imported", { sessions: parsed.sessions.length });
   },
   clearSessions() {
     localStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new Event("hilo-storage"));
+    track("data_cleared", { scope: "sessions" });
+  },
+  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. */
+  pushLocalToRemote() {
+    if (typeof window === "undefined") return;
+    for (const session of this.sessions()) pushSession(session);
+    pushSettings(this.settings());
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(PROGRESS_PREFIX)) continue;
+      const progress = this.progress(key.slice(PROGRESS_PREFIX.length) as DrillType);
+      if (progress) pushProgress(progress);
+    }
   },
 };
 export function makeSession(

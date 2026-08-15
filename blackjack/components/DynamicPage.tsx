@@ -44,6 +44,7 @@ const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
+const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
 const actionNames: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -487,7 +488,7 @@ function StrategyReference() {
   );
 }
 function SettingsPage() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, exitGuest } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
     [saved, setSaved] = useState(false),
     [dataMessage, setDataMessage] = useState("");
@@ -707,12 +708,21 @@ function SettingsPage() {
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Access</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            {user ? <>Signed in as <span className="text-zinc-300">{user.email}</span>.</> : "Not signed in."}
+            {user
+              ? <>Signed in as <span className="text-zinc-300">{user.email}</span>. Your data syncs to this account.</>
+              : "Browsing as a guest. Your data is saved on this device only — sign in to back it up and sync it across devices."}
           </p>
-          <GhostButton className="mt-4" onClick={() => signOut()}>
-            <i className="fa-solid fa-arrow-right-from-bracket mr-2" />
-            Sign out
-          </GhostButton>
+          {user ? (
+            <GhostButton className="mt-4" onClick={() => signOut()}>
+              <i className="fa-solid fa-arrow-right-from-bracket mr-2" />
+              Sign out
+            </GhostButton>
+          ) : (
+            <GhostButton className="mt-4" onClick={() => exitGuest()}>
+              <i className="fa-solid fa-arrow-right-to-bracket mr-2" />
+              Sign in
+            </GhostButton>
+          )}
           <p className="mt-4 text-xs text-zinc-500">
             <Link href="/terms" className="hover:text-zinc-300">Terms of Service</Link>
             {" · "}
@@ -760,6 +770,7 @@ export default function DynamicPage() {
     settings: <SettingsPage />,
     terms: <TermsPage />,
     privacy: <PrivacyPage />,
+    admin: <AdminPage />,
   };
   return pages[path] || <NotFound />;
 }
