@@ -1,7 +1,7 @@
 import { analytics } from "./client";
 import { ANALYTICS_CONFIG } from "./config";
 import { clampString, normalizeRoute } from "./redact";
-import type { NavigationType } from "./types";
+import type { FeatureId, NavigationType } from "./types";
 
 const INTERACTIVE = [
   "a",
@@ -111,6 +111,48 @@ function handleClick(event: MouseEvent): void {
   if (!disabled) detectDeadClick(Date.now(), normalizeRoute(window.location.pathname), base);
 }
 
+function fieldName(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+  const explicit = element.dataset.analyticsField || element.name || element.id || element.getAttribute("aria-label");
+  const label = explicit || element.closest("label")?.textContent || element.tagName.toLowerCase();
+  return clampString(label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), 60);
+}
+
+/** Records only which calculator control changed—never its entered value. */
+function handleChange(event: Event): void {
+  const element = event.target;
+  if (!(element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement)) return;
+  const calculators: Record<string, "game_bankroll_lab" | "session_simulator" | "session_journal"> = {
+    "/cvcx": "game_bankroll_lab",
+    "/simulation": "session_simulator",
+    "/journal": "session_journal",
+  };
+  const calculator = calculators[analytics.route];
+  if (!calculator) return;
+  analytics.track("calculation_input_changed", { calculator, input: fieldName(element) });
+}
+
+/** Tracks result disclosure without recording the content inside the panel. */
+function handleToggle(event: Event): void {
+  const element = event.target;
+  if (!(element instanceof HTMLDetailsElement) || !element.open) return;
+  const features: Record<string, FeatureId> = {
+    "/cvcx": "game_bankroll_lab",
+    "/simulation": "session_simulator",
+    "/journal": "session_journal",
+    "/ultimate-texas-holdem": "ultimate_texas_holdem",
+    "/chase-flush": "chase_the_flush",
+    "/training/full-shoe": "blackjack",
+  };
+  const feature = features[analytics.route];
+  if (!feature) return;
+  const summary = element.querySelector<HTMLElement>("summary");
+  const section = element.dataset.analyticsSection || summary?.dataset.analyticsId || summary?.textContent || "result_details";
+  analytics.track("result_expanded", {
+    feature,
+    section: clampString(section.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), 80),
+  });
+}
+
 function handleScroll(): void {
   const doc = document.documentElement;
   const scrollable = doc.scrollHeight - doc.clientHeight;
@@ -130,6 +172,8 @@ export function startAutocapture(): void {
   started = true;
 
   document.addEventListener("click", handleClick, { capture: true });
+  document.addEventListener("change", handleChange, { capture: true });
+  document.addEventListener("toggle", handleToggle, { capture: true });
 
   new MutationObserver(() => {
     lastMutationAt = Date.now();

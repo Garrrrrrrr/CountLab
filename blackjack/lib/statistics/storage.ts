@@ -1,6 +1,7 @@
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
+import { observeApiRequest } from "../analytics/api";
 
 export type DrillType =
   | "Running Count"
@@ -93,7 +94,7 @@ function progressKey(drill: DrillType) {
 function pushSession(s: Session) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "drill_session_upsert", supabase
     .from("drill_sessions")
     .upsert({
       id: s.id,
@@ -109,7 +110,7 @@ function pushSession(s: Session) {
       categories: s.categories ?? null,
       metrics: s.metrics ?? null,
       tags: s.tags ?? null,
-    })
+    }))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync drill session", error);
     });
@@ -118,9 +119,9 @@ function pushSession(s: Session) {
 function pushProgress(p: DrillProgress) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "drill_progress_upsert", supabase
     .from("drill_progress")
-    .upsert({ user_id: user.id, drill: p.drill, state: p.state, updated_at: p.updatedAt })
+    .upsert({ user_id: user.id, drill: p.drill, state: p.state, updated_at: p.updatedAt }))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync drill progress", error);
     });
@@ -129,11 +130,11 @@ function pushProgress(p: DrillProgress) {
 function pushProgressClear(drill: DrillType) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "drill_progress_delete", supabase
     .from("drill_progress")
     .delete()
     .eq("user_id", user.id)
-    .eq("drill", drill)
+    .eq("drill", drill))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to clear drill progress", error);
     });
@@ -142,9 +143,9 @@ function pushProgressClear(drill: DrillType) {
 function pushSettings(s: Settings) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "settings_upsert", supabase
     .from("settings")
-    .upsert({ user_id: user.id, data: s, updated_at: new Date().toISOString() })
+    .upsert({ user_id: user.id, data: s, updated_at: new Date().toISOString() }))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync settings", error);
     });
@@ -164,7 +165,16 @@ export const storage = {
     localStorage.setItem(SESSION_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("hilo-storage"));
     pushSession(s);
-    track("drill_session_completed", { drill: s.drill, questions: s.questions, accuracy: s.accuracy, bestStreak: s.bestStreak });
+    const elapsedSeconds = typeof s.metrics?.elapsedSeconds === "number" ? s.metrics.elapsedSeconds : undefined;
+    track("drill_session_completed", {
+      drill: s.drill,
+      questions: s.questions,
+      correct: s.correct,
+      accuracy: s.accuracy,
+      bestStreak: s.bestStreak,
+      averageResponseTime: s.averageResponseTime,
+      durationMs: elapsedSeconds === undefined ? s.averageResponseTime * s.questions : Math.round(elapsedSeconds * 1000),
+    });
   },
   settings(): Settings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
@@ -180,10 +190,12 @@ export const storage = {
     }
   },
   saveSettings(s: Settings) {
+    const previous = this.settings();
+    const changedKeys = (Object.keys(s) as Array<keyof Settings>).filter((key) => previous[key] !== s[key]);
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     window.dispatchEvent(new Event("hilo-storage"));
     pushSettings(s);
-    track("settings_saved");
+    if (changedKeys.length) track("settings_saved", { changedKeys, decks: s.decks });
   },
   progress<T = unknown>(drill: DrillType): DrillProgress<T> | null {
     if (typeof window === "undefined") return null;

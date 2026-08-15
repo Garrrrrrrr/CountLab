@@ -6,6 +6,8 @@ import type { Environment, FeatureCategory, FeatureId } from "./types";
  */
 const RAW_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0";
 const RAW_SHA = process.env.NEXT_PUBLIC_COMMIT_SHA || "";
+const RAW_PERFORMANCE_SAMPLE_RATE = Number(process.env.NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE ?? "1");
+const REQUIRE_CONSENT = process.env.NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT === "true";
 
 export const APP_VERSION = RAW_SHA ? `${RAW_VERSION}+${RAW_SHA.slice(0, 7)}` : RAW_VERSION;
 
@@ -39,6 +41,12 @@ export const ANALYTICS_CONFIG = {
   scrollDepths: [25, 50, 75, 90, 100] as const,
   maxStringLength: 120,
   maxProperties: 40,
+  /** Configurable low-priority technical telemetry sampling; critical events are never sampled. */
+  performanceSampleRate: Number.isFinite(RAW_PERFORMANCE_SAMPLE_RATE)
+    ? Math.min(1, Math.max(0, RAW_PERFORMANCE_SAMPLE_RATE))
+    : 1,
+  /** Set at build time for jurisdictions/deployments that require prior opt-in. */
+  requireConsent: REQUIRE_CONSENT,
 } as const;
 
 /** Lifecycle thresholds used by the retention/churn views and the dashboard. */
@@ -50,7 +58,11 @@ export const STORAGE_KEYS = {
   attribution: "countlab:analytics:attribution",
   pageViews: "countlab:analytics:page_views",
   optOut: "countlab:analytics:opt_out",
+  consentSeen: "countlab:analytics:consent_seen",
+  analyticsConsent: "countlab:analytics:consent",
   experiments: "countlab:analytics:experiments",
+  contentVisits: "countlab:analytics:content_visits",
+  pendingEvents: "countlab:analytics:pending_events",
 } as const;
 
 interface FeatureDefinition {
@@ -81,6 +93,7 @@ export const FEATURES: Record<FeatureId, FeatureDefinition> = {
   session_journal: { category: "analysis", label: "Session Journal", route: "/journal" },
   shoe_explorer: { category: "analysis", label: "Shoe Explorer" },
   hand_replayer: { category: "analysis", label: "Hand Replayer" },
+  bet_spread_optimizer: { category: "analysis", label: "Bet spread optimizer" },
   statistics: { category: "account", label: "Statistics", route: "/statistics" },
   settings: { category: "account", label: "Settings", route: "/settings" },
   strategy_reference: { category: "reference", label: "Basic Strategy reference", route: "/reference/basic-strategy" },

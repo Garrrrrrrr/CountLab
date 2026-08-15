@@ -6,6 +6,7 @@ import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackj
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
 import { track } from "@/lib/analytics/track";
+import { useFormAnalytics } from "@/lib/analytics/react";
 import {
   JournalAggregate,
   SessionAssessment,
@@ -80,6 +81,8 @@ export function SessionJournal() {
   const [transactionDate, setTransactionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [transactionType, setTransactionType] = useState<"deposit" | "withdrawal">("deposit");
   const [transactionAmount, setTransactionAmount] = useState(500);
+  const sessionForm = useFormAnalytics("journal_session");
+  const transactionForm = useFormAnalytics("journal_transaction");
 
   useEffect(() => {
     const refresh = () => {
@@ -88,6 +91,7 @@ export function SessionJournal() {
     };
     refresh();
     addEventListener(journalLibrary.event, refresh);
+    track("journal_history_viewed", { kind: "sessions" });
     return () => removeEventListener(journalLibrary.event, refresh);
   }, []);
 
@@ -128,6 +132,7 @@ export function SessionJournal() {
   };
 
   const logSession = () => {
+    sessionForm.submitted();
     journalLibrary.addSession({
       date,
       location: location.trim() || undefined,
@@ -145,10 +150,13 @@ export function SessionJournal() {
     setExpenses(0);
     setNotes("");
     setNotice("Session logged.");
+    sessionForm.succeeded();
   };
   const logTransaction = () => {
+    transactionForm.submitted();
     journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount) });
     setNotice(`${transactionType === "deposit" ? "Deposit" : "Withdrawal"} recorded.`);
+    transactionForm.succeeded();
   };
   const exportJournal = () => {
     const url = URL.createObjectURL(new Blob([journalLibrary.exportData()], { type: "application/json" }));
@@ -184,6 +192,7 @@ export function SessionJournal() {
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.7fr)]">
         <Panel>
+          <div onChange={() => sessionForm.start("inputs")}>
           <h2 className="font-semibold">Log a session</h2>
           <p className="mt-1 text-xs text-zinc-500">Record the actual outcome. CountLab computes what that session was expected to earn from your rules and ramp.</p>
           {simulationLibrary.templates().length > 0 && (
@@ -215,6 +224,7 @@ export function SessionJournal() {
           <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
           <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
           <Button className="mt-4 w-full" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+          </div>
         </Panel>
 
         <div className="space-y-5">
@@ -282,6 +292,7 @@ export function SessionJournal() {
           </Panel>
 
           <Panel>
+            <div onChange={() => transactionForm.start("inputs")}>
             <h2 className="font-semibold">Bankroll transactions</h2>
             <p className="mt-1 text-xs text-zinc-500">Deposits and withdrawals independent of game results, e.g. funding or removing your action bankroll.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -301,6 +312,7 @@ export function SessionJournal() {
                 ))}
               </div>
             )}
+            </div>
           </Panel>
 
           <Panel>

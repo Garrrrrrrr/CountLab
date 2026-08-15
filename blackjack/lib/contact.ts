@@ -1,4 +1,3 @@
-// Public contact address shown on the Privacy and Terms pages, including for
-// account/data deletion requests. TODO: replace with the project's real alias
-// before deploying — this placeholder does not receive mail.
-export const CONTACT_EMAIL = "contact@example.com";
+// Project-level alias used for privacy, account, and legal requests. Keeping
+// this separate from any maintainer's identity avoids publishing personal PII.
+export const CONTACT_EMAIL = "privacy@countlab.ca";

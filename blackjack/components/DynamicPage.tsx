@@ -14,6 +14,7 @@ import {
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { useAuth } from "@/lib/supabase/AuthProvider";
+import { analytics } from "@/lib/analytics";
 
 function PageLoading() {
   return (
@@ -489,9 +490,12 @@ function SettingsPage() {
   const { user, signOut, exitGuest } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
     [saved, setSaved] = useState(false),
-    [dataMessage, setDataMessage] = useState("");
+    [dataMessage, setDataMessage] = useState(""),
+    [analyticsEnabled, setAnalyticsEnabled] = useState(true),
+    [analyticsDeleting, setAnalyticsDeleting] = useState(false),
+    [analyticsMessage, setAnalyticsMessage] = useState("");
   const importInput = useRef<HTMLInputElement>(null);
-  useEffect(() => setS(storage.settings()), []);
+  useEffect(() => { setS(storage.settings()); setAnalyticsEnabled(analytics.isEnabled()); }, []);
   const update = <K extends keyof Settings>(k: K, v: Settings[K]) => {
     setS((x) => ({ ...x, [k]: v }));
     setSaved(false);
@@ -655,6 +659,24 @@ function SettingsPage() {
           </Button>
         </Panel>
         <Panel className="lg:col-span-2">
+          <h2 className="font-semibold">Privacy</h2>
+          <label className="mt-4 flex items-start justify-between gap-5 rounded-xl bg-black/20 p-4">
+            <span><b className="block text-sm">Privacy-minimized product analytics</b><span className="mt-1 block text-xs leading-5 text-zinc-500">Helps improve drills and reliability. No email, notes, passwords, exact bankrolls, or advertising identifiers are collected.</span></span>
+            <input type="checkbox" checked={analyticsEnabled} onChange={(event) => { const enabled = event.target.checked; setAnalyticsEnabled(enabled); analytics.setConsent(enabled, "settings"); }} className="mt-1 h-5 w-5 shrink-0 accent-emerald-500" />
+          </label>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link href="/privacy" className="text-xs text-emerald-300 hover:underline">Review the analytics and retention policy</Link>
+            <GhostButton className="min-h-8 px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={async () => {
+              if (!confirm("Delete this device's analytics history and, if signed in, analytics linked to your account? Training and journal data will not be deleted.")) return;
+              setAnalyticsDeleting(true);
+              const deleted = await analytics.deleteHistory();
+              setAnalyticsDeleting(false);
+              setAnalyticsMessage(deleted ? "Analytics history deleted. Future analytics will use a new random device ID." : "Analytics history could not be deleted. Try again later.");
+            }}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
+          </div>
+          {analyticsMessage && <p aria-live="polite" className="mt-3 text-xs text-emerald-300">{analyticsMessage}</p>}
+        </Panel>
+        <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Training data</h2>
           <p className="mt-2 text-sm text-zinc-400">
             Download a portable JSON backup or restore one on this device.
@@ -732,6 +754,9 @@ function SettingsPage() {
   );
 }
 function NotFound() {
+  useEffect(() => {
+    analytics.track("client_error", { error_type: "RouteNotFound", message_normalized: "route not found", route: analytics.route, source: "dynamic_page" });
+  }, []);
   return (
     <Panel className="py-20 text-center">
       <h1 className="text-3xl font-semibold">Page not found</h1>

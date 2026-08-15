@@ -38,6 +38,7 @@ const names: Record<Action, string> = {
   P: "Split",
   R: "Surrender",
 };
+const analyticsRulesPreset = (settings: Settings) => `${settings.decks}d_${settings.dealerHitsSoft17 ? "h17" : "s17"}_${settings.doubleAfterSplit ? "das" : "ndas"}_${settings.resplitAces ? "rsa" : "nrsa"}_${settings.lateSurrender ? "ls" : "nls"}`;
 function Title({
   eyebrow,
   title,
@@ -566,6 +567,10 @@ export function StrategyDrill() {
       explanation: string;
       category: StrategyCategory;
     }>();
+  useEffect(() => {
+    track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+    // A restored drill is still a new analytics attempt in this browser session.
+  }, []);
   const weakest = useMemo<StrategyCategory | undefined>(() => {
     if (mode !== "adaptive") return undefined;
     const totals = storage.sessions()
@@ -600,6 +605,14 @@ export function StrategyDrill() {
       : data.player.some((card) => card.rank === "A")
         ? "Soft totals"
         : "Hard totals";
+  const presented = useRef("");
+  useEffect(() => {
+    const scenario = `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`;
+    const key = `${q}:${scenario}`;
+    if (presented.current === key) return;
+    presented.current = key;
+    track("question_presented", { drill: "Basic Strategy", category, scenario, attempt: q + 1 });
+  }, [category, data.dealer.rank, data.player, q]);
   useDrillProgress("Basic Strategy", !session, {
     q, mode, correctCount, streak, best, totalMs, mistakes, categories,
   } satisfies StrategySaved);
@@ -614,7 +627,7 @@ export function StrategyDrill() {
     setSession(record("Basic Strategy", askedCount, gotCorrect, totalTime, bestStreak, finalMistakes, finalCategories));
     storage.clearProgress("Basic Strategy");
   };
-  const endDrill = () => finish();
+  const endDrill = () => { track("answer_skipped", { drill: "Basic Strategy", category, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, attempt: q + 1, elapsedMs: Date.now() - started }); finish(); };
   const choose = useCallback(
     (a: Action) => {
       if (session) return;
@@ -652,7 +665,7 @@ export function StrategyDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
-      track("basic_strategy_answered", { ok, chosen: a, correct: decision.action, category, mode });
+      track("basic_strategy_answered", { ok, chosen: a, correct: decision.action, category, mode, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, responseTimeMs: duration, attempt: q + 1, streak: nextStreak });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -693,6 +706,7 @@ export function StrategyDrill() {
           setFeedback(undefined);
           setSession(undefined);
           setStarted(Date.now());
+          track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
         }}
       />
     );
@@ -706,7 +720,7 @@ export function StrategyDrill() {
       />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-xs">
-          <Select label="Practice mode" value={mode} onChange={(event) => setMode(event.target.value as "standard" | "adaptive")}>
+          <Select label="Practice mode" value={mode} onChange={(event) => { const next = event.target.value as "standard" | "adaptive"; track("practice_mode_changed", { drill: "Basic Strategy", from: mode, to: next }); setMode(next); }}>
             <option value="standard">Balanced</option>
             <option value="adaptive">Adaptive to weak categories</option>
           </Select>
@@ -789,6 +803,9 @@ export function DeviationDrill() {
       tc: number;
       direction?: "atOrAbove" | "atOrBelow";
     }>();
+  useEffect(() => {
+    track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+  }, []);
   const d = useMemo(
     () => DEVIATIONS[Math.floor(Math.random() * DEVIATIONS.length)],
     [q],
@@ -796,6 +813,14 @@ export function DeviationDrill() {
   const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
     rc = tc * 3,
     correct = deviationDecision(d, tc);
+  const deviationPresented = useRef("");
+  useEffect(() => {
+    const scenario = `${d.hand}_v_${d.dealer}`;
+    const key = `${q}:${scenario}:${tc}`;
+    if (deviationPresented.current === key) return;
+    deviationPresented.current = key;
+    track("question_presented", { drill: "Deviations", category: d.hand, scenario, attempt: q + 1 });
+  }, [d.dealer, d.hand, q, tc]);
   const playerCards = useMemo(() => {
       const hands: Record<string, [Card["rank"], Card["rank"]]> = {
         Insurance: ["10", "6"],
@@ -835,7 +860,7 @@ export function DeviationDrill() {
     setSession(record("Deviations", askedCount, gotCorrect, totalTime, bestStreak, finalMistakes, finalCategories));
     storage.clearProgress("Deviations");
   };
-  const endDrill = () => finish();
+  const endDrill = () => { track("answer_skipped", { drill: "Deviations", category: d.hand, scenario: `${d.hand}_v_${d.dealer}`, attempt: q + 1, elapsedMs: Date.now() - started }); finish(); };
   const chooseDeviation = useCallback(
     (chosen: DeviationAction) => {
       if (session) return;
@@ -877,7 +902,7 @@ export function DeviationDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
-      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc });
+      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: correct === d.deviationAction });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -921,6 +946,7 @@ export function DeviationDrill() {
           setFeedback(undefined);
           setSession(undefined);
           setStarted(Date.now());
+          track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
         }}
       />
     );

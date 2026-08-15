@@ -10,8 +10,17 @@ const FORBIDDEN_KEY = /(pass(word|wd|phrase)?|secret|token|jwt|api[-_]?key|autho
 /** Query keys worth keeping; everything else is dropped so URLs can't leak. */
 const ALLOWED_QUERY_KEYS = new Set(["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "ref"]);
 
+const EMAIL_VALUE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+const PHONE_VALUE = /(?:\+?\d[\d(). -]{7,}\d)/g;
+
+/** Removes common PII shapes from otherwise approved, free-form strings. */
+export const scrubPotentialPii = (value: string): string =>
+  value.replace(EMAIL_VALUE, "<email>").replace(PHONE_VALUE, "<phone>");
+
 export const clampString = (value: string, max: number = ANALYTICS_CONFIG.maxStringLength): string =>
-  value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+  scrubPotentialPii(value).length <= max
+    ? scrubPotentialPii(value)
+    : `${scrubPotentialPii(value).slice(0, max - 1)}…`;
 
 const short = (n: number): string => {
   if (n >= 1_000_000) return `${n / 1_000_000}m`;
@@ -93,7 +102,7 @@ export function normalizeRoute(input: string): string {
 /** Strips volatile detail so the same failure groups into one row. */
 export function normalizeErrorMessage(message: string): string {
   return clampString(
-    message
+    scrubPotentialPii(message)
       .replace(/https?:\/\/\S+/g, "<url>")
       .replace(UUID, "<id>")
       .replace(/\b\d+\b/g, "<n>")

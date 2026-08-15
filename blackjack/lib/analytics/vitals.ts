@@ -1,4 +1,5 @@
 import { analytics } from "./client";
+import { ANALYTICS_CONFIG } from "./config";
 import type { WebVitalMetric } from "./types";
 
 /** Google's published good/needs-improvement boundaries. */
@@ -52,7 +53,20 @@ export function startVitals(): void {
   started = true;
 
   const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-  if (navigation) report("TTFB", Math.max(0, navigation.responseStart));
+  if (navigation) {
+    report("TTFB", Math.max(0, navigation.responseStart));
+    analytics.track("performance_metric", {
+      metric: "dom_interactive",
+      value_ms: Math.round(Math.max(0, navigation.domInteractive)),
+      route: analytics.route,
+    });
+    const pageLoad = navigation.loadEventEnd || navigation.domComplete;
+    if (pageLoad) analytics.track("performance_metric", {
+      metric: "page_load",
+      value_ms: Math.round(Math.max(0, pageLoad)),
+      route: analytics.route,
+    });
+  }
 
   observe("paint", (entries) => {
     for (const entry of entries) {
@@ -96,11 +110,45 @@ export function startVitals(): void {
     { durationThreshold: 40 } as PerformanceObserverInit,
   );
 
+  // Extended telemetry is configurable because long-task/resource data can be
+  // high volume on large sites. Core Web Vitals above are never sampled.
+  const sampleExtended = Math.random() < ANALYTICS_CONFIG.performanceSampleRate;
+  let longestTask = 0;
+  let extendedFinalized = false;
+  if (sampleExtended) {
+    observe("longtask", (entries) => {
+      for (const entry of entries) longestTask = Math.max(longestTask, entry.duration);
+    });
+  }
+
   // Values are only final once the page is being hidden.
   const finalize = () => {
     if (lcp) report("LCP", lcp);
     if (cls >= 0) report("CLS", cls);
     if (inp) report("INP", inp);
+    if (sampleExtended && !extendedFinalized && longestTask) {
+      analytics.track("performance_metric", {
+        metric: "long_task",
+        value_ms: Math.round(longestTask),
+        route: analytics.route,
+      });
+      longestTask = 0;
+    }
+    if (sampleExtended && !extendedFinalized) {
+      const slowest = new Map<string, number>();
+      for (const entry of performance.getEntriesByType("resource") as PerformanceResourceTiming[]) {
+        const type = entry.initiatorType || "other";
+        if (!["script", "css", "img", "font"].includes(type)) continue;
+        slowest.set(type, Math.max(slowest.get(type) ?? 0, entry.duration));
+      }
+      for (const [resourceType, value] of slowest) analytics.track("performance_metric", {
+        metric: "resource_load",
+        value_ms: Math.round(value),
+        route: analytics.route,
+        resource_type: resourceType,
+      });
+      extendedFinalized = true;
+    }
   };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") finalize();
