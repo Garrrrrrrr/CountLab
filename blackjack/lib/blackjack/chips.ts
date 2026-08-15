@@ -1,3 +1,6 @@
+/** The standard US casino chip denominations, in order. */
+export const chipOptions = [0.5, 1, 5, 25, 100, 500, 1000] as const;
+
 /**
  * Standard US casino chip colors, keyed by the denomination bracket the value
  * falls in (chips between the named denominations borrow the nearest
