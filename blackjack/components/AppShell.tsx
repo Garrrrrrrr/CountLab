@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 import { track } from "@/lib/analytics/track";
+import { initAutocapture, resetScrollDepth } from "@/lib/analytics/autocapture";
 import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
@@ -75,7 +76,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
   useEffect(() => {
+    initAutocapture();
+  }, []);
+  useEffect(() => {
     track("page_view");
+    resetScrollDepth();
   }, [path]);
   useEffect(() => {
     if (!open) return;

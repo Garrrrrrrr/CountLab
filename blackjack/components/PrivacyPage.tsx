@@ -4,83 +4,112 @@ export default function PrivacyPage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Privacy Policy</h1>
-      <p className="mt-2 text-zinc-400">Last updated August 14, 2026.</p>
+      <p className="mt-2 text-zinc-400">Last updated August 21, 2026.</p>
       <div className="mt-7 space-y-5">
         <Panel>
           <p className="text-sm leading-6 text-zinc-300">
-            CountLab has no server, no database, and no user accounts. It is
-            a static site: your browser downloads the app once and everything
-            it does afterward &mdash; drills, simulations, your journal
-            &mdash; runs locally on your device. This page explains exactly
-            what that means.
+            CountLab has no ad network, no third-party trackers, and doesn&rsquo;t
+            sell or share your data. It does have accounts (so your training
+            history can follow you across devices) and it does track what you
+            do in the app, so the sections below explain exactly what is
+            collected, where it&rsquo;s stored, and who can see it.
           </p>
         </Panel>
         <Panel>
-          <h2 className="font-semibold">What is stored, and where</h2>
+          <h2 className="font-semibold">Accounts and guest mode</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            CountLab uses your browser&rsquo;s local storage (not cookies) to
-            remember, on this device only:
+            You can sign in with an email and password, sign in with Google,
+            or skip accounts entirely and continue as a guest.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-400">
+            <li>&bull; <b className="text-zinc-300">Email/password:</b> handled by Supabase Auth. CountLab stores your email address and an encrypted password hash; the plaintext password is never stored or visible to CountLab.</li>
+            <li>&bull; <b className="text-zinc-300">Google sign-in:</b> Google shares your name, email, and profile photo with CountLab (via Supabase) to create your account. CountLab does not receive your Google password. Google&rsquo;s own privacy policy governs what Google itself collects when you use this option.</li>
+            <li>&bull; <b className="text-zinc-300">Guest mode:</b> no account is created anywhere. Your device gets a random local identifier, and everything you do stays on that device unless you later sign in (at which point guest data on that device is uploaded to your new account).</li>
+          </ul>
+        </Panel>
+        <Panel>
+          <h2 className="font-semibold">Your training data</h2>
+          <p className="mt-2 text-sm leading-6 text-zinc-400">
+            If you&rsquo;re signed in, the following is stored in
+            CountLab&rsquo;s database (hosted on Supabase), scoped to your
+            account with row-level security so only you can read or write
+            it, and cached in your browser for instant reads:
           </p>
           <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-400">
             <li>&bull; Table-rule and drill settings.</li>
-            <li>&bull; Training session history and mistake logs from drills.</li>
-            <li>&bull; Saved simulation runs and reusable setups.</li>
-            <li>&bull; Journal entries: session results and bankroll transactions you choose to log.</li>
-            <li>&bull; A session marker created after you enter the correct password, so you aren&rsquo;t asked for it on every visit.</li>
+            <li>&bull; Training session history, drill progress, and mistake logs.</li>
+            <li>&bull; Bankroll/session journal entries and transactions you choose to log.</li>
           </ul>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
-            None of this is ever sent to a server, because there isn&rsquo;t
-            one. It never leaves your browser unless you explicitly export it
-            yourself using the Export buttons provided on the relevant pages.
+            In guest mode, this same data is kept only in your browser&rsquo;s
+            local storage and is never sent anywhere unless you export it
+            yourself, or later sign in. Saved simulation runs and reusable
+            setups are always kept locally in your browser, signed in or not.
           </p>
         </Panel>
         <Panel>
-          <h2 className="font-semibold">The password</h2>
+          <h2 className="font-semibold">Analytics: what&rsquo;s tracked</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            The password that gates this section is never transmitted
-            anywhere. When you enter it, your browser computes a cryptographic
-            hash locally and compares it to a hash baked into the site at
-            build time; the plaintext password itself is not stored in the
-            site&rsquo;s code, is not sent over the network, and is not
-            recoverable from anything published on this site.
+            CountLab records the actions you take in the app &mdash; things
+            like which pages you visit, signing in or out, hands played and
+            decisions made at the casino-game tables, drill questions
+            answered, simulations run, journal/settings changes, and general
+            clicks and taps on buttons and links across the site (including
+            scroll depth on longer pages and outbound link clicks) &mdash; to
+            a first-party analytics table so the site&rsquo;s owner can see
+            how the app is actually used. Each event is tagged with either
+            your account&rsquo;s internal ID (if signed in) or your
+            device&rsquo;s random local ID (if a guest), plus the page path
+            and a few relevant details about the action (for example, a
+            drill answer&rsquo;s correctness or a clicked button&rsquo;s
+            visible label, not full page content, keystrokes, or anything
+            you type into a form field).
+          </p>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            This data is not sold, shared with advertisers, or used for
+            anything beyond understanding and improving CountLab. It&rsquo;s
+            readable only by accounts the site owner has explicitly granted
+            admin access to &mdash; row-level security in the database blocks
+            everyone else, including other signed-in users, from reading it
+            back. There is no cross-site tracking: nothing here follows you
+            to other websites, and no advertising or marketing pixels are
+            embedded in this site.
           </p>
         </Panel>
         <Panel>
-          <h2 className="font-semibold">No accounts, no tracking</h2>
+          <h2 className="font-semibold">Infrastructure</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            There is no sign-up, no email collection, and no analytics,
-            advertising, or third-party tracking scripts on this site as of
-            this writing. If that ever changes, this page will be updated
-            first.
+            CountLab&rsquo;s static files are hosted on GitHub Pages; accounts,
+            the database, and analytics are hosted on Supabase. Both are
+            third-party infrastructure providers acting as data processors
+            for CountLab &mdash; they run the servers, but CountLab controls
+            what&rsquo;s stored and who can read it. Like any web host,
+            GitHub Pages may automatically log standard technical request
+            data (such as IP address and timestamps) as part of normal
+            server operation; that logging happens at the hosting layer, is
+            outside CountLab&rsquo;s control, and is governed by
+            GitHub&rsquo;s own privacy practices.
           </p>
         </Panel>
         <Panel>
-          <h2 className="font-semibold">Hosting-level logs</h2>
+          <h2 className="font-semibold">Deleting your data</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            This site is hosted on GitHub Pages. Like any web host, GitHub
-            Pages&rsquo; infrastructure may automatically log standard
-            technical request data (such as IP address and request
-            timestamps) as part of normal web server operation. That logging
-            happens at the hosting layer, is outside CountLab&rsquo;s control,
-            and is governed by GitHub&rsquo;s own privacy practices, not this
-            page.
-          </p>
-        </Panel>
-        <Panel>
-          <h2 className="font-semibold">Clearing your data</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Clearing your browser&rsquo;s site data for this domain, or using
-            your browser&rsquo;s private/incognito mode, removes everything
-            listed above, including your login session. Export anything you
-            want to keep first.
+            In guest mode, clearing your browser&rsquo;s site data for this
+            domain (or using private/incognito mode) removes everything
+            immediately. If you have an account, email{" "}
+            <a href="mailto:g.tse8888@gmail.com" className="text-emerald-300 hover:underline">
+              g.tse8888@gmail.com
+            </a>{" "}
+            to request deletion; deleting the account removes your settings,
+            drill history, and journal from the database. Export anything
+            you want to keep first, using the export tools provided.
           </p>
         </Panel>
         <Panel>
           <h2 className="font-semibold">Children&rsquo;s privacy</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
             CountLab does not knowingly collect personal information from
-            anyone, including children, because it does not collect personal
-            information from anyone.
+            children and is not directed at them.
           </p>
         </Panel>
         <Panel>

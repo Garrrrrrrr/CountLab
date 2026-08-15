@@ -769,6 +769,7 @@ export function CvcxLab() {
               <div className="flex flex-wrap gap-2 text-xs">
                 <button type="button" onClick={() => setAllHands(1)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">All 1X</button>
                 <button type="button" onClick={() => setAllHands(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">All 2X</button>
+                <button type="button" onClick={() => scaleRamp(0)} className="rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 py-1.5 font-semibold text-red-300 hover:bg-red-400/[.12]">Zero all</button>
                 <button type="button" onClick={resetBetSpread} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset</button>
               </div>
             </div>
