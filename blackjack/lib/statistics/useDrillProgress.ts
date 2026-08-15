@@ -22,6 +22,5 @@ export function useDrillProgress<T>(drill: DrillType, active: boolean, state: T)
     clearTimeout(timer.current);
     timer.current = setTimeout(() => storage.saveProgress(drill, JSON.parse(serialized)), 400);
     return () => clearTimeout(timer.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drill, active, serialized]);
 }

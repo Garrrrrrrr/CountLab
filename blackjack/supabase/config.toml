@@ -1,0 +1,5 @@
+[functions.analytics]
+verify_jwt = false
+
+[functions.analytics-alerts]
+verify_jwt = false

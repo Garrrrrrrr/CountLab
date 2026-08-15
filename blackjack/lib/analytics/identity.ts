@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "./config";
+import { ANALYTICS_CONFIG, STORAGE_KEYS } from "./config";
 import { getCurrentUser, onCurrentUserChange } from "../supabase/currentUser";
 
 const createId = (): string =>
@@ -53,7 +53,8 @@ export function clearAnonId(): void {
 export function isOptedOut(): boolean {
   if (typeof window === "undefined") return true;
   try {
-    return localStorage.getItem(STORAGE_KEYS.optOut) === "1";
+    if (localStorage.getItem(STORAGE_KEYS.optOut) === "1") return true;
+    return ANALYTICS_CONFIG.requireConsent && localStorage.getItem(STORAGE_KEYS.analyticsConsent) !== "granted";
   } catch {
     return false;
   }
@@ -61,8 +62,13 @@ export function isOptedOut(): boolean {
 
 export function setOptedOut(value: boolean): void {
   try {
-    if (value) localStorage.setItem(STORAGE_KEYS.optOut, "1");
-    else localStorage.removeItem(STORAGE_KEYS.optOut);
+    if (value) {
+      localStorage.setItem(STORAGE_KEYS.optOut, "1");
+      localStorage.setItem(STORAGE_KEYS.analyticsConsent, "denied");
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.optOut);
+      localStorage.setItem(STORAGE_KEYS.analyticsConsent, "granted");
+    }
   } catch {
     // Best effort only.
   }

@@ -79,6 +79,7 @@ export function SessionSimulator() {
   const workerRef = useRef<Worker | undefined>(undefined);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const requestId = useRef(0);
+  const runStartedAt = useRef(0);
   const pendingRun = useRef<{ config: SessionSimulationConfig; name: string } | undefined>(undefined);
   const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks }), [decks, dealt]);
   const config = useMemo<SessionSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, rounds, paths, roundsPerHour, seed: seed.trim() || "countlab", rules, ramp }), [bankroll, unit, playerHands, rounds, paths, roundsPerHour, seed, rules, ramp]);
@@ -118,10 +119,11 @@ export function SessionSimulator() {
             ruinCrossingRate: message.result.ruinCrossingRate,
             paths: message.result.paths,
             roundsPerPath: message.result.roundsPerPath,
+            durationMs: Date.now() - runStartedAt.current,
           });
         }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
-        if (message.kind === "error") { setError(message.error); setRunning(false); }
+        if (message.kind === "error") { setError(message.error); setRunning(false); track("simulation_worker_failed", { mode: "session", durationMs: Date.now() - runStartedAt.current }); }
       };
       workerRef.current = worker;
     }
@@ -135,9 +137,9 @@ export function SessionSimulator() {
         const message = event.data;
         if (message.id !== shoeRequestId.current) return;
         if (message.kind === "progress") setProgress(message.completed / message.total);
-        if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); track("shoe_simulation_completed", { totalShoes: message.result.totalShoes, totalHands: message.result.totalHands, totalProfit: message.result.totalProfit, avPerHour: message.result.avPerHour }); }
+        if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); track("shoe_simulation_completed", { totalShoes: message.result.totalShoes, totalHands: message.result.totalHands, totalProfit: message.result.totalProfit, avPerHour: message.result.avPerHour, durationMs: Date.now() - runStartedAt.current }); }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
-        if (message.kind === "error") { setError(message.error); setRunning(false); }
+        if (message.kind === "error") { setError(message.error); setRunning(false); track("simulation_worker_failed", { mode: "shoe", durationMs: Date.now() - runStartedAt.current }); }
       };
       shoeWorkerRef.current = worker;
     }
@@ -145,7 +147,7 @@ export function SessionSimulator() {
   };
 
   const run = () => {
-    setError(undefined); setProgress(0); setRunning(true);
+    setError(undefined); setProgress(0); setRunning(true); runStartedAt.current = Date.now();
     if (mode === "profile") {
       const id = ++requestId.current;
       pendingRun.current = { config, name: analysisName };
@@ -162,7 +164,7 @@ export function SessionSimulator() {
   const cancel = () => {
     workerRef.current?.postMessage({ kind: "cancel", id: requestId.current });
     shoeWorkerRef.current?.postMessage({ kind: "cancel", id: shoeRequestId.current });
-    track("simulation_cancelled", { mode });
+    track("simulation_cancelled", { mode, durationMs: Date.now() - runStartedAt.current });
   };
   const chooseSpread = (name: string) => {
     setSpread(name);

@@ -40,6 +40,7 @@ export type FeatureId =
   | "hilo_reference"
   | "shoe_explorer"
   | "hand_replayer"
+  | "bet_spread_optimizer"
   | "admin_analytics";
 
 export type FeatureCategory = "training" | "game" | "analysis" | "reference" | "account" | "internal";
@@ -82,6 +83,7 @@ export interface EventPropertyMap {
     engaged_ms: number;
     page_views: number;
     events: number;
+    meaningful_events: number;
     bounced: boolean;
     exit_path: string;
     reason: "timeout" | "page_hide" | "sign_out";
@@ -119,6 +121,8 @@ export interface EventPropertyMap {
   feature_opened: { feature: FeatureId; category: FeatureCategory };
   feature_completed: { feature: FeatureId; category: FeatureCategory; duration_ms: number };
   feature_abandoned: { feature: FeatureId; category: FeatureCategory; duration_ms: number; stage?: string };
+  feature_restarted: { feature: FeatureId; category: FeatureCategory; stage?: string };
+  feature_reset: { feature: FeatureId; category: FeatureCategory; stage?: string };
 
   // --- Training ----------------------------------------------------------
   practice_started: {
@@ -129,6 +133,10 @@ export interface EventPropertyMap {
     decks?: number;
     penetration?: number;
     rules_preset?: string;
+    dealer_rule?: "H17" | "S17";
+    das?: boolean;
+    rsa?: boolean;
+    surrender?: string;
     counting_system?: string;
   };
   question_answered: {
@@ -144,6 +152,7 @@ export interface EventPropertyMap {
     streak: number;
     true_count?: number;
     deviation_available?: boolean;
+    rules_preset?: string;
   };
   practice_completed: {
     drill: DrillId;
@@ -153,13 +162,20 @@ export interface EventPropertyMap {
     best_streak: number;
     duration_ms: number;
     mode?: string;
+    rules_preset?: string;
   };
   practice_abandoned: {
     drill: DrillId;
     questions_answered: number;
     progress_percent: number;
     duration_ms: number;
+    rules_preset?: string;
   };
+  practice_restarted: { drill: DrillId; questions_answered: number; duration_ms: number };
+  question_presented: { drill: DrillId; category?: string; scenario?: string; attempt: number };
+  answer_skipped: { drill: DrillId; category?: string; scenario?: string; attempt: number; elapsed_ms: number };
+  difficulty_changed: { drill: DrillId; from?: string; to: string };
+  practice_mode_changed: { drill: DrillId; from?: string; to: string };
   hint_used: { drill?: DrillId; feature?: FeatureId; kind: string };
   solution_viewed: { drill?: DrillId; feature?: FeatureId; kind: string };
 
@@ -193,6 +209,7 @@ export interface EventPropertyMap {
 
   // --- Calculators & simulations ------------------------------------------
   calculator_opened: { calculator: CalculatorId };
+  calculation_input_changed: { calculator: CalculatorId; input: string; value_bucket?: string };
   calculation_run: {
     calculator: CalculatorId;
     bankroll_bucket?: string;
@@ -202,6 +219,9 @@ export interface EventPropertyMap {
     spread?: string;
     hands_per_hour?: number;
   };
+  calculation_repeated: { calculator: CalculatorId; run_number: number };
+  result_expanded: { feature: FeatureId; section: string };
+  result_copied: { feature: FeatureId; kind: string };
   preset_selected: { calculator: CalculatorId; preset: string };
   simulation_started: { mode: string; rounds?: number; paths?: number; hands?: number };
   simulation_completed: {
@@ -217,12 +237,33 @@ export interface EventPropertyMap {
   settings_changed: { changed_keys: string[]; decks?: number; rules_preset?: string };
   result_viewed: { feature: FeatureId; kind: string };
   result_saved: { feature: FeatureId; kind: string };
+  result_shared: { feature: FeatureId; method: string };
+  history_viewed: { feature: FeatureId; kind: string };
+  history_deleted: { feature: FeatureId; kind: string };
   data_exported: { scope: string; records?: number };
   data_imported: { scope: string; records?: number; ok: boolean };
   data_cleared: { scope: string };
   search_performed: { surface: string; result_count: number; zero_results: boolean; query_length: number };
   filter_applied: { surface: string; filter: string; value: string };
   tab_changed: { surface: string; tab: string };
+  sort_changed: { surface: string; sort: string };
+
+  // --- Educational/reference content ----------------------------------------
+  content_opened: { content: string; visit_count: number };
+  content_section_viewed: { content: string; section: string };
+  content_completed: { content: string; engaged_ms: number; deepest_scroll: number };
+  content_feature_launched: { content: string; feature: FeatureId };
+  search_result_selected: { surface: string; result_position: number; result_kind: string };
+  search_abandoned: { surface: string; result_count: number; query_length: number };
+
+  // --- Forms -----------------------------------------------------------------
+  form_opened: { form: string };
+  form_started: { form: string };
+  form_validation_failed: { form: string; field_category: string; reason_category: string };
+  form_submitted: { form: string };
+  form_succeeded: { form: string; duration_ms: number };
+  form_failed: { form: string; duration_ms: number; reason_category: string };
+  form_abandoned: { form: string; duration_ms: number; last_step?: string };
 
   // --- Identity -------------------------------------------------------------
   signup_started: { method: "password" | "google" };
@@ -233,6 +274,12 @@ export interface EventPropertyMap {
   login_failed: { method: "password" | "google"; reason_category: AuthFailureReason; locked_out: boolean };
   logout: NoProperties;
   guest_mode_entered: NoProperties;
+  auth_session_expired: { reason: "expired" | "refresh_failed" | "unknown" };
+  password_reset_started: { method: "email" };
+  password_reset_completed: { method: "email" };
+  password_reset_failed: { method: "email"; reason_category: AuthFailureReason };
+  consent_updated: { analytics: boolean; source: "settings" | "privacy_banner" | "api" };
+  conversion_completed: { conversion: string; authoritative: boolean };
 
   // --- Technical --------------------------------------------------------------
   client_error: {
@@ -243,6 +290,24 @@ export interface EventPropertyMap {
     source?: string;
   };
   web_vital: { metric: WebVitalMetric; value: number; rating: "good" | "needs_improvement" | "poor"; route: string };
+  performance_metric: {
+    metric: "route_transition" | "dom_interactive" | "page_load" | "long_task" | "resource_load";
+    value_ms: number;
+    route: string;
+    resource_type?: string;
+  };
+  api_request_completed: {
+    service: "supabase" | "worker" | "other";
+    operation: string;
+    duration_ms: number;
+    status: number;
+  };
+  api_request_failed: {
+    service: "supabase" | "worker" | "other";
+    operation: string;
+    duration_ms: number;
+    error_category: "auth" | "rate_limit" | "network" | "server" | "validation" | "other";
+  };
 
   // --- Experimentation ---------------------------------------------------------
   experiment_exposure: { experiment: string; variant: string };
@@ -307,5 +372,25 @@ export const CRITICAL_EVENTS: ReadonlySet<EventName> = new Set<EventName>([
   "session_ended",
   "practice_completed",
   "simulation_completed",
+  "client_error",
+  "api_request_failed",
+  "password_reset_completed",
+  "conversion_completed",
+]);
+
+/** Passive telemetry never makes somebody an active user or a session engaged. */
+export const PASSIVE_EVENTS: ReadonlySet<EventName> = new Set<EventName>([
+  "session_started",
+  "session_ended",
+  "page_viewed",
+  "navigated",
+  "element_clicked",
+  "dead_click_detected",
+  "rage_click_detected",
+  "scroll_depth_reached",
+  "web_vital",
+  "performance_metric",
+  "api_request_completed",
+  "api_request_failed",
   "client_error",
 ]);

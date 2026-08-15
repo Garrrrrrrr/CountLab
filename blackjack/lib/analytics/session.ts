@@ -10,6 +10,7 @@ export interface SessionState {
   engaged_ms: number;
   page_views: number;
   events: number;
+  meaningful_events: number;
   first_path: string;
   last_path: string;
   is_first_session: boolean;
@@ -31,7 +32,9 @@ const now = () => Date.now();
 function read(): SessionState | undefined {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.session);
-    return raw ? (JSON.parse(raw) as SessionState) : undefined;
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as SessionState;
+    return { ...parsed, meaningful_events: Number(parsed.meaningful_events) || 0 };
   } catch {
     return undefined;
   }
@@ -94,6 +97,7 @@ function start(path: string): SessionState {
     engaged_ms: 0,
     page_views: 0,
     events: 0,
+    meaningful_events: 0,
     first_path: path,
     last_path: path,
     is_first_session: count === 1,
@@ -141,9 +145,10 @@ export function recordPageView(path: string): void {
   write(state);
 }
 
-export function recordEvent(): void {
+export function recordEvent(meaningful = true): void {
   if (!state) return;
   state.events += 1;
+  if (meaningful) state.meaningful_events = (state.meaningful_events || 0) + 1;
   write(state);
 }
 
@@ -170,7 +175,30 @@ export function endSession(reason: EndedSession["reason"]): EndedSession | undef
   return ended;
 }
 
+/**
+ * Produces a provisional end snapshot without discarding the persisted
+ * session. Page unloads and BFCache transitions use this so a reload/return
+ * inside the inactivity window keeps the same session id.
+ */
+export function snapshotSession(reason: EndedSession["reason"]): EndedSession | undefined {
+  const current = state ?? read();
+  if (!current) return undefined;
+  current.last_activity_at = now();
+  const snapshot = finish(current, reason);
+  state = current;
+  write(current);
+  return snapshot;
+}
+
 export const currentSession = (): SessionState | undefined => state;
+
+/** Drops local session identity after an analytics deletion request. */
+export function clearSessionData(): void {
+  state = undefined;
+  engagementStartedAt = 0;
+  write(undefined);
+  try { localStorage.removeItem(SESSION_COUNT_KEY); } catch { /* best effort */ }
+}
 
 /** Test seam: drops in-memory state without touching persisted counters. */
 export function resetSessionStateForTests(): void {

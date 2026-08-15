@@ -1,315 +1,245 @@
 # CountLab analytics
 
-Product analytics for CountLab: what is collected, how it flows, how to query
-it, and what deliberately is not collected.
+This document is the operating contract for CountLab's first-party product
+analytics: architecture, event ownership, definitions, privacy controls,
+database objects, deployment, and the event catalog.
 
-## 1. The constraint that shapes everything
+## Architecture
 
-CountLab is a **static export on GitHub Pages**. There is no Node server, no
-API route, no middleware. `next.config.ts` sets `output: "export"`, so
-`POST /api/analytics/events` is not implementable in this repo.
+CountLab is a static Next.js export, so it cannot host a Next API route. Its
+trusted server boundary is a Supabase Edge Function:
 
-Supabase is therefore both the database *and* the server tier. The design
-consequence: **every rule that must not be bypassable lives in Postgres**, not
-in the browser. The client is treated as hostile input.
+```text
+typed browser client
+  -> durable privacy-scrubbed batch queue
+  -> supabase/functions/analytics
+  -> service-role-only ingestion RPCs
+  -> analytics_events + analytics_sessions + analytics_aliases
+  -> analytics schema views
+  -> admin-only aggregate RPCs
+  -> /admin dashboard and safe CSV/JSON exports
+```
 
-| Responsibility usually held by an ingestion server | Where it lives here |
-| --- | --- |
-| Resolve authenticated identity (never trust client `user_id`) | `before insert` trigger overwrites `user_id` with `auth.uid()` |
-| Internal-traffic flagging | Trigger sets `is_internal := is_admin()` |
-| Schema validation / size caps | `check` constraints + trigger |
-| Secret scrubbing | `analytics_redact()` strips forbidden keys server-side |
-| Timestamp normalisation | Trigger clamps client clock skew to a sane window |
-| Deduplication | `unique (event_id)` + `on conflict do nothing` |
-| Rate limiting | Existing `enforce_rate_limit()` trigger |
-| Batching / retry | Client `queue.ts` (batch, `keepalive` flush) |
-| Bot filtering | Client heuristics set `is_bot`; rows are **flagged, not dropped** |
+The Edge Function verifies bearer tokens itself, overwrites client identity
+with the verified account UUID, filters server-detected bots, adds coarse
+hosting-region data when available, rate-limits by a short-lived one-way IP
+hash, enforces 128 KB/50-event request limits, and never stores raw IPs. Direct
+browser inserts into the raw analytics and alias tables are revoked.
 
-**Upgrade path (not built):** a Supabase Edge Function at
-`supabase/functions/analytics/` would add real User-Agent bot detection and
-IP-derived geography. It is deliberately deferred — it adds a deploy step and
-a cold-start on every event for benefits the DB layer mostly already covers.
-Geography is instead derived from the browser timezone, which needs no IP at
-all and is strictly more private.
+Low-priority events flush every five seconds or at 20 events. Critical auth,
+conversion, completion, API-failure, and error events flush immediately. A
+bounded queue survives reload/offline interruptions in local storage for at
+most 24 hours. Every event has a UUID idempotency key; retries use `on conflict
+do nothing`.
 
-## 2. Specification triage
+## Scope decisions
 
-The brief covers 93 areas. Applied to this app:
+### Implement now
 
-### Implemented now
+- Anonymous IDs, verified authenticated IDs, anonymous-to-account aliases,
+  sessions, foreground engagement, bounce/engaged-session measures, and
+  self-service analytics deletion.
+- SPA page views, navigation mechanisms, semantic clicks, route transitions,
+  scroll milestones, content reading, reference search/filter/sort usage, and
+  derived friction signals.
+- Explicit feature, drill, question, casino-hand, calculator, simulation,
+  settings, history, result, form, auth, and conversion events.
+- Drill accuracy/speed/scenario/streak/improvement/mastery, adoption/repeat use,
+  arbitrary ordered funnels, activation, lifecycle, return behavior, journeys,
+  DAU/WAU/MAU, retention cohorts, time series, and the north-star metric.
+- First/last-touch attribution, referrer domain, allow-listed UTM fields,
+  non-invasive device context, coarse country/region, release metadata,
+  frontend errors, asset failures, API/worker latency, Core Web Vitals, route
+  timing, load timing, long tasks, and resource-type timing.
+- Closed TypeScript event types, client and database sanitization, property
+  type/cardinality validation, bot/internal/test filtering, deduplication,
+  rejection monitoring, configurable retention, alert rules/webhook delivery,
+  admin authorization, segmentation, comparison periods, realtime polling,
+  pseudonymous visitor summaries, and CSV/JSON export.
+- Stable experiment assignment and feature-flag exposure primitives, plus
+  exposure/conversion/error guardrails in the dashboard.
 
-Identity & aliasing · sessions with real engagement time · page views ·
-navigation paths · semantic click tracking · product events · training/drill
-analytics · blackjack-domain analytics · calculator analytics with input
-bucketing · feature adoption · funnels · activation · retention cohorts ·
-DAU/WAU/MAU · engagement · scroll milestones · error tracking · Core Web
-Vitals · device · acquisition & UTM · first/last-touch attribution ·
-conversions · signup/login analytics · UI friction (rage + dead clicks) ·
-release metadata · event schema & naming · standard properties · dedup ·
-validation · typed client API · batching · storage schema · derived views ·
-admin dashboard · time filters · segmentation · bot & internal filtering ·
-privacy controls · data deletion · admin authorisation · CSV export ·
-data-quality monitoring · distribution metrics (p50/p75/p90/p95/p99) ·
-progress/mastery analytics.
+### Implement later
 
-### Implemented as scaffolding (schema + client API ready, no UI yet)
+- Materialized hourly/daily aggregates if raw-event query volume eventually
+  warrants them. Current views keep definitions easy to change at modest scale.
+- A management UI for defining experiments and flags. Assignment and analysis
+  exist, but CountLab currently has no live experiments to administer.
+- Statistical anomaly detection beyond the configurable threshold alerts.
+- Server-authoritative simulation completion if simulation compute moves from a
+  browser worker to a server. Today the worker is necessarily client-owned.
 
-Experiments (`experiment_exposure`, sticky variant assignment) · feature flags
-(`feature_flag_exposure`) · churn/resurrection states · power-user scoring ·
-alerting (metrics shaped so thresholds are trivial to add later).
+### Not applicable or deliberately omitted
 
-### Deliberately not implemented
+- Payments, subscriptions, purchases, and onboarding: those product flows do
+  not exist.
+- Remove-a-card/missing-card analytics: that drill was removed from the product.
+- Precise city/GPS collection: it is unnecessary for product decisions.
+- Session replay, keystroke capture, and custom heatmaps: their privacy/payload
+  cost is not justified. Aggregate rage/dead/repeated-click and scroll signals
+  cover the useful debugging questions.
+- Search-result selection: the deviation reference is a live filtered table,
+  not a discrete search-results workflow.
 
-| Area | Why |
-| --- | --- |
-| API analytics (§21) | No owned API. Supabase PostgREST latency is not ours to instrument meaningfully. |
-| Session replay (§33) | Disproportionate privacy cost and payload weight for a training tool. Rage/dead clicks give the same debugging signal. |
-| Heatmaps (§34) | Rage-click coordinates already answer the only question a heatmap would here. |
-| IP-derived geography (§26) | Requires a server hop. Timezone-derived region is coarser but needs no IP. |
-| Onboarding funnel (§30) | There is no onboarding flow to instrument. |
-| Subscription/payment (§27) | No payments exist. |
-| Sampling (§63) | Volume is nowhere near needing it; sampling now would only add bias. |
-
-## 3. Event schema
-
-Every event is one row in `analytics_events`.
+## Canonical event envelope
 
 ```ts
-{
-  event_id:   string;    // uuid v4, client-generated -> idempotency key
-  event:      EventName; // snake_case, from a closed union
-  occurred_at: string;   // client clock, clamped server-side
-  created_at:  string;   // server clock (authoritative for ordering)
-
-  user_id:    string | null;  // overwritten server-side from auth.uid()
-  anon_id:    string;         // persistent per-device uuid
-  session_id: string;         // per-session uuid, 30-min inactivity timeout
-
-  path:        string;        // normalised route, never a full URL
+interface AnalyticsEventPayload {
+  event_id: string;
+  event: EventName;
+  occurred_at: string;
+  user_id: string | null; // ignored and replaced by the ingestion tier
+  anon_id: string;
+  session_id: string;
+  path: string;           // normalized route, no arbitrary query string
   environment: "development" | "staging" | "production";
-  app_version: string;        // "1.0.0+<short sha>"
-
-  context:    { device, browser, os, viewport, locale, region, utm, ... };
-  properties: Record<string, unknown>;   // event-specific dimensions
-
-  is_bot:      boolean;
-  is_internal: boolean;       // set server-side from admin_users membership
+  app_version: string;    // semantic version + short commit SHA
+  context: EventContext;  // device/acquisition/release context
+  properties: Properties; // event-specific, flat, bounded values only
+  is_bot: boolean;
 }
 ```
 
-`context` and `properties` are attached automatically by the client. Feature
-code only ever supplies the event name and its own dimensions.
+Common context is attached centrally. Product components call only
+`analytics.track`, `analytics.page`, a reusable analytics hook, or the legacy
+compatibility adapter in `track.ts`; components never write analytics tables.
+Event and property names are snake_case. Dimensions belong in properties, not
+new event-name variants.
 
-## 4. Naming rules
+## Metric definitions
 
-- `snake_case`, `<noun>_<past-tense-verb>`: `practice_started`,
-  `question_answered`, `calculation_run`.
-- Names describe **user intent**, never implementation (`start_button_clicked`
-  is wrong; `practice_started` is right).
-- **Dimensions go in properties, not in names.** One `question_answered` with
-  `{ drill, correct }` — never `basic_strategy_correct_answer`.
-- Property keys are `snake_case` too, so SQL never needs quoted identifiers.
+- **Visitor:** verified user UUID when available; otherwise `anon:<random UUID>`.
+  Aliases make pre-login activity resolve to the same verified user later.
+- **Session:** 30 minutes of inactivity starts a new session. Start/end, landing
+  and exit routes, counters, duration, and foreground engagement are stored.
+- **Engaged session:** at least 10 seconds of foreground engagement and not a
+  one-page short session. A bounce is one page with under 10 seconds engaged.
+- **Active user:** a visitor with a meaningful product action. Page views,
+  navigation/click telemetry, errors, and performance events do not create an
+  active user.
+- **DAU/WAU/MAU:** distinct active users in trailing 1/7/30-day windows.
+- **Activation:** the first completed drill is the primary milestone; first
+  calculation, settings save, and feature completion are also reported.
+- **Retention:** exact D1/D3/D7/D14/D30 in the overview and exact/windowed
+  segmented cohorts in the advanced dashboard.
+- **Lifecycle:** recently active (0-7 days), slipping (8-30), or churned (31+).
+  A 30+ day gap followed by activity marks a resurrection.
+- **Mastery:** deterministic recent accuracy x evidence x recency, based on the
+  latest 50 safe question-answer events per drill. It is not an ML model.
+- **North star:** weekly returning users completing at least one training
+  session. Supporting KPIs are completed sessions, D7 retention, activation,
+  completion, and accuracy improvement.
 
-## 5. Event catalog
+## Event catalog
 
-`A` = autocaptured (no feature code), `S` = server-generated (authoritative).
+`C` = client-owned, `A` = automatic client instrumentation, `S` = authoritative
+server event. Free-form form values, notes, locations, exact bankrolls, tokens,
+credentials, and email addresses are never event properties.
 
-| Event | Trigger | Key properties | Purpose |
+| Events | Owner / trigger | Safe dimensions | Purpose |
 | --- | --- | --- | --- |
-| `session_started` | First event of a session | `is_first_session`, `channel`, `landing_path`, `referrer_domain` | Sessions, acquisition |
-| `session_ended` | Inactivity timeout or page hide | `duration_ms`, `engaged_ms`, `page_views`, `events`, `bounced` | Engagement, bounce |
-| `page_viewed` A | Route change | `route`, `previous_route`, `navigation_type`, `is_first_view`, `view_count` | Traffic, journeys |
-| `navigated` A | Nav interaction | `from`, `to`, `mechanism` (sidebar/bottom-nav/link/back) | Path analysis |
-| `element_clicked` A | Click on interactive element | `analytics_id`, `label`, `element`, `component` | Friction, unlabelled UI |
-| `dead_click_detected` A | Click causing no DOM/route change | `analytics_id`, `label` | Broken affordances |
-| `rage_click_detected` A | 3 clicks <30px apart within 800ms | `analytics_id`, `label`, `x_percent`, `y_percent` | Frustration |
-| `scroll_depth_reached` A | 25/50/75/90/100% milestone | `depth` | Content consumption |
-| `feature_opened` | Feature mounts | `feature`, `category` | Adoption, discovery |
-| `feature_completed` | Feature reaches its goal | `feature`, `duration_ms` | Completion rate |
-| `feature_abandoned` | Feature unmounts mid-flow | `feature`, `stage`, `duration_ms` | Drop-off |
-| `practice_started` | Drill begins | `drill`, `mode`, `difficulty`, `question_target`, rules | Training funnel |
-| `question_answered` | One drill answer | `drill`, `correct`, `category`, `scenario`, `response_time_ms`, `attempt`, `streak` | Accuracy, mastery |
-| `practice_completed` | Drill finishes | `drill`, `questions`, `accuracy`, `best_streak`, `duration_ms` | Completion, progress |
-| `practice_abandoned` | Drill left unfinished | `drill`, `questions_answered`, `progress_percent` | Where users quit |
-| `hand_started` | Casino table hand dealt | `game`, `wager_bucket`, `true_count_bucket`, `spots` | Game usage |
-| `hand_decision` | Player acts on a hand | `game`, `street`, `action`, `recommended_action`, `correct`, `true_count_bucket`, `deviation_available` | Blackjack skill |
-| `hand_completed` | Hand settles | `game`, `outcome`, `net_bucket`, `duration_ms` | Game engagement |
-| `calculator_opened` | Calculator mounts | `calculator` | Tool adoption |
-| `calculation_run` | Calculation executed | `calculator`, `bankroll_bucket`, `unit_bucket`, `decks`, `spread` | Tool usage |
-| `preset_selected` | Preset/ramp chosen | `calculator`, `preset` | Defaults vs custom |
-| `simulation_started` | Monte Carlo launched | `mode`, `rounds`, `paths` | Compute usage |
-| `simulation_completed` | Simulation returns | `mode`, `duration_ms`, `hourly_ev_bucket`, `risk_of_ruin_bucket` | Value delivered |
-| `settings_changed` | Settings saved | `changed_keys`, `decks`, `rules_preset` | Configuration |
-| `result_saved` | Template/run saved | `kind` | Retention driver |
-| `data_exported` / `data_imported` / `data_cleared` | Backup actions | `scope`, `records` | Portability use |
-| `search_performed` | Reference search | `result_count`, `zero_results`, `query_length` | Content gaps |
-| `filter_applied` / `tab_changed` | UI refinement | `surface`, `value` | Navigation within tools |
-| `signup_started` | Sign-up form submitted | `method` | Signup funnel |
-| `signup_completed` S | Row lands in `auth.users` | `method` | **Authoritative** conversion |
-| `signup_failed` | Sign-up rejected | `reason_category` (never the raw message) | Signup friction |
-| `login_succeeded` / `login_failed` | Auth attempt | `method`, `reason_category` | Access issues |
-| `logout` | Sign-out | — | Session end |
-| `guest_mode_entered` | Guest chosen | — | Anonymous funnel |
-| `client_error` A | `error` / `unhandledrejection` | `error_type`, `message_normalized`, `stack_head`, `route` | Stability |
-| `web_vital` A | Vitals observer | `metric` (LCP/INP/CLS/TTFB/FCP), `value`, `rating` | Performance |
-| `experiment_exposure` | Variant read | `experiment`, `variant` | A/B analysis |
-| `feature_flag_exposure` | Flag read | `flag`, `variation` | Release debugging |
+| `session_started`, `session_ended` | A: session rotation, hide, sign-out | first/returning, landing/exit, duration, foreground time, page/event counts | session quality, bounce, frequency |
+| `page_viewed`, `navigated` | A: initial view and SPA route change | normalized routes, prior route, semantic mechanism, visit count | traffic, entries/exits, paths |
+| `element_clicked`, `dead_click_detected`, `rage_click_detected`, `scroll_depth_reached` | A: delegated document listeners | semantic ID/short label, component, route destination, milestone | navigation and aggregate friction |
+| `feature_opened`, `feature_completed`, `feature_abandoned`, `feature_restarted`, `feature_reset` | C: reusable lifecycle helpers | feature, category, stage, duration | adoption, completion, abandonment |
+| `practice_started`, `practice_restarted`, `practice_completed`, `practice_abandoned` | C: drill lifecycle | drill, mode/difficulty, safe rules, counts, accuracy, streak, duration | training funnel and progress |
+| `question_presented`, `question_answered`, `answer_skipped` | C: each drill question | stable scenario/category, correctness, bounded safe answer, response time, attempt, streak, TC/deviation state | mistakes, scenario difficulty, speed, improvement |
+| `difficulty_changed`, `practice_mode_changed`, `hint_used`, `solution_viewed` | C: explicit trainer controls | drill/feature and stable mode/kind | learning behavior |
+| `hand_started`, `hand_decision`, `hand_completed` | C: blackjack/UTH/Chase the Flush engines | game, street/action/recommendation, correctness, bounded TC, wager/net buckets | game adoption and decision quality |
+| `calculator_opened`, `calculation_input_changed`, `calculation_run`, `calculation_repeated`, `preset_selected` | C/A: calculator lifecycle | calculator, field name only, financial buckets, decks/penetration/spread | calculator funnel and repetition |
+| `simulation_started`, `simulation_completed`, `simulation_cancelled` | C: worker lifecycle | mode, bounded counts, duration, EV/risk buckets | simulation reliability and value |
+| `result_viewed`, `result_saved`, `result_expanded`, `result_copied`, `result_shared` | C/A: result action | feature, stable kind/section/method | result engagement |
+| `history_viewed`, `history_deleted`, `data_exported`, `data_imported`, `data_cleared` | C: library actions | feature/scope/kind and record count | retention tools and portability |
+| `settings_changed`, `tab_changed`, `filter_applied`, `sort_changed` | C: explicit control | changed key names or stable control values | feature configuration |
+| `search_performed`, `search_abandoned`, `search_result_selected` | C: privacy-safe search lifecycle | surface, query length, result count/position/kind; never query text | content gaps and search success |
+| `content_opened`, `content_section_viewed`, `content_completed`, `content_feature_launched` | A: reference route lifecycle | content/section keys, foreground reading time, depth, target feature | educational value |
+| `form_opened`, `form_started`, `form_validation_failed`, `form_submitted`, `form_succeeded`, `form_failed`, `form_abandoned` | C: reusable form helper | form, field/error category, step, duration; never values | auth/journal form friction |
+| `signup_started`, `signup_failed` | C: auth attempt | method and normalized failure category | signup funnel |
+| `signup_completed` | S: `auth.users` insert trigger | provider method only | authoritative signup conversion |
+| `login_succeeded`, `login_failed`, `logout`, `guest_mode_entered`, `auth_session_expired` | C: auth lifecycle | method and normalized category | access and anonymous conversion |
+| `password_reset_started`, `password_reset_completed`, `password_reset_failed` | C: recovery lifecycle | method/category only | recovery reliability |
+| `consent_updated`, `conversion_completed` | C: explicit choice/milestone | choice source; conversion key and authority flag | privacy audit and funnels |
+| `client_error` | A/C: exceptions, rejections, route/resource/render failures | normalized type/message/stack head, route, source | stability by browser/release |
+| `web_vital`, `performance_metric` | A: PerformanceObserver/navigation timing | metric, rating/value, route, resource type only | LCP/INP/CLS/TTFB/FCP and load/route/long-task health |
+| `api_request_completed`, `api_request_failed` | C: named request/worker wrapper | service, normalized operation, duration, status/category | p50/p95/p99 and error rate |
+| `experiment_exposure`, `feature_flag_exposure` | C: assignment/evaluation helper | experiment/variant or flag/variation | conversion and reliability guardrails |
 
-**Ownership (§71).** `signup_completed` is server-only — the client emits
-`signup_started` / `signup_failed` but never `signup_completed`, so the
-conversion count cannot be inflated or lost by a client. Everything else is
-client-owned.
+The closed property contract is in `lib/analytics/types.ts`; it is the detailed
+source of truth for required properties.
 
-## 6. Database objects
+## Storage and derived models
 
-Created by `supabase/schema.sql` (idempotent — safe to re-run).
+Public raw/control tables:
 
-**`public.analytics_events`** — raw event stream. Indexed on `created_at desc`,
-`event`, `user_id`, `anon_id`, `session_id`, and a partial index excluding
-bot/internal traffic (the shape almost every dashboard query uses).
+- `analytics_events`, `analytics_sessions`, `analytics_aliases`
+- `analytics_ingest_rate_limits`, `analytics_ingest_rejections`
+- `analytics_internal_users`, `analytics_retention_settings`
+- `analytics_alert_rules`, `analytics_alert_deliveries`
 
-**`public.analytics_sessions`** — one row per session, upserted by the client
-via `analytics_upsert_session()`. Holds duration, engaged time, counters,
-landing/exit path, channel, UTM, device, first-session flag.
+The non-exposed `analytics` schema provides clean events/sessions and derived
+daily activity, active users, feature usage, training/scenario performance,
+retention, user profiles, per-user adoption, mastery, hour/day/week/month time
+series, and the north-star series. All clean models exclude non-production,
+bot, admin, and configured internal-account traffic.
 
-**`public.analytics_aliases`** — `anon_id → user_id`. Written on login so
-pre-signup anonymous activity can be attributed to the account afterwards.
+Admin-only RPCs provide the filtered overview, arbitrary funnels, segmented
+cohorts, advanced product intelligence, alerts, realtime activity, and a
+purpose-limited visitor profile/timeline. `/admin` includes date presets and
+custom ranges, previous-period comparison, auth/new-returning/device/browser/
+OS/geography/acquisition/campaign/release/feature/lifecycle/drill/rules/scenario segments, and safe
+CSV/JSON exports. Its 30-second realtime refresh calls only the lightweight
+realtime RPC rather than recomputing the dashboard.
 
-**`analytics` schema (views, not exposed to PostgREST):**
+## Privacy, consent, deletion, and retention
 
-| View | Grain | Answers |
-| --- | --- | --- |
-| `events_clean` | event | Base view: bots, internal traffic and non-production filtered out. Everything else builds on it. |
-| `visitor_profiles` | visitor | First/last seen, sessions, active days, events, returning, lifecycle state |
-| `daily_metrics` | day | Visitors, new vs returning, sessions, page views, events, engaged sessions, avg duration |
-| `active_users` | day | DAU / WAU / MAU / stickiness |
-| `feature_usage` | feature | Users, sessions, opens, completions, completion rate, repeat rate |
-| `training_performance` | drill | Attempts, accuracy, median + p90 response time, completion rate |
-| `scenario_difficulty` | drill × scenario | Miss rate — *which blackjack spots are hardest* |
-| `retention_cohorts` | cohort week | Size, D1, D3, D7, D14, D30 |
-| `acquisition` | channel/source | Visitors, signups, activated, retained |
-| `page_stats` | route | Views, unique visitors, entries, exits, bounce rate |
-| `navigation_paths` | route pair | Path frequency for journey analysis |
-| `friction` | route × element | Rage + dead clicks |
-| `error_stats` | error | Occurrences, users affected, browsers, first/last seen |
-| `vitals_stats` | metric × route | p50/p75/p90/p95 |
-| `data_quality` | day | Unknown event names, validation rejects, volume deltas |
+- Anonymous identity is random and never derived from PII. Auth identity is the
+  opaque verified Supabase UUID. Email is not an analytics identifier or field.
+- URLs are reduced to normalized paths; only UTM/ref attribution keys are read.
+- Numeric money/rate/risk inputs are bucketed when exact values are unnecessary.
+- Strings are bounded and PII-shaped text/forbidden keys are scrubbed in the
+  browser and database. Unsupported nested/object values are rejected.
+- Geo is country/region only. Server headers override the timezone fallback.
+  Raw IP is never stored; only a salted hash survives briefly for rate limiting.
+- The first-visit banner and Settings toggle call the centralized consent gate.
+  Set `NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT=true` where prior opt-in is needed;
+  no event or analytics ID is created before approval in that mode.
+- Settings offers self-service history deletion. The Edge tier deletes the
+  current random device history and, for a verified bearer, all linked account
+  analytics. It then clears/rotates local analytics identity and session state.
+- `analytics_delete_my_data()` remains available to authenticated users.
+- `analytics_retention_settings` defaults to 400 days for raw events/sessions,
+  180 for errors, 90 for payload-free rejection counts, and cleanup of orphaned
+  aliases. `analytics_purge()` enforces the current settings; schedule it.
 
-Views live in a non-exposed schema; the dashboard reaches them only through
-`security definer` functions in `public` that begin with an `is_admin()` guard,
-matching the existing `admin_visitor_summary()` pattern.
+Consent/legal requirements vary by deployment and jurisdiction. The mechanism
+is configurable; deployment owners remain responsible for selecting the proper
+mode and keeping the public policy accurate.
 
-## 7. Client architecture
+## Operations and deployment
 
-```
-lib/analytics/
-  types.ts       closed EventName union + per-event property types
-  config.ts      environment, thresholds, feature + drill registries
-  redact.ts      forbidden-key stripping, numeric bucketing, normalisation
-  context.ts     device/browser/os/viewport/locale/region, UTM, attribution
-  identity.ts    anonymous id, user id, alias, reset
-  session.ts     session lifecycle + real engagement timing
-  queue.ts       batching, retry, keepalive flush, dedup ids
-  client.ts      analytics.track / page / identify / reset
-  autocapture.ts clicks, dead clicks, rage clicks, scroll, navigation
-  errors.ts      window error + unhandledrejection
-  vitals.ts      LCP, INP, CLS, TTFB, FCP (native PerformanceObserver)
-  react.tsx      <AnalyticsProvider>, useFeature, useDrillAnalytics, useCalculator
-```
+1. Apply the complete idempotent `supabase/schema.sql` to the target project,
+   then run `NOTIFY pgrst, 'reload schema';`.
+2. Add admin UUIDs to `admin_users`. Add developer/test UUIDs that should not
+   affect KPIs to `analytics_internal_users`.
+3. Set Edge secrets: `ANALYTICS_HASH_SALT`, `ANALYTICS_ALLOWED_ORIGINS`,
+   `ANALYTICS_CRON_SECRET`, and optionally `ANALYTICS_ALERT_WEBHOOK_URL`.
+4. Deploy `analytics` and `analytics-alerts`. `supabase/config.toml` disables
+   gateway JWT verification because the functions intentionally support guests
+   and verify bearer tokens themselves.
+5. Configure GitHub `SUPABASE_ACCESS_TOKEN` (secret) and
+   `SUPABASE_PROJECT_ID` (variable) for the Edge deployment workflow.
+6. Schedule the alert function with `x-cron-secret` (for example every five
+   minutes) and schedule `analytics_purge()` under a trusted role (for example
+   daily). Alert delivery is suppressed to once per metric per hour.
+7. Set Pages build variables as needed:
+   `NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT` and
+   `NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE` (0-1). Development/staging
+   events are retained for debugging but excluded from production KPIs.
 
-Feature code never touches Supabase. It calls:
+The Edge deployment workflow follows Supabase's documented CLI-based GitHub
+Actions pattern: <https://supabase.com/docs/guides/functions/examples/github-actions>.
 
-```ts
-analytics.track("question_answered", { drill: "true_count", correct: true, response_time_ms: 1840 });
-```
-
-or, preferably, a hook that handles the open/complete/abandon lifecycle for it:
-
-```ts
-const drill = useDrillAnalytics("true_count", { mode, difficulty });
-drill.start({ question_target: 10 });
-drill.answer({ correct, category, response_time_ms });
-drill.complete({ questions, accuracy, best_streak });
-// unmount mid-drill -> practice_abandoned fires automatically
-```
-
-**Engagement time** is measured with `visibilitychange` + `focus`/`blur`, so a
-tab left open in the background does not inflate it.
-
-**Flush policy:** batch of 20, or every 5s, or immediately for critical events
-(auth, completions, errors), or on `visibilitychange: hidden` /`pagehide` via
-`fetch(..., { keepalive: true })`. Conversion events never wait for a batch.
-
-## 8. Dashboard
-
-`/admin`, admin-only, tabbed:
-
-| Tab | Contents |
-| --- | --- |
-| Overview | DAU/WAU/MAU, stickiness, new vs returning, sessions, engagement, activation, D1/D7/D30, trend vs previous period |
-| Audience | Retention cohort grid, lifecycle states, acquisition channels, UTM campaigns, geography, devices |
-| Behavior | Page stats, entries/exits, navigation paths, feature adoption + completion, friction (rage/dead clicks) |
-| Training | Drill attempts, accuracy over time, response-time distributions, completion rates, hardest scenarios, deviation miss rates |
-| Technical | Errors by frequency and users affected, Web Vitals percentiles by route/device, release comparison, data quality |
-| Realtime | Last 30 minutes: active visitors, live event feed, current pages |
-| Visitors | Directory + per-visitor timeline (existing, retained) |
-
-Global controls: time range (today / 7d / 30d / 90d / custom) with
-previous-period comparison, and segment filters (auth state, new vs returning,
-device, channel, app version).
-
-## 9. Privacy and security
-
-**Never collected:** passwords, tokens, session cookies, payment data, raw IP
-addresses, precise geolocation, keystrokes, free-text form values, exact
-bankroll figures (bucketed instead), full URLs (route only, query string
-dropped except allow-listed UTM keys).
-
-**Defence in depth:** `redact.ts` strips forbidden keys before send;
-`analytics_redact()` strips them again in Postgres, so a bug or a hand-crafted
-PostgREST call still cannot land a secret.
-
-**Identity:** `anon_id` is a random uuid, never an email or anything derived
-from one. `user_id` is Supabase's opaque uuid.
-
-**Read access:** only `admin_users` members, enforced by RLS and by the
-`is_admin()` guard inside every admin RPC. Ordinary signed-in users cannot read
-even their own analytics rows back.
-
-**Deletion:** `analytics_events.user_id` is `on delete set null`, so deleting an
-account de-identifies its history rather than orphaning it. `analytics_purge()`
-applies the retention policy: raw events 400 days, sessions 400 days, errors
-180 days, aliases indefinite (they are just two opaque uuids).
-
-**Consent:** all storage is first-party and strictly functional/analytical with
-no cross-site tracking, no ad tech, and no data sharing. If CountLab ever adds
-third-party analytics or advertising, a consent gate becomes necessary — the
-client is structured so `analytics.setEnabled(false)` can gate every write from
-one place.
-
-## 10. Operations
-
-**After pulling these changes, re-run `supabase/schema.sql` in the Supabase SQL
-editor** (idempotent), then `NOTIFY pgrst, 'reload schema';` so PostgREST picks
-up the new functions.
-
-Build metadata comes from `NEXT_PUBLIC_APP_VERSION` and
-`NEXT_PUBLIC_COMMIT_SHA`, injected by `.github/workflows/deploy.yml`. Local dev
-builds report `development` and are excluded from every dashboard view.
-
-**Data-quality checks** live in the Technical tab: unknown event names, sudden
-volume deltas, and zero-event periods are the three failure modes that silently
-break analytics.
-
-## 11. North-star metric
-
-**Weekly returning users who complete at least one training session.**
-
-It requires all three things that make CountLab valuable at once — the user came
-back (retention), they trained rather than browsed (intent), and they finished
-(the product worked). Page views and raw event counts can all rise while this
-number falls; that is exactly why it is the one to watch.
-
-Supporting KPIs: activation rate (first completed drill), D7 retention, drill
-completion rate, accuracy improvement between a user's first and most recent
-session, and share of users using two or more features.
+Data-quality monitoring reports accepted volume, sudden silence/spikes/drops,
+rejected event counts by low-cardinality reason, missing required properties,
+client/API failures, release count, and last-event time. Rejection records never
+contain rejected payloads, IPs, IDs, or free text.

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Panel } from "@/components/ui";
 import { DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
@@ -8,11 +8,13 @@ import {
   FullHiLoDeviation,
   ILLUSTRIOUS_18_DEVIATIONS,
 } from "@/lib/blackjack/fullHiLoIndices";
+import { analytics } from "@/lib/analytics";
 
 export default function DeviationReferencePage() {
   const [sort, setSort] = useState("index"),
     [search, setSearch] = useState(""),
     [set, setSet] = useState<"all" | "i18" | "fab4">("all");
+  const searchState = useRef({ queryLength: 0, resultCount: 0 });
   const allRows = [
     ...FULL_HI_LO_DEVIATIONS,
     ILLUSTRIOUS_18_DEVIATIONS[0],
@@ -47,6 +49,27 @@ export default function DeviationReferencePage() {
           ? a.hand.localeCompare(b.hand)
           : a.dealer.localeCompare(b.dealer),
     );
+  useEffect(() => {
+    if (!search.trim()) return;
+    const timer = window.setTimeout(() => analytics.track("search_performed", {
+      surface: "deviation_reference",
+      result_count: rows.length,
+      zero_results: rows.length === 0,
+      query_length: search.trim().length,
+    }), 500);
+    return () => clearTimeout(timer);
+  }, [rows.length, search]);
+  useEffect(() => {
+    searchState.current = { queryLength: search.trim().length, resultCount: rows.length };
+  }, [rows.length, search]);
+  useEffect(() => () => {
+    const latest = searchState.current;
+    if (latest.queryLength) analytics.track("search_abandoned", {
+      surface: "deviation_reference",
+      query_length: latest.queryLength,
+      result_count: latest.resultCount,
+    });
+  }, []);
   const threshold = (deviation: FullHiLoDeviation) => {
     const value = deviation.index > 0 ? `+${deviation.index}` : String(deviation.index);
     return `TC ${deviation.direction === "atOrBelow" ? "≤" : "≥"} ${value}`;
@@ -90,7 +113,7 @@ export default function DeviationReferencePage() {
               ["fab4", "Fab 4", FAB_4_DEVIATIONS.length],
             ] as const).map(([value, label, count]) => (
               <label key={value} className={`pressable flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 ${set === value ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200" : "border-white/[.08] bg-black/20 text-zinc-400"}`}>
-                <input type="radio" name="deviation-set" value={value} checked={set === value} onChange={() => setSet(value)} className="accent-emerald-400" />
+                <input type="radio" name="deviation-set" value={value} checked={set === value} onChange={() => { setSet(value); analytics.track("filter_applied", { surface: "deviation_reference", filter: "set", value }); }} className="accent-emerald-400" />
                 <span className="flex-1 font-medium">{label}</span>
                 <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs">{count}</span>
               </label>
@@ -106,7 +129,7 @@ export default function DeviationReferencePage() {
           />
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
+            onChange={(e) => { setSort(e.target.value); analytics.track("sort_changed", { surface: "deviation_reference", sort: e.target.value }); }}
             className="min-h-11 rounded-lg bg-black/20 px-3 ring-1 ring-white/10"
           >
             <option value="index">Sort: Index</option>

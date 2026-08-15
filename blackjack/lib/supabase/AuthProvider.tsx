@@ -4,19 +4,34 @@ import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
 import { clearLocalUserData, pullRemoteData, pushLocalDataToRemote } from "./sync";
-import { track } from "../analytics/track";
+import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
 
 const GUEST_KEY = "countlab:guest";
+const OAUTH_INTENT_KEY = "countlab:auth-intent";
+
+function authFailure(message: string | undefined): EventPropertyMap["login_failed"]["reason_category"] {
+  const normalized = (message ?? "").toLowerCase();
+  if (/rate|too many|limit/.test(normalized)) return "rate_limited";
+  if (/confirm|verified/.test(normalized)) return "unconfirmed";
+  if (/network|fetch|timeout/.test(normalized)) return "network";
+  if (/password|credential|invalid|email/.test(normalized)) return "invalid_credentials";
+  if (/validation|format|required|length/.test(normalized)) return "validation";
+  return "other";
+}
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   guest: boolean;
+  passwordRecovery: boolean;
   continueAsGuest(): void;
   exitGuest(): void;
   signIn(email: string, password: string): Promise<string | undefined>;
   signUp(email: string, password: string): Promise<string | undefined>;
-  signInWithGoogle(): Promise<string | undefined>;
+  signInWithGoogle(intent: "sign-in" | "sign-up"): Promise<string | undefined>;
+  requestPasswordReset(email: string): Promise<string | undefined>;
+  completePasswordReset(password: string): Promise<string | undefined>;
+  cancelPasswordRecovery(): void;
   signOut(): Promise<void>;
 }
 
@@ -26,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [guest, setGuest] = useState(false);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     setGuest(localStorage.getItem(GUEST_KEY) === "1");
@@ -35,6 +51,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user ?? null);
       setLoading(false);
       if (data.session?.user) void pullRemoteData(data.session.user.id);
+      const oauthIntent = sessionStorage.getItem(OAUTH_INTENT_KEY);
+      if (data.session?.user && oauthIntent === "sign-in") analytics.track("login_succeeded", { method: "google" });
+      if (oauthIntent) sessionStorage.removeItem(OAUTH_INTENT_KEY);
     });
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
@@ -47,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         void pullRemoteData(session.user.id);
       }
       if (event === "SIGNED_OUT") clearLocalUserData();
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+      if (event === "TOKEN_REFRESHED" && !session) analytics.track("auth_session_expired", { reason: "refresh_failed" });
     });
     return () => {
       cancelled = true;
@@ -58,39 +79,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     guest,
+    passwordRecovery,
     continueAsGuest() {
       localStorage.setItem(GUEST_KEY, "1");
       setGuest(true);
-      track("auth_continue_as_guest");
+      analytics.track("guest_mode_entered");
     },
     exitGuest() {
       localStorage.removeItem(GUEST_KEY);
       setGuest(false);
-      track("auth_exit_guest");
     },
     async signIn(email, password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (!error) track("auth_sign_in");
+      const { error } = await observeApiRequest("supabase", "auth_sign_in_password", supabase.auth.signInWithPassword({ email, password }));
+      if (error) analytics.track("login_failed", { method: "password", reason_category: authFailure(error.message), locked_out: false });
+      else analytics.track("login_succeeded", { method: "password" });
       return error?.message;
     },
     async signUp(email, password) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (!error) track("auth_sign_up");
+      analytics.track("signup_started", { method: "password" });
+      const { error } = await observeApiRequest("supabase", "auth_sign_up_password", supabase.auth.signUp({ email, password }));
+      if (error) analytics.track("signup_failed", { method: "password", reason_category: authFailure(error.message) });
       return error?.message;
     },
-    async signInWithGoogle() {
-      const { error } = await supabase.auth.signInWithOAuth({
+    async signInWithGoogle(intent) {
+      if (intent === "sign-up") analytics.track("signup_started", { method: "google" });
+      sessionStorage.setItem(OAUTH_INTENT_KEY, intent);
+      const { error } = await observeApiRequest("supabase", "auth_sign_in_google", supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
-      });
-      if (!error) track("auth_sign_in_google");
+      }));
+      if (error) {
+        sessionStorage.removeItem(OAUTH_INTENT_KEY);
+        if (intent === "sign-up") analytics.track("signup_failed", { method: "google", reason_category: authFailure(error.message) });
+        else analytics.track("login_failed", { method: "google", reason_category: authFailure(error.message), locked_out: false });
+      }
       return error?.message;
     },
+    async requestPasswordReset(email) {
+      analytics.track("password_reset_started", { method: "email" });
+      const { error } = await observeApiRequest("supabase", "auth_password_reset_request", supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined,
+      }));
+      if (error) analytics.track("password_reset_failed", { method: "email", reason_category: authFailure(error.message) });
+      return error?.message;
+    },
+    async completePasswordReset(password) {
+      const { error } = await observeApiRequest("supabase", "auth_password_reset_complete", supabase.auth.updateUser({ password }));
+      if (error) analytics.track("password_reset_failed", { method: "email", reason_category: authFailure(error.message) });
+      else {
+        analytics.track("password_reset_completed", { method: "email" });
+        analytics.track("conversion_completed", { conversion: "password_reset", authoritative: false });
+        setPasswordRecovery(false);
+      }
+      return error?.message;
+    },
+    cancelPasswordRecovery() {
+      setPasswordRecovery(false);
+    },
     async signOut() {
-      track("auth_sign_out");
+      analytics.track("logout");
       localStorage.removeItem(GUEST_KEY);
       setGuest(false);
-      await supabase.auth.signOut();
+      await observeApiRequest("supabase", "auth_sign_out", supabase.auth.signOut());
+      analytics.reset();
     },
   };
 

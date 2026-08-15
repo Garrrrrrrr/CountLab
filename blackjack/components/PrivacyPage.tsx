@@ -5,7 +5,7 @@ export default function PrivacyPage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Privacy Policy</h1>
-      <p className="mt-2 text-zinc-400">Last updated August 21, 2026.</p>
+      <p className="mt-2 text-zinc-400">Last updated August 15, 2026.</p>
       <div className="mt-7 space-y-5">
         <Panel>
           <p className="text-sm leading-6 text-zinc-300">
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
           <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-400">
             <li>&bull; <b className="text-zinc-300">Email/password:</b> handled by Supabase Auth. CountLab stores your email address and an encrypted password hash; the plaintext password is never stored or visible to CountLab.</li>
             <li>&bull; <b className="text-zinc-300">Google sign-in:</b> Google shares your name, email, and profile photo with CountLab (via Supabase) to create your account. CountLab does not receive your Google password. Google&rsquo;s own privacy policy governs what Google itself collects when you use this option.</li>
-            <li>&bull; <b className="text-zinc-300">Guest mode:</b> no account is created anywhere. Your device gets a random local identifier, and everything you do stays on that device unless you later sign in (at which point guest data on that device is uploaded to your new account).</li>
+            <li>&bull; <b className="text-zinc-300">Guest mode:</b> no account is created. Training records and settings stay on your device unless you later sign in. First-party usage analytics are sent under a random device identifier as described below.</li>
           </ul>
         </Panel>
         <Panel>
@@ -67,6 +67,18 @@ export default function PrivacyPage() {
             you type into a form field).
           </p>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Events also include coarse device/browser information, app release,
+            performance measurements, referring domain and allow-listed campaign
+            tags. When the hosting edge provides it, country and region are
+            added coarsely while the request is processed; raw IP addresses
+            are one-way hashed only for short-lived abuse prevention and are
+            never stored in analytics. CountLab does not store precise location, authentication
+            tokens, exact bankroll values, email addresses, or free-form answers
+            in analytics. Detailed events are retained for up to 400 days and
+            normalized error records for up to 180 days under the current,
+            administrator-configurable retention policy.
+          </p>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
             This data is not sold, shared with advertisers, or used for
             anything beyond understanding and improving CountLab. It&rsquo;s
             readable only by accounts the site owner has explicitly granted
@@ -95,15 +107,19 @@ export default function PrivacyPage() {
         <Panel>
           <h2 className="font-semibold">Deleting your data</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            In guest mode, clearing your browser&rsquo;s site data for this
-            domain (or using private/incognito mode) removes everything
-            immediately. If you have an account, email{" "}
+            Use <b>Delete analytics history</b> in Settings to remove this
+            device&rsquo;s analytics and, when signed in, analytics linked to your
+            account. Clearing browser site data also removes the local copy,
+            but cannot retract events already delivered to the server. For a
+            full account deletion request, email{" "}
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-emerald-300 hover:underline">
               {CONTACT_EMAIL}
             </a>{" "}
             to request deletion; deleting the account removes your settings,
-            drill history, and journal from the database. Export anything
-            you want to keep first, using the export tools provided.
+            drill history, journal, and the link between your account and its
+            analytics history. You may also request full deletion of associated
+            analytics events and sessions. Export anything you want to keep
+            first, using the export tools provided.
           </p>
         </Panel>
         <Panel>

@@ -67,7 +67,7 @@ export function UTHTableGame() {
 
   const deal = () => {
     if (ante <= 0) return setMessage("Place an Ante first.");
-    if (ante * 6 + trips > bankroll) return setMessage(`Keep at least $${ante * 6 + trips} available for Ante, Blind, and a possible 4x Play bet.`);
+    if (ante * 6 + trips > bankroll) return setMessage(`Keep at least $${money(ante * 6 + trips)} available for Ante, Blind, and a possible 4x Play bet.`);
     const deck = shuffledDeck();
     const nextPlayer = deck.slice(0, 2);
     setPlayer(nextPlayer);

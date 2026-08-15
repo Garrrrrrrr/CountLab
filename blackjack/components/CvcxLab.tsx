@@ -285,6 +285,7 @@ export function CvcxLab() {
   useEffect(() => {
     const refresh = () => setCvcxTemplates(cvcxLibrary.templates());
     refresh();
+    track("cvcx_tab_changed", { tab: "viewer" });
     addEventListener(cvcxLibrary.event, refresh);
     return () => removeEventListener(cvcxLibrary.event, refresh);
   }, []);
@@ -393,12 +394,14 @@ export function CvcxLab() {
     setRampName(name);
     setWongInAt(null);
     setRamp(expandPreset(name));
+    track("cvcx_preset_selected", { preset: name });
   };
   const useOptimal = () => {
     setRampName("Optimized");
     setRamp(optimalRamp);
     if (Number.isFinite(optimalUnit) && optimalUnit > 0)
       setBaseBet(Math.max(1, Math.round(optimalUnit)));
+    track("cvcx_calculation_run", { decks: rules.decks, penetration: rules.penetration, bankroll, baseBet, spread: rampName, handsPerHour });
   };
   const updateDollarBet = (trueCount: number, bet: number) => {
     setRampName("Custom");
@@ -419,6 +422,7 @@ export function CvcxLab() {
   const resetBetSpread = () => {
     setPreset(Object.hasOwn(RAMPS, rampName) ? rampName : "1-8");
     setHandsOverride({});
+    track("cvcx_reset", { stage: "bet_spread" });
   };
 
   const currentCvcxConfig = (): CvcxTemplateConfig => ({
@@ -612,7 +616,7 @@ export function CvcxLab() {
             <button
               type="button"
               aria-current={view === id ? "page" : undefined}
-              onClick={() => setView(id)}
+              onClick={() => { setView(id); track("cvcx_tab_changed", { tab: id }); }}
               className="pressable min-h-11 rounded-l-xl px-2 text-left text-sm font-medium hover:text-zinc-200 sm:text-center"
             >
               <i className={`fa-solid ${icon} mr-2 text-xs`} aria-hidden="true" />

@@ -3,10 +3,12 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button, GhostButton, Panel } from "@/components/ui";
+import { reportHandledError } from "@/lib/analytics";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error("[countlab] unhandled error", error);
+    reportHandledError("ReactErrorBoundary", error, "app/error");
   }, [error]);
 
   return (

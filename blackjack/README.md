@@ -38,39 +38,32 @@ every statement is idempotent (`create or replace`, `drop ... if exists` then
 
 ### Analytics and the admin dashboard
 
-Every meaningful user action is recorded to the `analytics_events` table
-defined in `supabase/schema.sql` — see `lib/analytics/track.ts`, called from
-every game, drill, and tool component. That includes page views,
-auth (sign-in/up/out, Google, guest mode), every hand dealt/decided/settled
-in Full Shoe, Ultimate Texas Hold'em, and Chase the Flush, every drill
-question answered (running count, true count, deck estimation, basic
-strategy, deviations, missing card, the integrated Full Shoe drill),
-simulation runs and results, CVCX/journal template saves and loads, journal
-entries and transactions, settings saves, and data export/import/clear.
-Guests are tracked too, under a per-device anonymous id, so no account is
-required for an event to show up.
+The typed client in `lib/analytics/` records canonical, privacy-conscious
+events for identity and sessions, SPA page views, feature adoption, auth,
+drills and question outcomes, table-game hands, calculator/simulation usage,
+acquisition, errors, Web Vitals, and normalized Supabase/worker performance.
+Anonymous activity is linked to an opaque Supabase user id after login without
+using email as an analytics identifier. Potentially sensitive financial values
+are bucketed and unsafe keys/PII-shaped strings are scrubbed in both the browser
+and Postgres.
 
-On top of those explicit calls, `lib/analytics/autocapture.ts` installs a
-single document-level click listener (`initAutocapture()`, started once from
-`AppShell`) that fires a generic `ui_click` event for every click on a
-button, link, or other interactive element app-wide — the same "autocapture"
-approach product analytics tools (PostHog, Amplitude, GA4) use as a safety
-net for anything not explicitly instrumented. It also detects **rage
-clicks** (3+ clicks in the same spot within 0.8s) and tracks **scroll
-depth** (25/50/75/100%, re-armed on every route change) and **outbound link
-clicks**. These are intentionally excluded from the admin dashboard's "Top
-actions" chart (`NOISY_EVENTS` in `components/AdminPage.tsx`) since they'd
-otherwise drown out the higher-signal named events — they get their own
-metric tiles instead.
+`AnalyticsProvider` starts one document-level autocapture listener as a safety
+net. It emits semantic `element_clicked`, `rage_click_detected`,
+`dead_click_detected`, and scroll-milestone events; explicit product events
+remain the source of truth. Low-priority events are durably batched and
+deduplicated by `event_id`, while conversions, completions, and errors flush
+immediately. Batches, session rollups, identity links, and deletion requests go
+through `supabase/functions/analytics`; the browser has no direct raw-table
+write permission.
 
-Only accounts listed in `admin_users` can read that data back, via the
-`/admin` page (`components/AdminPage.tsx`). It shows aggregate charts
-(events per day, top actions, most-viewed pages), plus a **visitor
-directory** — every signed-in user (by email) and guest (by anonymous id)
-with a first-seen/last-seen timestamp and event count — where clicking a
-visitor pulls their full timeline of what they did and when, via the
-`admin_visitor_summary()` and `admin_visitor_events()` Postgres functions in
-`supabase/schema.sql`.
+Only `admin_users` can open `/admin` or call its security-definer aggregate
+RPCs. The dashboard includes DAU/WAU/MAU, comparisons and segments, funnels,
+retention cohorts, feature and acquisition analytics, drill accuracy/speed and
+hard scenarios, pages/friction, errors, Web Vitals, API distributions, data
+quality, safe exports, and a deliberately pseudonymous high-level visitor
+view. It does not expose user email addresses or stored answer text. See
+`docs/analytics.md` for the event catalog, ownership, retention, and operating
+notes.
 
 Grant yourself access after your first sign-up by re-running the relevant
 statement in `supabase/schema.sql`, or directly:
@@ -82,11 +75,32 @@ insert into admin_users (user_id) select id from auth.users where email = 'you@e
 The nav only shows the "Analytics" link once `is_admin()` returns true for
 the signed-in user.
 
+Apply `supabase/schema.sql` before deploying the Edge Functions. The Pages
+workflow does not migrate the database. Then configure these server-only Edge
+secrets and deploy both functions:
+
+```bash
+supabase secrets set ANALYTICS_HASH_SALT=replace-with-random-secret \
+  ANALYTICS_ALLOWED_ORIGINS=https://countlab.ca,https://www.countlab.ca \
+  ANALYTICS_CRON_SECRET=replace-with-another-random-secret \
+  ANALYTICS_ALERT_WEBHOOK_URL=https://your-webhook.example
+supabase functions deploy analytics
+supabase functions deploy analytics-alerts
+```
+
+The repository's `deploy-analytics-functions.yml` automates subsequent
+function deployments when GitHub has `SUPABASE_ACCESS_TOKEN` (secret) and
+`SUPABASE_PROJECT_ID` (variable). Schedule `analytics-alerts` with the matching
+`x-cron-secret`, and schedule the admin-only `analytics_purge()` function to
+enforce the configured retention policy.
+
 **Local development:** create `blackjack/.env.local` (gitignored) with:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-public-key
+NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT=false
+NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE=1
 ```
 
 The anon key is meant to be public — it's embedded in the client bundle by
@@ -98,6 +112,9 @@ design. Access control comes from the Row Level Security policies in
 they're public values, see above) in GitHub → Settings → Secrets and
 variables → Actions → Variables tab; `.github/workflows/deploy.yml` passes
 them to the build step.
+Set `NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT=true` where analytics must wait for
+explicit opt-in. The performance sample rate accepts a value from 0 to 1 and
+never samples critical product, conversion, completion, or error events.
 
 The EV and bankroll pages use reproducible per-true-count aggregates generated
 by [`../blackjack-simulator`](../blackjack-simulator/README.md). The deployed

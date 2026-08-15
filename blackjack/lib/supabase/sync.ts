@@ -1,15 +1,16 @@
 import { supabase } from "./client";
 import { storage, type DrillProgress, type Session, type Settings } from "../statistics/storage";
 import { journalLibrary, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
+import { observeApiRequest } from "../analytics";
 
 /** Pulls this user's rows from Supabase and merges them into the local cache. Called once on sign-in. */
 export async function pullRemoteData(userId: string): Promise<void> {
   const [settingsRes, sessionsRes, progressRes, journalSessionsRes, transactionsRes] = await Promise.all([
-    supabase.from("settings").select("data").eq("user_id", userId).maybeSingle(),
-    supabase.from("drill_sessions").select("*").eq("user_id", userId),
-    supabase.from("drill_progress").select("*").eq("user_id", userId),
-    supabase.from("journal_sessions").select("*").eq("user_id", userId),
-    supabase.from("journal_transactions").select("*").eq("user_id", userId),
+    observeApiRequest("supabase", "sync_settings_read", supabase.from("settings").select("data").eq("user_id", userId).maybeSingle()),
+    observeApiRequest("supabase", "sync_drill_sessions_read", supabase.from("drill_sessions").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "sync_drill_progress_read", supabase.from("drill_progress").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "sync_journal_sessions_read", supabase.from("journal_sessions").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "sync_journal_transactions_read", supabase.from("journal_transactions").select("*").eq("user_id", userId)),
   ]);
 
   if (settingsRes.data?.data) storage.applyRemoteSettings(settingsRes.data.data as Settings);

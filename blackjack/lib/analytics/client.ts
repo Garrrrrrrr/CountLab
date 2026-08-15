@@ -1,16 +1,18 @@
 import { supabase } from "../supabase/client";
 import { APP_VERSION, ANALYTICS_CONFIG, STORAGE_KEYS, detectEnvironment } from "./config";
 import { buildContext, detectBot } from "./context";
-import { getAnonId, getUserId, isOptedOut, newEventId, onUserChange, setOptedOut } from "./identity";
-import { enqueue, flush, flushSync, setAccessToken } from "./queue";
+import { clearAnonId, getAnonId, getUserId, isOptedOut, newEventId, onUserChange, setOptedOut } from "./identity";
+import { clearPendingQueue, deleteAnalyticsIdentity, enqueue, flush, flushSync, linkIdentity, sendSessionRollup, setAccessToken } from "./queue";
 import { normalizeRoute, redactProperties } from "./redact";
 import {
   currentSession,
+  clearSessionData,
   endSession,
   ensureSession,
   recordEvent,
   recordPageView,
   syncEngagement,
+  snapshotSession,
   type EndedSession,
   type SessionState,
 } from "./session";
@@ -21,6 +23,7 @@ import type {
   Properties,
   TrackArgs,
 } from "./types";
+import { PASSIVE_EVENTS } from "./types";
 
 const environment = detectEnvironment();
 
@@ -29,6 +32,7 @@ let isBot = false;
 let currentRoute = "/";
 let previousRoute: string | undefined;
 let navigationHint: NavigationType | undefined;
+let navigationStartedAt = 0;
 let firstView = true;
 let aliasedUserId: string | undefined;
 
@@ -73,7 +77,7 @@ function buildPayload(event: EventName, properties: Properties | undefined, sess
 }
 
 /** Mirrors the session rollup into `analytics_sessions` for session-grain queries. */
-function upsertSession(session: SessionState, ended?: EndedSession): void {
+function upsertSession(session: SessionState, ended?: EndedSession, keepalive = false): void {
   if (!enabled()) return;
   const context = buildContext();
   const payload = {
@@ -87,6 +91,7 @@ function upsertSession(session: SessionState, ended?: EndedSession): void {
     engaged_ms: session.engaged_ms,
     page_views: session.page_views,
     events: session.events,
+    meaningful_events: session.meaningful_events || 0,
     first_path: session.first_path,
     last_path: session.last_path,
     is_first_session: session.is_first_session,
@@ -105,9 +110,7 @@ function upsertSession(session: SessionState, ended?: EndedSession): void {
     app_version: APP_VERSION,
     is_bot: isBot,
   };
-  void supabase.rpc("analytics_upsert_session", { p_session: payload }).then(({ error }) => {
-    if (error && process.env.NODE_ENV !== "production") console.warn("[analytics] session upsert failed", error.message);
-  });
+  sendSessionRollup(payload, keepalive);
 }
 
 /** Opens or rotates the session, emitting the lifecycle events that go with it. */
@@ -115,16 +118,7 @@ function withSession(): SessionState | undefined {
   if (!enabled()) return undefined;
   const { session, started, ended } = ensureSession(currentRoute);
   if (ended) {
-    emit("session_ended", {
-      duration_ms: ended.duration_ms,
-      engaged_ms: ended.engaged_ms,
-      page_views: ended.page_views,
-      events: ended.events,
-      bounced: ended.bounced,
-      exit_path: ended.last_path,
-      reason: ended.reason,
-    }, ended);
-    upsertSession(ended, ended);
+    emitSessionEnded(ended);
   }
   if (started) {
     const context = buildContext();
@@ -145,11 +139,25 @@ function emit(event: EventName, properties: Properties | undefined, session: Ses
   enqueue(buildPayload(event, properties, session));
 }
 
+function emitSessionEnded(ended: EndedSession): void {
+  emit("session_ended", {
+    duration_ms: ended.duration_ms,
+    engaged_ms: ended.engaged_ms,
+    page_views: ended.page_views,
+    events: ended.events,
+    meaningful_events: ended.meaningful_events || 0,
+    bounced: ended.bounced,
+    exit_path: ended.last_path,
+    reason: ended.reason,
+  }, ended);
+  upsertSession(ended, ended);
+}
+
 function track<E extends EventName>(event: E, ...args: TrackArgs<E>): void {
   if (!enabled()) return;
   const session = withSession();
   if (!session) return;
-  recordEvent();
+  recordEvent(!PASSIVE_EVENTS.has(event));
   emit(event, args[0] as Properties | undefined, session);
 }
 
@@ -174,7 +182,7 @@ function page(route: string, options: PageOptions = {}): void {
   navigationHint = undefined;
 
   recordPageView(normalized);
-  recordEvent();
+  recordEvent(false);
   emit("page_viewed", {
     route: normalized,
     title: options.title ?? (typeof document !== "undefined" ? document.title : undefined),
@@ -185,8 +193,18 @@ function page(route: string, options: PageOptions = {}): void {
   }, session);
 
   if (previousRoute) {
-    recordEvent();
+    recordEvent(false);
     emit("navigated", { from: previousRoute, to: normalized, mechanism: navigationType }, session);
+  }
+  if (navigationStartedAt && !firstView) {
+    const elapsed = Math.max(0, performance.now() - navigationStartedAt);
+    navigationStartedAt = 0;
+    recordEvent(false);
+    emit("performance_metric", {
+      metric: "route_transition",
+      value_ms: Math.round(elapsed),
+      route: normalized,
+    }, session);
   }
   firstView = false;
 }
@@ -197,20 +215,16 @@ function page(route: string, options: PageOptions = {}): void {
  */
 function identify(userId: string): void {
   if (!enabled() || aliasedUserId === userId) return;
-  aliasedUserId = userId;
-  void supabase
-    .from("analytics_aliases")
-    .upsert({ anon_id: getAnonId(), user_id: userId }, { onConflict: "anon_id,user_id", ignoreDuplicates: true })
-    .then(({ error }) => {
-      if (error && process.env.NODE_ENV !== "production") console.warn("[analytics] alias failed", error.message);
-    });
+  void linkIdentity(getAnonId()).then((linked) => {
+    if (linked) aliasedUserId = userId;
+  });
 }
 
 /** Ends the current session on sign-out. The device id is deliberately kept. */
 function reset(): void {
   aliasedUserId = undefined;
   const ended = endSession("sign_out");
-  if (ended) upsertSession(ended, ended);
+  if (ended) emitSessionEnded(ended);
   void flush();
 }
 
@@ -218,7 +232,7 @@ function handleVisibility(): void {
   syncEngagement();
   if (document.visibilityState === "hidden") {
     const session = currentSession();
-    if (session) upsertSession(session);
+    if (session) upsertSession(session, undefined, true);
     flushSync();
   }
 }
@@ -246,12 +260,30 @@ function init(): void {
   window.addEventListener("blur", syncEngagement);
   window.addEventListener("pagehide", () => {
     syncEngagement();
-    const session = currentSession();
-    if (session) upsertSession(session);
+    const ended = snapshotSession("page_hide");
+    if (ended) {
+      emit("session_ended", {
+        duration_ms: ended.duration_ms,
+        engaged_ms: ended.engaged_ms,
+        page_views: ended.page_views,
+        events: ended.events,
+        meaningful_events: ended.meaningful_events || 0,
+        bounced: ended.bounced,
+        exit_path: ended.last_path,
+        reason: ended.reason,
+      }, ended);
+      upsertSession(ended, ended, true);
+    }
     flushSync();
   });
   window.addEventListener("popstate", () => {
     navigationHint = "back_forward";
+    navigationStartedAt = performance.now();
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (!event.persisted) return;
+    firstView = true;
+    page(window.location.pathname, { navigationType: "back_forward" });
   });
 
   // Rolls the session over when a tab sits idle past the timeout without any
@@ -266,6 +298,38 @@ function init(): void {
 /** Lets autocapture tell the next page view how the user got there. */
 function setNavigationHint(type: NavigationType): void {
   navigationHint = type;
+  navigationStartedAt = typeof performance !== "undefined" ? performance.now() : 0;
+}
+
+function setConsent(value: boolean, source: "settings" | "privacy_banner" | "api" = "api"): void {
+  if (value) {
+    const wasEnabled = enabled();
+    setOptedOut(false);
+    track("consent_updated", { analytics: true, source });
+    if (!wasEnabled) page(currentRoute);
+    return;
+  }
+  if (enabled()) track("consent_updated", { analytics: false, source });
+  flushSync();
+  setOptedOut(true);
+  clearPendingQueue();
+}
+
+async function deleteHistory(): Promise<boolean> {
+  const deleted = await deleteAnalyticsIdentity(getAnonId());
+  if (!deleted) return false;
+  aliasedUserId = undefined;
+  clearPendingQueue();
+  clearSessionData();
+  clearAnonId();
+  try {
+    for (const key of [STORAGE_KEYS.attribution, STORAGE_KEYS.pageViews, STORAGE_KEYS.experiments, STORAGE_KEYS.contentVisits]) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Server deletion succeeded; local storage cleanup remains best effort.
+  }
+  return true;
 }
 
 export const analytics = {
@@ -276,7 +340,9 @@ export const analytics = {
   reset,
   flush,
   setNavigationHint,
-  setEnabled: (value: boolean) => setOptedOut(!value),
+  setEnabled: (value: boolean) => setConsent(value, "api"),
+  setConsent,
+  deleteHistory,
   isEnabled: enabled,
   get route() {
     return currentRoute;

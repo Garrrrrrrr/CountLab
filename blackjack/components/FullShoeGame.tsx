@@ -254,7 +254,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       setPhase("bet");
     }
     sound(returned > settledHands.reduce((sum, hand) => sum + hand.bet, 0) ? "win" : "deal", soundEnabled);
-    track("full_shoe_hand_settled", { round, outcomes, returned, finalBankroll, reachedCut, dealerTotal, dealerBust, dealerNatural });
+    const totalStaked = settledHands.reduce((sum, hand) => sum + hand.bet, 0) + insurance;
+    track("full_shoe_hand_settled", { round, outcomes, net: returned - totalStaked, finalBankroll, reachedCut, dealerTotal, dealerBust, dealerNatural });
   };
 
   const playDealer = async (settledHands = hands, dealerCards = dealer, insurance = insuranceBet) => {

@@ -4,8 +4,6 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
-import { track } from "@/lib/analytics/track";
-import { startAutocapture, resetScrollDepth } from "@/lib/analytics/autocapture";
 import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
@@ -74,13 +72,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     toggle = useRef<HTMLButtonElement>(null),
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
-  useEffect(() => {
-    startAutocapture();
-  }, []);
-  useEffect(() => {
-    track("page_view");
-    resetScrollDepth();
-  }, [path]);
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -160,6 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         id="primary-navigation"
         ref={navigation}
         aria-label="Primary navigation"
+        data-analytics-nav="sidebar"
         className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 w-[min(17rem,86vw)] overflow-y-auto border-r border-white/[.07] bg-[#101411]/95 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] shadow-[20px_0_70px_rgba(0,0,0,.18)] backdrop-blur-2xl transition-transform duration-300 ease-out lg:w-[17rem] lg:translate-x-0`}
       >
         <Link href="/dashboard" className="mb-8 flex items-center gap-3">
@@ -221,11 +213,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
-            aria-label="Return to portfolio"
+            aria-label="Go to CountLab home"
             className="pressable grid min-h-11 min-w-11 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
           >
             <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
-            <span className="hidden sm:inline">Portfolio</span>
+            <span className="hidden sm:inline">Home</span>
           </a>
           <Link
             href="/settings"

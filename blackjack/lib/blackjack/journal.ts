@@ -2,6 +2,7 @@ import type { AdvantageRules, RampPoint } from "./advantage";
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
+import { observeApiRequest } from "../analytics/api";
 
 export interface JournalSession {
   id: string;
@@ -108,7 +109,7 @@ const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
 function pushJournalSession(session: JournalSession) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "journal_session_upsert", supabase
     .from("journal_sessions")
     .upsert({
       id: session.id,
@@ -125,7 +126,7 @@ function pushJournalSession(session: JournalSession) {
       net_result: session.netResult,
       expenses: session.expenses,
       notes: session.notes ?? null,
-    })
+    }))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync journal session", error);
     });
@@ -134,7 +135,7 @@ function pushJournalSession(session: JournalSession) {
 function deleteRemoteJournalSession(id: string) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase.from("journal_sessions").delete().eq("id", id).eq("user_id", user.id).then(({ error }) => {
+  observeApiRequest("supabase", "journal_session_delete", supabase.from("journal_sessions").delete().eq("id", id).eq("user_id", user.id)).then(({ error }) => {
     if (error) console.error("[countlab] failed to delete remote journal session", error);
   });
 }
@@ -142,7 +143,7 @@ function deleteRemoteJournalSession(id: string) {
 function pushTransaction(transaction: BankrollTransaction) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase
+  observeApiRequest("supabase", "journal_transaction_upsert", supabase
     .from("journal_transactions")
     .upsert({
       id: transaction.id,
@@ -152,7 +153,7 @@ function pushTransaction(transaction: BankrollTransaction) {
       type: transaction.type,
       amount: transaction.amount,
       note: transaction.note ?? null,
-    })
+    }))
     .then(({ error }) => {
       if (error) console.error("[countlab] failed to sync bankroll transaction", error);
     });
@@ -161,7 +162,7 @@ function pushTransaction(transaction: BankrollTransaction) {
 function deleteRemoteTransaction(id: string) {
   const user = getCurrentUser();
   if (!user) return;
-  supabase.from("journal_transactions").delete().eq("id", id).eq("user_id", user.id).then(({ error }) => {
+  observeApiRequest("supabase", "journal_transaction_delete", supabase.from("journal_transactions").delete().eq("id", id).eq("user_id", user.id)).then(({ error }) => {
     if (error) console.error("[countlab] failed to delete remote bankroll transaction", error);
   });
 }
