@@ -27,11 +27,31 @@ interface AnalyticsEvent {
   created_at: string;
 }
 
+interface VisitorSummary {
+  visitor_id: string;
+  user_id: string | null;
+  email: string | null;
+  event_count: number;
+  first_seen: string;
+  last_seen: string;
+}
+
+interface SelectedVisitor {
+  visitorId: string;
+  userId: string | null;
+  anonId: string | null;
+  label: string;
+}
+
 const SAMPLE_SIZE = 2000;
 const DAYS_BACK = 14;
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
+}
+
+function visitorLabel(v: VisitorSummary) {
+  return v.email ?? `guest ${v.visitor_id.slice(0, 8)}`;
 }
 
 export default function AdminPage() {
@@ -43,13 +63,18 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [lastLoaded, setLastLoaded] = useState<Date>();
+  const [visitors, setVisitors] = useState<VisitorSummary[]>([]);
+  const [visitorsError, setVisitorsError] = useState<string>();
+  const [selectedVisitor, setSelectedVisitor] = useState<SelectedVisitor>();
+  const [timeline, setTimeline] = useState<AnalyticsEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(undefined);
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
-    const [sampleRes, countRes, todayRes] = await Promise.all([
+    const [sampleRes, countRes, todayRes, visitorsRes] = await Promise.all([
       supabase
         .from("analytics_events")
         .select("id, user_id, anon_id, session_id, event, path, properties, created_at")
@@ -60,9 +85,12 @@ export default function AdminPage() {
         .from("analytics_events")
         .select("*", { count: "exact", head: true })
         .gte("created_at", startOfToday.toISOString()),
+      supabase.rpc("admin_visitor_summary"),
     ]);
     if (sampleRes.error) setError(sampleRes.error.message);
     else setEvents(sampleRes.data as AnalyticsEvent[]);
+    if (visitorsRes.error) setVisitorsError(visitorsRes.error.message);
+    else setVisitors(visitorsRes.data as VisitorSummary[]);
     setTotalCount(countRes.count ?? null);
     setTodayCount(todayRes.count ?? null);
     setLastLoaded(new Date());
@@ -72,6 +100,17 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAdmin) void load();
   }, [isAdmin, load]);
+
+  const viewVisitor = useCallback(async (visitor: SelectedVisitor) => {
+    setSelectedVisitor(visitor);
+    setTimelineLoading(true);
+    const { data, error: timelineError } = await supabase.rpc("admin_visitor_events", {
+      target_user_id: visitor.userId,
+      target_anon_id: visitor.anonId,
+    });
+    if (!timelineError) setTimeline(data as AnalyticsEvent[]);
+    setTimelineLoading(false);
+  }, []);
 
   if (!user) {
     return (
@@ -212,6 +251,92 @@ export default function AdminPage() {
           </div>
         </Panel>
       </div>
+
+      <Panel className="mt-6">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Visitor directory</h2>
+          <p className="text-xs text-zinc-500">Every user and guest with tracked activity, most recently active first.</p>
+        </div>
+        {visitorsError && <p className="mb-4 text-sm text-red-300">Failed to load visitors: {visitorsError}</p>}
+        {visitors.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-zinc-500">
+                <tr>
+                  {["Visitor", "Events", "First seen", "Last seen", ""].map((x) => (
+                    <th className="pb-3 pr-4 font-medium" key={x}>
+                      {x}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visitors.map((v) => (
+                  <tr key={v.visitor_id} className="border-t border-white/[.06]">
+                    <td className="py-3 pr-4 font-medium">
+                      {v.email ? v.email : <span className="text-zinc-500">guest {v.visitor_id.slice(0, 8)}</span>}
+                    </td>
+                    <td className="py-3 pr-4 text-zinc-400">{v.event_count}</td>
+                    <td className="whitespace-nowrap py-3 pr-4 text-zinc-500">{new Date(v.first_seen).toLocaleString()}</td>
+                    <td className="whitespace-nowrap py-3 pr-4 text-zinc-500">{new Date(v.last_seen).toLocaleString()}</td>
+                    <td className="py-2 text-right">
+                      <GhostButton
+                        className="min-h-8 px-3 py-1.5 text-xs"
+                        onClick={() => void viewVisitor({ visitorId: v.visitor_id, userId: v.user_id, anonId: v.user_id ? null : v.visitor_id, label: visitorLabel(v) })}
+                      >
+                        View timeline
+                      </GhostButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-10 text-center text-zinc-500">{loading ? "Loading…" : "No visitors recorded yet."}</div>
+        )}
+      </Panel>
+
+      {selectedVisitor && (
+        <Panel className="mt-6">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Timeline · {selectedVisitor.label}</h2>
+              <p className="mt-1 text-xs text-zinc-500">Everything this visitor did, most recent first.</p>
+            </div>
+            <GhostButton onClick={() => setSelectedVisitor(undefined)}>Close</GhostButton>
+          </div>
+          {timelineLoading ? (
+            <div className="py-10 text-center text-zinc-500">Loading…</div>
+          ) : timeline.length ? (
+            <div className="max-h-[32rem] overflow-y-auto overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="sticky top-0 bg-[#171c18] text-zinc-500">
+                  <tr>
+                    {["Time", "Event", "Path", "Details"].map((x) => (
+                      <th className="pb-3 pr-4 font-medium" key={x}>
+                        {x}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {timeline.map((e) => (
+                    <tr key={e.id} className="border-t border-white/[.06] align-top">
+                      <td className="whitespace-nowrap py-3 pr-4 text-zinc-500">{new Date(e.created_at).toLocaleString()}</td>
+                      <td className="py-3 pr-4 font-medium">{e.event}</td>
+                      <td className="py-3 pr-4 text-zinc-400">{e.path}</td>
+                      <td className="max-w-md truncate py-3 text-xs text-zinc-500">{e.properties ? JSON.stringify(e.properties) : ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-10 text-center text-zinc-500">No events found for this visitor.</div>
+          )}
+        </Panel>
+      )}
 
       <Panel className="mt-6">
         <div className="mb-5 flex items-center justify-between">

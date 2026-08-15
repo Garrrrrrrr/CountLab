@@ -11,6 +11,7 @@ import type { ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack
 import { Button, GhostButton, Metric, NumberField, Panel, Select } from "./ui";
 import { ShoeExplorer } from "./ShoeExplorer";
 import { HandReplayer } from "./HandReplayer";
+import { track } from "@/lib/analytics/track";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 const percent = (value: number, digits = 2) => `${(value * 100).toFixed(digits)}%`;
@@ -111,6 +112,13 @@ export function SessionSimulator() {
             setAnalysisName(saved.name);
             pendingRun.current = undefined;
           }
+          track("session_simulation_completed", {
+            expectedHourlyEv: message.result.expectedHourlyEv,
+            chanceOfProfit: message.result.chanceOfProfit,
+            ruinCrossingRate: message.result.ruinCrossingRate,
+            paths: message.result.paths,
+            roundsPerPath: message.result.roundsPerPath,
+          });
         }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
         if (message.kind === "error") { setError(message.error); setRunning(false); }
@@ -127,7 +135,7 @@ export function SessionSimulator() {
         const message = event.data;
         if (message.id !== shoeRequestId.current) return;
         if (message.kind === "progress") setProgress(message.completed / message.total);
-        if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); }
+        if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); track("shoe_simulation_completed", { totalShoes: message.result.totalShoes, totalHands: message.result.totalHands, totalProfit: message.result.totalProfit, avPerHour: message.result.avPerHour }); }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
         if (message.kind === "error") { setError(message.error); setRunning(false); }
       };
@@ -143,15 +151,18 @@ export function SessionSimulator() {
       pendingRun.current = { config, name: analysisName };
       setResult(undefined);
       getWorker().postMessage({ kind: "start", id, config });
+      track("session_simulation_run", { rounds: config.rounds, paths: config.paths, bankroll: config.bankroll, bettingUnit: config.bettingUnit });
     } else {
       const id = ++shoeRequestId.current;
       setShoeResult(undefined);
       getShoeWorker().postMessage({ kind: "start", id, config: shoeConfig });
+      track("shoe_simulation_run", { handsToSimulate: shoeConfig.handsToSimulate, bankroll: shoeConfig.bankroll });
     }
   };
   const cancel = () => {
     workerRef.current?.postMessage({ kind: "cancel", id: requestId.current });
     shoeWorkerRef.current?.postMessage({ kind: "cancel", id: shoeRequestId.current });
+    track("simulation_cancelled", { mode });
   };
   const chooseSpread = (name: string) => {
     setSpread(name);
@@ -184,6 +195,7 @@ export function SessionSimulator() {
   const saveTemplate = () => {
     const saved = simulationLibrary.saveTemplate(config, templateName);
     setTemplateName(saved.name);
+    track("simulation_template_saved", { name: saved.name });
   };
   const loadRun = (saved: SavedSimulationRun) => {
     applyConfig(saved.config);
@@ -191,8 +203,9 @@ export function SessionSimulator() {
     setAnalysisName(saved.name);
     setCurrentRunId(saved.id);
     setProgress(1);
+    track("simulation_run_loaded", { name: saved.name });
   };
-  const toggleComparison = (id: string) => setSelectedRunIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current.slice(-1), id]);
+  const toggleComparison = (id: string) => { setSelectedRunIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current.slice(-1), id]); track("simulation_comparison_toggled"); };
   const exportLibrary = () => {
     const url = URL.createObjectURL(new Blob([simulationLibrary.exportData()], { type: "application/json" }));
     const link = document.createElement("a");
@@ -201,12 +214,14 @@ export function SessionSimulator() {
     link.click();
     URL.revokeObjectURL(url);
     setLibraryNotice("Analysis library exported.");
+    track("data_exported", { scope: "simulation_library" });
   };
   const importLibrary = async (file?: File) => {
     if (!file) return;
     try {
       const imported = simulationLibrary.importData(await file.text());
       setLibraryNotice(`Imported ${imported.runs} run${imported.runs === 1 ? "" : "s"} and ${imported.templates} setup${imported.templates === 1 ? "" : "s"}.`);
+      track("data_imported", { scope: "simulation_library", runs: imported.runs, templates: imported.templates });
     } catch (importError) {
       setLibraryNotice(importError instanceof Error ? importError.message : "The analysis library could not be imported.");
     } finally {

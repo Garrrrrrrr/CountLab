@@ -27,6 +27,7 @@ import { BlackjackShoe } from "@/lib/blackjack/shoe";
 import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
 import { CountingErrorCategory, makeSession, Mistake, Session, storage } from "@/lib/statistics/storage";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
+import { track } from "@/lib/analytics/track";
 import rawDeckEstimationPhotos from "@/public/deck-estimation/manifest.json";
 
 type DeckPhoto = { file: string; decks: number; numDecks: number; sourceUrl: string };
@@ -152,7 +153,7 @@ export function RunningCountDrill() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (phase !== "show") return; const id = window.setTimeout(advance, speed); return () => clearTimeout(id); }, [phase, cursor, size, speed]);
 
-  const start = () => { const next = makeCountSequence(decks, amount, bias); setCards(next); setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setMessage(""); setElapsed(0); pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false; startRef.current = Date.now(); setPhase("show"); };
+  const start = () => { const next = makeCountSequence(decks, amount, bias); setCards(next); setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setMessage(""); setElapsed(0); pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false; startRef.current = Date.now(); setPhase("show"); track("drill_started", { drill: "Running Count", preset, decks, amount, speed, group, checkpoint, bias }); };
   const applyPreset = (value: CountingPreset) => { const p = COUNTING_PRESETS[value]; setPreset(value); setDecks(p.decks); setAmount(p.cards); setSpeed(p.speed); setGroup(p.group); setCheckpoint(p.checkpoint); storage.saveSettings({ ...storage.settings(), countingPreset: value }); };
   const submit = () => {
     answerTotal.current += Date.now() - answerStart.current;
@@ -161,6 +162,7 @@ export function RunningCountDrill() {
     const nextMistakes = ok ? mistakes : [...mistakes, { question: `Running count after ${cursor} cards`, userAnswer: answer || "blank", correctAnswer: signed(expected), explanation: category === "missed cancellation" ? "Cancel low and high cards before carrying the net value forward." : "Recount from the previous checkpoint and watch the sign.", category }];
     const signGroup = expected < 0 ? "negative" : expected > 0 ? "positive" : "zero", nextCategories = addCategory(categories, `${group}-card groups, ${signGroup}`, ok);
     setChecks(nextChecks); setCorrect(nextCorrect); setStreak(nextStreak); setBest(Math.max(best, nextStreak)); setMistakes(nextMistakes); setCategories(nextCategories); interrupted.current = false;
+    track("running_count_answered", { ok, expected, actual, group, checkpoint, category });
     if (cursor === cards.length) { finish(nextChecks, nextCorrect, nextMistakes, nextCategories); return; }
     if (feedbackMode === "immediate") { setMessage(ok ? `Correct: ${signed(expected)}` : `Correct count: ${signed(expected)}`); setPhase("feedback"); } else { setSize(pickSize()); setPhase("show"); }
   };
@@ -219,7 +221,7 @@ export function TrueCountDrill() {
     }
     const q = makeTrueCountScenario({ decks, resolution, rounding: settings.rounding, focus: scenarioFocus }); setQuestion(q); setTcAnswer(""); setDeckAnswer(""); answerStarted.current = Date.now(); setPhase("question");
   };
-  const start = () => { setIndex(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); totalMs.current = 0; started.current = Date.now(); nextQuestion(); };
+  const start = () => { setIndex(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); totalMs.current = 0; started.current = Date.now(); nextQuestion(); track("drill_started", { drill: "True Count", decks, resolution, mode, focus }); };
   const submit = () => {
     if (!question) return; totalMs.current += Date.now() - answerStarted.current;
     const tcOk = Number(tcAnswer) === question.answer, deckOk = mode === "division" || Math.abs(Number(deckAnswer) - question.estimatedDecksRemaining) < 0.001, ok = tcOk && deckOk;
@@ -228,6 +230,7 @@ export function TrueCountDrill() {
     const nextMistakes = ok ? mistakes : [...mistakes, { question: `RC ${signed(question.runningCount)} with ${question.estimatedDecksRemaining} decks remaining`, userAnswer: `TC ${tcAnswer || "blank"}${mode === "combined" ? `, ${deckAnswer || "blank"} decks` : ""}`, correctAnswer: `TC ${signed(question.answer)}, ${question.estimatedDecksRemaining} decks`, explanation: `${signed(question.runningCount)} ÷ ${question.estimatedDecksRemaining} = ${(question.runningCount / question.estimatedDecksRemaining).toFixed(2)}. ${settings.rounding === "floor" ? "Floor moves toward negative infinity, so -1.2 becomes -2." : settings.rounding === "truncate" ? "Truncate drops the decimal toward zero, so -1.2 becomes -1." : "Round to the nearest integer."}`, category }];
     const nextCorrect = correct + Number(ok), nextStreak = ok ? streak + 1 : 0, nextIndex = index + 1;
     setCorrect(nextCorrect); setStreak(nextStreak); setBest(Math.max(best, nextStreak)); setMistakes(nextMistakes); setCategories(nextCategories); setIndex(nextIndex);
+    track("true_count_answered", { ok, tcOk, deckOk, mode, focus, category });
     if (nextIndex >= target) return finish(nextIndex, nextCorrect, Math.max(best, nextStreak), nextMistakes, nextCategories);
     if (feedbackMode === "immediate") { setMessage(ok ? `Correct: ${signed(question.answer)}` : `Correct answer: ${signed(question.answer)}`); setPhase("feedback"); } else nextQuestion();
   };
@@ -268,11 +271,12 @@ export function DeckEstimationDrill() {
     setPhoto(chosen); setDecks(chosen.numDecks); setRemaining(chosen.decks);
     setAnswer(""); answerStarted.current = Date.now(); setPhase("question");
   };
-  const start = () => { setQuestion(0); setCorrect(0); setErrors([]); setMistakes([]); setCategories({}); totalMs.current = 0; started.current = Date.now(); newTray(); };
+  const start = () => { setQuestion(0); setCorrect(0); setErrors([]); setMistakes([]); setCategories({}); totalMs.current = 0; started.current = Date.now(); newTray(); track("drill_started", { drill: "Deck Estimation", decks, resolution }); };
   const submit = () => {
     const expected = roundDeckEstimate(remaining, resolution), actual = Number(answer), error = Number.isFinite(actual) && answer.trim() ? Math.abs(actual - remaining) : decks, ok = Math.abs(actual - expected) < 0.001, nextQuestion = question + 1, nextCorrect = correct + Number(ok), nextErrors = [...errors, error]; totalMs.current += Date.now() - answerStarted.current;
     const category = `${resolution}-deck${remaining <= 1 ? ", last deck" : ""}`, nextCategories = addCategory(categories, category, ok), nextMistakes = ok ? mistakes : [...mistakes, { question: "Decks remaining in the pictured tray", userAnswer: answer || "blank", correctAnswer: String(expected), explanation: `The tray contains ${(decks - remaining).toFixed(2)} decks discarded, leaving ${remaining.toFixed(2)} before rounding to ${resolution}-deck resolution.`, category: "deck estimate" as const }];
     setQuestion(nextQuestion); setCorrect(nextCorrect); setErrors(nextErrors); setCategories(nextCategories); setMistakes(nextMistakes);
+    track("deck_estimation_answered", { ok, expected, actual, error, resolution });
     if (nextQuestion >= target) return finish(nextQuestion, nextCorrect, nextErrors, nextMistakes, nextCategories, remaining <= 1 ? Number(ok) * 100 : 0);
     if (feedbackMode === "immediate") { setMessage(ok ? `Correct: ${expected} decks remain` : `Target estimate: ${expected} decks`); setPhase("feedback"); } else newTray();
   };
@@ -298,7 +302,7 @@ export function FullShoeDrill() {
   const [correct, setCorrect] = useState(0), [questions, setQuestions] = useState(0), [mistakes, setMistakes] = useState<Mistake[]>([]), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}), [message, setMessage] = useState(""), [result, setResult] = useState<Session>();
   const started = useRef(0), rules: BlackjackRules = { decks, dealerHitsSoft17: saved.dealerHitsSoft17, doubleAfterSplit: saved.doubleAfterSplit, resplitAces: saved.resplitAces, lateSurrender: saved.lateSurrender, doubleRule: "any" };
   const decksRemaining = shoe.current?.decksRemaining() ?? decks, expectedDecks = roundDeckEstimate(decksRemaining, 0.5), currentTc = trueCount(rc, expectedDecks, saved.rounding), expectedWager = backCount ? 0 : expectedBet(currentTc, baseBet, spread, wongOut);
-  const start = () => { const next = new BlackjackShoe(decks); let burn = 0; if (burnCard) { const card = next.deal(); if (card) burn = runningCount([card]); } shoe.current = next; setRc(burn); setRounds(0); setCorrect(0); setQuestions(0); setMistakes([]); setCategories({}); setRound(undefined); setAnswers({ deck: "", tc: "", bet: "", count: "" }); started.current = Date.now(); setPhase("bet"); };
+  const start = () => { const next = new BlackjackShoe(decks); let burn = 0; if (burnCard) { const card = next.deal(); if (card) burn = runningCount([card]); } shoe.current = next; setRc(burn); setRounds(0); setCorrect(0); setQuestions(0); setMistakes([]); setCategories({}); setRound(undefined); setAnswers({ deck: "", tc: "", bet: "", count: "" }); started.current = Date.now(); setPhase("bet"); track("drill_started", { drill: "Full Shoe", decks, spots, penetration, spread, wongOut, backCount }); };
   const record = (label: string, ok: boolean) => setCategories((all) => addCategory(all, label, ok));
   const submitBet = () => {
     if (!shoe.current) return; const deckOk = Math.abs(Number(answers.deck) - expectedDecks) < 0.001, tcOk = Number(answers.tc) === currentTc, betOk = Number(answers.bet || 0) === expectedWager;
@@ -307,6 +311,7 @@ export function FullShoeDrill() {
     if (!tcOk) nextMistakes.push({ question: `True count before round ${rounds + 1}`, userAnswer: answers.tc || "blank", correctAnswer: signed(currentTc), explanation: `${signed(rc)} ÷ ${expectedDecks}, using ${saved.rounding} rounding.`, category: classifyTrueCountError(rc, expectedDecks, currentTc, Number(answers.tc)) });
     if (!betOk) nextMistakes.push({ question: `Bet before round ${rounds + 1}`, userAnswer: answers.bet || "blank", correctAnswer: `$${expectedWager}`, explanation: wongOut && currentTc < 0 ? "The selected wong-out rule sets negative-count bets to zero." : `Apply the ${spread} ramp to a $${baseBet} unit.`, category: "bet sizing" });
     record("deck estimate", deckOk); record("true count", tcOk); record("bet sizing", betOk); setCorrect((x) => x + gained); setQuestions((x) => x + added); setMistakes(nextMistakes);
+    track("full_shoe_drill_bet_submitted", { deckOk, tcOk, betOk, expectedWager, tc: currentTc, round: rounds + 1 });
     const dealt = simulateRound(shoe.current, spots, rules, currentTc); setRound(dealt); setInsuranceResolved(false); setPhase(backCount ? "count" : "play");
   };
   const chooseInsurance = (play: "I" | "N") => {
@@ -315,12 +320,15 @@ export function FullShoeDrill() {
     record("insurance", ok); setQuestions((x) => x + 1); setCorrect((x) => x + Number(ok));
     if (!ok) setMistakes((all) => [...all, { question: `Insurance at TC ${signed(currentTc)}`, userAnswer: actionNames[play], correctAnswer: actionNames[round.insurancePlay!], explanation: "Hi-Lo insurance is taken at TC +3 or higher.", category: "playing decision" }]);
     setInsuranceResolved(true);
+    track("full_shoe_drill_insurance_decision", { play, ok, tc: currentTc });
   };
   const choosePlay = (play: DeviationAction) => {
     if (!round) return; const ok = play === round.correctPlay; record(round.correctPlay !== round.basicPlay ? "index deviation" : "basic strategy", ok); setQuestions((x) => x + 1); setCorrect((x) => x + Number(ok)); setAnswers((x) => ({ ...x, play })); if (!ok) setMistakes((all) => [...all, { question: `${round.heroInitial.map((c) => c.rank).join(",")} vs ${round.dealerUpcard.rank} at TC ${signed(currentTc)}`, userAnswer: actionNames[play], correctAnswer: actionNames[round.correctPlay], explanation: round.explanation, category: "playing decision" }]); setPhase("count");
+    track("full_shoe_drill_playing_decision", { play, correctPlay: round.correctPlay, ok, isDeviation: round.correctPlay !== round.basicPlay, tc: currentTc });
   };
   const submitCount = () => {
     if (!round || !shoe.current) return; const ending = rc + runningCount(round.exposedCards), ok = Number(answers.count) === ending; record("round-end count", ok); const nextQuestions = questions + 1, nextCorrect = correct + Number(ok), nextMistakes = ok ? mistakes : [...mistakes, { question: `Running count after round ${rounds + 1}`, userAnswer: answers.count || "blank", correctAnswer: signed(ending), explanation: `The full table and dealer reveal changed the count by ${signed(runningCount(round.exposedCards))}.`, category: "hole-card reveal" as const }]; setQuestions(nextQuestions); setCorrect(nextCorrect); setMistakes(nextMistakes); setRc(ending); setRounds((x) => x + 1); setMessage(ok ? `Count confirmed at ${signed(ending)}` : `Correct running count: ${signed(ending)}`); setPhase("feedback");
+    track("full_shoe_drill_count_submitted", { ok, ending, round: rounds + 1 });
   };
   const continueRound = () => {
     if (!shoe.current) return; const cut = decks * 52 * (1 - penetration); if (shoe.current.cardsRemaining() <= cut || shoe.current.cardsRemaining() < spots * 2 + 12) { const session = makeSession("Full Shoe", questions, correct, Date.now() - started.current, correct, mistakes, categories, { roundsCompleted: rounds, cardsSeen: decks * 52 - shoe.current.cardsRemaining(), finalRunningCount: rc, penetration, backCount }, [spread, wongOut ? "wong-out-negative" : "play-all", `${spots}-spots`]); storage.addSession(session); setResult(session); setPhase("done"); } else { setRound(undefined); setAnswers({ deck: "", tc: "", bet: "", count: "" }); setPhase("bet"); }

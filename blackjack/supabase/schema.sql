@@ -71,29 +71,49 @@ alter table drill_progress enable row level security;
 alter table journal_sessions enable row level security;
 alter table journal_transactions enable row level security;
 
+drop policy if exists "settings owner select" on settings;
 create policy "settings owner select" on settings for select using (auth.uid() = user_id);
+drop policy if exists "settings owner insert" on settings;
 create policy "settings owner insert" on settings for insert with check (auth.uid() = user_id);
+drop policy if exists "settings owner update" on settings;
 create policy "settings owner update" on settings for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "settings owner delete" on settings;
 create policy "settings owner delete" on settings for delete using (auth.uid() = user_id);
 
+drop policy if exists "drill_sessions owner select" on drill_sessions;
 create policy "drill_sessions owner select" on drill_sessions for select using (auth.uid() = user_id);
+drop policy if exists "drill_sessions owner insert" on drill_sessions;
 create policy "drill_sessions owner insert" on drill_sessions for insert with check (auth.uid() = user_id);
+drop policy if exists "drill_sessions owner update" on drill_sessions;
 create policy "drill_sessions owner update" on drill_sessions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "drill_sessions owner delete" on drill_sessions;
 create policy "drill_sessions owner delete" on drill_sessions for delete using (auth.uid() = user_id);
 
+drop policy if exists "drill_progress owner select" on drill_progress;
 create policy "drill_progress owner select" on drill_progress for select using (auth.uid() = user_id);
+drop policy if exists "drill_progress owner insert" on drill_progress;
 create policy "drill_progress owner insert" on drill_progress for insert with check (auth.uid() = user_id);
+drop policy if exists "drill_progress owner update" on drill_progress;
 create policy "drill_progress owner update" on drill_progress for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "drill_progress owner delete" on drill_progress;
 create policy "drill_progress owner delete" on drill_progress for delete using (auth.uid() = user_id);
 
+drop policy if exists "journal_sessions owner select" on journal_sessions;
 create policy "journal_sessions owner select" on journal_sessions for select using (auth.uid() = user_id);
+drop policy if exists "journal_sessions owner insert" on journal_sessions;
 create policy "journal_sessions owner insert" on journal_sessions for insert with check (auth.uid() = user_id);
+drop policy if exists "journal_sessions owner update" on journal_sessions;
 create policy "journal_sessions owner update" on journal_sessions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "journal_sessions owner delete" on journal_sessions;
 create policy "journal_sessions owner delete" on journal_sessions for delete using (auth.uid() = user_id);
 
+drop policy if exists "journal_transactions owner select" on journal_transactions;
 create policy "journal_transactions owner select" on journal_transactions for select using (auth.uid() = user_id);
+drop policy if exists "journal_transactions owner insert" on journal_transactions;
 create policy "journal_transactions owner insert" on journal_transactions for insert with check (auth.uid() = user_id);
+drop policy if exists "journal_transactions owner update" on journal_transactions;
 create policy "journal_transactions owner update" on journal_transactions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "journal_transactions owner delete" on journal_transactions;
 create policy "journal_transactions owner delete" on journal_transactions for delete using (auth.uid() = user_id);
 
 -- Rate limiting -------------------------------------------------------------
@@ -180,8 +200,14 @@ begin
 end;
 $$;
 
+-- insert-only: Postgres always fires BEFORE INSERT to propose a row even
+-- when `upsert()` ends up routing it through ON CONFLICT DO UPDATE, so this
+-- alone still catches every upsert call exactly once. Also listening on
+-- UPDATE would fire a second time for that same call (both triggers run:
+-- one for the insert attempt, one for the conflict-triggered update),
+-- silently halving these limits versus what's documented above.
 drop trigger if exists settings_rate_limit on settings;
-create trigger settings_rate_limit before insert or update on settings
+create trigger settings_rate_limit before insert on settings
   for each row execute function rl_settings();
 
 drop trigger if exists drill_sessions_rate_limit on drill_sessions;
@@ -189,7 +215,7 @@ create trigger drill_sessions_rate_limit before insert on drill_sessions
   for each row execute function rl_drill_sessions();
 
 drop trigger if exists drill_progress_rate_limit on drill_progress;
-create trigger drill_progress_rate_limit before insert or update on drill_progress
+create trigger drill_progress_rate_limit before insert on drill_progress
   for each row execute function rl_drill_progress();
 
 drop trigger if exists journal_sessions_rate_limit on journal_sessions;
@@ -262,7 +288,10 @@ begin
   -- Guests (no auth.uid()) aren't rate limited here since enforce_rate_limit
   -- requires an authenticated user; only signed-in writers are capped.
   if auth.uid() is not null then
-    perform enforce_rate_limit('analytics_events_write', 120, interval '1 minute');
+    -- Generous: this table now records every hand played and every drill
+    -- question answered, not just coarse milestones, so legitimate fast play
+    -- can generate many events per minute.
+    perform enforce_rate_limit('analytics_events_write', 600, interval '1 minute');
   end if;
   return new;
 end;
@@ -298,3 +327,51 @@ create policy "analytics_events admin select" on analytics_events for select usi
 insert into admin_users (user_id)
 select id from auth.users where email = 'g.tse8888@gmail.com'
 on conflict do nothing;
+
+-- Admin directory: who did what, when ---------------------------------------
+-- These run as security definer (bypassing RLS, and able to read auth.users
+-- for an email label) but check is_admin() internally, so only admins get
+-- real rows back; anyone else gets an empty set.
+
+create or replace function admin_visitor_summary()
+returns table (
+  visitor_id text,
+  user_id uuid,
+  email text,
+  event_count bigint,
+  first_seen timestamptz,
+  last_seen timestamptz
+)
+language sql security definer set search_path = public stable as $$
+  select
+    coalesce(ae.user_id::text, ae.anon_id) as visitor_id,
+    ae.user_id,
+    u.email,
+    count(*) as event_count,
+    min(ae.created_at) as first_seen,
+    max(ae.created_at) as last_seen
+  from analytics_events ae
+  left join auth.users u on u.id = ae.user_id
+  where is_admin()
+  group by coalesce(ae.user_id::text, ae.anon_id), ae.user_id, u.email
+  order by max(ae.created_at) desc
+  limit 500;
+$$;
+
+create or replace function admin_visitor_events(target_user_id uuid, target_anon_id text)
+returns setof analytics_events
+language sql security definer set search_path = public stable as $$
+  select ae.*
+  from analytics_events ae
+  where is_admin()
+    and (
+      (target_user_id is not null and ae.user_id = target_user_id)
+      or (target_user_id is null and ae.user_id is null and ae.anon_id = target_anon_id)
+    )
+  order by ae.created_at desc
+  limit 1000;
+$$;
+
+grant execute on function is_admin() to authenticated;
+grant execute on function admin_visitor_summary() to authenticated;
+grant execute on function admin_visitor_events(uuid, text) to authenticated;

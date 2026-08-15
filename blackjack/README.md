@@ -38,17 +38,29 @@ every statement is idempotent (`create or replace`, `drop ... if exists` then
 
 ### Analytics and the admin dashboard
 
-Every meaningful user action (page views, sign-in/sign-up/sign-out, drills
-completed, journal entries and transactions added or removed, settings
-saved, data exported/imported/cleared) is recorded to the `analytics_events`
-table defined in `supabase/schema.sql` — see `lib/analytics/track.ts`. Guests
-are tracked too, under a per-device anonymous id, so no account is required
-for an event to show up.
+Every meaningful user action is recorded to the `analytics_events` table
+defined in `supabase/schema.sql` — see `lib/analytics/track.ts`, called from
+every game, drill, and tool component. That includes page views,
+auth (sign-in/up/out, Google, guest mode), every hand dealt/decided/settled
+in Full Shoe, Ultimate Texas Hold'em, and Chase the Flush, every drill
+question answered (running count, true count, deck estimation, basic
+strategy, deviations, missing card, the integrated Full Shoe drill),
+simulation runs and results, CVCX/journal template saves and loads, journal
+entries and transactions, settings saves, and data export/import/clear.
+Guests are tracked too, under a per-device anonymous id, so no account is
+required for an event to show up.
 
-Only accounts listed in `admin_users` can read that table back, via the
-`/admin` page (`components/AdminPage.tsx`). Grant yourself access after your
-first sign-up by re-running the last statement in `supabase/schema.sql`, or
-directly:
+Only accounts listed in `admin_users` can read that data back, via the
+`/admin` page (`components/AdminPage.tsx`). It shows aggregate charts
+(events per day, top actions, most-viewed pages), plus a **visitor
+directory** — every signed-in user (by email) and guest (by anonymous id)
+with a first-seen/last-seen timestamp and event count — where clicking a
+visitor pulls their full timeline of what they did and when, via the
+`admin_visitor_summary()` and `admin_visitor_events()` Postgres functions in
+`supabase/schema.sql`.
+
+Grant yourself access after your first sign-up by re-running the relevant
+statement in `supabase/schema.sql`, or directly:
 
 ```sql
 insert into admin_users (user_id) select id from auth.users where email = 'you@example.com';

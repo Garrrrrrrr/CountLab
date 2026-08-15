@@ -5,6 +5,7 @@ import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAx
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
+import { track } from "@/lib/analytics/track";
 import {
   JournalAggregate,
   SessionAssessment,
@@ -123,6 +124,7 @@ export function SessionJournal() {
     setHandsPerHour(template.config.roundsPerHour);
     setRamp(expandRamp(template.config.ramp));
     setSpread("Custom");
+    track("journal_prefilled_from_template", { name: template.name });
   };
 
   const logSession = () => {
