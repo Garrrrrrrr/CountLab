@@ -688,7 +688,7 @@ export function CvcxLab() {
             ))}
           </Select>
           <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
-          <NumberField label="Base bet" value={baseBet} min={0.01} prefix="$" onValueChange={setBaseBet} />
+          <NumberField label="Base bet" value={baseBet} min={1} step={1} prefix="$" onValueChange={setBaseBet} />
         </div>
         <details className="mt-5 border-t border-white/[.07] pt-4" open>
           <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
@@ -785,7 +785,18 @@ export function CvcxLab() {
                     <tr key={row.trueCount} className="border-t border-white/[.06]">
                       <td className={`py-2.5 font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}>{row.label}</td>
                       <td className="py-2">
-                        <NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} />
+                        <div className="flex items-center gap-2">
+                          <NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} />
+                          <button
+                            type="button"
+                            aria-label={`Zero bet at true count ${row.label}`}
+                            disabled={row.bet === 0}
+                            onClick={() => updateDollarBet(row.trueCount, 0)}
+                            className="min-h-9 rounded-lg border border-red-400/20 bg-red-400/[.06] px-2.5 text-xs font-semibold text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
+                          >
+                            Zero
+                          </button>
+                        </div>
                       </td>
                       <td className="py-2">
                         <div className="inline-flex gap-1">
@@ -920,7 +931,7 @@ export function CvcxLab() {
             </div>
             <table className="w-full min-w-[940px] text-right text-sm">
               <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Hands</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Quick set</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
-              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td className="whitespace-nowrap py-2"><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet)} className="rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">1X</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet * 2)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">2X</button></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
+              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td className="whitespace-nowrap py-2"><button type="button" aria-label={`Zero bet at true count ${row.label}`} disabled={row.bet === 0} onClick={() => updateDollarBet(row.trueCount, 0)} className="rounded-md border border-red-400/20 bg-red-400/[.06] px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35">Zero</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">1X</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet * 2)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">2X</button></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
             </table>
           </Panel>
           <Panel className="xl:col-span-2">
