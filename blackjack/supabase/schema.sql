@@ -253,9 +253,10 @@ alter table journal_transactions add constraint journal_transactions_size_limit 
 
 -- Analytics ---------------------------------------------------------------
 -- Records user actions (page views, drills completed, journal entries, auth
--- events, settings changes, etc.) so they can be reviewed in the /admin
--- dashboard. Every client — signed in or browsing as a guest — can insert its
--- own events; nobody can read them back except admins (see below).
+-- events, settings changes, every hand/click via autocapture, etc.) so they
+-- can be reviewed in the /admin dashboard. Every client — signed in or
+-- browsing as a guest — can insert its own events; nobody can read them back
+-- except admins (see below).
 
 create table if not exists analytics_events (
   id uuid primary key default gen_random_uuid(),
@@ -288,10 +289,10 @@ begin
   -- Guests (no auth.uid()) aren't rate limited here since enforce_rate_limit
   -- requires an authenticated user; only signed-in writers are capped.
   if auth.uid() is not null then
-    -- Generous: this table now records every hand played and every drill
-    -- question answered, not just coarse milestones, so legitimate fast play
-    -- can generate many events per minute.
-    perform enforce_rate_limit('analytics_events_write', 600, interval '1 minute');
+    -- Generous: this table now records every hand played, every drill
+    -- question answered, and every UI click (autocapture), not just coarse
+    -- milestones, so legitimate fast use can generate many events per minute.
+    perform enforce_rate_limit('analytics_events_write', 1200, interval '1 minute');
   end if;
   return new;
 end;

@@ -50,6 +50,19 @@ entries and transactions, settings saves, and data export/import/clear.
 Guests are tracked too, under a per-device anonymous id, so no account is
 required for an event to show up.
 
+On top of those explicit calls, `lib/analytics/autocapture.ts` installs a
+single document-level click listener (`initAutocapture()`, started once from
+`AppShell`) that fires a generic `ui_click` event for every click on a
+button, link, or other interactive element app-wide — the same "autocapture"
+approach product analytics tools (PostHog, Amplitude, GA4) use as a safety
+net for anything not explicitly instrumented. It also detects **rage
+clicks** (3+ clicks in the same spot within 0.8s) and tracks **scroll
+depth** (25/50/75/100%, re-armed on every route change) and **outbound link
+clicks**. These are intentionally excluded from the admin dashboard's "Top
+actions" chart (`NOISY_EVENTS` in `components/AdminPage.tsx`) since they'd
+otherwise drown out the higher-signal named events — they get their own
+metric tiles instead.
+
 Only accounts listed in `admin_users` can read that data back, via the
 `/admin` page (`components/AdminPage.tsx`). It shows aggregate charts
 (events per day, top actions, most-viewed pages), plus a **visitor

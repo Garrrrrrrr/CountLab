@@ -45,6 +45,10 @@ interface SelectedVisitor {
 
 const SAMPLE_SIZE = 2000;
 const DAYS_BACK = 14;
+// Autocaptured events fire constantly and would otherwise drown out the
+// named, higher-signal events in "Top actions" — surfaced as their own
+// stats instead.
+const NOISY_EVENTS = new Set(["ui_click", "scroll_depth", "page_view"]);
 
 function dayKey(iso: string) {
   return iso.slice(0, 10);
@@ -136,14 +140,19 @@ export default function AdminPage() {
   const signedInVisitors = new Set(events.filter((e) => e.user_id).map((e) => e.user_id)).size;
 
   const byEvent = Object.entries(
-    events.reduce<Record<string, number>>((all, e) => {
-      all[e.event] = (all[e.event] ?? 0) + 1;
-      return all;
-    }, {}),
+    events
+      .filter((e) => !NOISY_EVENTS.has(e.event))
+      .reduce<Record<string, number>>((all, e) => {
+        all[e.event] = (all[e.event] ?? 0) + 1;
+        return all;
+      }, {}),
   )
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 12);
+
+  const clickCount = events.filter((e) => e.event === "ui_click").length;
+  const rageClickCount = events.filter((e) => e.event === "rage_click").length;
 
   const byPath = Object.entries(
     events
@@ -205,6 +214,15 @@ export default function AdminPage() {
           value={uniqueVisitors}
         />
         <Metric label="Signed-in visitors" value={signedInVisitors} sub={`${uniqueVisitors - signedInVisitors} guest`} />
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Metric
+          label={`UI clicks${events.length >= SAMPLE_SIZE ? ` (last ${SAMPLE_SIZE})` : ""}`}
+          value={clickCount}
+          sub="Autocaptured — every click on a button or link"
+        />
+        <Metric label="Rage clicks" value={rageClickCount} sub="3+ clicks in the same spot within 0.8s" />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-2">
