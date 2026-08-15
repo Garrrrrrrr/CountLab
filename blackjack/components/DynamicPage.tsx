@@ -1,16 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
+import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   DEFAULT_SETTINGS,
   Session,
   Settings,
   storage,
 } from "@/lib/statistics/storage";
+import { computeStreak, practiceHeatmap, unlockedMilestones } from "@/lib/statistics/streaks";
 import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { useAuth } from "@/lib/supabase/AuthProvider";
@@ -32,12 +33,15 @@ const dynamicPage = (loader: () => Promise<{ default: ComponentType }>) =>
 const CvcxLab = dynamicPage(() => import("@/components/CvcxLab").then((m) => ({ default: m.CvcxLab })));
 const SessionSimulator = dynamicPage(() => import("@/components/SessionSimulator").then((m) => ({ default: m.SessionSimulator })));
 const SessionJournal = dynamicPage(() => import("@/components/SessionJournal").then((m) => ({ default: m.SessionJournal })));
+const ScenarioComparison = dynamicPage(() => import("@/components/ScenarioComparison").then((m) => ({ default: m.ScenarioComparison })));
+const TripPlanner = dynamicPage(() => import("@/components/TripPlanner").then((m) => ({ default: m.TripPlanner })));
 const ChaseFlushLab = dynamicPage(() => import("@/components/ChaseFlushLab").then((m) => ({ default: m.ChaseFlushLab })));
 const UTHLab = dynamicPage(() => import("@/components/UTHLab").then((m) => ({ default: m.UTHLab })));
 const RunningCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.RunningCountDrill })));
 const TrueCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.TrueCountDrill })));
 const DeckEstimationDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.DeckEstimationDrill })));
 const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.CountingBenchmark })));
+const ProficiencyTest = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.ProficiencyTest })));
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
@@ -60,6 +64,9 @@ function Dashboard() {
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
+  const streak = useMemo(() => computeStreak(sessions), [sessions]);
+  const heatmap = useMemo(() => practiceHeatmap(streak.practiceDays), [streak.practiceDays]);
+  const milestones = useMemo(() => unlockedMilestones(sessions, streak), [sessions, streak]);
   const totals = useMemo(() => {
     const q = sessions.reduce((a, s) => a + s.questions, 0),
       c = sessions.reduce((a, s) => a + s.correct, 0);
@@ -120,6 +127,36 @@ function Dashboard() {
         <Metric label="Overall accuracy" value={`${totals.avg}%`} />
         <Metric label="Best streak" value={totals.best} />
       </div>
+      {sessions.length > 0 && (
+        <Panel className="mt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">
+                {streak.currentStreakDays > 0 ? (
+                  <><i className="fa-solid fa-fire mr-2 text-amber-300" aria-hidden="true" />{streak.currentStreakDays}-day streak</>
+                ) : (
+                  "Practice streak"
+                )}
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500">Best run: {streak.bestStreakDays} day{streak.bestStreakDays === 1 ? "" : "s"} · {streak.practiceDaysThisWeek} day{streak.practiceDaysThisWeek === 1 ? "" : "s"} this week</p>
+            </div>
+            {milestones.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {milestones.map((milestone) => <span key={milestone.id} className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300"><i className="fa-solid fa-medal mr-1.5" aria-hidden="true" />{milestone.label}</span>)}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex gap-1 overflow-x-auto pb-1">
+            {heatmap.map((week, weekIndex) => (
+              <div key={weekIndex} className="flex flex-col gap-1">
+                {week.map((day) => (
+                  <div key={day.date} title={day.date} className={`h-3 w-3 rounded-sm ${day.practiced ? "bg-emerald-400" : "bg-white/[.06]"}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
         <Panel className="border border-emerald-400/15 bg-emerald-400/[.035]">
           <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-400">Recommended next</p>
@@ -258,83 +295,6 @@ function HiLoReference() {
           </Panel>
         ))}
       </div>
-    </>
-  );
-}
-const hardRows = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
-const dealers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
-function LegacyStrategyReference() {
-  const decision = (t: number, d: string): Action =>
-    t >= 17
-      ? "S"
-      : t >= 13
-        ? Number(d) <= 6
-          ? "S"
-          : "H"
-        : t === 12
-          ? ["4", "5", "6"].includes(d)
-            ? "S"
-            : "H"
-          : t === 11
-            ? d === "A"
-              ? "H"
-              : "D"
-            : t === 10
-              ? Number(d) <= 9
-                ? "D"
-                : "H"
-              : t === 9
-                ? ["3", "4", "5", "6"].includes(d)
-                  ? "D"
-                  : "H"
-                : "H";
-  return (
-    <>
-      <h1 className="text-3xl font-semibold">Basic Strategy Reference</h1>
-      <p className="mt-2 text-zinc-400">
-        6-deck · H17 · DAS · RSA · Late surrender. Use the legend below for
-        each action.
-      </p>
-      <Panel className="mt-7 overflow-x-auto">
-        <p className="mb-3 text-xs text-zinc-500 md:hidden">Swipe horizontally to compare every dealer upcard.</p>
-        <table className="w-full min-w-[700px] text-center text-sm">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 bg-[#171c18] p-2 text-left text-zinc-500">Hard total</th>
-              {dealers.map((d) => (
-                <th key={d}>{d}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hardRows.map((t) => (
-              <tr className="border-t border-white/[.05]" key={t}>
-                <th className="sticky left-0 z-10 bg-[#171c18] p-3 text-left">{t}</th>
-                {dealers.map((d) => {
-                  const a = decision(t, d);
-                  return (
-                    <td key={d}>
-                      <span
-                        title={actionNames[a]}
-                        className={`inline-grid h-8 w-8 place-items-center rounded ${a === "H" ? "bg-sky-500/20 text-sky-300" : a === "S" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}
-                      >
-                        {a}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-5 flex gap-4 text-xs text-zinc-400">
-          {Object.entries(actionNames).map(([a, n]) => (
-            <span key={a}>
-              <b className="text-white">{a}</b> = {n}
-            </span>
-          ))}
-        </div>
-      </Panel>
     </>
   );
 }
@@ -493,7 +453,8 @@ function SettingsPage() {
     [dataMessage, setDataMessage] = useState(""),
     [analyticsEnabled, setAnalyticsEnabled] = useState(true),
     [analyticsDeleting, setAnalyticsDeleting] = useState(false),
-    [analyticsMessage, setAnalyticsMessage] = useState("");
+    [analyticsMessage, setAnalyticsMessage] = useState(""),
+    [confirmingAnalyticsDelete, setConfirmingAnalyticsDelete] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
   useEffect(() => { setS(storage.settings()); setAnalyticsEnabled(analytics.isEnabled()); }, []);
   const update = <K extends keyof Settings>(k: K, v: Settings[K]) => {
@@ -666,13 +627,7 @@ function SettingsPage() {
           </label>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Link href="/privacy" className="text-xs text-emerald-300 hover:underline">Review the analytics and retention policy</Link>
-            <GhostButton className="min-h-8 px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={async () => {
-              if (!confirm("Delete this device's analytics history and, if signed in, analytics linked to your account? Training and journal data will not be deleted.")) return;
-              setAnalyticsDeleting(true);
-              const deleted = await analytics.deleteHistory();
-              setAnalyticsDeleting(false);
-              setAnalyticsMessage(deleted ? "Analytics history deleted. Future analytics will use a new random device ID." : "Analytics history could not be deleted. Try again later.");
-            }}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
+            <GhostButton className="min-h-8 px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={() => setConfirmingAnalyticsDelete(true)}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
           </div>
           {analyticsMessage && <p aria-live="polite" className="mt-3 text-xs text-emerald-300">{analyticsMessage}</p>}
         </Panel>
@@ -718,7 +673,21 @@ function SettingsPage() {
                 event.target.value = "";
               }}
             />
+            <GhostButton
+              onClick={() => {
+                const url = URL.createObjectURL(new Blob([storage.exportCsv()], { type: "text/csv" }));
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `countlab-training-${new Date().toISOString().slice(0, 10)}.csv`;
+                anchor.click();
+                URL.revokeObjectURL(url);
+                setDataMessage("CSV downloaded.");
+              }}
+            >
+              Export CSV
+            </GhostButton>
           </div>
+          <p className="mt-3 text-xs leading-5 text-zinc-500">CSV export is a spreadsheet-friendly summary (no mistakes/category detail) and is export-only; JSON stays the format to restore from.</p>
           {dataMessage && (
             <p aria-live="polite" className="mt-3 text-sm text-emerald-300">
               {dataMessage}
@@ -750,6 +719,21 @@ function SettingsPage() {
           </p>
         </Panel>
       </div>
+      <ConfirmModal
+        open={confirmingAnalyticsDelete}
+        title="Delete analytics history?"
+        description="This deletes this device's analytics history and, if signed in, analytics linked to your account. Training and journal data will not be deleted."
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setConfirmingAnalyticsDelete(false)}
+        onConfirm={async () => {
+          setConfirmingAnalyticsDelete(false);
+          setAnalyticsDeleting(true);
+          const deleted = await analytics.deleteHistory();
+          setAnalyticsDeleting(false);
+          setAnalyticsMessage(deleted ? "Analytics history deleted. Future analytics will use a new random device ID." : "Analytics history could not be deleted. Try again later.");
+        }}
+      />
     </>
   );
 }
@@ -774,6 +758,8 @@ export default function DynamicPage() {
     cvcx: <CvcxLab />,
     simulation: <SessionSimulator />,
     journal: <SessionJournal />,
+    compare: <ScenarioComparison />,
+    "trip-planner": <TripPlanner />,
     analysis: <CvcxLab />,
     bankroll: <CvcxLab />,
     "chase-flush": <ChaseFlushLab />,
@@ -785,6 +771,7 @@ export default function DynamicPage() {
     "training/full-shoe": null,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
+    "training/proficiency-test": <ProficiencyTest />,
     reference: <HiLoReference />,
     "reference/basic-strategy": <StrategyReference />,
     "reference/deviations": <DeviationReferencePage />,

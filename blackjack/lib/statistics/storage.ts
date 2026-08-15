@@ -2,6 +2,7 @@ import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
 import { observeApiRequest } from "../analytics/api";
+import { toCsv } from "../blackjack/csv";
 
 export type DrillType =
   | "Running Count"
@@ -267,6 +268,20 @@ export const storage = {
     if (parsed.settings) this.saveSettings({ ...DEFAULT_SETTINGS, ...parsed.settings });
     window.dispatchEvent(new Event("hilo-storage"));
     track("data_imported", { sessions: parsed.sessions.length });
+  },
+  /** Spreadsheet-friendly, export-only summary. Mistakes/categories are nested and don't fit a flat row; JSON stays the only import path. */
+  exportCsv() {
+    track("data_exported", { scope: "sessions_csv" });
+    const rows = this.sessions().map((session) => ({
+      date: session.date,
+      drill: session.drill,
+      questions: session.questions,
+      correct: session.correct,
+      accuracy: session.accuracy,
+      averageResponseTime: session.averageResponseTime,
+      bestStreak: session.bestStreak,
+    }));
+    return toCsv(rows, ["date", "drill", "questions", "correct", "accuracy", "averageResponseTime", "bestStreak"]);
   },
   clearSessions() {
     localStorage.removeItem(SESSION_KEY);

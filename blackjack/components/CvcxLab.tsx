@@ -49,6 +49,8 @@ import { cvcxLibrary, CvcxTemplate, CvcxTemplateConfig } from "@/lib/blackjack/c
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
 import { Button, GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
+import { ConfirmModal } from "./ConfirmModal";
+import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 
 type View = "viewer" | "ramp" | "risk" | "compare";
 const money = (value: number, digits = 0) =>
@@ -248,6 +250,8 @@ function TutorialDialog({
 
 export function CvcxLab() {
   const router = useRouter();
+  const viewResultsRef = useRef<HTMLDivElement>(null);
+  const previousViewRef = useRef<View>("viewer");
   const [view, setView] = useState<View>("viewer"),
     [helpTopic, setHelpTopic] = useState<View | null>(null),
     [bankroll, setBankroll] = useState(25000),
@@ -277,6 +281,9 @@ export function CvcxLab() {
     [deviationSkillLevel, setDeviationSkillLevel] = useState<keyof typeof DEVIATION_SKILL>("perfect"),
     [cvcxTemplateName, setCvcxTemplateName] = useState(""),
     [cvcxTemplates, setCvcxTemplates] = useState<CvcxTemplate[]>([]),
+    [pendingDeleteTemplate, setPendingDeleteTemplate] = useState<CvcxTemplate>(),
+    [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]),
+    [venuePresetName, setVenuePresetName] = useState(""),
     [cvcxNotice, setCvcxNotice] = useState<string>(),
     [handsOverride, setHandsOverride] = useState<Record<number, number>>({}),
     [tripBankrollAmount, setTripBankrollAmount] = useState(1000),
@@ -289,6 +296,19 @@ export function CvcxLab() {
     addEventListener(cvcxLibrary.event, refresh);
     return () => removeEventListener(cvcxLibrary.event, refresh);
   }, []);
+  useEffect(() => {
+    const refresh = () => setVenuePresets(venuePresetLibrary.presets());
+    refresh();
+    addEventListener(venuePresetLibrary.event, refresh);
+    return () => removeEventListener(venuePresetLibrary.event, refresh);
+  }, []);
+  useEffect(() => {
+    if (previousViewRef.current === view) return;
+    previousViewRef.current = view;
+    if (!matchMedia("(max-width: 639px)").matches) return;
+    const frame = requestAnimationFrame(() => viewResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
 
   const ruleFlags = useMemo(
       () => ({
@@ -464,6 +484,28 @@ export function CvcxLab() {
     setCvcxTemplateName(template.name);
     setCvcxNotice(`Loaded “${template.name}”.`);
   };
+  const loadVenuePreset = (id: string) => {
+    const preset = venuePresets.find((item) => item.id === id);
+    if (!preset) return;
+    const nextDecks = preset.rules.decks === 8 ? 8 : 6;
+    setDecks(nextDecks);
+    setDealt(preset.rules.penetration * nextDecks);
+    setDealerHitsSoft17(preset.rules.dealerHitsSoft17);
+    setDoubleAfterSplit(preset.rules.doubleAfterSplit);
+    setResplitAces(preset.rules.resplitAces);
+    setLateSurrender(preset.rules.lateSurrender);
+    setBlackjackPayout(preset.rules.blackjackPayout);
+    setRamp(preset.ramp);
+    setRampName("Custom");
+    setCvcxNotice(`Loaded venue “${preset.name}”.`);
+  };
+  const saveVenuePreset = () => {
+    const name = venuePresetName.trim();
+    if (!name) return;
+    venuePresetLibrary.savePreset(name, rules, ramp);
+    setVenuePresetName("");
+    setCvcxNotice(`Saved venue “${name}”.`);
+  };
   const testInSessionSimulator = () => {
     const sessionConfig: SessionSimulationConfig = {
       bankroll,
@@ -601,7 +643,7 @@ export function CvcxLab() {
                   <span className="text-xs text-zinc-600">{template.config.decks}D · {Math.round((template.config.dealt / template.config.decks) * 100)}% · 1–{Math.max(...template.config.ramp.map((point) => point.units))}</span>
                 </button>
                 <span className="text-xs font-semibold text-emerald-300">Load Template</span>
-                <button type="button" aria-label={`Delete ${template.name}`} onClick={() => { if (confirm(`Delete scenario “${template.name}”?`)) { cvcxLibrary.deleteTemplate(template.id); track("cvcx_template_deleted", { name: template.name }); } }} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
+                <button type="button" aria-label={`Delete ${template.name}`} onClick={() => setPendingDeleteTemplate(template)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
                   <i className="fa-solid fa-trash-can" aria-hidden="true" />
                 </button>
               </div>
@@ -610,9 +652,9 @@ export function CvcxLab() {
         </div>
       </details>
 
-      <div className="mb-5 grid grid-cols-2 gap-2 rounded-2xl border border-white/[.07] bg-black/20 p-1.5 sm:grid-cols-4">
+      <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mb-5 flex gap-2 overflow-x-auto border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:grid sm:grid-cols-4 sm:rounded-2xl sm:border sm:bg-black/20 sm:p-1.5">
         {views.map(([id, label, icon]) => (
-          <div key={id} className={`grid grid-cols-[1fr_2.75rem] rounded-xl ${view === id ? "bg-white/[.1] text-white shadow-sm" : "text-zinc-500"}`}>
+          <div key={id} className={`grid min-w-[10.5rem] shrink-0 grid-cols-[1fr_2.75rem] rounded-xl sm:min-w-0 ${view === id ? "bg-white/[.1] text-white shadow-sm" : "text-zinc-500"}`}>
             <button
               type="button"
               aria-current={view === id ? "page" : undefined}
@@ -690,7 +732,19 @@ export function CvcxLab() {
           <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
           <NumberField label="Base bet" value={baseBet} min={1} step={1} prefix="$" onValueChange={setBaseBet} />
         </div>
-        <details className="mt-5 border-t border-white/[.07] pt-4" open>
+        {venuePresets.length > 0 && (
+          <div className="mt-4">
+            <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
+              <option value="">Choose a venue…</option>
+              {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+            </Select>
+          </div>
+        )}
+        <div className="mt-3 flex gap-2">
+          <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+          <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
+        </div>
+        <details className="mt-5 border-t border-white/[.07] pt-4">
           <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
             <span><i className="fa-solid fa-table-cells mr-2 text-emerald-400" aria-hidden="true" />Table rules</span>
             <span className="text-xs text-zinc-500">departing from the audited baseline is estimated</span>
@@ -758,6 +812,7 @@ export function CvcxLab() {
         </details>
       </Panel>
 
+      <div ref={viewResultsRef} className="scroll-mt-[calc(7.5rem+env(safe-area-inset-top))]">
       {view === "viewer" && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -997,6 +1052,7 @@ export function CvcxLab() {
           </Panel>
         </div>
       )}
+      </div>
 
       <p className="mt-5 text-xs leading-5 text-zinc-500">
         Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2 · perfect deviation play). Multiple-hand results retain shared true-count-state variance and treat hand outcomes as conditionally independent; dealer-result covariance is unavailable. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
@@ -1014,6 +1070,21 @@ export function CvcxLab() {
           }}
         />
       )}
+      <ConfirmModal
+        open={pendingDeleteTemplate !== undefined}
+        title="Delete scenario?"
+        description={pendingDeleteTemplate ? `This permanently deletes “${pendingDeleteTemplate.name}”.` : ""}
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setPendingDeleteTemplate(undefined)}
+        onConfirm={() => {
+          if (pendingDeleteTemplate) {
+            cvcxLibrary.deleteTemplate(pendingDeleteTemplate.id);
+            track("cvcx_template_deleted", { name: pendingDeleteTemplate.name });
+          }
+          setPendingDeleteTemplate(undefined);
+        }}
+      />
     </>
   );
 }

@@ -59,10 +59,89 @@ describe("journal library", () => {
   });
 });
 
+describe("multi-bankroll support", () => {
+  it("backfills a default Main bankroll for sessions and transactions written before multi-bankroll support", () => {
+    const store = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, store);
+    const transaction = journalLibrary.addTransaction({ date: "2026-08-01", type: "deposit", amount: 500 }, store);
+    expect(session.bankrollId).toBeTruthy();
+    expect(transaction.bankrollId).toBe(session.bankrollId);
+    expect(journalLibrary.bankrolls(store)).toHaveLength(1);
+    expect(journalLibrary.bankrolls(store)[0].name).toBe("Main");
+  });
+
+  it("adds a second bankroll and can scope new sessions to it", () => {
+    const store = new MemoryStorage();
+    const main = journalLibrary.bankrolls(store)[0];
+    const trip = journalLibrary.addBankroll("Vegas trip", store);
+    expect(journalLibrary.bankrolls(store).map((b) => b.name)).toEqual(["Main", "Vegas trip"]);
+    const session = journalLibrary.addSession({ ...sessionInput, bankrollId: trip.id }, store);
+    expect(session.bankrollId).toBe(trip.id);
+    expect(session.bankrollId).not.toBe(main.id);
+  });
+
+  it("reassigns sessions and transactions to the fallback bankroll on delete, and refuses to delete the last one", () => {
+    const store = new MemoryStorage();
+    const trip = journalLibrary.addBankroll("Vegas trip", store);
+    const main = journalLibrary.bankrolls(store).find((b) => b.name === "Main")!;
+    const session = journalLibrary.addSession({ ...sessionInput, bankrollId: trip.id }, store);
+    expect(journalLibrary.deleteBankroll(trip.id, store)).toBe(true);
+    expect(journalLibrary.bankrolls(store)).toHaveLength(1);
+    expect(journalLibrary.sessions(store).find((s) => s.id === session.id)?.bankrollId).toBe(main.id);
+    expect(journalLibrary.deleteBankroll(main.id, store)).toBe(false);
+    expect(journalLibrary.bankrolls(store)).toHaveLength(1);
+  });
+
+  it("renames a bankroll", () => {
+    const store = new MemoryStorage();
+    const main = journalLibrary.bankrolls(store)[0];
+    journalLibrary.renameBankroll(main.id, "Retirement fund", store);
+    expect(journalLibrary.bankrolls(store)[0].name).toBe("Retirement fund");
+  });
+});
+
+describe("CSV export/import", () => {
+  it("round-trips sessions through CSV, including rules and ramp, creating a bankroll by name if needed", () => {
+    const source = new MemoryStorage();
+    journalLibrary.addBankroll("Vegas trip", source);
+    journalLibrary.renameBankroll(journalLibrary.bankrolls(source)[0].id, "Main", source);
+    const tripBankroll = journalLibrary.bankrolls(source).find((b) => b.name === "Vegas trip")!;
+    journalLibrary.addSession({ ...sessionInput, bankrollId: tripBankroll.id, notes: "line1\nline2, with a comma" }, source, new Date("2026-08-13T12:00:00Z"));
+    const csv = journalLibrary.exportSessionsCsv(source);
+
+    const target = new MemoryStorage();
+    const imported = journalLibrary.importSessionsCsv(csv, target);
+    expect(imported).toBe(1);
+    const [session] = journalLibrary.sessions(target);
+    expect(session.netResult).toBe(120);
+    expect(session.expenses).toBe(15);
+    expect(session.ramp).toEqual(RAMPS["1-8"]);
+    expect(session.rules).toEqual(DEFAULT_ADVANTAGE_RULES);
+    expect(session.notes).toBe("line1\nline2, with a comma");
+    const importedBankroll = journalLibrary.bankrolls(target).find((b) => b.id === session.bankrollId);
+    expect(importedBankroll?.name).toBe("Vegas trip");
+  });
+
+  it("skips malformed CSV rows instead of throwing", () => {
+    const target = new MemoryStorage();
+    const csv = "date,bankroll,location,hours,handsPerHour,playerHands,bettingUnit,decks,penetration,dealerHitsSoft17,doubleAfterSplit,resplitAces,lateSurrender,blackjackPayout,ramp,netResult,expenses,notes\nnot-a-date,,,,,,,,,,,,,,,,,";
+    expect(journalLibrary.importSessionsCsv(csv, target)).toBe(0);
+    expect(journalLibrary.sessions(target)).toEqual([]);
+  });
+
+  it("exports transactions to CSV with the owning bankroll name", () => {
+    const source = new MemoryStorage();
+    journalLibrary.addTransaction({ date: "2026-08-01", type: "deposit", amount: 500 }, source);
+    const csv = journalLibrary.exportTransactionsCsv(source);
+    expect(csv).toContain("Main");
+    expect(csv).toContain("500");
+  });
+});
+
 describe("sessionsInRange", () => {
   const sessions = [
-    { ...sessionInput, id: "a", createdAt: "2026-08-01T00:00:00Z", date: "2026-08-13" },
-    { ...sessionInput, id: "b", createdAt: "2026-07-01T00:00:00Z", date: "2026-07-01" },
+    { ...sessionInput, id: "a", createdAt: "2026-08-01T00:00:00Z", bankrollId: "main", date: "2026-08-13" },
+    { ...sessionInput, id: "b", createdAt: "2026-07-01T00:00:00Z", bankrollId: "main", date: "2026-07-01" },
   ];
   it("filters sessions older than the requested day window", () => {
     const now = new Date("2026-08-13T12:00:00Z");

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Button, GhostButton, NumberField, Panel } from "@/components/ui";
+import { Button, GhostButton, MobileActionDock, NumberField, Panel } from "@/components/ui";
 import { cardName, evaluate, referenceOpening, settle, type UTHDecision, type UTHState } from "@/lib/uth/engine";
 import { pokerHandName, shuffledDeck, uthTripsNet } from "@/lib/casinoGames";
 import {
@@ -45,6 +45,7 @@ export function UTHTableGame() {
   const cards = (values: number[]) => values.map((card) => gameCard(card, cardName));
   const worker = useRef<Worker | undefined>(undefined);
   const requestId = useRef(0);
+  const tableViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const instance = new Worker(new URL("../workers/uth.worker.ts", import.meta.url));
@@ -56,6 +57,11 @@ export function UTHTableGame() {
     };
     return () => instance.terminate();
   }, []);
+  useEffect(() => {
+    if (phase === "betting" || !matchMedia("(max-width: 1023px)").matches) return;
+    const frame = requestAnimationFrame(() => tableViewportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
 
   const requestDecision = (state: UTHState, samples = 256, mode?: "solve") => {
     if (!worker.current) return;
@@ -116,10 +122,18 @@ export function UTHTableGame() {
     setDecision(undefined);
   };
   const canAdd = (amount: number) => ante + trips + amount <= bankroll;
+  const actionButtons = <>
+    {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
+    {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${money(ante * 4)}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${money(ante * 3)}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+    {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
+    {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+    {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
+  </>;
 
   return (
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_320px]">
+    <div className="mt-5 grid gap-5 pb-24 lg:pb-0 xl:grid-cols-[1fr_320px]">
       <div className="space-y-5">
+        <div ref={tableViewportRef} className="scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <CasinoTable>
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-100/55">Ultimate Texas Hold&apos;em</p><p className="mt-1 text-sm text-emerald-50/80">Bankroll <b className="text-white">${bankroll.toFixed(2)}</b></p></div><span className="rounded-full bg-black/20 px-3 py-1 text-xs text-emerald-100/70">{phase === "betting" ? "Place bets" : phase === "result" ? "Round complete" : "Decision in progress"}</span></div>
           <div className="mt-5"><CardRow label="Dealer" cards={phase === "result" ? cards(dealer) : []} hidden={phase !== "betting" && phase !== "result" ? 2 : 0} empty={phase === "betting" ? 2 : 0} /></div>
@@ -132,17 +146,12 @@ export function UTHTableGame() {
             <BetSpot label="Trips" amount={trips} locked={locked} onAdd={() => canAdd(selectedChip) && setTrips((value) => value + selectedChip)} onClear={() => setTrips(0)} detail="Optional side bet" />
           </div>
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${money(ante * 4)}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${money(ante * 3)}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
-            {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
-          </div>
+          <div className="mt-5 hidden flex-wrap justify-center gap-2 lg:flex">{actionButtons}</div>
           {(phase === "preflop" || phase === "flop" || phase === "river") && (
             <EvMetrics evs={decision?.evs} loading={decisionLoading} note={decision && Object.keys(decision.evs).length ? "River and flop EV are exact; opening EV requires the Calculate EV button." : undefined} />
           )}
         </CasinoTable>
+        </div>
         <Panel><h2 className="mb-4 font-semibold">Chip rack</h2><ChipRack selected={selectedChip} onSelect={setSelectedChip} disabled={locked} /><p className="mt-4 text-center text-xs text-zinc-500">Select a chip, then tap Ante or Trips. Blind always matches Ante.</p></Panel>
       </div>
       <div className="space-y-5">
@@ -151,6 +160,10 @@ export function UTHTableGame() {
         <Panel><h2 className="mb-4 font-semibold">Round history</h2><GameHistory rows={history} /></Panel>
         <Panel><h2 className="font-semibold">Table rules</h2><ul className="mt-3 space-y-2 text-xs leading-5 text-zinc-500"><li>• Ante and Blind are equal mandatory bets.</li><li>• Raise 3x/4x preflop, 2x after the flop, or 1x after the river.</li><li>• Dealer qualifies with a pair or better; Ante pushes when the dealer fails to qualify.</li><li>• Trips pays independently using the standard 50/40/30/8/7/4/3 schedule.</li></ul></Panel>
       </div>
+      <MobileActionDock label="Ultimate Texas Hold'em actions">
+        <p className="mb-2 truncate px-1 text-xs text-zinc-400">{message}</p>
+        <div className="grid grid-cols-2 gap-2 [&>button]:w-full">{actionButtons}</div>
+      </MobileActionDock>
     </div>
   );
 }

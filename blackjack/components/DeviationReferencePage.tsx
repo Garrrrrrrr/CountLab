@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Panel } from "@/components/ui";
+import { Button, Panel } from "@/components/ui";
 import { DEVIATION_ACTION_NAMES } from "@/lib/blackjack/deviations";
 import {
   FAB_4_DEVIATIONS,
@@ -13,7 +13,8 @@ import { analytics } from "@/lib/analytics";
 export default function DeviationReferencePage() {
   const [sort, setSort] = useState("index"),
     [search, setSearch] = useState(""),
-    [set, setSet] = useState<"all" | "i18" | "fab4">("all");
+    [set, setSet] = useState<"all" | "i18" | "fab4">("all"),
+    [visibleMobileRows, setVisibleMobileRows] = useState(20);
   const searchState = useRef({ queryLength: 0, resultCount: 0 });
   const allRows = [
     ...FULL_HI_LO_DEVIATIONS,
@@ -70,6 +71,7 @@ export default function DeviationReferencePage() {
       result_count: latest.resultCount,
     });
   }, []);
+  useEffect(() => setVisibleMobileRows(20), [search, set, sort]);
   const threshold = (deviation: FullHiLoDeviation) => {
     const value = deviation.index > 0 ? `+${deviation.index}` : String(deviation.index);
     return `TC ${deviation.direction === "atOrBelow" ? "≤" : "≥"} ${value}`;
@@ -85,7 +87,7 @@ export default function DeviationReferencePage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Index Deviations</h1>
-      <p className="mt-2 text-zinc-400">
+      <p data-mobile-compact-description className="mt-2 text-zinc-400">
         A complete total-dependent Hi-Lo catalog, with quick views for the
         Illustrious 18 and Fab 4.
       </p>
@@ -106,16 +108,16 @@ export default function DeviationReferencePage() {
         </div>
         <fieldset className="mb-5">
           <legend className="mb-2 text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Deviation set</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2">
             {([
               ["all", "All deviations", allRows.length],
               ["i18", "Illustrious 18", ILLUSTRIOUS_18_DEVIATIONS.length],
               ["fab4", "Fab 4", FAB_4_DEVIATIONS.length],
             ] as const).map(([value, label, count]) => (
-              <label key={value} className={`pressable flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 ${set === value ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200" : "border-white/[.08] bg-black/20 text-zinc-400"}`}>
+              <label key={value} className={`pressable flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border px-2 py-2 text-center ${set === value ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-200" : "border-white/[.08] bg-black/20 text-zinc-400"}`}>
                 <input type="radio" name="deviation-set" value={value} checked={set === value} onChange={() => { setSet(value); analytics.track("filter_applied", { surface: "deviation_reference", filter: "set", value }); }} className="accent-emerald-400" />
-                <span className="flex-1 font-medium">{label}</span>
-                <span className="rounded-full bg-black/20 px-2 py-0.5 text-xs">{count}</span>
+                <span className="min-w-0 text-xs font-medium sm:text-sm">{value === "all" ? "All" : label}</span>
+                <span className="hidden rounded-full bg-black/20 px-2 py-0.5 text-xs sm:inline">{count}</span>
               </label>
             ))}
           </div>
@@ -144,25 +146,17 @@ export default function DeviationReferencePage() {
           </p>
         )}
         <p className="mb-4 text-xs text-zinc-500">Showing {rows.length} of {selectedRows.length} entries</p>
-        <div className="space-y-3 md:hidden">
-          {rows.map((deviation) => (
-            <article key={deviation.id} className="rounded-2xl bg-black/20 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div><p className="text-xs text-zinc-500">Player hand</p><b className="mt-1 block text-lg">{deviation.hand}</b></div>
-                <div className="text-right"><p className="text-xs text-zinc-500">Dealer</p><b className="mt-1 block text-lg">{deviation.dealer}</b></div>
+        <div className="space-y-2 md:hidden">
+          {rows.slice(0, visibleMobileRows).map((deviation) => (
+            <article key={deviation.id} className="rounded-xl border border-white/[.06] bg-black/20 p-3">
+              <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+                <div><p className="text-[.65rem] uppercase tracking-wide text-zinc-500">{deviation.hand} vs dealer {deviation.dealer}</p><p className="mt-1 text-sm"><span className="text-zinc-400">{DEVIATION_ACTION_NAMES[deviation.normalAction]}</span><span className="mx-2 text-zinc-600">→</span><b className="text-emerald-300">{DEVIATION_ACTION_NAMES[deviation.deviationAction]}</b></p></div>
+                <b className="whitespace-nowrap rounded-lg bg-emerald-400/10 px-2.5 py-1 text-sm text-emerald-300">{threshold(deviation)}</b>
               </div>
-              <div className="mt-4 rounded-xl bg-white/[.04] p-3">
-                <p className="text-xs text-zinc-500">Deviation point</p>
-                <b className="text-xl text-emerald-400">{threshold(deviation)}</b>
-              </div>
-              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                <div><dt className="text-xs text-zinc-500">Basic strategy</dt><dd className="mt-1 font-medium">{DEVIATION_ACTION_NAMES[deviation.normalAction]}</dd></div>
-                <div className="text-right"><dt className="text-xs text-zinc-500">Deviation</dt><dd className="mt-1 font-medium text-emerald-300">{DEVIATION_ACTION_NAMES[deviation.deviationAction]}</dd></div>
-              </dl>
-              <p className="mt-3 text-xs text-zinc-500">Context: {context(deviation)}</p>
-              <p className="mt-1 text-xs text-zinc-500">EV priority: {evPriority(deviation).label}</p>
+              <p className="mt-2 text-[.7rem] text-zinc-500">{context(deviation)} · {evPriority(deviation).label}</p>
             </article>
           ))}
+          {visibleMobileRows < rows.length && <Button className="mt-3 w-full" onClick={() => setVisibleMobileRows((count) => Math.min(rows.length, count + 20))}>Show next {Math.min(20, rows.length - visibleMobileRows)} deviations</Button>}
         </div>
         <table className="hidden w-full text-left text-sm md:table">
           <thead className="text-zinc-500">

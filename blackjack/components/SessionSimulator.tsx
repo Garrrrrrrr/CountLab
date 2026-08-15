@@ -8,10 +8,12 @@ import { SavedSimulationRun, simulationLibrary, SimulationTemplate } from "@/lib
 import type { SessionSimulationConfig, SessionSimulationResult } from "@/lib/blackjack/sessionSimulation";
 import type { DeviationGroup } from "@/lib/blackjack/fullHiLoIndices";
 import type { ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
-import { Button, GhostButton, Metric, NumberField, Panel, Select } from "./ui";
+import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
 import { ShoeExplorer } from "./ShoeExplorer";
 import { HandReplayer } from "./HandReplayer";
 import { track } from "@/lib/analytics/track";
+import { ConfirmModal } from "./ConfirmModal";
+import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 const percent = (value: number, digits = 2) => `${(value * 100).toFixed(digits)}%`;
@@ -76,6 +78,9 @@ export function SessionSimulator() {
   const [selectedRunIds, setSelectedRunIds] = useState<string[]>([]);
   const [currentRunId, setCurrentRunId] = useState<string>();
   const [libraryNotice, setLibraryNotice] = useState<string>();
+  const [pendingDelete, setPendingDelete] = useState<{ kind: "template"; id: string; name: string } | { kind: "run"; id: string; name: string }>();
+  const [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]);
+  const [venuePresetName, setVenuePresetName] = useState("");
   const workerRef = useRef<Worker | undefined>(undefined);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const requestId = useRef(0);
@@ -95,6 +100,12 @@ export function SessionSimulator() {
     refresh();
     addEventListener(simulationLibrary.event, refresh);
     return () => removeEventListener(simulationLibrary.event, refresh);
+  }, []);
+  useEffect(() => {
+    const refresh = () => setVenuePresets(venuePresetLibrary.presets());
+    refresh();
+    addEventListener(venuePresetLibrary.event, refresh);
+    return () => removeEventListener(venuePresetLibrary.event, refresh);
   }, []);
 
   const getWorker = () => {
@@ -178,6 +189,21 @@ export function SessionSimulator() {
         || (trueCount === 6 && point.trueCount > 6);
       return matches ? { ...point, units: Math.max(0, units) } : point;
     }));
+  };
+  const loadVenuePreset = (id: string) => {
+    const preset = venuePresets.find((item) => item.id === id);
+    if (!preset) return;
+    const nextDecks = preset.rules.decks === 8 ? 8 : 6;
+    setDecks(nextDecks);
+    setDealt(Number((preset.rules.penetration * nextDecks).toFixed(2)));
+    setRamp(expandRamp(preset.ramp));
+    setSpread("Custom");
+  };
+  const saveVenuePreset = () => {
+    const name = venuePresetName.trim();
+    if (!name) return;
+    venuePresetLibrary.savePreset(name, rules, ramp);
+    setVenuePresetName("");
   };
   const applyConfig = (next: SessionSimulationConfig) => {
     const nextDecks = next.rules.decks === 8 ? 8 : 6;
@@ -285,6 +311,16 @@ export function SessionSimulator() {
               <Select label="Penetration" value={dealt} disabled={running} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
               <NumberField label="Starting bankroll" value={bankroll} min={1} prefix="$" disabled={running} onValueChange={setBankroll} />
               <NumberField label="Betting unit" value={unit} min={0.01} prefix="$" disabled={running} onValueChange={setUnit} />
+              {venuePresets.length > 0 && (
+                <Select label="Load a venue" defaultValue="" disabled={running} onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
+                  <option value="">Choose a venue…</option>
+                  {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+                </Select>
+              )}
+              <div className="flex items-end gap-2">
+                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name" disabled={running} className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+                <GhostButton onClick={saveVenuePreset} disabled={running || !venuePresetName.trim()}>Save</GhostButton>
+              </div>
               {mode === "profile" ? (
                 <>
                   <Select label="Rounds per path" value={rounds} disabled={running} onChange={(event) => setRounds(Number(event.target.value))}>{[10_000, 100_000, 1_000_000].map((value) => <option key={value} value={value}>{value === 1_000_000 ? "1M" : `${value / 1000}K`} rounds</option>)}</Select>
@@ -352,7 +388,7 @@ export function SessionSimulator() {
         <div className="border-t border-white/[.06] bg-black/15 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
             <div className="grid flex-1 grid-cols-3 gap-2 text-xs">{mode === "profile" ? <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(modeledOutcomes)} rounds</b></div><div><p className="text-zinc-600">Hours / path</p><b className="mt-1 block text-zinc-300">{compact(rounds / roundsPerHour)}</b></div></> : <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate)} hands</b></div><div><p className="text-zinc-600">Hours</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate / roundsPerHour)}</b></div></>}<div><p className="text-zinc-600">Max action</p><b className="mt-1 block text-zinc-300">{money(maxAction)}</b></div></div>
-            <div className="flex gap-2 lg:w-[24rem]"><Button onClick={run} disabled={running} className="flex-1"><i className="fa-solid fa-play mr-2 text-xs" />Run simulation</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
+            <div className="hidden gap-2 lg:flex lg:w-[24rem]"><Button onClick={run} disabled={running} className="flex-1"><i className="fa-solid fa-play mr-2 text-xs" />Run simulation</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
           </div>
           {(running || progress > 0) && <div className="mt-4"><div className="mb-2 flex justify-between text-xs text-zinc-500"><span>{running ? "Simulating in worker…" : "Complete"}</span><span>{percent(progress, 0)}</span></div><div className="h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width: `${progress * 100}%` }} /></div></div>}
           {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
@@ -380,13 +416,13 @@ export function SessionSimulator() {
               </div>
               <div className="mt-3 space-y-2">
                 {templates.length === 0 && <p className="rounded-xl border border-dashed border-white/[.08] p-3 text-xs text-zinc-600">No saved setups yet.</p>}
-                {templates.map((template) => <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5"><button type="button" onClick={() => { applyConfig(template.config); setTemplateName(template.name); }} className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-medium text-zinc-200">{template.name}</span><span className="text-xs text-zinc-600">{template.config.rules.decks}D · {Math.round(template.config.rules.penetration * 100)}% · {template.config.playerHands} spot{template.config.playerHands === 1 ? "" : "s"}</span></button><button type="button" aria-label={`Delete ${template.name}`} onClick={() => { if (confirm(`Delete setup “${template.name}”?`)) simulationLibrary.deleteTemplate(template.id); }} className="grid h-9 w-9 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300"><i className="fa-solid fa-trash-can" /></button></div>)}
+                {templates.map((template) => <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5"><button type="button" onClick={() => { applyConfig(template.config); setTemplateName(template.name); }} className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-medium text-zinc-200">{template.name}</span><span className="text-xs text-zinc-600">{template.config.rules.decks}D · {Math.round(template.config.rules.penetration * 100)}% · {template.config.playerHands} spot{template.config.playerHands === 1 ? "" : "s"}</span></button><button type="button" aria-label={`Delete ${template.name}`} onClick={() => setPendingDelete({ kind: "template", id: template.id, name: template.name })} className="grid h-9 w-9 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300"><i className="fa-solid fa-trash-can" /></button></div>)}
               </div>
             </section>
 
             <section className="min-w-0">
               <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-sm font-semibold">Completed runs</h3><p className="mt-1 text-xs leading-5 text-zinc-500">Runs save automatically. Select any two to compare.</p></div>{selectedRunIds.length > 0 && <button type="button" onClick={() => setSelectedRunIds([])} className="text-xs font-medium text-zinc-500 hover:text-zinc-200">Clear comparison</button>}</div>
-              {savedRuns.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-white/[.08] p-4 text-sm text-zinc-600">Your first completed simulation will appear here automatically.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Compare</th><th className="pb-2">Name</th><th className="pb-2">Created</th><th className="pb-2 text-right">EV / hour</th><th className="pb-2 text-right">Avg action</th><th className="pb-2 text-right">Actions</th></tr></thead><tbody>{savedRuns.map((saved) => <tr key={saved.id} className={`border-t border-white/[.06] ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : ""}`}><td className="py-2.5 pr-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-4 w-4 accent-emerald-400" /></td><td className="py-2.5 pr-3"><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="w-full min-w-40 bg-transparent font-medium text-zinc-200 outline-none focus:text-emerald-300" /></td><td className="whitespace-nowrap py-2.5 pr-3 text-xs text-zinc-500">{savedDate(saved.createdAt)}</td><td className="whitespace-nowrap py-2.5 text-right font-medium text-emerald-300">{money(saved.result.expectedHourlyEv, 2)}</td><td className="whitespace-nowrap py-2.5 text-right">{money(saved.result.averageBet, 2)}</td><td className="whitespace-nowrap py-2.5 text-right"><button type="button" onClick={() => loadRun(saved)} className="px-2 py-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Load</button><button type="button" onClick={() => simulationLibrary.duplicateRun(saved.id)} className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-200">Duplicate</button><button type="button" aria-label={`Delete ${saved.name}`} onClick={() => { if (confirm(`Delete analysis “${saved.name}”?`)) { simulationLibrary.deleteRun(saved.id); setSelectedRunIds((current) => current.filter((id) => id !== saved.id)); if (currentRunId === saved.id) setCurrentRunId(undefined); } }} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button></td></tr>)}</tbody></table></div>}
+              {savedRuns.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-white/[.08] p-4 text-sm text-zinc-600">Your first completed simulation will appear here automatically.</p> : <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Compare</th><th className="pb-2">Name</th><th className="pb-2">Created</th><th className="pb-2 text-right">EV / hour</th><th className="pb-2 text-right">Avg action</th><th className="pb-2 text-right">Actions</th></tr></thead><tbody>{savedRuns.map((saved) => <tr key={saved.id} className={`border-t border-white/[.06] ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : ""}`}><td className="py-2.5 pr-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-4 w-4 accent-emerald-400" /></td><td className="py-2.5 pr-3"><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="w-full min-w-40 bg-transparent font-medium text-zinc-200 outline-none focus:text-emerald-300" /></td><td className="whitespace-nowrap py-2.5 pr-3 text-xs text-zinc-500">{savedDate(saved.createdAt)}</td><td className="whitespace-nowrap py-2.5 text-right font-medium text-emerald-300">{money(saved.result.expectedHourlyEv, 2)}</td><td className="whitespace-nowrap py-2.5 text-right">{money(saved.result.averageBet, 2)}</td><td className="whitespace-nowrap py-2.5 text-right"><button type="button" onClick={() => loadRun(saved)} className="px-2 py-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Load</button><button type="button" onClick={() => simulationLibrary.duplicateRun(saved.id)} className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-200">Duplicate</button><button type="button" aria-label={`Delete ${saved.name}`} onClick={() => setPendingDelete({ kind: "run", id: saved.id, name: saved.name })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button></td></tr>)}</tbody></table></div>}
             </section>
           </div>
 
@@ -447,6 +483,30 @@ export function SessionSimulator() {
           </>}
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">Audit basis: {COEFFICIENT_METADATA.totalRounds.toLocaleString()} resolved rounds · source seed {COEFFICIENT_METADATA.seed} · coefficient uncertainty remains separate from this session sampler&apos;s Monte Carlo standard error. A single path may go below zero because the expected-value process is shown without forced bankroll resizing; “crossed zero” records that event.</p>
+      <MobileActionDock label="Simulation actions">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+          <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">{running ? "Simulation progress" : mode === "profile" ? "Profile workload" : "Hands to simulate"}</p><b className="block truncate text-zinc-200">{running ? percent(progress, 0) : mode === "profile" ? `${compact(modeledOutcomes)} rounds` : `${compact(handsToSimulate)} hands`}</b></div>
+          <div className="flex gap-2"><Button onClick={run} disabled={running}><i className="fa-solid fa-play mr-2 text-xs" />Run</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
+        </div>
+      </MobileActionDock>
+      <ConfirmModal
+        open={pendingDelete !== undefined}
+        title={pendingDelete?.kind === "template" ? "Delete setup?" : "Delete analysis?"}
+        description={pendingDelete ? `This permanently deletes “${pendingDelete.name}”.` : ""}
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setPendingDelete(undefined)}
+        onConfirm={() => {
+          if (pendingDelete?.kind === "template") {
+            simulationLibrary.deleteTemplate(pendingDelete.id);
+          } else if (pendingDelete?.kind === "run") {
+            simulationLibrary.deleteRun(pendingDelete.id);
+            setSelectedRunIds((current) => current.filter((id) => id !== pendingDelete.id));
+            if (currentRunId === pendingDelete.id) setCurrentRunId(undefined);
+          }
+          setPendingDelete(undefined);
+        }}
+      />
     </>
   );
 }

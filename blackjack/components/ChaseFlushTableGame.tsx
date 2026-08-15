@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Button, GhostButton, NumberField, Panel, Select } from "@/components/ui";
+import { Button, GhostButton, MobileActionDock, NumberField, Panel, Select } from "@/components/ui";
 import {
   cardName,
   Decision,
@@ -67,6 +67,7 @@ export function ChaseFlushTableGame({
   const revealDealer = revealAt(phase);
   const worker = useRef<Worker | undefined>(undefined);
   const requestId = useRef(0);
+  const tableViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const instance = new Worker(new URL("../workers/chaseFlush.worker.ts", import.meta.url));
@@ -80,6 +81,11 @@ export function ChaseFlushTableGame({
     };
     return () => instance.terminate();
   }, []);
+  useEffect(() => {
+    if (phase === "betting" || !matchMedia("(max-width: 1023px)").matches) return;
+    const frame = requestAnimationFrame(() => tableViewportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, [phase]);
 
   const requestDecision = (state: InfoState, samples: number) => {
     if (!worker.current) return;
@@ -139,10 +145,18 @@ export function ChaseFlushTableGame({
   };
   const exposed = phase === "result" ? dealer : revealDealer ? dealer.slice(0, 1) : [];
   const dealerHidden = phase === "betting" || phase === "result" ? 0 : 3 - exposed.length;
+  const actionButtons = <>
+    {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
+    {phase === "opening" && <><Button onClick={() => { judge("BET", "opening"); finish(3); }}>Bet 3x · ${money(ante * 3)}</Button><GhostButton onClick={() => { judge("CHECK", "opening"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => { track("chase_flush_ev_requested", { street: "opening" }); requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400); }}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
+    {phase === "board" && <><Button onClick={() => { judge("BET", "board"); finish(2); }}>Bet 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "board"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
+    {phase === "river" && <><Button onClick={() => { judge("BET", "river"); finish(1); }}>Bet 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+    {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
+  </>;
 
   return (
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_320px]">
+    <div className="mt-5 grid gap-5 pb-24 lg:pb-0 xl:grid-cols-[1fr_320px]">
       <div className="space-y-5">
+        <div ref={tableViewportRef} className="scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <CasinoTable>
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-100/55">Chase the Flush</p><p className="mt-1 text-sm text-emerald-50/80">Bankroll <b className="text-white">${bankroll.toFixed(2)}</b></p></div><span className="rounded-full bg-black/20 px-3 py-1 text-xs text-emerald-100/70">{phase === "betting" ? "Place bets" : phase === "result" ? "Round complete" : revealDealer ? "Dealer card exposed" : "Decision in progress"}</span></div>
           <div className="mt-5"><CardRow label="Dealer" cards={cards(exposed)} hidden={dealerHidden} empty={phase === "betting" ? 3 : 0} /></div>
@@ -154,17 +168,12 @@ export function ChaseFlushTableGame({
             <BetSpot label="All-In" amount={allInMultiplier * ante} locked detail={allInMultiplier ? `${allInMultiplier}x Ante` : "Decision bet"} />
           </div>
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
-          <div className="mt-5 flex flex-wrap justify-center gap-2">
-            {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
-            {phase === "opening" && <><Button onClick={() => { judge("BET", "opening"); finish(3); }}>Bet 3x · ${money(ante * 3)}</Button><GhostButton onClick={() => { judge("CHECK", "opening"); setPhase("board"); setMessage("Two board cards are open. Bet 2x or check."); requestDecision({ player, board: board.slice(0, 2), dealerVisible: revealAt("board") ? dealer[0] : undefined }, 24); }}>Check</GhostButton><GhostButton disabled={decisionLoading} onClick={() => { track("chase_flush_ev_requested", { street: "opening" }); requestDecision({ player, board: [], dealerVisible: revealAt("opening") ? dealer[0] : undefined }, 400); }}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
-            {phase === "board" && <><Button onClick={() => { judge("BET", "board"); finish(2); }}>Bet 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "board"); setPhase("river"); setMessage("Final decision: bet 1x or fold."); requestDecision({ player, board, dealerVisible: revealAt("river") ? dealer[0] : undefined }, 24); }}>Check</GhostButton></>}
-            {phase === "river" && <><Button onClick={() => { judge("BET", "river"); finish(1); }}>Bet 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
-            {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
-          </div>
+          <div className="mt-5 hidden flex-wrap justify-center gap-2 lg:flex">{actionButtons}</div>
           {(phase === "opening" || phase === "board" || phase === "river") && (
             <EvMetrics evs={decision?.evs} loading={decisionLoading} note="Opening EV is a Monte Carlo estimate (the exact opening solve is too slow for live play); the second decision and final call are exact." />
           )}
         </CasinoTable>
+        </div>
         <Panel><h2 className="mb-4 font-semibold">Chip rack</h2><ChipRack selected={selectedChip} onSelect={setSelectedChip} disabled={locked} /><p className="mt-4 text-center text-xs text-zinc-500">Select a chip, then tap Ante. X-Tra automatically matches it.</p></Panel>
       </div>
       <div className="space-y-5">
@@ -174,6 +183,10 @@ export function ChaseFlushTableGame({
         <Panel><h2 className="mb-4 font-semibold">Round history</h2><GameHistory rows={history} /></Panel>
         <Panel><h2 className="font-semibold">Table rules</h2><ul className="mt-3 space-y-2 text-xs leading-5 text-zinc-500"><li>• Ante and X-Tra are equal mandatory bets.</li><li>• Bet 3x opening, 2x after two board cards, or 1x after all four.</li><li>• Only flush length and suited ranks count; ordinary poker combinations do not.</li><li>• Dealer qualifies with a four-card flush or 9-high three-card flush.</li><li>• X-Tra pays 1/5/{sixCardPayout}/250 for four through seven suited cards.</li></ul></Panel>
       </div>
+      <MobileActionDock label="Chase the Flush actions">
+        <p className="mb-2 truncate px-1 text-xs text-zinc-400">{message}</p>
+        <div className="grid grid-cols-2 gap-2 [&>button]:w-full">{actionButtons}</div>
+      </MobileActionDock>
     </div>
   );
 }

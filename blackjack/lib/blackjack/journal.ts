@@ -3,10 +3,20 @@ import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
 import { observeApiRequest } from "../analytics/api";
+import { toCsv, parseCsv } from "./csv";
+
+export interface Bankroll {
+  id: string;
+  createdAt: string;
+  name: string;
+  startingAmount?: number;
+  archived?: boolean;
+}
 
 export interface JournalSession {
   id: string;
   createdAt: string;
+  bankrollId: string;
   date: string;
   location?: string;
   hours: number;
@@ -23,6 +33,7 @@ export interface JournalSession {
 export interface BankrollTransaction {
   id: string;
   createdAt: string;
+  bankrollId: string;
   date: string;
   type: "deposit" | "withdrawal";
   amount: number;
@@ -40,11 +51,21 @@ interface StoredCollection<T> {
   items: T[];
 }
 
+const BANKROLLS_KEY = "countlab:journal-bankrolls:v1";
 const SESSIONS_KEY = "countlab:journal-sessions:v1";
 const TRANSACTIONS_KEY = "countlab:journal-transactions:v1";
 const JOURNAL_EVENT = "countlab-journal";
+const MAX_BANKROLLS = 20;
 const MAX_SESSIONS = 500;
 const MAX_TRANSACTIONS = 500;
+
+const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "ramp", "netResult", "expenses", "notes"];
+const TRANSACTION_CSV_COLUMNS = ["date", "bankroll", "type", "amount", "note"];
+const encodeRampCsv = (ramp: RampPoint[]) => ramp.map((point) => `${point.trueCount}:${point.units}`).join(";");
+const decodeRampCsv = (value: string): RampPoint[] => value.split(";").filter(Boolean).map((chunk) => {
+  const [trueCount, units] = chunk.split(":").map(Number);
+  return { trueCount, units };
+}).filter((point) => finite(point.trueCount) && finite(point.units));
 
 const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -59,7 +80,20 @@ const validRules = (value: unknown): value is AdvantageRules => {
     && (rules.blackjackPayout === 1.5 || rules.blackjackPayout === 1.2)
     && finite(rules.penetration);
 };
-const validSession = (value: unknown): value is JournalSession => {
+const validBankroll = (value: unknown): value is Bankroll => {
+  if (!value || typeof value !== "object") return false;
+  const bankroll = value as Partial<Bankroll>;
+  return typeof bankroll.id === "string"
+    && typeof bankroll.createdAt === "string"
+    && typeof bankroll.name === "string"
+    && (bankroll.startingAmount === undefined || finite(bankroll.startingAmount))
+    && (bankroll.archived === undefined || typeof bankroll.archived === "boolean");
+};
+// bankrollId is intentionally not required here: sessions/transactions written before
+// multi-bankroll support don't have it, and readers backfill it to the default bankroll.
+type LegacySession = Omit<JournalSession, "bankrollId"> & { bankrollId?: string };
+type LegacyTransaction = Omit<BankrollTransaction, "bankrollId"> & { bankrollId?: string };
+const validSession = (value: unknown): value is LegacySession => {
   if (!value || typeof value !== "object") return false;
   const session = value as Partial<JournalSession>;
   return typeof session.id === "string"
@@ -75,7 +109,7 @@ const validSession = (value: unknown): value is JournalSession => {
     && Array.isArray(session.ramp)
     && session.ramp.every((point) => finite(point?.trueCount) && finite(point?.units));
 };
-const validTransaction = (value: unknown): value is BankrollTransaction => {
+const validTransaction = (value: unknown): value is LegacyTransaction => {
   if (!value || typeof value !== "object") return false;
   const transaction = value as Partial<BankrollTransaction>;
   return typeof transaction.id === "string"
@@ -106,6 +140,53 @@ const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+/** Returns every saved bankroll, seeding an implicit "Main" bankroll on first access. */
+function ensureBankrolls(store?: StorageLike): Bankroll[] {
+  const existing = read(BANKROLLS_KEY, validBankroll, store);
+  if (existing.length > 0) return existing;
+  const seeded: Bankroll = { id: createId(), createdAt: new Date(0).toISOString(), name: "Main" };
+  write(BANKROLLS_KEY, [seeded], store);
+  pushBankroll(seeded);
+  return [seeded];
+}
+
+/** The oldest bankroll is the implicit default: where pre-multi-bankroll data lives and where orphaned records land. */
+function defaultBankrollId(store?: StorageLike): string {
+  return [...ensureBankrolls(store)].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0].id;
+}
+
+function withDefaultBankroll<T extends { bankrollId?: string }>(items: T[], store?: StorageLike): (T & { bankrollId: string })[] {
+  if (items.every((item) => item.bankrollId)) return items as (T & { bankrollId: string })[];
+  const fallback = defaultBankrollId(store);
+  return items.map((item) => item.bankrollId ? (item as T & { bankrollId: string }) : { ...item, bankrollId: fallback });
+}
+
+function pushBankroll(bankroll: Bankroll) {
+  const user = getCurrentUser();
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "journal_bankroll_upsert", supabase
+    .from("journal_bankrolls")
+    .upsert({
+      id: bankroll.id,
+      user_id: user.id,
+      created_at: bankroll.createdAt,
+      name: bankroll.name,
+      starting_amount: bankroll.startingAmount ?? null,
+      archived: bankroll.archived ?? false,
+    }))
+    .then(({ error }) => {
+      if (error) console.error("[countlab] failed to sync bankroll", error);
+    });
+}
+
+function deleteRemoteBankroll(id: string) {
+  const user = getCurrentUser();
+  if (!user) return;
+  observeApiRequest("supabase", "journal_bankroll_delete", supabase.from("journal_bankrolls").delete().eq("id", id).eq("user_id", user.id)).then(({ error }) => {
+    if (error) console.error("[countlab] failed to delete remote bankroll", error);
+  });
+}
+
 function pushJournalSession(session: JournalSession) {
   const user = getCurrentUser();
   if (!user) return;
@@ -114,6 +195,7 @@ function pushJournalSession(session: JournalSession) {
     .upsert({
       id: session.id,
       user_id: user.id,
+      bankroll_id: session.bankrollId,
       created_at: session.createdAt,
       date: session.date,
       location: session.location ?? null,
@@ -148,6 +230,7 @@ function pushTransaction(transaction: BankrollTransaction) {
     .upsert({
       id: transaction.id,
       user_id: user.id,
+      bankroll_id: transaction.bankrollId,
       created_at: transaction.createdAt,
       date: transaction.date,
       type: transaction.type,
@@ -169,14 +252,52 @@ function deleteRemoteTransaction(id: string) {
 
 export const journalLibrary = {
   event: JOURNAL_EVENT,
-  sessions(store?: StorageLike) {
-    return read(SESSIONS_KEY, validSession, store);
+  bankrolls(store?: StorageLike): Bankroll[] {
+    return ensureBankrolls(store);
   },
-  transactions(store?: StorageLike) {
-    return read(TRANSACTIONS_KEY, validTransaction, store);
+  defaultBankrollId(store?: StorageLike): string {
+    return defaultBankrollId(store);
   },
-  addSession(session: Omit<JournalSession, "id" | "createdAt">, store?: StorageLike, now = new Date()) {
-    const record: JournalSession = { ...session, id: createId(), createdAt: now.toISOString() };
+  sessions(store?: StorageLike): JournalSession[] {
+    return withDefaultBankroll(read(SESSIONS_KEY, validSession, store), store);
+  },
+  transactions(store?: StorageLike): BankrollTransaction[] {
+    return withDefaultBankroll(read(TRANSACTIONS_KEY, validTransaction, store), store);
+  },
+  addBankroll(name: string, store?: StorageLike, now = new Date()) {
+    const record: Bankroll = { id: createId(), createdAt: now.toISOString(), name };
+    const next = [...this.bankrolls(store), record].slice(0, MAX_BANKROLLS);
+    write(BANKROLLS_KEY, next, store);
+    pushBankroll(record);
+    track("journal_bankroll_added");
+    return record;
+  },
+  renameBankroll(id: string, name: string, store?: StorageLike) {
+    const next = this.bankrolls(store).map((bankroll) => bankroll.id === id ? { ...bankroll, name } : bankroll);
+    write(BANKROLLS_KEY, next, store);
+    const renamed = next.find((bankroll) => bankroll.id === id);
+    if (renamed) pushBankroll(renamed);
+  },
+  /** Reassigns the bankroll's sessions/transactions to the default bankroll, then removes it. Refuses to delete the last remaining bankroll. */
+  deleteBankroll(id: string, store?: StorageLike) {
+    const remaining = this.bankrolls(store).filter((bankroll) => bankroll.id !== id);
+    if (remaining.length === 0) return false;
+    const fallback = [...remaining].sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0].id;
+    const movedSessionIds = new Set(this.sessions(store).filter((session) => session.bankrollId === id).map((session) => session.id));
+    const movedTransactionIds = new Set(this.transactions(store).filter((transaction) => transaction.bankrollId === id).map((transaction) => transaction.id));
+    const reassignedSessions = this.sessions(store).map((session) => movedSessionIds.has(session.id) ? { ...session, bankrollId: fallback } : session);
+    const reassignedTransactions = this.transactions(store).map((transaction) => movedTransactionIds.has(transaction.id) ? { ...transaction, bankrollId: fallback } : transaction);
+    write(SESSIONS_KEY, reassignedSessions, store);
+    write(TRANSACTIONS_KEY, reassignedTransactions, store);
+    write(BANKROLLS_KEY, remaining, store);
+    for (const session of reassignedSessions) if (movedSessionIds.has(session.id)) pushJournalSession(session);
+    for (const transaction of reassignedTransactions) if (movedTransactionIds.has(transaction.id)) pushTransaction(transaction);
+    deleteRemoteBankroll(id);
+    track("journal_bankroll_deleted");
+    return true;
+  },
+  addSession(session: Omit<JournalSession, "id" | "createdAt" | "bankrollId"> & { bankrollId?: string }, store?: StorageLike, now = new Date()) {
+    const record: JournalSession = { ...session, bankrollId: session.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.sessions(store)].slice(0, MAX_SESSIONS);
     write(SESSIONS_KEY, next, store);
     pushJournalSession(record);
@@ -188,8 +309,8 @@ export const journalLibrary = {
     deleteRemoteJournalSession(id);
     track("journal_session_deleted");
   },
-  addTransaction(transaction: Omit<BankrollTransaction, "id" | "createdAt">, store?: StorageLike, now = new Date()) {
-    const record: BankrollTransaction = { ...transaction, id: createId(), createdAt: now.toISOString() };
+  addTransaction(transaction: Omit<BankrollTransaction, "id" | "createdAt" | "bankrollId"> & { bankrollId?: string }, store?: StorageLike, now = new Date()) {
+    const record: BankrollTransaction = { ...transaction, bankrollId: transaction.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.transactions(store)].slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, next, store);
     pushTransaction(record);
@@ -202,6 +323,12 @@ export const journalLibrary = {
     track("journal_transaction_deleted");
   },
   /** Merge rows pulled from Supabase into the local cache without re-pushing them. */
+  mergeRemoteBankrolls(remote: Bankroll[], store?: StorageLike) {
+    const merged = [...remote, ...read(BANKROLLS_KEY, validBankroll, store)]
+      .filter((bankroll, index, all) => all.findIndex((candidate) => candidate.id === bankroll.id) === index)
+      .slice(0, MAX_BANKROLLS);
+    write(BANKROLLS_KEY, merged, store);
+  },
   mergeRemoteSessions(remote: JournalSession[], store?: StorageLike) {
     const merged = [...remote, ...this.sessions(store)]
       .filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index)
@@ -214,8 +341,9 @@ export const journalLibrary = {
       .slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, merged, store);
   },
-  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. */
-  pushAllToRemote(store?: StorageLike) {
+  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Bankrolls go first so sessions/transactions can reference them. */
+  async pushAllToRemote(store?: StorageLike) {
+    for (const bankroll of this.bankrolls(store)) await pushBankroll(bankroll);
     for (const session of this.sessions(store)) pushJournalSession(session);
     for (const transaction of this.transactions(store)) pushTransaction(transaction);
   },
@@ -224,23 +352,116 @@ export const journalLibrary = {
     return JSON.stringify({
       version: 1,
       exportedAt: new Date().toISOString(),
+      bankrolls: this.bankrolls(store),
       sessions: this.sessions(store),
       transactions: this.transactions(store),
     }, null, 2);
   },
   importData(raw: string, store?: StorageLike) {
-    const parsed = JSON.parse(raw) as { version?: unknown; sessions?: unknown; transactions?: unknown };
+    const parsed = JSON.parse(raw) as { version?: unknown; bankrolls?: unknown; sessions?: unknown; transactions?: unknown };
     if (parsed.version !== 1 || !Array.isArray(parsed.sessions) || !Array.isArray(parsed.transactions)) throw new Error("This is not a valid CountLab journal backup.");
-    if (!parsed.sessions.every(validSession) || !parsed.transactions.every(validTransaction)) throw new Error("The journal backup contains invalid or incomplete records.");
+    const importedBankrolls = Array.isArray(parsed.bankrolls) ? parsed.bankrolls : [];
+    if (!importedBankrolls.every(validBankroll) || !parsed.sessions.every(validSession) || !parsed.transactions.every(validTransaction)) throw new Error("The journal backup contains invalid or incomplete records.");
+    const bankrolls = [...importedBankrolls, ...this.bankrolls(store)].filter((bankroll, index, all) => all.findIndex((candidate) => candidate.id === bankroll.id) === index).slice(0, MAX_BANKROLLS);
     const sessions = [...parsed.sessions, ...this.sessions(store)].filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index).slice(0, MAX_SESSIONS);
     const transactions = [...parsed.transactions, ...this.transactions(store)].filter((transaction, index, all) => all.findIndex((candidate) => candidate.id === transaction.id) === index).slice(0, MAX_TRANSACTIONS);
+    write(BANKROLLS_KEY, bankrolls, store);
     write(SESSIONS_KEY, sessions, store);
     write(TRANSACTIONS_KEY, transactions, store);
     track("data_imported", { scope: "journal", sessions: sessions.length, transactions: transactions.length });
     return { sessions: sessions.length, transactions: transactions.length };
   },
+  /** Spreadsheet-friendly export. Round-trips through importSessionsCsv, but re-imported rows always become new records (no id to dedupe on). */
+  exportSessionsCsv(store?: StorageLike) {
+    track("data_exported", { scope: "journal_sessions_csv" });
+    const bankrollNames = new Map(this.bankrolls(store).map((bankroll) => [bankroll.id, bankroll.name]));
+    const rows = this.sessions(store).map((session) => ({
+      date: session.date,
+      bankroll: bankrollNames.get(session.bankrollId) ?? "",
+      location: session.location ?? "",
+      hours: session.hours,
+      handsPerHour: session.handsPerHour,
+      playerHands: session.playerHands,
+      bettingUnit: session.bettingUnit,
+      decks: session.rules.decks,
+      penetration: session.rules.penetration,
+      dealerHitsSoft17: session.rules.dealerHitsSoft17,
+      doubleAfterSplit: session.rules.doubleAfterSplit,
+      resplitAces: session.rules.resplitAces,
+      lateSurrender: session.rules.lateSurrender,
+      blackjackPayout: session.rules.blackjackPayout,
+      useIndices: session.rules.useIndices ?? true,
+      ramp: encodeRampCsv(session.ramp),
+      netResult: session.netResult,
+      expenses: session.expenses,
+      notes: session.notes ?? "",
+    }));
+    return toCsv(rows, SESSION_CSV_COLUMNS);
+  },
+  exportTransactionsCsv(store?: StorageLike) {
+    track("data_exported", { scope: "journal_transactions_csv" });
+    const bankrollNames = new Map(this.bankrolls(store).map((bankroll) => [bankroll.id, bankroll.name]));
+    const rows = this.transactions(store).map((transaction) => ({
+      date: transaction.date,
+      bankroll: bankrollNames.get(transaction.bankrollId) ?? "",
+      type: transaction.type,
+      amount: transaction.amount,
+      note: transaction.note ?? "",
+    }));
+    return toCsv(rows, TRANSACTION_CSV_COLUMNS);
+  },
+  /** Imports session summary rows from a CSV built by exportSessionsCsv. Each row becomes a new session; a bankroll name with no local match is created. */
+  importSessionsCsv(raw: string, store?: StorageLike) {
+    const rows = parseCsv(raw);
+    const bankrollIdByName = new Map(this.bankrolls(store).map((bankroll) => [bankroll.name, bankroll.id]));
+    let imported = 0;
+    for (const row of rows) {
+      const decks = Number(row.decks);
+      const penetration = Number(row.penetration);
+      const bettingUnit = Number(row.bettingUnit);
+      const hours = Number(row.hours);
+      const handsPerHour = Number(row.handsPerHour);
+      const playerHands = Number(row.playerHands);
+      const netResult = Number(row.netResult);
+      const expenses = Number(row.expenses);
+      const ramp = decodeRampCsv(row.ramp ?? "");
+      if (![decks, penetration, bettingUnit, hours, handsPerHour, playerHands, netResult, expenses].every(finite) || ramp.length === 0 || !row.date) continue;
+      let bankrollId = row.bankroll ? bankrollIdByName.get(row.bankroll) : undefined;
+      if (!bankrollId && row.bankroll) {
+        bankrollId = this.addBankroll(row.bankroll, store).id;
+        bankrollIdByName.set(row.bankroll, bankrollId);
+      }
+      this.addSession({
+        date: row.date,
+        location: row.location || undefined,
+        hours,
+        handsPerHour,
+        playerHands,
+        bettingUnit,
+        rules: {
+          decks,
+          penetration,
+          dealerHitsSoft17: row.dealerHitsSoft17 === "true",
+          doubleAfterSplit: row.doubleAfterSplit === "true",
+          resplitAces: row.resplitAces === "true",
+          lateSurrender: row.lateSurrender === "true",
+          blackjackPayout: Number(row.blackjackPayout) === 1.2 ? 1.2 : 1.5,
+          useIndices: row.useIndices !== "false",
+        },
+        ramp,
+        netResult,
+        expenses,
+        notes: row.notes || undefined,
+        bankrollId,
+      }, store);
+      imported++;
+    }
+    track("data_imported", { scope: "journal_sessions_csv", sessions: imported });
+    return imported;
+  },
   clear(store?: StorageLike) {
     const target = store ?? availableStorage();
+    target?.removeItem(BANKROLLS_KEY);
     target?.removeItem(SESSIONS_KEY);
     target?.removeItem(TRANSACTIONS_KEY);
     if (typeof window !== "undefined") window.dispatchEvent(new Event(JOURNAL_EVENT));

@@ -34,9 +34,19 @@ create table if not exists drill_progress (
   primary key (user_id, drill)
 );
 
+create table if not exists journal_bankrolls (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz not null default now(),
+  name text not null,
+  starting_amount numeric,
+  archived boolean not null default false
+);
+
 create table if not exists journal_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
+  bankroll_id uuid references journal_bankrolls (id) on delete set null,
   created_at timestamptz not null default now(),
   date date not null,
   location text,
@@ -54,6 +64,7 @@ create table if not exists journal_sessions (
 create table if not exists journal_transactions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
+  bankroll_id uuid references journal_bankrolls (id) on delete set null,
   created_at timestamptz not null default now(),
   date date not null,
   type text not null check (type in ('deposit', 'withdrawal')),
@@ -63,12 +74,14 @@ create table if not exists journal_transactions (
 
 create index if not exists drill_sessions_user_id_idx on drill_sessions (user_id);
 create index if not exists drill_progress_user_id_idx on drill_progress (user_id);
+create index if not exists journal_bankrolls_user_id_idx on journal_bankrolls (user_id);
 create index if not exists journal_sessions_user_id_idx on journal_sessions (user_id);
 create index if not exists journal_transactions_user_id_idx on journal_transactions (user_id);
 
 alter table settings enable row level security;
 alter table drill_sessions enable row level security;
 alter table drill_progress enable row level security;
+alter table journal_bankrolls enable row level security;
 alter table journal_sessions enable row level security;
 alter table journal_transactions enable row level security;
 
@@ -98,6 +111,15 @@ drop policy if exists "drill_progress owner update" on drill_progress;
 create policy "drill_progress owner update" on drill_progress for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "drill_progress owner delete" on drill_progress;
 create policy "drill_progress owner delete" on drill_progress for delete using (auth.uid() = user_id);
+
+drop policy if exists "journal_bankrolls owner select" on journal_bankrolls;
+create policy "journal_bankrolls owner select" on journal_bankrolls for select using (auth.uid() = user_id);
+drop policy if exists "journal_bankrolls owner insert" on journal_bankrolls;
+create policy "journal_bankrolls owner insert" on journal_bankrolls for insert with check (auth.uid() = user_id);
+drop policy if exists "journal_bankrolls owner update" on journal_bankrolls;
+create policy "journal_bankrolls owner update" on journal_bankrolls for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "journal_bankrolls owner delete" on journal_bankrolls;
+create policy "journal_bankrolls owner delete" on journal_bankrolls for delete using (auth.uid() = user_id);
 
 drop policy if exists "journal_sessions owner select" on journal_sessions;
 create policy "journal_sessions owner select" on journal_sessions for select using (auth.uid() = user_id);
@@ -187,6 +209,13 @@ begin
 end;
 $$;
 
+create or replace function rl_journal_bankrolls() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform enforce_rate_limit('journal_bankrolls_write', 30, interval '1 minute');
+  return new;
+end;
+$$;
+
 create or replace function rl_journal_sessions() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   perform enforce_rate_limit('journal_sessions_write', 30, interval '1 minute');
@@ -219,6 +248,10 @@ drop trigger if exists drill_progress_rate_limit on drill_progress;
 create trigger drill_progress_rate_limit before insert on drill_progress
   for each row execute function rl_drill_progress();
 
+drop trigger if exists journal_bankrolls_rate_limit on journal_bankrolls;
+create trigger journal_bankrolls_rate_limit before insert on journal_bankrolls
+  for each row execute function rl_journal_bankrolls();
+
 drop trigger if exists journal_sessions_rate_limit on journal_sessions;
 create trigger journal_sessions_rate_limit before insert on journal_sessions
   for each row execute function rl_journal_sessions();
@@ -243,6 +276,9 @@ alter table drill_sessions add constraint drill_sessions_size_limit check (
 
 alter table drill_progress drop constraint if exists drill_progress_size_limit;
 alter table drill_progress add constraint drill_progress_size_limit check (pg_column_size(state) < 50000);
+
+alter table journal_bankrolls drop constraint if exists journal_bankrolls_size_limit;
+alter table journal_bankrolls add constraint journal_bankrolls_size_limit check (char_length(name) < 200);
 
 alter table journal_sessions drop constraint if exists journal_sessions_size_limit;
 alter table journal_sessions add constraint journal_sessions_size_limit check (

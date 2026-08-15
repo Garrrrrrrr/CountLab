@@ -314,14 +314,14 @@ export function ChaseFlushLab() {
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Conditional EV training and research</p>
           <h1 className="mt-2 text-3xl font-semibold">Chase the Flush Lab</h1>
-          <p className="mt-2 max-w-3xl text-zinc-400">Practice or analyze decisions with one exposed dealer card. Hidden dealer cards are never entered or passed to the solver.</p>
+          <p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">Practice or analyze decisions with one exposed dealer card. Hidden dealer cards are never entered or passed to the solver.</p>
         </div>
         <a className="inline-flex min-h-11 items-center text-sm text-emerald-400 hover:underline" href="https://wizardofodds.com/games/chase-the-flush/" target="_blank" rel="noreferrer">Rules source ↗</a>
       </div>
 
-      <div className="mt-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Chase the Flush mode">
+      <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto border-y border-white/[.06] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:mt-6 sm:flex-wrap sm:border-0 sm:bg-transparent sm:p-0" role="tablist" aria-label="Chase the Flush mode">
         {(["game", "analyze", "practice", "strategy", "research"] as const).map((item) => (
-          <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={`w-full sm:w-auto ${mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>
+          <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={`shrink-0 whitespace-nowrap ${mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>
             {item === "game" ? "Play Game" : item[0].toUpperCase() + item.slice(1)}
           </GhostButton>
         ))}

@@ -4,9 +4,12 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
+import { computeStreak } from "@/lib/statistics/streaks";
+import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
 import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
+const Onboarding = dynamic(() => import("@/components/Onboarding").then((m) => ({ default: m.Onboarding })), { loading: () => null });
 const groups = [
   {
     label: "",
@@ -21,6 +24,8 @@ const groups = [
       ["Game & Bankroll Lab", "/cvcx", "fa-chart-area"],
       ["Session Simulator", "/simulation", "fa-wave-square"],
       ["Session Journal", "/journal", "fa-book"],
+      ["Compare Scenarios", "/compare", "fa-code-compare"],
+      ["Trip Planner", "/trip-planner", "fa-plane-departure"],
     ],
   },
   {
@@ -69,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     fullShoeActive = path === "/training/full-shoe",
     [open, setOpen] = useState(false),
     [rules, setRules] = useState(DEFAULT_SETTINGS),
+    [streakDays, setStreakDays] = useState(0),
     toggle = useRef<HTMLButtonElement>(null),
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
@@ -103,11 +109,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, [open]);
   useEffect(() => {
-    const load = () => setRules(storage.settings());
+    const load = () => {
+      setRules(storage.settings());
+      setStreakDays(computeStreak(storage.sessions()).currentStreakDays);
+    };
     load();
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
+  useEffect(() => { registerServiceWorker(); }, []);
   useEffect(() => {
     const activateVisiblePrimaryAction = (event: KeyboardEvent) => {
       if (event.key !== "Enter" || event.repeat || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -219,6 +229,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
             <span className="hidden sm:inline">Home</span>
           </a>
+          {streakDays > 0 && (
+            <span
+              aria-label={`${streakDays}-day practice streak`}
+              className="grid min-h-11 shrink-0 place-items-center rounded-full border border-amber-300/20 bg-amber-300/10 px-3 text-[.7rem] font-semibold tracking-[.04em] text-amber-200"
+            >
+              <i className="fa-solid fa-fire mr-1.5 text-amber-300" aria-hidden="true" />{streakDays}
+            </span>
+          )}
           <Link
             href="/settings"
             aria-label={`Current rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}. Open settings.`}
@@ -230,10 +248,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             </span>
           </Link>
         </header>
-        <div className={`mx-auto p-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20 ${fullShoeActive ? "max-w-[130rem]" : "max-w-[90rem]"}`}>
+        <div className={`mx-auto min-w-0 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-3 sm:p-5 sm:pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:p-8 md:pb-24 lg:pb-20 ${fullShoeActive ? "max-w-[130rem]" : "max-w-[90rem]"}`}>
           <div className={fullShoeActive ? undefined : "hidden"} aria-hidden={!fullShoeActive}>
             <FullShoeGame active={fullShoeActive} />
           </div>
+          {!fullShoeActive && path === "/dashboard" && <Onboarding />}
           {!fullShoeActive && children}
         </div>
       </main>

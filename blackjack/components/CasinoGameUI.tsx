@@ -76,12 +76,12 @@ export function BetSpot({
   detail?: string;
 }) {
   return (
-    <div className="text-center">
+    <div className="min-w-[4.75rem] text-center">
       <button
         type="button"
         disabled={locked || !onAdd}
         onClick={onAdd}
-        className={`pressable mx-auto grid h-24 w-24 place-items-center rounded-full border-2 text-center ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
+        className={`pressable mx-auto grid h-20 w-20 place-items-center rounded-full border-2 text-center sm:h-24 sm:w-24 ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
       >
         <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
       </button>
@@ -116,7 +116,7 @@ export function CardRow({
 
 export function CasinoTable({ children }: { children: ReactNode }) {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_20%,#176144_0%,#0d3b2b_48%,#08271e_100%)] p-4 shadow-[inset_0_0_90px_#0007,0_24px_70px_#0006] sm:p-6 lg:p-8">
+    <section className="relative overflow-hidden rounded-[1.5rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_20%,#176144_0%,#0d3b2b_48%,#08271e_100%)] p-3 shadow-[inset_0_0_90px_#0007,0_24px_70px_#0006] sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-3 rounded-[1.5rem] border border-amber-100/10" />
       <div className="relative">{children}</div>
     </section>

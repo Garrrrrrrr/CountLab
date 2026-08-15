@@ -1,14 +1,15 @@
 import { supabase } from "./client";
 import { storage, type DrillProgress, type Session, type Settings } from "../statistics/storage";
-import { journalLibrary, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
+import { journalLibrary, type Bankroll, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
 import { observeApiRequest } from "../analytics";
 
 /** Pulls this user's rows from Supabase and merges them into the local cache. Called once on sign-in. */
 export async function pullRemoteData(userId: string): Promise<void> {
-  const [settingsRes, sessionsRes, progressRes, journalSessionsRes, transactionsRes] = await Promise.all([
+  const [settingsRes, sessionsRes, progressRes, bankrollsRes, journalSessionsRes, transactionsRes] = await Promise.all([
     observeApiRequest("supabase", "sync_settings_read", supabase.from("settings").select("data").eq("user_id", userId).maybeSingle()),
     observeApiRequest("supabase", "sync_drill_sessions_read", supabase.from("drill_sessions").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_drill_progress_read", supabase.from("drill_progress").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "sync_journal_bankrolls_read", supabase.from("journal_bankrolls").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_journal_sessions_read", supabase.from("journal_sessions").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_journal_transactions_read", supabase.from("journal_transactions").select("*").eq("user_id", userId)),
   ]);
@@ -42,10 +43,25 @@ export async function pullRemoteData(userId: string): Promise<void> {
     storage.mergeRemoteProgress(progress);
   }
 
+  if (bankrollsRes.data) {
+    const bankrolls: Bankroll[] = bankrollsRes.data.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      name: row.name,
+      startingAmount: row.starting_amount ?? undefined,
+      archived: row.archived ?? undefined,
+    }));
+    journalLibrary.mergeRemoteBankrolls(bankrolls);
+  }
+
+  // Rows written before multi-bankroll support (or orphaned by a deleted bankroll) have no bankroll_id.
+  const fallbackBankrollId = journalLibrary.defaultBankrollId();
+
   if (journalSessionsRes.data) {
     const sessions: JournalSession[] = journalSessionsRes.data.map((row) => ({
       id: row.id,
       createdAt: row.created_at,
+      bankrollId: row.bankroll_id ?? fallbackBankrollId,
       date: row.date,
       location: row.location ?? undefined,
       hours: row.hours,
@@ -65,6 +81,7 @@ export async function pullRemoteData(userId: string): Promise<void> {
     const transactions: BankrollTransaction[] = transactionsRes.data.map((row) => ({
       id: row.id,
       createdAt: row.created_at,
+      bankrollId: row.bankroll_id ?? fallbackBankrollId,
       date: row.date,
       type: row.type,
       amount: row.amount,
