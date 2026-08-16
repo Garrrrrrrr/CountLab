@@ -10,6 +10,7 @@ export const ROUTES: string[][] = [
   ["trip-planner"],
   ["analysis"],
   ["bankroll"],
+  ["bet-spread-recommender"],
   ["chase-flush"],
   ["ultimate-texas-holdem"],
   ["training", "running-count"],

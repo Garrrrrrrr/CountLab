@@ -31,6 +31,7 @@ const dynamicPage = (loader: () => Promise<{ default: ComponentType }>) =>
   dynamic(loader, { loading: PageLoading });
 
 const CvcxLab = dynamicPage(() => import("@/components/CvcxLab").then((m) => ({ default: m.CvcxLab })));
+const BankrollRecommender = dynamicPage(() => import("@/components/BankrollRecommender").then((m) => ({ default: m.BankrollRecommender })));
 const SessionSimulator = dynamicPage(() => import("@/components/SessionSimulator").then((m) => ({ default: m.SessionSimulator })));
 const SessionJournal = dynamicPage(() => import("@/components/SessionJournal").then((m) => ({ default: m.SessionJournal })));
 const ScenarioComparison = dynamicPage(() => import("@/components/ScenarioComparison").then((m) => ({ default: m.ScenarioComparison })));
@@ -762,6 +763,7 @@ export default function DynamicPage() {
     "trip-planner": <TripPlanner />,
     analysis: <CvcxLab />,
     bankroll: <CvcxLab />,
+    "bet-spread-recommender": <BankrollRecommender />,
     "chase-flush": <ChaseFlushLab />,
     "ultimate-texas-holdem": <UTHLab />,
     "training/running-count": <RunningCountDrill />,
