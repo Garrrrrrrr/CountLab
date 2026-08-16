@@ -22,6 +22,7 @@ const groups = [
     label: "Analyze",
     items: [
       ["Game & Bankroll Lab", "/cvcx", "fa-chart-area"],
+      ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"],
       ["Session Simulator", "/simulation", "fa-wave-square"],
       ["Session Journal", "/journal", "fa-book"],
       ["Compare Scenarios", "/compare", "fa-code-compare"],
@@ -265,7 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ["Train", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/journal", "/analysis", "/bankroll", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
+          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/journal", "/analysis", "/bankroll", "/bet-spread-recommender", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
           return (
             <Link
               key={href}
