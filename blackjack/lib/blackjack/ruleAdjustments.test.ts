@@ -55,6 +55,11 @@ describe("sumRuleAdjustment", () => {
       12,
     );
   });
+
+  it("applies the restricted-doubling delta matching the selected restriction", () => {
+    expect(sumRuleAdjustment({ doubleOnly9to11: true })).toBeCloseTo(RULE_DELTAS.doubleOnly9to11, 12);
+    expect(sumRuleAdjustment({ doubleOnly10to11: true })).toBeCloseTo(RULE_DELTAS.doubleOnly10to11, 12);
+  });
 });
 
 describe("isEstimated", () => {
