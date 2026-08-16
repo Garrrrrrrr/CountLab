@@ -85,6 +85,7 @@ interface DashboardData {
 interface VisitorSummary {
   visitor_id: string;
   user_id: string | null;
+  email: string | null;
   event_count: number;
   session_count: number;
   active_days: number;
@@ -95,6 +96,7 @@ interface VisitorSummary {
 interface TimelineRow { id: string; event: string; path: string; properties: Record<string, unknown>; occurred_at: string }
 interface SelectedVisitor { visitorId: string; userId: string | null; label: string }
 interface VisitorProfile {
+  email?: string | null;
   account_created_at?: string | null;
   first_seen?: string;
   last_seen?: string;
@@ -206,6 +208,7 @@ function displayName(value: string): string {
 }
 
 function visitorLabel(visitor: VisitorSummary): string {
+  if (visitor.email) return visitor.email;
   const raw = visitor.visitor_id.replace(/^anon:/, "");
   return `${visitor.user_id ? "user" : "guest"} ${raw.slice(0, 8)}`;
 }
@@ -521,7 +524,7 @@ export default function AdminPage() {
 
         <Panel className="mt-6"><SectionTitle title="Errors" note="Normalized messages and grouped impact" /><DataTable rows={dashboard.errors.slice(0, 20)} columns={[{ key: "error_type", label: "Type" }, { key: "message", label: "Normalized message" }, { key: "path", label: "Route" }, { key: "occurrences", label: "Count" }, { key: "affected_users", label: "Affected users" }, { key: "last_seen", label: "Last seen", format: (value) => new Date(String(value)).toLocaleString() }]} /></Panel>
 
-        <Panel className="mt-6"><SectionTitle title="Visitor aggregates" note="Pseudonymous, purposeful summaries only—no email addresses or answer text" /><DataTable rows={visitors.slice(0, 100)} columns={[
+        <Panel className="mt-6"><SectionTitle title="Visitor aggregates" note="Email shown for signed-in accounts; guests remain pseudonymous. No answer text." /><DataTable rows={visitors.slice(0, 100)} columns={[
           { key: "visitor_id", label: "Visitor", format: (_value, row) => visitorLabel(row) }, { key: "event_count", label: "Events" },
           { key: "session_count", label: "Sessions" }, { key: "active_days", label: "Active days" },
           { key: "last_seen", label: "Last active", format: (value) => new Date(String(value)).toLocaleString() },

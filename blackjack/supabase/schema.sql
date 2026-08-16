@@ -1305,17 +1305,22 @@ $$;
 revoke all on function admin_analytics_realtime() from public;
 grant execute on function admin_analytics_realtime() to authenticated;
 
--- Replace the legacy email-bearing visitor directory with pseudonymous,
--- aggregate-only output. Individual timelines stay high-level and omit answer text.
+-- Admin-only visitor directory. Includes the auth account email (when the visitor is signed
+-- in) alongside the pseudonymous visitor_id, so admins aren't stuck reading raw UUIDs.
+-- Guarded by is_admin() and never exposed to non-admin roles or client analytics payloads;
+-- individual timelines (admin_visitor_events below) still omit answer text.
 drop function if exists admin_visitor_events(uuid, text);
 drop function if exists admin_visitor_summary();
 create function admin_visitor_summary()
-returns table (visitor_id text, user_id uuid, event_count bigint, session_count bigint,
+returns table (visitor_id text, user_id uuid, email text, event_count bigint, session_count bigint,
   active_days bigint, first_seen timestamptz, last_seen timestamptz)
 language sql security definer set search_path = public, analytics stable as $$
-  select e.visitor_id, max(e.resolved_user_id::text)::uuid, count(*), count(distinct e.session_id),
+  select e.visitor_id, max(e.resolved_user_id::text)::uuid, max(u.email),
+    count(*), count(distinct e.session_id),
     count(distinct e.occurred_at::date), min(e.occurred_at), max(e.occurred_at)
-  from analytics.events_clean e where is_admin()
+  from analytics.events_clean e
+  left join auth.users u on u.id = e.resolved_user_id
+  where is_admin()
   group by e.visitor_id order by max(e.occurred_at) desc limit 500;
 $$;
 create function admin_visitor_events(target_user_id uuid, target_anon_id text)
@@ -1445,7 +1450,9 @@ select e.visitor_id, e.resolved_user_id,
   case when e.last_seen >= now()-interval '7 days' then 'recently_active'
        when e.last_seen >= now()-interval '30 days' then 'slipping'
        else 'churned' end lifecycle_state,
-  coalesce(s.resurrected,false) resurrected
+  coalesce(s.resurrected,false) resurrected,
+  -- appended, not inserted: CREATE OR REPLACE VIEW only allows adding columns at the end
+  u.email
 from event_rollup e
 left join session_rollup s using(visitor_id)
 left join auth.users u on u.id=e.resolved_user_id
@@ -1906,7 +1913,7 @@ grant execute on function admin_analytics_advanced(date,date,jsonb) to authentic
 create or replace function admin_visitor_profile(target_visitor_id text) returns jsonb
 language sql security definer set search_path=public,analytics stable as $$
   select case when is_admin() then jsonb_build_object(
-    'visitor_id',p.visitor_id,'account_created_at',p.account_created_at,'first_seen',p.first_seen,
+    'visitor_id',p.visitor_id,'email',p.email,'account_created_at',p.account_created_at,'first_seen',p.first_seen,
     'last_seen',p.last_seen,'first_authenticated_at',p.first_authenticated_at,'sessions',p.sessions,
     'active_days',p.active_days,'meaningful_events',p.meaningful_events,'returning_user',p.returning_user,
     'user_role',p.user_role,'account_status',p.account_status,'acquisition_source',p.acquisition_source,
