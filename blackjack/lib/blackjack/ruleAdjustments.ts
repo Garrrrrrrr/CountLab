@@ -12,6 +12,8 @@ export const RULE_DELTAS = {
   noLateSurrender: -0.0007,
   europeanNoHoleCard: -0.0011,
   blackjackPays6to5: -0.0139,
+  doubleOnly9to11: -0.0009,
+  doubleOnly10to11: -0.0018,
 } as const;
 
 export const DEVIATION_SKILL = {
@@ -28,6 +30,8 @@ export interface RuleAdjustmentFlags {
   noLateSurrender?: boolean;
   europeanNoHoleCard?: boolean;
   blackjackPays6to5?: boolean;
+  doubleOnly9to11?: boolean;
+  doubleOnly10to11?: boolean;
 }
 
 export function sumRuleAdjustment(flags: RuleAdjustmentFlags): number {
@@ -38,6 +42,8 @@ export function sumRuleAdjustment(flags: RuleAdjustmentFlags): number {
   if (flags.noLateSurrender) total += RULE_DELTAS.noLateSurrender;
   if (flags.europeanNoHoleCard) total += RULE_DELTAS.europeanNoHoleCard;
   if (flags.blackjackPays6to5) total += RULE_DELTAS.blackjackPays6to5;
+  if (flags.doubleOnly9to11) total += RULE_DELTAS.doubleOnly9to11;
+  if (flags.doubleOnly10to11) total += RULE_DELTAS.doubleOnly10to11;
   return total;
 }
 

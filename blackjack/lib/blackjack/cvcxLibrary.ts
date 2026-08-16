@@ -24,6 +24,7 @@ export interface CvcxTemplateConfig {
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
   deviationSkillLevel: keyof typeof DEVIATION_SKILL;
+  doubleRule?: "any2" | "9to11" | "10to11";
 }
 
 export interface CvcxTemplate {
