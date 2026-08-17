@@ -9,3 +9,9 @@ results/*
 !results/no-index-coefficients.json
 !results/ramp-variance-h17-pro.json
 !results/ramp-variance-countlab.json
+!results/index-tier-ranking.json
+!results/index-tier-none.json
+!results/index-tier-70.json
+!results/index-tier-82.json
+!results/index-tier-i18fab4.json
+!results/index-tier-full.json

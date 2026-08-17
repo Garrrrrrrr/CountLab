@@ -13,14 +13,16 @@ import {
   CountRow,
   DEFAULT_ADVANTAGE_RULES,
   HandCountPoint,
+  IndexTier,
   RampPoint,
   RAMPS,
   unitsAt,
   zeroBetsBelow,
 } from "@/lib/blackjack/advantage";
-import { COEFFICIENT_METADATA, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { INDEX_TIER_METADATA } from "@/lib/blackjack/indexTierCoefficients";
 import {
-  DEVIATION_SKILL,
+  INDEX_TIERS,
   isEstimated,
   sumRuleAdjustment,
 } from "@/lib/blackjack/ruleAdjustments";
@@ -29,6 +31,7 @@ import {
   CvcxTemplate,
   CvcxTemplateConfig,
   templateHandSchedule,
+  templateIndexTier,
 } from "@/lib/blackjack/cvcxLibrary";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
@@ -385,8 +388,7 @@ export function CvcxLab() {
     [lateSurrender, setLateSurrender] = useState(true),
     [europeanNoHoleCard, setEuropeanNoHoleCard] = useState(false),
     [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5),
-    [deviationSkillLevel, setDeviationSkillLevel] =
-      useState<keyof typeof DEVIATION_SKILL>("perfect"),
+    [indexTier, setIndexTier] = useState<IndexTier>("full"),
     [doubleRule, setDoubleRule] = useState<"any2" | "9to11" | "10to11">("any2"),
     [cvcxTemplateName, setCvcxTemplateName] = useState(""),
     [cvcxTemplates, setCvcxTemplates] = useState<CvcxTemplate[]>([]),
@@ -422,8 +424,8 @@ export function CvcxLab() {
       [dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, doubleRule],
     ),
     ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleFlags), [ruleFlags]),
-    deviationSkill = DEVIATION_SKILL[deviationSkillLevel],
-    estimated = isEstimated(ruleFlags, deviationSkill);
+    tier = INDEX_TIERS[indexTier],
+    estimated = isEstimated(ruleFlags);
 
   // The bet-spread table is the only place hand counts are set, so this is the
   // whole schedule and every metric on the page is priced from it.
@@ -469,17 +471,17 @@ export function CvcxLab() {
         wongInAt,
         rules,
         ruleAdjustment,
-        deviationSkill,
+        indexTier,
       }),
-      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, deviationSkill],
+      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, indexTier],
     ),
     result = useMemo(
       () => analyzeCvcx(scenario, activeRamp, baseBet),
       [scenario, activeRamp, baseBet],
     ),
     optimalRamp = useMemo(
-      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill),
-      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill],
+      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier),
+      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier],
     ),
     optimalUnit = useMemo(
       () => riskSizedUnit(scenario, optimalRamp),
@@ -526,7 +528,7 @@ export function CvcxLab() {
   const currentCvcxConfig = (): CvcxTemplateConfig => ({
     decks, dealt, bankroll, baseBet, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
     rampName, ramp, chipIncrement, hands: handsSchedule,
-    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, deviationSkillLevel, doubleRule,
+    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, indexTier, doubleRule,
   });
   const saveCvcxTemplate = () => {
     const saved = cvcxLibrary.saveTemplate(currentCvcxConfig(), cvcxTemplateName);
@@ -560,7 +562,7 @@ export function CvcxLab() {
     setLateSurrender(config.lateSurrender);
     setEuropeanNoHoleCard(config.europeanNoHoleCard);
     setBlackjackPayout(config.blackjackPayout);
-    setDeviationSkillLevel(config.deviationSkillLevel);
+    setIndexTier(templateIndexTier(config));
     setDoubleRule(config.doubleRule ?? "any2");
     setCvcxTemplateName(template.name);
     setCvcxNotice(`Loaded “${template.name}”.`);
@@ -620,7 +622,7 @@ export function CvcxLab() {
             wongInAt,
             chipIncrement,
             ruleAdjustment,
-            deviationSkill,
+            indexTier,
           );
           return {
             name: `${comparisonDecks}D · ${option.dealt} dealt`,
@@ -630,7 +632,7 @@ export function CvcxLab() {
           };
         }),
       ),
-    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill, scenario, baseBet],
+    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier, scenario, baseBet],
   );
 
   const estimateSuffix = estimated ? " · est." : "";
@@ -736,7 +738,7 @@ export function CvcxLab() {
 
         <Section
           title="Table rules"
-          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${deviationSkillLevel} deviations · ${estimated ? "estimated" : "audited"}`}
+          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${tier.label} (${tier.coverage}% · ${tier.plays} plays) · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -757,11 +759,8 @@ export function CvcxLab() {
                 <option key={option.dealt} value={option.dealt}>{option.label}</option>
               ))}
             </Select>
-            <Select label="Deviations" value={deviationSkillLevel} onChange={(event) => setDeviationSkillLevel(event.target.value as keyof typeof DEVIATION_SKILL)}>
-              <option value="beginner">Beginner (70%)</option>
-              <option value="intermediate">Intermediate (82%)</option>
-              <option value="pro">Pro (92%)</option>
-              <option value="perfect">Perfect (100%)</option>
+            <Select label="Deviations" value={indexTier} onChange={(event) => setIndexTier(event.target.value as IndexTier)}>
+              {Object.values(INDEX_TIERS).map((option) => <option key={option.key} value={option.key}>{option.label} ({option.coverage}% · {option.plays} plays)</option>)}
             </Select>
             <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
             <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
@@ -786,7 +785,6 @@ export function CvcxLab() {
               <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
               <span>
                 {ruleAdjustment !== 0 && `Rules that depart from the audited baseline apply a flat literature-estimated ${(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit. `}
-                {deviationSkill < 1 && `Partial deviation skill interpolates between the audited full-index run and an equally weighted audited basic-strategy run.`}
               </span>
             </p>
           )}
@@ -930,7 +928,7 @@ export function CvcxLab() {
           open={false}
         >
           <p className="text-xs leading-5 text-zinc-500">
-            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2). Partial deviation skill interpolates between that run and an equally weighted audited basic-strategy run. Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. Every deviation option is a separately simulated subset of one complete Hi-Lo matrix—there is no blended skill curve. The currently loaded tier runs use {INDEX_TIER_METADATA.requested_shoes.toLocaleString()} shoes per profile at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2). Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
             {estimated && " Table rules set away from the audited baseline apply a flat literature-estimated edge adjustment — treat those numbers as directional, not audited."}
           </p>
         </Section>

@@ -2,6 +2,7 @@ import {
   AdvantageResult,
   AdvantageRules,
   HandCountPoint,
+  IndexTier,
   RampPoint,
   calculateAdvantage,
   getCountProfile,
@@ -21,8 +22,8 @@ export interface CvcxScenario {
   rules: AdvantageRules;
   /** Flat edge-percentage shift from rule toggles that depart from the audited baseline. Default 0. */
   ruleAdjustment?: number;
-  /** 0-1 multiplier on the count-dependent portion of edge. Default 1 (perfect play). */
-  deviationSkill?: number;
+  /** Directly simulated index-play tier. */
+  indexTier?: IndexTier;
 }
 
 export interface CvcxPerformance extends AdvantageResult {
@@ -88,9 +89,9 @@ export function createOptimalRamp(
   wongInAt: number | null,
   chipIncrement = 0.5,
   ruleAdjustment = 0,
-  deviationSkill = 1,
+  indexTier: IndexTier = "full",
 ): RampPoint[] {
-  const rows = getCountProfile(rules, deviationSkill).map((row) => ({
+  const rows = getCountProfile(rules, indexTier).map((row) => ({
     tc: row.tc,
     adv: row.adv + ruleAdjustment,
     sd: row.sd,
@@ -135,7 +136,7 @@ export function analyzeCvcx(
     rules: scenario.rules,
     ramp,
     ruleAdjustment: scenario.ruleAdjustment,
-    deviationSkill: scenario.deviationSkill,
+    indexTier: scenario.indexTier,
   });
   const variance = result.sdPerRound ** 2;
   const playedFrequency = result.rows.reduce(
@@ -181,7 +182,7 @@ export function riskSizedUnit(
     scenario.playerHands,
     scenario.handsByTrueCount,
     scenario.ruleAdjustment,
-    scenario.deviationSkill,
+    scenario.indexTier,
   );
 }
 
