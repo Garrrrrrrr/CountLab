@@ -1,5 +1,13 @@
 # Index tiers: implementation handoff
 
+> **Superseded by the licensing decision (2026-08-17).** The proposed GPL-derived
+> matrix, tier generator, generated coefficient artifacts, and matrix claims were
+> removed rather than shipped under CountLab&rsquo;s Apache-2.0 project. The active
+> training catalog is FreeBJ&rsquo;s MIT-licensed 17-deviation default set, documented
+> in `THIRD_PARTY_NOTICES.md`. It has no insurance or surrender departures, so it
+> cannot honestly implement the five-tier/matrix plan below without a new,
+> independently calibrated source and production simulation.
+
 Status: **design approved, not implemented.** This document is written for an
 agent picking the work up cold. Read all of it before touching code — several of
 the pitfalls in the last section will silently corrupt the output if missed.

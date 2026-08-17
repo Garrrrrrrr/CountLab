@@ -4,11 +4,7 @@ import { BlackjackShoe } from "./shoe";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "./hand";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { DEVIATIONS, deviationDecision } from "./deviations";
-import {
-  FAB_4_DEVIATIONS,
-  FULL_HI_LO_DEVIATIONS,
-  ILLUSTRIOUS_18_DEVIATIONS,
-} from "./fullHiLoIndices";
+import { FREEBJ_DEFAULT_HILO_DEVIATIONS } from "./fullHiLoIndices";
 import { Card, DEFAULT_RULES, RANKS, SUITS } from "./types";
 import {
   calculateAdvantage,
@@ -21,7 +17,7 @@ import {
   zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
-import { INDEX_TIER_COEFFICIENTS } from "./indexTierCoefficients";
+import { FREEBJ_17_COEFFICIENTS, FREEBJ_17_METADATA } from "./freebj17Coefficients";
 import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
@@ -142,28 +138,18 @@ describe("strategy", () => {
   });
 });
 describe("deviations", () => {
-  it("uses thresholds", () => {
-    const d = DEVIATIONS.find((x) => x.hand === "16" && x.dealer === "10")!;
-    expect(deviationDecision(d, -1)).toBe("H");
-    expect(deviationDecision(d, 0)).toBe("S");
+  it("uses FreeBJ's published thresholds", () => {
+    const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10")!;
+    expect(deviationDecision(d, 3)).toBe("H");
+    expect(deviationDecision(d, 4)).toBe("S");
   });
-  it("models insurance as its own decision", () => {
-    const insurance = DEVIATIONS.find((x) => x.hand === "Insurance")!;
-    expect(deviationDecision(insurance, 2)).toBe("N");
-    expect(deviationDecision(insurance, 3)).toBe("I");
-  });
-  it("provides the full contextual catalog and curated subsets", () => {
-    expect(FULL_HI_LO_DEVIATIONS.length).toBeGreaterThanOrEqual(250);
-    expect(new Set(FULL_HI_LO_DEVIATIONS.map((entry) => entry.id)).size).toBe(FULL_HI_LO_DEVIATIONS.length);
-    expect(FULL_HI_LO_DEVIATIONS.some((entry) => entry.hand.startsWith("Soft "))).toBe(true);
-    expect(FULL_HI_LO_DEVIATIONS.some((entry) => entry.splitAllowed)).toBe(true);
-    expect(ILLUSTRIOUS_18_DEVIATIONS).toHaveLength(18);
-    expect(ILLUSTRIOUS_18_DEVIATIONS.slice(0, 3).map((entry) => `${entry.hand}|${entry.dealer}`)).toEqual([
-      "Insurance|A",
-      "16|10",
-      "15|10",
-    ]);
-    expect(FAB_4_DEVIATIONS).toHaveLength(4);
+  it("uses one compact, MIT-licensed catalog", () => {
+    expect(DEVIATIONS).toHaveLength(17);
+    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS).toHaveLength(17);
+    expect(new Set(FREEBJ_DEFAULT_HILO_DEVIATIONS.map((entry) => entry.id)).size).toBe(17);
+    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.hand === "Soft 19")).toBe(true);
+    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.splitAllowed)).toBe(true);
+    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.surrenderAllowed)).toBe(false);
   });
 });
 describe("advantage model", () => {
@@ -176,10 +162,11 @@ describe("advantage model", () => {
     expect(profile).toHaveLength(17);
     expect(profile.reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
     const neutral = profile.find((row) => row.tc === 0)!;
-    const measured = INDEX_TIER_COEFFICIENTS.full["8-6"][8];
+    const measured = FREEBJ_17_COEFFICIENTS["8-6"][8];
     expect(neutral.p).toBeCloseTo(measured[0], 12);
     expect(neutral.samples).toBe(measured[3]);
     expect(neutral.standardError).toBe(measured[4]);
+    expect(FREEBJ_17_METADATA.totalRounds).toBeGreaterThan(46_000_000_000);
   });
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);
@@ -405,7 +392,9 @@ describe("CVCX-style analysis", () => {
     expect(longRisk).toBeGreaterThan(shortRisk);
     expect(longRisk).toBeLessThanOrEqual(1);
     expect(requiredBankroll(0.5, 100, 0.05)).toBeCloseTo(299.573, 2);
-    expect(goalByHorizonProbability(100, 1, 100, 100)).toBeCloseTo(0.5, 6);
+    // A first-passage probability includes paths that hit the goal and finish
+    // below it, so it is larger than the 50% terminal-tail probability here.
+    expect(goalByHorizonProbability(100, 1, 100, 100)).toBeGreaterThan(0.5);
     expect(goalByHorizonProbability(100, 1, 100, 300)).toBeGreaterThan(
       goalByHorizonProbability(100, 1, 100, 100),
     );

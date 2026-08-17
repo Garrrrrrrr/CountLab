@@ -8,9 +8,14 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT = ROOT / "results" / "coefficients.json"
 
 
+def normalized_sha256(path: Path) -> str:
+    """Match the generator's cross-platform source provenance hash."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
 def test_production_artifact_is_bound_to_generator_and_public_copy():
     payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
-    source_hash = hashlib.sha256((ROOT / "simulate.py").read_bytes()).hexdigest()
+    source_hash = normalized_sha256(ROOT / "simulate.py")
     assert payload["metadata"]["source_sha256"] == source_hash
     public = ROOT.parent / "blackjack" / "public" / "data" / "blackjack-coefficients.json"
     assert public.read_bytes() == ARTIFACT.read_bytes()

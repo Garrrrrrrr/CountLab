@@ -1,6 +1,6 @@
 import { GAME_OPTIONS } from "./coefficients";
-import { INDEX_TIER_COEFFICIENTS, type IndexTier } from "./indexTierCoefficients";
-export type { IndexTier } from "./indexTierCoefficients";
+import { FREEBJ_17_COEFFICIENTS } from "./freebj17Coefficients";
+import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
 export interface AdvantageRules {
   decks: number;
   dealerHitsSoft17: boolean;
@@ -9,8 +9,7 @@ export interface AdvantageRules {
   lateSurrender: boolean;
   blackjackPayout: 1.5 | 1.2;
   penetration: number;
-  /** Recorded by the session journal's CSV format. The advantage model ignores
-   * it: index coverage is selected explicitly with `indexTier`. */
+  /** Enables the audited FreeBJ-17 policy curve. Set false for basic strategy. */
   useIndices?: boolean;
 }
 export interface RampPoint {
@@ -32,8 +31,8 @@ export interface AdvantageInput {
   ramp: RampPoint[];
   /** Flat edge-percentage shift applied to every count row, e.g. from RULE_DELTAS. Default 0. */
   ruleAdjustment?: number;
-  /** Independently simulated index-play coverage. Defaults to the full matrix. */
-  indexTier?: IndexTier;
+  /** @deprecated Retained for saved Lab scenarios; use rules.useIndices instead. */
+  deviationSkill?: number;
 }
 export interface CountRow {
   trueCount: number;
@@ -102,19 +101,20 @@ function profileKey(rules: AdvantageRules) {
       (a, b) => Math.abs(a.dealt - requested) - Math.abs(b.dealt - requested),
     )[0];
   const key = `${rules.decks}-${selected.dealt}`;
-  return key in INDEX_TIER_COEFFICIENTS.full ? key : "6-4.5";
+  return key in NO_INDEX_COEFFICIENTS ? key : "6-4.5";
 }
 /**
  * Per-true-count edge, frequency, and variance for a game.
  *
- * Every tier is a direct table lookup from its own simulation run.  There is
- * deliberately no interpolation: a displayed edge, error bar, and sample
- * count always belong to one concrete index-play set.
+ * The FreeBJ-17 and basic-strategy policies are separately audited; no curve
+ * is interpolated. Old saved scenarios without `useIndices` retain FreeBJ-17.
  */
-export function getCountProfile(rules: AdvantageRules, tier: IndexTier = "full") {
-  const key = profileKey(rules), coefficients = INDEX_TIER_COEFFICIENTS[tier][key];
-  return coefficients.map((row, position) => {
-    const [p, adv, sd, samples, standardError] = row;
+export function getCountProfile(rules: AdvantageRules, _deviationSkill?: number) {
+  void _deviationSkill;
+  const key = profileKey(rules);
+  const coefficients = rules.useIndices === false ? NO_INDEX_COEFFICIENTS[key] : FREEBJ_17_COEFFICIENTS[key];
+  return coefficients.map((plain, position) => {
+    const [p, adv, sd, samples, standardError] = plain;
     return {
       tc: position - 8,
       label: TC_LABELS[position],
@@ -191,7 +191,7 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   const ruleAdjustment = input.ruleAdjustment ?? 0;
-  return getCountProfile(input.rules, input.indexTier).map((row) => {
+  return getCountProfile(input.rules, input.deviationSkill).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
       row.tc,
@@ -261,7 +261,7 @@ export function recommendUnit(
   playerHands = 1,
   handsByTrueCount?: HandCountPoint[],
   ruleAdjustment = 0,
-  indexTier: IndexTier = "full",
+  deviationSkill = 1,
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
@@ -274,7 +274,7 @@ export function recommendUnit(
     rules,
     ramp,
     ruleAdjustment,
-    indexTier,
+    deviationSkill,
   });
   if (result.evPerRound <= 0) return 0;
   return Math.max(

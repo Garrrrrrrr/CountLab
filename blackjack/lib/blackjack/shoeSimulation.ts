@@ -1,8 +1,8 @@
 import { AdvantageRules, RampPoint, unitsAt } from "./advantage";
 import { DeviationAction } from "./deviations";
-import { FAB_4_DEVIATIONS, FullHiLoDeviation, ILLUSTRIOUS_18_DEVIATIONS, DeviationGroup } from "./fullHiLoIndices";
+import { FREEBJ_DEFAULT_HILO_DEVIATIONS, FullHiLoDeviation, DeviationGroup } from "./fullHiLoIndices";
 import { calculateHandValue, canSplit, isBlackjack, isSoft } from "./hand";
-import { trueCount, TrueCountRounding } from "./hiLo";
+import { hiLoValue, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { Card, Rank } from "./types";
@@ -94,16 +94,17 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Matches the hand/dealer string labels used by the curated i18/fab4 deviation tables. */
+/** Matches the hand/dealer string labels used by the FreeBJ deviation table. */
 const rankLabel = (rank: Rank) => (rank === "A" ? "A" : ["J", "Q", "K"].includes(rank) ? "10" : rank);
-const handLabel = (cards: Card[]) =>
-  cards.length === 2 && cards[0].rank === cards[1].rank
-    ? `${rankLabel(cards[0].rank)},${rankLabel(cards[0].rank)}`
+export const deviationHandLabel = (cards: Card[]) =>
+  cards.length === 2 && rankLabel(cards[0].rank) === rankLabel(cards[1].rank)
+    ? `${rankLabel(cards[0].rank)},${rankLabel(cards[1].rank)}`
+    : isSoft(cards)
+      ? `Soft ${calculateHandValue(cards)}`
     : String(calculateHandValue(cards));
 
 function activeDeviations(groups: DeviationGroup[]): FullHiLoDeviation[] {
-  const all = [...ILLUSTRIOUS_18_DEVIATIONS, ...FAB_4_DEVIATIONS];
-  return all.filter((deviation) => deviation.groups.some((group) => groups.includes(group)));
+  return FREEBJ_DEFAULT_HILO_DEVIATIONS.filter((deviation) => deviation.groups.some((group) => groups.includes(group)));
 }
 
 function applyIndexDeviation(
@@ -113,12 +114,15 @@ function applyIndexDeviation(
   tc: number,
   deviations: FullHiLoDeviation[],
 ): DeviationAction {
-  const hand = handLabel(playerCards);
+  const hand = deviationHandLabel(playerCards);
   const dealer = rankLabel(dealerUpcard.rank);
   const match = deviations.find((deviation) => deviation.hand === hand && deviation.dealer === dealer);
   if (!match) return action;
   const crossed = match.direction === "atOrBelow" ? tc <= match.index : tc >= match.index;
-  return crossed ? match.deviationAction : match.normalAction;
+  // The source catalog describes the action it departs from, but CountLab's
+  // selected rules can legitimately have a different basic action (for example
+  // late surrender). Never let a non-crossed departure overwrite that action.
+  return crossed && action === match.normalAction ? match.deviationAction : action;
 }
 
 function insuranceDecision(tc: number, deviations: FullHiLoDeviation[]): boolean {
@@ -128,19 +132,19 @@ function insuranceDecision(tc: number, deviations: FullHiLoDeviation[]): boolean
 }
 
 /** Plays a single box from its post-decision state, hitting per basic strategy + deviations until stand/bust. */
-function autoPlay(cards: Card[], dealerUpcard: Card, tc: number, deviations: DeviationGroup[], shoe: BlackjackShoe, rules: AdvantageRules, track: () => void): Card[] {
+function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => number, deviations: DeviationGroup[], shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
   const hand = [...cards];
   const active = activeDeviations(deviations);
   while (calculateHandValue(hand) < 21) {
     const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules });
     // Resplitting isn't modeled here, so an in-progress hand that would normally split just stands.
     const base = decision.action === "D" ? decision.fallback ?? "H" : decision.action === "P" ? "S" : decision.action;
-    const action = applyIndexDeviation(base, hand, dealerUpcard, tc, active);
+    const action = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active);
     if (action !== "H") break;
     const card = shoe.deal();
     if (!card) break;
     hand.push(card);
-    track();
+    track(card);
   }
   return hand;
 }
@@ -153,6 +157,88 @@ function settle(playerTotal: number, dealerTotal: number, bet: number, blackjack
   if (playerTotal > dealerTotal) return bet;
   if (playerTotal < dealerTotal) return -bet;
   return 0;
+}
+
+interface PendingSplitHand {
+  cards: Card[];
+  fromSplit: boolean;
+  splitAces: boolean;
+}
+
+/**
+ * Plays one original box, including split hands. The queue keeps each split
+ * branch independent so DAS and RSA use the same rule settings as the rest of
+ * the calculator. A box may contain at most four hands.
+ */
+function playBox(
+  initialCards: Card[],
+  dealerUpcard: Card,
+  currentTrueCount: () => number,
+  deviations: DeviationGroup[],
+  shoe: BlackjackShoe,
+  rules: AdvantageRules,
+  bet: number,
+  track: (card?: Card) => void,
+): SimulatedPlayerHand[] {
+  const played: SimulatedPlayerHand[] = [];
+  const queue: PendingSplitHand[] = [{ cards: initialCards, fromSplit: false, splitAces: false }];
+  let handsInBox = 1;
+
+  while (queue.length) {
+    const pending = queue.shift()!;
+    const splitAllowed = canSplit(pending.cards)
+      && handsInBox < 4
+      && (!pending.splitAces || (pending.cards[0]?.rank === "A" && rules.resplitAces));
+
+    // Split aces receive one card only, except for an allowed re-split.
+    if (pending.splitAces && !splitAllowed) {
+      played.push({ cards: pending.cards, net: 0, surrendered: false });
+      continue;
+    }
+
+    const basic = getBasicStrategyDecision({
+      playerCards: pending.cards,
+      dealerUpcard,
+      rules,
+      canSplit: splitAllowed,
+    });
+    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), activeDeviations(deviations));
+
+    // A split-only departure cannot be taken when the table's hand limit has
+    // been reached, so fall back to the non-pair basic-strategy action.
+    if (action === "P" && !splitAllowed) {
+      action = getBasicStrategyDecision({ playerCards: pending.cards, dealerUpcard, rules, canSplit: false }).action;
+    }
+
+    if (action === "P" && splitAllowed) {
+      handsInBox += 1;
+      const aceSplit = pending.cards[0].rank === "A";
+      for (const original of pending.cards) {
+        const card = shoe.deal();
+        track(card);
+        const cards = card ? [original, card] : [original];
+        queue.push({ cards, fromSplit: true, splitAces: aceSplit });
+      }
+      continue;
+    }
+
+    if (action === "R" && !pending.fromSplit && rules.lateSurrender) {
+      played.push({ cards: pending.cards, net: -bet / 2, surrendered: true });
+      continue;
+    }
+
+    const canDoubleNow = pending.cards.length === 2 && (!pending.fromSplit || rules.doubleAfterSplit);
+    if (action === "D" && canDoubleNow) {
+      const card = shoe.deal();
+      track(card);
+      played.push({ cards: card ? [...pending.cards, card] : pending.cards, net: 0, surrendered: false, bet: bet * 2 });
+      continue;
+    }
+
+    const cards = autoPlay(pending.cards, dealerUpcard, currentTrueCount, deviations, shoe, rules, track);
+    played.push({ cards, net: 0, surrendered: false });
+  }
+  return played;
 }
 
 export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: SimulationHooks = {}): Promise<ShoeSimulationResult> {
@@ -169,6 +255,8 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
   let roundInShoe = 0;
   let handNumber = 0;
   let totalProfit = 0;
+  let visibleRunningCount = 0;
+  let hiddenDealerCards = 0;
   const shoes: SimulatedShoe[] = [];
   const bankrollTrace: ShoeSessionTracePoint[] = [{ round: 0, bankroll }];
   const traceEvery = Math.max(1, Math.floor(handsToSimulate / 400));
@@ -179,6 +267,8 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
     shoeNumber += 1;
     roundInShoe = 0;
     shoe.reset();
+    visibleRunningCount = 0;
+    hiddenDealerCards = 0;
     currentShoe = { shoeNumber, hands: [], totalHands: 0, totalProfit: 0, tcMin: Infinity, tcMax: -Infinity };
   };
   startNewShoe();
@@ -188,35 +278,52 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
     roundInShoe += 1;
     handNumber += 1;
 
-    const runningCountBefore = shoe.runningCount();
-    const trueCountBefore = trueCount(runningCountBefore, shoe.decksRemaining(), rounding);
+    const runningCountBefore = visibleRunningCount;
+    const decksRemaining = () => (shoe.cardsRemaining() + hiddenDealerCards) / 52;
+    const currentTrueCount = () => trueCount(visibleRunningCount, decksRemaining(), rounding);
+    const trueCountBefore = currentTrueCount();
     let tcMin = trueCountBefore;
     let tcMax = trueCountBefore;
-    const track = () => {
-      const tc = trueCount(shoe.runningCount(), shoe.decksRemaining(), rounding);
+    const track = (card?: Card) => {
+      if (card) visibleRunningCount += hiLoValue(card);
+      const tc = currentTrueCount();
       tcMin = Math.min(tcMin, tc);
       tcMax = Math.max(tcMax, tc);
     };
 
+    const dealVisible = () => {
+      const card = shoe.deal();
+      if (card) track(card);
+      return card;
+    };
+
     const bet = bettingUnit * unitsAt(trueCountBefore, ramp);
-    const boxes: Card[][] = Array.from({ length: playerHands }, () => {
-      const cards = [shoe.deal(), shoe.deal()].filter((card): card is Card => Boolean(card));
-      track();
-      return cards;
-    });
-    const dealerUpcard = shoe.deal();
+    // Deal in casino order. The hole card stays out of the running count but
+    // remains in the true-count denominator until the dealer exposes it.
+    const boxes: Card[][] = Array.from({ length: playerHands }, () => []);
+    for (const cards of boxes) {
+      const card = dealVisible();
+      if (card) cards.push(card);
+    }
+    const dealerUpcard = dealVisible();
+    for (const cards of boxes) {
+      const card = dealVisible();
+      if (card) cards.push(card);
+    }
     const dealerHoleCard = shoe.deal();
-    track();
+    if (dealerHoleCard) hiddenDealerCards += 1;
     if (!dealerUpcard || !dealerHoleCard) break;
     let dealerCards = [dealerUpcard, dealerHoleCard];
     const dealerBlackjack = isBlackjack(dealerCards);
 
-    const wantsInsurance = dealerUpcard.rank === "A" && insuranceDecision(trueCountBefore, active);
+    const wantsInsurance = dealerUpcard.rank === "A" && insuranceDecision(currentTrueCount(), active);
     const insuranceNet = wantsInsurance ? (dealerBlackjack ? bet : -bet / 2) : 0;
 
     const playedHands: SimulatedPlayerHand[] = [];
     const resolved = new Set<SimulatedPlayerHand>();
     if (dealerBlackjack) {
+      hiddenDealerCards -= 1;
+      track(dealerHoleCard);
       for (const cards of boxes) {
         const hand: SimulatedPlayerHand = { cards, net: settle(calculateHandValue(cards), 21, bet, rules.blackjackPayout, isBlackjack(cards), true), surrendered: false };
         playedHands.push(hand);
@@ -231,43 +338,32 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
           resolved.add(hand);
           continue;
         }
-        const decision = getBasicStrategyDecision({ playerCards: initialCards, dealerUpcard, rules });
-        const action = applyIndexDeviation(decision.action, initialCards, dealerUpcard, trueCountBefore, active);
-
-        if (action === "R" && rules.lateSurrender) {
-          playedHands.push({ cards: initialCards, net: -bet / 2, surrendered: true });
-          continue;
-        }
-        if (action === "P" && canSplit(initialCards)) {
-          for (const original of initialCards) {
-            const card = shoe.deal();
-            track();
-            let hand = card ? [original, card] : [original];
-            const isAcePair = initialCards[0].rank === "A";
-            if (!isAcePair) hand = autoPlay(hand, dealerUpcard, trueCountBefore, deviationGroups, shoe, rules, track);
-            playedHands.push({ cards: hand, net: 0, surrendered: false });
-          }
-          continue;
-        }
-        if (action === "D") {
-          const card = shoe.deal();
-          track();
-          const hand = card ? [...initialCards, card] : initialCards;
-          playedHands.push({ cards: hand, net: 0, surrendered: false, bet: bet * 2 });
-          continue;
-        }
-        const hand = autoPlay(initialCards, dealerUpcard, trueCountBefore, deviationGroups, shoe, rules, track);
-        playedHands.push({ cards: hand, net: 0, surrendered: false });
+        playedHands.push(...playBox(
+          initialCards,
+          dealerUpcard,
+          currentTrueCount,
+          deviationGroups,
+          shoe,
+          rules,
+          bet,
+          track,
+        ));
       }
 
       const anyoneActive = playedHands.some((hand) => !hand.surrendered && !resolved.has(hand) && calculateHandValue(hand.cards) <= 21);
       if (anyoneActive) {
+        hiddenDealerCards -= 1;
+        track(dealerHoleCard);
         while (calculateHandValue(dealerCards) < 21 && (calculateHandValue(dealerCards) < 17 || (calculateHandValue(dealerCards) === 17 && rules.dealerHitsSoft17 && isSoft(dealerCards)))) {
-          const card = shoe.deal();
-          track();
+          const card = dealVisible();
           if (!card) break;
           dealerCards = [...dealerCards, card];
         }
+      } else {
+        // The hole card is still eventually exposed, even if no dealer draw is
+        // required because every hand has already resolved.
+        hiddenDealerCards -= 1;
+        track(dealerHoleCard);
       }
       const dealerTotal = calculateHandValue(dealerCards);
       for (const hand of playedHands) {

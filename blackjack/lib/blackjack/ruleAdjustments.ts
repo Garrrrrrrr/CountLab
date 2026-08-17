@@ -16,19 +16,11 @@ export const RULE_DELTAS = {
   doubleOnly10to11: -0.0018,
 } as const;
 
-const tier = (key: IndexTier, label: string) => ({
-  key,
-  label,
-  coverage: Math.round(INDEX_TIER_METADATA.coverage[key].ramped * 100),
-  plays: INDEX_TIER_METADATA.coverage[key].plays,
-});
-
-export const INDEX_TIERS = {
-  none: tier("none", "None"),
-  "70": tier("70", "Core indices"),
-  "82": tier("82", "Expanded indices"),
-  i18fab4: tier("i18fab4", "Illustrious 18 + Fab 4"),
-  full: tier("full", "Complete Hi-Lo matrix"),
+export const DEVIATION_SKILL = {
+  beginner: 0.7,
+  intermediate: 0.82,
+  pro: 0.92,
+  perfect: 1,
 } as const;
 
 export interface RuleAdjustmentFlags {
@@ -57,4 +49,3 @@ export function sumRuleAdjustment(flags: RuleAdjustmentFlags): number {
 
 export const isEstimated = (flags: RuleAdjustmentFlags): boolean =>
   Object.values(flags).some(Boolean);
-import { INDEX_TIER_METADATA, type IndexTier } from "./indexTierCoefficients";

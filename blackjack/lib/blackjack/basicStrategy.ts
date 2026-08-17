@@ -2,8 +2,8 @@ import { calculateHandValue, isPair, isSoft } from "./hand";
 import { Action, BlackjackRules, Card } from "./types";
 export interface Decision { action: Action; fallback?: Action; explanation: string }
 const upValue=(c:Card)=>c.rank==="A"?11:["K","Q","J"].includes(c.rank)?10:Number(c.rank);
-export function getBasicStrategyDecision({playerCards,dealerUpcard,rules}:{playerCards:Card[];dealerUpcard:Card;rules:BlackjackRules}):Decision {
-  const total=calculateHandValue(playerCards), up=upValue(dealerUpcard), soft=isSoft(playerCards), pair=isPair(playerCards), pairRank=pair?playerCards[0].rank:undefined;
+export function getBasicStrategyDecision({playerCards,dealerUpcard,rules,canSplit: splitPermitted=true}:{playerCards:Card[];dealerUpcard:Card;rules:BlackjackRules;canSplit?:boolean}):Decision {
+  const total=calculateHandValue(playerCards), up=upValue(dealerUpcard), soft=isSoft(playerCards), pair=isPair(playerCards)&&splitPermitted, pairRank=pair?playerCards[0].rank:undefined;
   let action:Action="H";
   // Pair strategy takes precedence over hard-total surrender. Under the selected
   // H17 game, 8,8 surrenders only against an Ace and splits against 9 or 10.

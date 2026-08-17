@@ -390,7 +390,7 @@ export const journalLibrary = {
       resplitAces: session.rules.resplitAces,
       lateSurrender: session.rules.lateSurrender,
       blackjackPayout: session.rules.blackjackPayout,
-      useIndices: session.rules.useIndices ?? true,
+      useIndices: session.rules.useIndices,
       ramp: encodeRampCsv(session.ramp),
       netResult: session.netResult,
       expenses: session.expenses,

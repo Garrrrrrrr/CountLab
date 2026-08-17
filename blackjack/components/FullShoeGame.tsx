@@ -390,11 +390,14 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
 
   const chooseInsurance = async (take: boolean) => {
     if (dealing) return;
-    const correct = tc >= 3;
+    const insuranceDeviation = DEVIATIONS.find((item) => item.hand === "Insurance" && item.dealer === "A");
+    const correct = insuranceDeviation ? deviationDecision(insuranceDeviation, tc) === "I" : false;
     coach(
       take === correct,
       take === correct ? "Insurance decision correct" : "Insurance deviation missed",
-      `Hi-Lo insurance (and even money on your own blackjack) is taken at TC +3 or higher. Current TC is ${signed(tc)}.`,
+      insuranceDeviation
+        ? `Take insurance ${insuranceDeviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(insuranceDeviation.index)}. Current TC is ${signed(tc)}.`
+        : "The active FreeBJ default set has no insurance departure, so decline insurance.",
       "play",
     );
     const maximumInsurance = hands.reduce((sum, hand) => sum + hand.bet / 2, 0);
@@ -406,15 +409,18 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   // A natural blackjack against a dealer Ace is offered even money: taking it
   // is mathematically identical to insuring only that blackjack for the max
   // (bet/2) — win or lose the dealer's hole card, the payout comes out to
-  // exactly 1x the original bet. It shares the same TC +3 threshold as
-  // ordinary insurance because it's the same bet in different clothing.
+  // exactly 1x the original bet. It follows the same optional insurance
+  // departure because it is the same wager in different clothing.
   const takeEvenMoney = async () => {
     if (dealing) return;
-    const correct = tc >= 3;
+    const insuranceDeviation = DEVIATIONS.find((item) => item.hand === "Insurance" && item.dealer === "A");
+    const correct = insuranceDeviation ? deviationDecision(insuranceDeviation, tc) === "I" : false;
     coach(
       correct,
       correct ? "Even money is worth taking here" : "Even money isn't worth it here",
-      `Taking even money guarantees the same payout as insuring your blackjack for the max — it's only +EV when Hi-Lo says take insurance (TC ≥ +3). Current TC is ${signed(tc)}.`,
+      insuranceDeviation
+        ? `Taking even money is maximum insurance; follow the active insurance index at TC ${signed(tc)}.`
+        : "The active FreeBJ default set has no insurance departure, so do not take even money.",
       "play",
     );
     const evenMoneyStake = hands.filter((hand) => hand.status === "stood").reduce((sum, hand) => sum + hand.bet / 2, 0);
@@ -440,10 +446,13 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const expectedAction = (hand: PlayerHand) => {
     const legal = legalActions(hand);
     const basic = getBasicStrategyDecision({ playerCards: hand.cards, dealerUpcard: dealer[0], rules });
-    const hardTotal = String(calculateHandValue(hand.cards));
-    const deviation = basic.action !== "R" && !isSoft(hand.cards) && !isPair(hand.cards)
-      ? DEVIATIONS.find((item) => item.hand === hardTotal && item.dealer === rankForIndex(dealer[0]))
-      : undefined;
+    const total = calculateHandValue(hand.cards);
+    const handLabel = isPair(hand.cards)
+      ? `${rankForIndex(hand.cards[0])},${rankForIndex(hand.cards[1])}`
+      : isSoft(hand.cards)
+        ? `Soft ${total}`
+        : String(total);
+    const deviation = DEVIATIONS.find((item) => item.hand === handLabel && item.dealer === rankForIndex(dealer[0]));
     const indexed = deviation ? deviationDecision(deviation, tc) : basic.action;
     let action = indexed as Action;
     if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? "H" : action === "R" ? "H" : basic.action;
