@@ -3,9 +3,7 @@ import {
   AdvantageRules,
   HandCountPoint,
   RampPoint,
-  adjustAdvantage,
   calculateAdvantage,
-  estimateOffTopEdge,
   getCountProfile,
   recommendUnit,
 } from "./advantage";
@@ -29,14 +27,10 @@ export interface CvcxScenario {
 
 export interface CvcxPerformance extends AdvantageResult {
   playedFrequency: number;
-  handsPlayedPerHour: number;
   cScore: number;
-  desirabilityIndex: number;
   requiredBankroll: number;
   tripRiskOfRuin: number;
   chanceOfProfit: number;
-  certaintyEquivalentHourly: number;
-  certaintyEquivalentRatio: number;
 }
 
 const clamp = (value: number, minimum = 0, maximum = 1) =>
@@ -76,22 +70,6 @@ export function finiteHorizonRisk(
   return clamp(first + second);
 }
 
-export function goalBeforeRuinProbability(
-  bankroll: number,
-  goal: number,
-  meanPerRound: number,
-  variancePerRound: number,
-) {
-  if (bankroll <= 0) return 0;
-  if (goal <= 0) return 1;
-  if (variancePerRound <= 0) return meanPerRound > 0 ? 1 : 0;
-  if (Math.abs(meanPerRound) < 1e-12) return bankroll / (bankroll + goal);
-  const scale = (-2 * meanPerRound) / variancePerRound;
-  const numerator = 1 - Math.exp(clamp(scale * bankroll, -745, 709));
-  const denominator =
-    1 - Math.exp(clamp(scale * (bankroll + goal), -745, 709));
-  return clamp(numerator / denominator);
-}
 
 export function requiredBankroll(
   meanPerRound: number,
@@ -112,23 +90,25 @@ export function createOptimalRamp(
   ruleAdjustment = 0,
   deviationSkill = 1,
 ): RampPoint[] {
-  const rows = getCountProfile(rules);
-  const offTop = estimateOffTopEdge(rules);
-  const adv = (row: { adv: number }) => adjustAdvantage(offTop, row.adv, ruleAdjustment, deviationSkill);
+  const rows = getCountProfile(rules, deviationSkill).map((row) => ({
+    tc: row.tc,
+    adv: row.adv + ruleAdjustment,
+    sd: row.sd,
+  }));
   const eligible = rows.filter(
     (row) => wongInAt === null || row.tc >= wongInAt,
   );
   const positive = eligible
     .map((row) => ({
       tc: row.tc,
-      kellyWeight: Math.max(0, adv(row) / row.sd ** 2),
+      kellyWeight: Math.max(0, row.adv / row.sd ** 2),
     }))
     .filter((row) => row.kellyWeight > 0);
   const baseline = positive[0]?.kellyWeight ?? 1;
   return rows.map((row) => {
     if (wongInAt !== null && row.tc < wongInAt)
       return { trueCount: row.tc, units: 0 };
-    const weight = Math.max(1, Math.max(0, adv(row) / row.sd ** 2) / baseline);
+    const weight = Math.max(1, Math.max(0, row.adv / row.sd ** 2) / baseline);
     const bounded = Math.min(Math.max(1, maxSpread), weight);
     return {
       trueCount: row.tc,
@@ -170,15 +150,7 @@ export function analyzeCvcx(
   return {
     ...result,
     playedFrequency,
-    handsPlayedPerHour:
-      scenario.handsPerHour *
-      result.rows.reduce(
-        (sum, row) =>
-          sum + (row.bet > 0 ? row.frequency * row.playerHands : 0),
-        0,
-      ),
     cScore,
-    desirabilityIndex: Math.sqrt(cScore),
     requiredBankroll: requiredBankroll(
       result.evPerRound,
       variance,
@@ -194,14 +166,6 @@ export function analyzeCvcx(
       result.standardDeviation > 0
         ? normalCdf(result.tripEv / result.standardDeviation)
         : Number(result.tripEv > 0),
-    certaintyEquivalentHourly:
-      (result.evPerRound - variance / (2 * scenario.bankroll)) *
-      scenario.handsPerHour,
-    certaintyEquivalentRatio:
-      result.evPerRound > 0
-        ? (result.evPerRound - variance / (2 * scenario.bankroll)) /
-          result.evPerRound
-        : 0,
   };
 }
 
@@ -239,35 +203,6 @@ export function goalByHorizonProbability(
   );
 }
 
-export function roundsToGoalProbability(
-  goal: number,
-  probability: number,
-  meanPerRound: number,
-  variancePerRound: number,
-) {
-  if (goal <= 0) return 0;
-  if (meanPerRound <= 0 || variancePerRound < 0) return Infinity;
-  const target = clamp(probability, 0.500001, 0.999999);
-  let high = 1;
-  while (
-    high < 1_000_000_000 &&
-    goalByHorizonProbability(goal, meanPerRound, variancePerRound, high) <
-      target
-  )
-    high *= 2;
-  if (high >= 1_000_000_000) return Infinity;
-  let low = 0;
-  for (let index = 0; index < 64; index += 1) {
-    const middle = (low + high) / 2;
-    if (
-      goalByHorizonProbability(goal, meanPerRound, variancePerRound, middle) >=
-      target
-    )
-      high = middle;
-    else low = middle;
-  }
-  return Math.ceil(high);
-}
 
 export function resultPercentile(
   actualResult: number,

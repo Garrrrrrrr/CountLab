@@ -46,6 +46,59 @@ A separate 500,000,000-hand off-the-top run removes cut-card weighting. It
 returned -0.48173% with a 0.01001-point 95% half-width, overlapping the commonly
 published -0.473% benchmark for the core rules.
 
+## No-index counterpart
+
+The app offers a Deviations skill setting, which has to price a player who only
+captures part of the index EV. Doing that honestly needs the edge at every true
+count with indices switched OFF, so the two measured curves can be interpolated:
+
+    advantage(skill) = noIndex + skill * (withIndex - noIndex)
+
+exact at skill 0 and skill 1, monotone between. Shrinking the audited curve
+toward an invented anchor instead produces nonsense at the extremes: a +8 shoe is
+worth about +4.2% to a pure basic-strategy player, not the near-zero value a
+neutral-count anchor implies.
+
+`noindex.py` runs the audited `run_configuration` code path with
+`use_indices=False` across all nine production profiles, importing from
+`simulate.py` rather than editing it so the recorded provenance hashes stay
+valid. `results/no-index-coefficients.json` holds 46,823,345,536 resolved rounds
+from 100,000,000 shoes per profile — the same statistical weight as the
+production run — exported to
+`blackjack/lib/blackjack/noIndexCoefficients.ts`.
+
+As a cross-check, its 6-deck/4.5-dealt profile returned -0.497870% (95% half
+width 0.003394) against the independently seeded `--validate` run's -0.496496%,
+a 0.0014-point difference well inside both intervals.
+
+## Simultaneous-hand covariance
+
+`simulate.py` measures one spot, so it reports the variance of a single hand and
+says nothing about how two or three hands played side by side co-vary. They are
+strongly correlated, because every hand in a round is settled against one shared
+dealer hand, and the app needs that correlation to size risk of ruin correctly
+when the player spreads to multiple hands.
+
+`covariance.py` measures it by reusing the audited kernel primitives from
+`simulate.py` without editing that file, so the recorded `source_sha256` of the
+production coefficients stays valid. It reports, per true-count bucket, the
+variance of a single hero hand, the variance of the round total across `n` hero
+hands, and the implied pairwise correlation.
+
+`results/multi-hand-covariance.json` (6 decks, 4.5 dealt) gives rho = 0.37234
+over 57,795,052 two-hand rounds, 0.37245 over 43,760,408 three-hand rounds, and
+0.37237 over 35,339,997 four-hand rounds. `results/multi-hand-covariance-8deck.json`
+(8 decks, 6 dealt) gives 0.37221 and 0.37225. Rho is flat across true counts
+(0.362 to 0.384) and across deck counts, so the single constant
+
+    Var(sum of n equal hands) = n * (1 + (n - 1) * rho) * Var(one hand)
+
+reproduces every measured round-total variance to within 0.01%. The per-seat
+standard deviations returned by this script (1.1436 at true count 0) also
+reproduce the production coefficients (1.14377), which cross-validates the
+kernel reuse. The constant is consumed by `SIMULTANEOUS_HAND_CORRELATION` in
+`blackjack/lib/blackjack/advantage.ts`.
+
 The strategy deliberately has a concrete definition rather than relying on a
 label such as "I18 + Fab 4," whose exact indices and boundary conventions vary
 with rules and source. See `strategy_manifest()` in `simulate.py` for every
@@ -58,6 +111,9 @@ python -m pytest -q
 python simulate.py --validate --shoes 200000 --tasks 32
 python simulate.py --off-top --shoes 500000000 --tasks 256 --output results/off-top-validation.json
 python simulate.py --all --shoes 2000000 --tasks 64 --output results/coefficients.json
+python noindex.py --shoes 100000000 --tasks 256 --output results/no-index-coefficients.json --typescript ../blackjack/lib/blackjack/noIndexCoefficients.ts
+python covariance.py --shoes 2000000 --spots 2 3 4 --output results/multi-hand-covariance.json
+python covariance.py --decks 8 --dealt 6 --shoes 1500000 --spots 2 3 --output results/multi-hand-covariance-8deck.json
 ```
 
 `--shoes` is the total requested number of shoes per configuration, divided

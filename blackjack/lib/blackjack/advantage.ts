@@ -1,4 +1,5 @@
 import { GAME_OPTIONS, RAW_COEFFICIENTS } from "./coefficients";
+import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
 export interface AdvantageRules {
   decks: number;
   dealerHitsSoft17: boolean;
@@ -7,6 +8,9 @@ export interface AdvantageRules {
   lateSurrender: boolean;
   blackjackPayout: 1.5 | 1.2;
   penetration: number;
+  /** Recorded by the session journal's CSV format. The advantage model ignores
+   * it: partial index play is expressed by `deviationSkill`, which interpolates
+   * between the audited index and no-index coefficient tables. */
   useIndices?: boolean;
 }
 export interface RampPoint {
@@ -46,7 +50,6 @@ export interface CountRow {
   units: number;
 }
 export interface AdvantageResult {
-  offTopEdge: number;
   averageBet: number;
   playerEdge: number;
   evPerRound: number;
@@ -90,31 +93,66 @@ const TC_LABELS = [
   "+7",
   "≥ +8",
 ];
-export function getCountProfile(rules: AdvantageRules) {
+const Z95 = 1.95996398454;
+/** The audited profile key whose deck count and penetration best match `rules`. */
+function profileKey(rules: AdvantageRules) {
   const options = GAME_OPTIONS[rules.decks as 6 | 8] ?? GAME_OPTIONS[6],
     requested = rules.penetration * rules.decks,
     selected = [...options].sort(
       (a, b) => Math.abs(a.dealt - requested) - Math.abs(b.dealt - requested),
-    )[0],
-    raw =
-      RAW_COEFFICIENTS[`${rules.decks}-${selected.dealt}`] ??
-      RAW_COEFFICIENTS["6-4.5"];
-  return raw.map(([p, adv, sd, samples, standardError], index) => ({
-    tc: index - 8,
-    label: TC_LABELS[index],
-    p,
-    adv,
-    sd,
-    samples,
-    standardError,
-    ci95: [adv - 1.95996398454 * standardError, adv + 1.95996398454 * standardError] as [number, number],
-  }));
+    )[0];
+  const key = `${rules.decks}-${selected.dealt}`;
+  return key in RAW_COEFFICIENTS ? key : "6-4.5";
 }
-export const COUNT_PROFILE = getCountProfile(DEFAULT_ADVANTAGE_RULES);
-export function estimateOffTopEdge(
-  rules: AdvantageRules = DEFAULT_ADVANTAGE_RULES,
-) {
-  return getCountProfile(rules).find((row) => row.tc === 0)?.adv ?? 0;
+/**
+ * Per-true-count edge, frequency, and variance for a game.
+ *
+ * `deviationSkill` is the fraction of index-play EV the player actually
+ * captures. Rather than shrinking the audited curve toward an invented anchor,
+ * this interpolates between two independently measured curves: the same nine
+ * profiles simulated with the Hi-Lo index set on (`RAW_COEFFICIENTS`) and off
+ * (`NO_INDEX_COEFFICIENTS`). Skill 1 reproduces the audited index run exactly,
+ * skill 0 reproduces the audited basic-strategy run exactly, and values between
+ * are a linear blend of the two. Both frequency vectors sum to one, so every
+ * blend does too.
+ */
+export function getCountProfile(rules: AdvantageRules, deviationSkill = 1) {
+  const key = profileKey(rules),
+    skill = Math.min(1, Math.max(0, deviationSkill)),
+    withIndices = RAW_COEFFICIENTS[key],
+    withoutIndices = NO_INDEX_COEFFICIENTS[key];
+  return withIndices.map((indexed, position) => {
+    const plain = withoutIndices[position],
+      mix = (a: number, b: number) => a + skill * (b - a),
+      p = mix(plain[0], indexed[0]),
+      adv = mix(plain[1], indexed[1]),
+      sd = mix(plain[2], indexed[2]),
+      // The two runs are independent samples, so the blended estimator's
+      // standard error combines in quadrature.
+      standardError = Math.hypot(
+        (1 - skill) * plain[4],
+        skill * indexed[4],
+      ),
+      samples =
+        skill >= 1
+          ? indexed[3]
+          : skill <= 0
+            ? plain[3]
+            : Math.min(plain[3], indexed[3]);
+    return {
+      tc: position - 8,
+      label: TC_LABELS[position],
+      p,
+      adv,
+      sd,
+      samples,
+      standardError,
+      ci95: [adv - Z95 * standardError, adv + Z95 * standardError] as [
+        number,
+        number,
+      ],
+    };
+  });
 }
 export function unitsAt(tc: number, ramp: RampPoint[]) {
   return [...ramp]
@@ -139,21 +177,45 @@ export function handsAt(
     : fallback;
   return Math.min(7, Math.max(1, Math.floor(hands)));
 }
-export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
+/**
+ * Pairwise correlation between two of the player's simultaneous hands in the
+ * same round. Every hand is settled against one shared dealer hand, so they are
+ * a long way from independent.
+ *
+ * Measured by `blackjack-simulator/covariance.py` on the audited kernel (6 decks,
+ * 4.5 dealt, H17 · DAS · RSA · LS · peek · 3:2, full indices): 0.37234 over 57.8M
+ * two-hand rounds, 0.37245 over 43.8M three-hand rounds, and 0.37237 over 35.3M
+ * four-hand rounds. It is flat across true counts (0.362 to 0.384) and across
+ * hand counts, so one constant reproduces the measured round variance to within
+ * 0.01%. See `blackjack-simulator/results/multi-hand-covariance.json`.
+ */
+export const SIMULTANEOUS_HAND_CORRELATION = 0.3724;
+/**
+ * Round-variance multiplier for `hands` equally sized simultaneous hands,
+ * relative to the variance of a single hand: n · (1 + (n − 1) · ρ). Treating the
+ * hands as independent would use a bare n, which understates variance — and so
+ * understates risk of ruin, N₀, and required bankroll — by 37% at two hands.
+ */
+export function simultaneousHandVarianceFactor(
+  hands: number,
+  correlation = SIMULTANEOUS_HAND_CORRELATION,
+) {
+  if (hands <= 1) return Math.max(0, hands);
+  return hands * (1 + (hands - 1) * correlation);
+}
+/** Stops betting below `trueCount`, modelling a Wong-in / back-counting entry point. */
+export function zeroBetsBelow(ramp: RampPoint[], trueCount: number): RampPoint[] {
   return ramp.map((point) =>
-    point.trueCount < 0 ? { ...point, units: 0 } : point,
+    point.trueCount < trueCount ? { ...point, units: 0 } : point,
   );
 }
-/** Shifts a raw audited advantage toward the off-top edge by (1 - deviationSkill), then applies a flat rule delta. */
-export function adjustAdvantage(offTopEdge: number, rawAdvantage: number, ruleAdjustment = 0, deviationSkill = 1) {
-  return offTopEdge + deviationSkill * (rawAdvantage - offTopEdge) + ruleAdjustment;
+export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
+  return zeroBetsBelow(ramp, 0);
 }
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
-  const offTop = estimateOffTopEdge(input.rules);
-  const skill = input.deviationSkill ?? 1;
   const ruleAdjustment = input.ruleAdjustment ?? 0;
-  return getCountProfile(input.rules).map((row) => {
+  return getCountProfile(input.rules, input.deviationSkill).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
       row.tc,
@@ -164,7 +226,7 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
       trueCount: row.tc,
       label: row.label,
       frequency: row.p,
-      advantage: adjustAdvantage(offTop, row.adv, ruleAdjustment, skill),
+      advantage: row.adv + ruleAdjustment,
       sdUnits: row.sd,
       standardError: row.standardError,
       ci95: row.ci95,
@@ -186,7 +248,8 @@ export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
     evPerRound += row.frequency * row.advantage * row.totalBet;
     secondMoment +=
       row.frequency *
-      (row.playerHands * Math.pow(row.sdUnits * row.bet, 2) +
+      (simultaneousHandVarianceFactor(row.playerHands) *
+        Math.pow(row.sdUnits * row.bet, 2) +
         Math.pow(row.advantage * row.totalBet, 2));
   }
   const variance = Math.max(0, secondMoment - evPerRound * evPerRound),
@@ -199,7 +262,6 @@ export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
     nZeroRounds =
       evPerRound > 0 ? variance / (evPerRound * evPerRound) : Infinity;
   return {
-    offTopEdge: estimateOffTopEdge(input.rules),
     averageBet,
     playerEdge: averageBet ? evPerRound / averageBet : 0,
     evPerRound,

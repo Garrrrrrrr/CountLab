@@ -3,6 +3,7 @@ import {
   AdvantageRules,
   RampPoint,
   calculateAdvantage,
+  simultaneousHandVarianceFactor,
 } from "./advantage";
 
 export interface SessionSimulationConfig {
@@ -163,7 +164,12 @@ export async function simulateProfileSessions(
       if (rowIndex < 0) rowIndex = cdf.length - 1;
       const row = analysis.rows[rowIndex];
       const conditionalMean = row.advantage * row.totalBet;
-      const conditionalSd = row.sdUnits * row.bet * Math.sqrt(row.playerHands);
+      // Simultaneous hands share one dealer hand, so their round total scales
+      // with the correlated-variance factor, not a bare hand count.
+      const conditionalSd =
+        row.sdUnits *
+        row.bet *
+        Math.sqrt(simultaneousHandVarianceFactor(row.playerHands));
       const outcome = conditionalMean + conditionalSd * normal();
       bankroll += outcome;
       peak = Math.max(peak, bankroll);

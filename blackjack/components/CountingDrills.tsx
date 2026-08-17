@@ -112,6 +112,8 @@ export function RunningCountDrill() {
   const [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}), [result, setResult] = useState<Session>();
   const [elapsed, setElapsed] = useState(saved?.elapsed ?? 0), startRef = useRef(Date.now() - (saved?.elapsed ?? 0)), answerStart = useRef(Date.now()), pausedAt = useRef(saved?.phase === "paused" ? Date.now() : 0), pausedTotal = useRef(0), interrupted = useRef(false), interruptionUsed = useRef(saved?.interruptionUsed ?? false);
   const answerTotal = useRef(0);
+  const randomCheckpointGap = () => 10 + Math.floor(Math.random() * 16);
+  const handsSinceCheckpoint = useRef(0), nextRandomCheckpoint = useRef(randomCheckpointGap());
   const active = phase !== "setup" && phase !== "done";
   useDrillProgress("Running Count", active, {
     preset, decks, amount, speed, group, checkpoint, bias, feedbackMode,
@@ -146,17 +148,21 @@ export function RunningCountDrill() {
   const advance = () => {
     const next = Math.min(cards.length, cursor + size);
     const before = runningCount(cards.slice(0, cursor)), after = runningCount(cards.slice(0, next));
-    const due = next === cards.length || checkpoint === "5" && Math.floor(next / 5) > Math.floor(cursor / 5) || checkpoint === "10" && Math.floor(next / 10) > Math.floor(cursor / 10) || checkpoint === "random" && Math.random() < 0.17 || checkpoint === "sign" && before !== 0 && Math.sign(before) !== Math.sign(after);
+    handsSinceCheckpoint.current += 1;
+    const due = next === cards.length || checkpoint === "5" && Math.floor(next / 5) > Math.floor(cursor / 5) || checkpoint === "10" && Math.floor(next / 10) > Math.floor(cursor / 10) || checkpoint === "random" && handsSinceCheckpoint.current >= nextRandomCheckpoint.current || checkpoint === "sign" && before !== 0 && Math.sign(before) !== Math.sign(after);
     setCursor(next);
     if (defaults.interruption && !interruptionUsed.current && next >= cards.length / 2) { interruptionUsed.current = true; interrupted.current = true; setPhase("interruption"); return; }
-    if (due) { answerStart.current = Date.now(); setAnswer(""); setPhase("answer"); track("question_presented", { drill: "Running Count", category: "running_count", scenario: `checkpoint_${checkpoint}`, attempt: checks + 1 }); }
+    if (due) {
+      if (checkpoint === "random") { handsSinceCheckpoint.current = 0; nextRandomCheckpoint.current = randomCheckpointGap(); }
+      answerStart.current = Date.now(); setAnswer(""); setPhase("answer"); track("question_presented", { drill: "Running Count", category: "running_count", scenario: `checkpoint_${checkpoint}`, attempt: checks + 1 });
+    }
     else { setSize(pickSize()); }
   };
   // The timer is intentionally recreated only when the displayed group changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (phase !== "show") return; const id = window.setTimeout(advance, speed); return () => clearTimeout(id); }, [phase, cursor, size, speed]);
 
-  const start = () => { const next = makeCountSequence(decks, amount, bias); setCards(next); setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setMessage(""); setElapsed(0); pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false; startRef.current = Date.now(); setPhase("show"); track("drill_started", { drill: "Running Count", preset, decks, amount, speed, group, checkpoint, bias }); };
+  const start = () => { const next = makeCountSequence(decks, amount, bias); setCards(next); setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setMessage(""); setElapsed(0); pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false; handsSinceCheckpoint.current = 0; nextRandomCheckpoint.current = randomCheckpointGap(); startRef.current = Date.now(); setPhase("show"); track("drill_started", { drill: "Running Count", preset, decks, amount, speed, group, checkpoint, bias }); };
   const applyPreset = (value: CountingPreset) => { const p = COUNTING_PRESETS[value]; track("difficulty_changed", { drill: "Running Count", from: preset, to: value }); setPreset(value); setDecks(p.decks); setAmount(p.cards); setSpeed(p.speed); setGroup(p.group); setCheckpoint(p.checkpoint); storage.saveSettings({ ...storage.settings(), countingPreset: value }); };
   const submit = () => {
     const responseTimeMs = Date.now() - answerStart.current;
@@ -187,7 +193,7 @@ export function RunningCountDrill() {
       <Panel className="min-h-[26rem]">
         {phase === "show" && <CardGroup cards={visible} seed={cursor} />}
         {phase === "interruption" && <div className="grid min-h-64 place-items-center text-center"><div><p className="text-5xl">☎</p><h2 className="mt-4 text-xl font-semibold">Interruption</h2><p className="mt-2 text-zinc-400">Hold the count while attention moves away from the table.</p><Button className="mt-5 min-h-11" onClick={() => { setSize(pickSize()); setPhase("show"); }}>Return to the table</Button></div></div>}
-        {phase === "paused" && <div className="grid min-h-64 place-items-center"><Button className="min-h-11" onClick={() => { pausedTotal.current += Date.now() - pausedAt.current; setPhase("show"); }}>Resume session</Button></div>}
+        {phase === "paused" && <div className="grid min-h-64 place-items-center text-center"><div><p className="text-sm text-zinc-400">Running count when paused</p><p className="mt-2 text-5xl font-semibold">{signed(expected)}</p><Button className="mt-5 min-h-11" onClick={() => { pausedTotal.current += Date.now() - pausedAt.current; setPhase("show"); }}>Resume session</Button></div></div>}
         {phase === "answer" && <form className="mx-auto max-w-sm py-6 text-center sm:py-16" onSubmit={(e) => { e.preventDefault(); submit(); }}><h2 className="text-xl font-semibold">Running count after {cursor} cards?</h2><input autoFocus inputMode="numeric" aria-label="Running count" className={`${inputClass} mt-5`} value={answer} onChange={(e) => setAnswer(e.target.value)} /><Button className="mt-4 hidden min-h-11 w-full sm:block">Check count</Button><NumericPad value={answer} onChange={setAnswer} onSubmit={submit} /></form>}
         {phase === "feedback" && <div aria-live="polite" className="grid min-h-64 place-items-center text-center"><div><p className="text-2xl font-semibold">{message}</p><Button className="mt-5 min-h-11" onClick={() => { setSize(pickSize()); setPhase("show"); }}>Continue</Button></div></div>}
       </Panel>

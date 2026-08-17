@@ -1,32 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/track";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Legend,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import {
   CvcxScenario,
   analyzeCvcx,
   createOptimalRamp,
-  finiteHorizonRisk,
-  goalByHorizonProbability,
-  goalBeforeRuinProbability,
-  roundsToGoalProbability,
-  resultPercentile,
   riskSizedUnit,
 } from "@/lib/blackjack/cvcx";
 import {
@@ -36,24 +16,38 @@ import {
   RampPoint,
   RAMPS,
   unitsAt,
+  zeroBetsBelow,
 } from "@/lib/blackjack/advantage";
-import {
-  COEFFICIENT_METADATA,
-  GAME_OPTIONS,
-} from "@/lib/blackjack/coefficients";
+import { COEFFICIENT_METADATA, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import {
   DEVIATION_SKILL,
   isEstimated,
   sumRuleAdjustment,
 } from "@/lib/blackjack/ruleAdjustments";
-import { cvcxLibrary, CvcxTemplate, CvcxTemplateConfig } from "@/lib/blackjack/cvcxLibrary";
+import {
+  cvcxLibrary,
+  CvcxTemplate,
+  CvcxTemplateConfig,
+  templateHandSchedule,
+} from "@/lib/blackjack/cvcxLibrary";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
-import { Button, GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
+import {
+  Button,
+  GhostButton,
+  Metric,
+  NumberField,
+  Panel,
+  Select,
+  Switch,
+} from "./ui";
 import { ConfirmModal } from "./ConfirmModal";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 
-type View = "viewer" | "ramp" | "risk" | "compare" | "calculator";
+/** The seventeen true-count buckets the audited coefficients are keyed on. */
+const TRUE_COUNTS = Array.from({ length: 17 }, (_, index) => index - 8);
+const HAND_CHOICES = [1, 2, 3];
+
 const money = (value: number, digits = 0) =>
   Number.isFinite(value)
     ? new Intl.NumberFormat("en-US", {
@@ -68,57 +62,165 @@ const percent = (value: number, digits = 2, signed = false) =>
 const compact = (value: number) =>
   Number.isFinite(value) ? Math.round(value).toLocaleString() : "—";
 const expandPreset = (name: string) =>
-  Array.from({ length: 17 }, (_, index) => {
-    const trueCount = index - 8;
-    return { trueCount, units: unitsAt(trueCount, RAMPS[name]) };
-  });
+  TRUE_COUNTS.map((trueCount) => ({
+    trueCount,
+    units: unitsAt(trueCount, RAMPS[name]),
+  }));
+/** Largest multiple of the base bet the ramp actually reaches. */
+const rampSpread = (ramp: RampPoint[]) =>
+  Math.max(0, ...ramp.map((point) => point.units));
+const unitLabel = (value: number) =>
+  value % 1 === 0 ? String(value) : value.toFixed(2);
+/** The spread the player actually wagers, ignoring counts that are sat out. */
+const playedSpreadLabel = (ramp: RampPoint[]) => {
+  const played = ramp.map((point) => point.units).filter((units) => units > 0);
+  if (played.length === 0) return "no bets";
+  return `${unitLabel(Math.min(...played))}–${unitLabel(Math.max(...played))}`;
+};
 
-const views: Array<[View, string, string]> = [
-  ["viewer", "Understand", "fa-gauge-high"],
-  ["ramp", "Optimize", "fa-sliders"],
-  ["risk", "Plan", "fa-shield-halved"],
-  ["compare", "Compare", "fa-chart-column"],
-  ["calculator", "Calculator", "fa-calculator"],
-];
-
+/** The bet ramp and hand schedule, plus every per-count number they produce. */
 function BetSpreadPanel({
   rows,
-  effectiveHands,
-  onHandsChange,
+  rampName,
+  maxSpread,
+  chipIncrement,
+  wongInAt,
+  optimalUnit,
+  onPreset,
+  onMaxSpread,
+  onChipIncrement,
+  onWongIn,
+  onGenerate,
   onBetChange,
-  onAllHands,
-  onZeroAll,
+  onHandsChange,
+  onScale,
   onReset,
 }: {
   rows: CountRow[];
-  effectiveHands: (trueCount: number) => number;
-  onHandsChange: (trueCount: number, hands: number) => void;
+  rampName: string;
+  maxSpread: number;
+  chipIncrement: number;
+  wongInAt: number | null;
+  optimalUnit: number;
+  onPreset: (name: string) => void;
+  onMaxSpread: (value: number) => void;
+  onChipIncrement: (value: number) => void;
+  onWongIn: (value: number | null) => void;
+  onGenerate: () => void;
   onBetChange: (trueCount: number, bet: number) => void;
-  onAllHands: (hands: number) => void;
-  onZeroAll: () => void;
+  onHandsChange: (trueCount: number, hands: number) => void;
+  onScale: (factor: number) => void;
   onReset: () => void;
 }) {
   return (
-    <Panel className="mt-5">
+    <Panel>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div><h2 className="font-semibold">Bet spread</h2><p className="mt-1 text-sm text-zinc-500">Set the dollar bet and hand count for every true count. Zero-dollar buckets are observed but not played.</p></div>
+        <div>
+          <h2 className="font-semibold">Bet spread</h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            The wager and number of hands at every true count. Zero-dollar counts
+            are watched but not played.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <button type="button" onClick={() => onAllHands(1)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">All 1X</button>
-          <button type="button" onClick={() => onAllHands(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">All 2X</button>
-          <button type="button" onClick={onZeroAll} className="rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 py-1.5 font-semibold text-red-300 hover:bg-red-400/[.12]">Zero all</button>
+          <button type="button" onClick={() => onScale(0.5)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">½X</button>
+          <button type="button" onClick={() => onScale(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">2X</button>
           <button type="button" onClick={onReset} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset</button>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[420px] text-sm">
-          <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Index</th><th className="pb-3 text-left">Value</th><th className="pb-3 text-left">Hands</th></tr></thead>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Select
+          label="Preset"
+          value={Object.hasOwn(RAMPS, rampName) ? rampName : "custom"}
+          onChange={(event) =>
+            event.target.value !== "custom" && onPreset(event.target.value)
+          }
+        >
+          {Object.keys(RAMPS).map((name) => (
+            <option key={name} value={name}>{name} spread</option>
+          ))}
+          {!Object.hasOwn(RAMPS, rampName) && (
+            <option value="custom">{rampName}</option>
+          )}
+        </Select>
+        <Select
+          label="Enter the game at"
+          value={wongInAt ?? "play-all"}
+          onChange={(event) =>
+            onWongIn(
+              event.target.value === "play-all" ? null : +event.target.value,
+            )
+          }
+        >
+          <option value="play-all">Play every count</option>
+          <option value={0}>TC 0+</option>
+          <option value={1}>TC +1+</option>
+          <option value={2}>TC +2+</option>
+          <option value={3}>TC +3+</option>
+        </Select>
+        <NumberField
+          label="Maximum spread"
+          value={maxSpread}
+          min={1}
+          max={100}
+          onValueChange={onMaxSpread}
+        />
+        <Select
+          label="Bet rounding"
+          value={chipIncrement}
+          onChange={(event) => onChipIncrement(+event.target.value)}
+        >
+          <option value={0}>Exact units</option>
+          <option value={0.25}>Quarter units</option>
+          <option value={0.5}>Half units</option>
+          <option value={1}>Whole units</option>
+        </Select>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button onClick={onGenerate}>Generate optimal ramp</Button>
+        <p className="text-sm text-zinc-500">
+          Kelly-weighted, capped at the maximum spread, sized to a{" "}
+          <b className="text-zinc-300">{money(optimalUnit, 2)}</b> base bet for
+          the target risk of ruin.
+        </p>
+      </div>
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-[720px] text-right text-sm">
+          <thead className="text-zinc-500">
+            <tr>
+              <th className="pb-3 text-left">True count</th>
+              <th className="pb-3">Frequency</th>
+              <th className="pb-3">Advantage</th>
+              <th className="pb-3 text-left">Bet / hand</th>
+              <th className="pb-3 text-left">Hands</th>
+              <th className="pb-3">Total action</th>
+              <th className="pb-3">EV / round</th>
+            </tr>
+          </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.trueCount} className="border-t border-white/[.06]">
-                <td className={`py-2.5 font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}>{row.label}</td>
+                <td
+                  className={`py-2.5 text-left font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}
+                >
+                  {row.label}
+                </td>
+                <td>{percent(row.frequency, 2)}</td>
+                <td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>
+                  {percent(row.advantage, 3, true)}
+                </td>
                 <td className="py-2">
                   <div className="flex items-center gap-2">
-                    <NumberField ariaLabel={`Bet at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="w-32" onValueChange={(value) => onBetChange(row.trueCount, value)} />
+                    <NumberField
+                      ariaLabel={`Bet at true count ${row.label}`}
+                      value={Math.round(row.bet * 100) / 100}
+                      min={0}
+                      prefix="$"
+                      className="w-28"
+                      onValueChange={(value) => onBetChange(row.trueCount, value)}
+                    />
                     <button
                       type="button"
                       aria-label={`Zero bet at true count ${row.label}`}
@@ -130,11 +232,25 @@ function BetSpreadPanel({
                     </button>
                   </div>
                 </td>
-                <td className="py-2">
+                <td className="py-2 text-left">
                   <div className="inline-flex gap-1">
-                    <button type="button" aria-pressed={effectiveHands(row.trueCount) === 1} onClick={() => onHandsChange(row.trueCount, 1)} className={`rounded-md border px-2 py-1 text-xs font-semibold ${effectiveHands(row.trueCount) === 1 ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : "border-white/[.08] text-zinc-500 hover:bg-white/[.05]"}`}>1X</button>
-                    <button type="button" aria-pressed={effectiveHands(row.trueCount) === 2} onClick={() => onHandsChange(row.trueCount, 2)} className={`rounded-md border px-2 py-1 text-xs font-semibold ${effectiveHands(row.trueCount) === 2 ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : "border-white/[.08] text-zinc-500 hover:bg-white/[.05]"}`}>2X</button>
+                    {HAND_CHOICES.map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        aria-pressed={row.playerHands === count}
+                        aria-label={`${count} hands at true count ${row.label}`}
+                        onClick={() => onHandsChange(row.trueCount, count)}
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : "border-white/[.08] text-zinc-500 hover:bg-white/[.05]"}`}
+                      >
+                        {count}X
+                      </button>
+                    ))}
                   </div>
+                </td>
+                <td>{money(row.totalBet, 0)}</td>
+                <td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>
+                  {money(row.frequency * row.advantage * row.totalBet, 3)}
                 </td>
               </tr>
             ))}
@@ -145,22 +261,48 @@ function BetSpreadPanel({
   );
 }
 
-function TrueCountDistributionPanel({ rows, maxFrequency }: { rows: CountRow[]; maxFrequency: number }) {
+function TrueCountDistributionPanel({
+  rows,
+  maxFrequency,
+}: {
+  rows: CountRow[];
+  maxFrequency: number;
+}) {
   return (
     <Panel>
       <h2 className="font-semibold">True count distribution</h2>
-      <p className="mt-1 text-sm text-zinc-500">How often each count occurs, and the player edge at that count.</p>
+      <p className="mt-1 text-sm text-zinc-500">
+        How often each count occurs, and the player edge at that count.
+      </p>
       <div className="mt-4 space-y-2">
         {rows.map((row) => (
-          <div key={row.trueCount} className="grid grid-cols-[3rem_1fr_5rem] items-center gap-3 text-sm">
-            <span className={`font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}>{row.label}</span>
+          <div
+            key={row.trueCount}
+            className="grid grid-cols-[3rem_1fr_5rem] items-center gap-3 text-sm"
+          >
+            <span
+              className={`font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}
+            >
+              {row.label}
+            </span>
             <div className="flex items-center gap-2">
-              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full rounded-full bg-sky-400/70" style={{ width: `${maxFrequency > 0 ? (row.frequency / maxFrequency) * 100 : 0}%` }} /></div>
-              <span className="w-14 shrink-0 text-right text-xs text-zinc-500">{percent(row.frequency, 2)}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[.06]">
+                <div
+                  className="h-full rounded-full bg-sky-400/70"
+                  style={{
+                    width: `${maxFrequency > 0 ? (row.frequency / maxFrequency) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              <span className="w-14 shrink-0 text-right text-xs text-zinc-500">
+                {percent(row.frequency, 2)}
+              </span>
             </div>
             <span
               className={`rounded-lg px-2 py-1 text-right text-xs font-semibold ${row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}`}
-              style={{ background: `${row.advantage >= 0 ? "rgba(16,185,129," : "rgba(239,68,68,"}${Math.min(0.35, Math.abs(row.advantage) * 12)})` }}
+              style={{
+                background: `${row.advantage >= 0 ? "rgba(16,185,129," : "rgba(239,68,68,"}${Math.min(0.35, Math.abs(row.advantage) * 12)})`,
+              }}
             >
               {percent(row.advantage, 3, true)}
             </span>
@@ -171,56 +313,10 @@ function TrueCountDistributionPanel({ rows, maxFrequency }: { rows: CountRow[]; 
   );
 }
 
-function TripBankrollPanel({
-  tripBankrollAmount,
-  tripHoursPlayed,
-  tripBankrollRisk,
-  onAmountChange,
-  onHoursChange,
-}: {
-  tripBankrollAmount: number;
-  tripHoursPlayed: number;
-  tripBankrollRisk: number;
-  onAmountChange: (value: number) => void;
-  onHoursChange: (value: number) => void;
-}) {
-  return (
-    <Panel>
-      <h2 className="font-semibold">Trip bankroll risk</h2>
-      <p className="mt-1 text-sm text-zinc-500">A smaller, separate stake for a single trip, checked against this bet spread.</p>
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField label="Trip bankroll" value={tripBankrollAmount} min={0} prefix="$" onValueChange={onAmountChange} />
-        <NumberField label="Hours played" value={tripHoursPlayed} min={0.1} step={1} onValueChange={onHoursChange} />
-      </div>
-      <div className="mt-4 rounded-xl bg-black/20 p-4 text-sm leading-6 text-zinc-400">
-        The risk of losing a trip bankroll of <b className="text-zinc-100">{money(tripBankrollAmount, 0)}</b> in <b className="text-zinc-100">{tripHoursPlayed}</b> hour{tripHoursPlayed === 1 ? "" : "s"} of play under the conditions selected is:
-      </div>
-      <p className="mt-3 text-3xl font-semibold text-sky-300">{percent(tripBankrollRisk, 2)}</p>
-    </Panel>
-  );
-}
-
-function SummaryStatisticsPanel({ averageBet, playerEdge, evPerRound }: { averageBet: number; playerEdge: number; evPerRound: number }) {
-  return (
-    <Panel className="mt-5">
-      <h2 className="font-semibold">Summary statistics</h2>
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <div><p className="text-xs uppercase tracking-wide text-zinc-500">Average bet</p><p className="mt-1 text-xl font-semibold">{money(averageBet, 2)}</p></div>
-        <div><p className="text-xs uppercase tracking-wide text-zinc-500">Player edge</p><p className="mt-1 text-xl font-semibold text-emerald-300">{percent(playerEdge, 3, true)}</p></div>
-        <div><p className="text-xs uppercase tracking-wide text-zinc-500">EV per hand</p><p className="mt-1 text-xl font-semibold text-emerald-300">{money(evPerRound, 2)}</p></div>
-      </div>
-    </Panel>
-  );
-}
-
 export function CvcxLab() {
   const router = useRouter();
-  const viewResultsRef = useRef<HTMLDivElement>(null);
-  const previousViewRef = useRef<View>("viewer");
-  const [view, setView] = useState<View>("viewer"),
-    [bankroll, setBankroll] = useState(25000),
+  const [bankroll, setBankroll] = useState(25000),
     [baseBet, setBaseBet] = useState(15),
-    [playerHands, setPlayerHands] = useState(1),
     [handsPerHour, setHandsPerHour] = useState(100),
     [hours, setHours] = useState(100),
     [targetRisk, setTargetRisk] = useState(0.05),
@@ -230,34 +326,27 @@ export function CvcxLab() {
     [dealt, setDealt] = useState(4.5),
     [rampName, setRampName] = useState("1-12"),
     [ramp, setRamp] = useState<RampPoint[]>(() => expandPreset("1-12")),
-    [goal, setGoal] = useState(5000),
-    [actualResult, setActualResult] = useState(0),
     [chipIncrement, setChipIncrement] = useState(0.5),
-    [extraHandsAt, setExtraHandsAt] = useState<number | null>(null),
-    [highCountHands, setHighCountHands] = useState(2),
-    [goalProbability, setGoalProbability] = useState(0.75),
+    [handsByCount, setHandsByCount] = useState<Record<number, number>>({}),
     [dealerHitsSoft17, setDealerHitsSoft17] = useState(true),
     [doubleAfterSplit, setDoubleAfterSplit] = useState(true),
     [resplitAces, setResplitAces] = useState(true),
     [lateSurrender, setLateSurrender] = useState(true),
     [europeanNoHoleCard, setEuropeanNoHoleCard] = useState(false),
     [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5),
-    [deviationSkillLevel, setDeviationSkillLevel] = useState<keyof typeof DEVIATION_SKILL>("perfect"),
+    [deviationSkillLevel, setDeviationSkillLevel] =
+      useState<keyof typeof DEVIATION_SKILL>("perfect"),
     [doubleRule, setDoubleRule] = useState<"any2" | "9to11" | "10to11">("any2"),
     [cvcxTemplateName, setCvcxTemplateName] = useState(""),
     [cvcxTemplates, setCvcxTemplates] = useState<CvcxTemplate[]>([]),
     [pendingDeleteTemplate, setPendingDeleteTemplate] = useState<CvcxTemplate>(),
     [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]),
     [venuePresetName, setVenuePresetName] = useState(""),
-    [cvcxNotice, setCvcxNotice] = useState<string>(),
-    [handsOverride, setHandsOverride] = useState<Record<number, number>>({}),
-    [tripBankrollAmount, setTripBankrollAmount] = useState(1000),
-    [tripHoursPlayed, setTripHoursPlayed] = useState(10);
+    [cvcxNotice, setCvcxNotice] = useState<string>();
 
   useEffect(() => {
     const refresh = () => setCvcxTemplates(cvcxLibrary.templates());
     refresh();
-    track("cvcx_tab_changed", { tab: "viewer" });
     addEventListener(cvcxLibrary.event, refresh);
     return () => removeEventListener(cvcxLibrary.event, refresh);
   }, []);
@@ -267,13 +356,6 @@ export function CvcxLab() {
     addEventListener(venuePresetLibrary.event, refresh);
     return () => removeEventListener(venuePresetLibrary.event, refresh);
   }, []);
-  useEffect(() => {
-    if (previousViewRef.current === view) return;
-    previousViewRef.current = view;
-    if (!matchMedia("(max-width: 639px)").matches) return;
-    const frame = requestAnimationFrame(() => viewResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    return () => cancelAnimationFrame(frame);
-  }, [view]);
 
   const ruleFlags = useMemo(
       () => ({
@@ -292,15 +374,15 @@ export function CvcxLab() {
     deviationSkill = DEVIATION_SKILL[deviationSkillLevel],
     estimated = isEstimated(ruleFlags, deviationSkill);
 
-  const handsByTrueCount = useMemo(
+  // The bet-spread table is the only place hand counts are set, so this is the
+  // whole schedule and every metric on the page is priced from it.
+  const handsSchedule = useMemo<HandCountPoint[]>(
     () =>
-      extraHandsAt === null
-        ? undefined
-        : [
-            { trueCount: -8, hands: playerHands },
-            { trueCount: extraHandsAt, hands: highCountHands },
-          ],
-    [extraHandsAt, highCountHands, playerHands],
+      TRUE_COUNTS.map((trueCount) => ({
+        trueCount,
+        hands: handsByCount[trueCount] ?? 1,
+      })),
+    [handsByCount],
   );
 
   const rules = useMemo(
@@ -316,12 +398,19 @@ export function CvcxLab() {
       }),
       [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout],
     ),
+    // Wonging is a property of the game actually being played, so it applies to
+    // the live ramp: skipped counts drop out of EV, variance, and "rounds
+    // played" instead of only reshaping the generated ramp.
+    activeRamp = useMemo(
+      () => (wongInAt === null ? ramp : zeroBetsBelow(ramp, wongInAt)),
+      [ramp, wongInAt],
+    ),
     scenario: CvcxScenario = useMemo(
       () => ({
         bankroll,
         minimumBet: baseBet,
-        playerHands,
-        handsByTrueCount,
+        playerHands: 1,
+        handsByTrueCount: handsSchedule,
         handsPerHour,
         hours,
         targetRisk,
@@ -331,56 +420,26 @@ export function CvcxLab() {
         ruleAdjustment,
         deviationSkill,
       }),
-      [bankroll, baseBet, playerHands, handsByTrueCount, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, deviationSkill],
+      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, deviationSkill],
+    ),
+    result = useMemo(
+      () => analyzeCvcx(scenario, activeRamp, baseBet),
+      [scenario, activeRamp, baseBet],
     ),
     optimalRamp = useMemo(
       () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill),
       [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill],
     ),
-    custom = useMemo(
-      () => analyzeCvcx(scenario, ramp, baseBet),
-      [scenario, ramp, baseBet],
-    ),
     optimalUnit = useMemo(
       () => riskSizedUnit(scenario, optimalRamp),
       [scenario, optimalRamp],
     ),
-    optimized = useMemo(
-      () =>
-        analyzeCvcx(
-          scenario,
-          optimalRamp,
-          Number.isFinite(optimalUnit) ? optimalUnit : baseBet,
-        ),
-      [scenario, optimalRamp, optimalUnit, baseBet],
-    );
-
-  // Viewer-tab bet spread: an ap-toolbox-style per-count "Hands" toggle
-  // (1X/2X), independent of the shared playerHands/extraHandsAt controls
-  // used by the other tabs. Every row supplies its own schedule breakpoint,
-  // which the step-function handsAt() model already supports natively.
-  const effectiveHands = (trueCount: number) => handsOverride[trueCount] ?? (trueCount >= 2 ? 2 : 1);
-  const viewerHandsSchedule: HandCountPoint[] = useMemo(
-      () => custom.rows.map((row) => ({ trueCount: row.trueCount, hands: effectiveHands(row.trueCount) })),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [custom.rows, handsOverride],
-    ),
-    viewerResult = useMemo(
-      () => analyzeCvcx({ ...scenario, handsByTrueCount: viewerHandsSchedule }, ramp, baseBet),
-      [scenario, viewerHandsSchedule, ramp, baseBet],
-    ),
-    maxFrequency = Math.max(...custom.rows.map((row) => row.frequency)),
-    tripBankrollRisk = finiteHorizonRisk(
-      tripBankrollAmount,
-      viewerResult.evPerRound,
-      viewerResult.sdPerRound ** 2,
-      tripHoursPlayed * handsPerHour,
-    );
+    maxFrequency = Math.max(...result.rows.map((row) => row.frequency));
 
   const setPreset = (name: string) => {
     setRampName(name);
-    setWongInAt(null);
     setRamp(expandPreset(name));
+    setMaxSpread(rampSpread(RAMPS[name]));
     track("cvcx_preset_selected", { preset: name });
   };
   const useOptimal = () => {
@@ -402,19 +461,20 @@ export function CvcxLab() {
   };
   const scaleRamp = (factor: number) => {
     setRampName("Custom");
-    setRamp((current) => current.map((point) => ({ ...point, units: Math.max(0, point.units * factor) })));
+    setRamp((current) =>
+      current.map((point) => ({ ...point, units: Math.max(0, point.units * factor) })),
+    );
   };
-  const setAllHands = (value: number) =>
-    setHandsOverride(Object.fromEntries(custom.rows.map((row) => [row.trueCount, value])));
   const resetBetSpread = () => {
     setPreset(Object.hasOwn(RAMPS, rampName) ? rampName : "1-8");
-    setHandsOverride({});
+    setWongInAt(null);
+    setHandsByCount({});
     track("cvcx_reset", { stage: "bet_spread" });
   };
 
   const currentCvcxConfig = (): CvcxTemplateConfig => ({
-    decks, dealt, bankroll, baseBet, playerHands, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
-    rampName, ramp, chipIncrement, extraHandsAt, highCountHands,
+    decks, dealt, bankroll, baseBet, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
+    rampName, ramp, chipIncrement, hands: handsSchedule,
     dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, deviationSkillLevel, doubleRule,
   });
   const saveCvcxTemplate = () => {
@@ -430,7 +490,6 @@ export function CvcxLab() {
     setDealt(config.dealt);
     setBankroll(config.bankroll);
     setBaseBet(config.baseBet);
-    setPlayerHands(config.playerHands);
     setHandsPerHour(config.handsPerHour);
     setHours(config.hours);
     setTargetRisk(config.targetRisk);
@@ -439,8 +498,11 @@ export function CvcxLab() {
     setRampName(config.rampName);
     setRamp(config.ramp);
     setChipIncrement(config.chipIncrement);
-    setExtraHandsAt(config.extraHandsAt);
-    setHighCountHands(config.highCountHands);
+    setHandsByCount(
+      Object.fromEntries(
+        templateHandSchedule(config).map((point) => [point.trueCount, point.hands]),
+      ),
+    );
     setDealerHitsSoft17(config.dealerHitsSoft17);
     setDoubleAfterSplit(config.doubleAfterSplit);
     setResplitAces(config.resplitAces);
@@ -465,6 +527,7 @@ export function CvcxLab() {
     setBlackjackPayout(preset.rules.blackjackPayout);
     setRamp(preset.ramp);
     setRampName("Custom");
+    setMaxSpread(rampSpread(preset.ramp));
     setCvcxNotice(`Loaded venue “${preset.name}”.`);
   };
   const saveVenuePreset = () => {
@@ -478,64 +541,18 @@ export function CvcxLab() {
     const sessionConfig: SessionSimulationConfig = {
       bankroll,
       bettingUnit: baseBet,
-      playerHands,
+      playerHands: 1,
       rounds: 100_000,
       paths: 50,
       roundsPerHour: handsPerHour,
       seed: `cvcx-${Date.now()}`,
       rules,
-      ramp,
+      ramp: activeRamp,
     };
     simulationLibrary.saveTemplate(sessionConfig, cvcxTemplateName || `${rules.decks}D · ${Math.round(rules.penetration * 100)}% from Lab`);
     track("cvcx_tested_in_simulator", { decks: rules.decks, bankroll, baseBet });
     router.push("/simulation");
   };
-
-  const projection = useMemo(
-      () =>
-        Array.from({ length: 21 }, (_, index) => {
-          const elapsed = (hours * index) / 20;
-          const rounds = elapsed * handsPerHour;
-          const mean = custom.evPerRound * rounds;
-          const sd = custom.sdPerRound * Math.sqrt(rounds);
-          return {
-            hours: Math.round(elapsed * 10) / 10,
-            expected: mean,
-            band: [mean - 1.645 * sd, mean + 1.645 * sd],
-          };
-        }),
-      [hours, handsPerHour, custom.evPerRound, custom.sdPerRound],
-    ),
-    countChart = custom.rows.map((row) => ({
-      count: row.label,
-      advantage: row.advantage * 100,
-      bet: row.bet,
-      totalBet: row.totalBet,
-      frequency: row.frequency * 100,
-    })),
-    goalChance = goalBeforeRuinProbability(
-      bankroll,
-      goal,
-      custom.evPerRound,
-      custom.sdPerRound ** 2,
-    ),
-    goalByTrip = goalByHorizonProbability(
-      goal,
-      custom.evPerRound,
-      custom.sdPerRound ** 2,
-      hours * handsPerHour,
-    ),
-    goalRounds = roundsToGoalProbability(
-      goal,
-      goalProbability,
-      custom.evPerRound,
-      custom.sdPerRound ** 2,
-    ),
-    actualPercentile = resultPercentile(
-      actualResult,
-      custom.tripEv,
-      custom.standardDeviation,
-    );
 
   const comparisons = useMemo(
     () =>
@@ -551,25 +568,18 @@ export function CvcxLab() {
             maxSpread,
             wongInAt,
             chipIncrement,
-          );
-          const comparisonScenario = {
-            ...scenario,
-            rules: comparisonRules,
-          };
-          const result = analyzeCvcx(
-            comparisonScenario,
-            comparisonRamp,
-            baseBet,
+            ruleAdjustment,
+            deviationSkill,
           );
           return {
             name: `${comparisonDecks}D · ${option.dealt} dealt`,
             decks: comparisonDecks,
             penetration: option.dealt / comparisonDecks,
-            ...result,
+            ...analyzeCvcx({ ...scenario, rules: comparisonRules }, comparisonRamp, baseBet),
           };
         }),
       ),
-    [rules, maxSpread, wongInAt, chipIncrement, scenario, baseBet],
+    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, deviationSkill, scenario, baseBet],
   );
 
   return (
@@ -581,8 +591,8 @@ export function CvcxLab() {
           </p>
           <h1 className="mt-2 text-3xl font-semibold">Game &amp; Bankroll Lab</h1>
           <p className="mt-2 max-w-4xl text-zinc-400">
-            A CVCX-style workspace for comparing games, shaping a bet ramp,
-            sizing a bankroll, and understanding long-run and trip risk.
+            Size a bankroll and a bet ramp against a specific game, and see the
+            edge, the swing, and the risk it carries.
           </p>
         </div>
         <div className="rounded-full border border-emerald-400/20 bg-emerald-400/[.07] px-3 py-1.5 text-xs font-medium text-emerald-300">
@@ -590,16 +600,59 @@ export function CvcxLab() {
         </div>
       </div>
 
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric
+          label="Expected value"
+          value={`${money(result.hourlyEv, 2)}/hr`}
+          sub={`${percent(result.playerEdge, 3, true)} player edge${estimated ? " · est." : ""}`}
+        />
+        <Metric
+          label="1 standard deviation"
+          value={`± ${money(result.sdPerHour, 2)}`}
+          sub="per hour"
+        />
+        <Metric
+          label="Risk of ruin"
+          value={percent(result.riskOfRuin)}
+          sub={`${percent(result.tripRiskOfRuin)} within ${compact(hours)} hours${estimated ? " · est." : ""}`}
+        />
+        <Metric
+          label="Required bankroll"
+          value={money(result.requiredBankroll, 0)}
+          sub={`for a ${percent(targetRisk)} lifetime risk of ruin`}
+        />
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-emerald-400">Your game</p>
+          <p className="mt-2 font-semibold">{decks} decks, {percent(dealt / decks, 0)} dealt</p>
+          <p className="mt-1 text-sm text-zinc-400">
+            {wongInAt === null ? "Play every count" : `Enter at TC +${wongInAt}`} · {compact(handsPerHour)} rounds/hr · {percent(result.playedFrequency, 0)} of rounds played
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Your bet plan</p>
+          <p className="mt-2 font-semibold">{money(baseBet, 0)} unit · {playedSpreadLabel(activeRamp)} spread</p>
+          <p className="mt-1 text-sm text-zinc-400">{money(result.averageBet, 2)} average action per round</p>
+        </div>
+        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Plain-English result</p>
+          <p className="mt-2 font-semibold text-emerald-300">About {money(result.hourlyEv, 0)}/hr long run</p>
+          <p className="mt-1 text-sm text-zinc-400">{percent(result.riskOfRuin)} chance of losing the whole bankroll at these stakes</p>
+        </div>
+      </div>
+
       <details className="surface group mb-5 rounded-2xl border border-white/[.07]">
         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-300/10 text-sky-300"><i className="fa-solid fa-floppy-disk" aria-hidden="true" /></span>
-          <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Templates</h2><p className="truncate text-xs text-zinc-500">{cvcxTemplates.length} saved scenario{cvcxTemplates.length === 1 ? "" : "s"}</p></div>
+          <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Saved scenarios &amp; venues</h2><p className="truncate text-xs text-zinc-500">{cvcxTemplates.length} saved scenario{cvcxTemplates.length === 1 ? "" : "s"}</p></div>
           <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" aria-hidden="true" />
         </summary>
         <div className="border-t border-white/[.06] p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row">
             <input value={cvcxTemplateName} onChange={(event) => setCvcxTemplateName(event.target.value)} placeholder="Scenario name" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
-            <GhostButton onClick={saveCvcxTemplate}><i className="fa-solid fa-floppy-disk mr-2" aria-hidden="true" />Save Template</GhostButton>
+            <GhostButton onClick={saveCvcxTemplate}><i className="fa-solid fa-floppy-disk mr-2" aria-hidden="true" />Save scenario</GhostButton>
           </div>
           {cvcxNotice && <p role="status" className="mt-2 text-xs text-emerald-300">{cvcxNotice}</p>}
           <div className="mt-3 space-y-2">
@@ -608,479 +661,201 @@ export function CvcxLab() {
               <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5">
                 <button type="button" onClick={() => loadCvcxTemplate(template)} className="min-w-0 flex-1 text-left">
                   <span className="block truncate text-sm font-medium text-zinc-200">{template.name}</span>
-                  <span className="text-xs text-zinc-600">{template.config.decks}D · {Math.round((template.config.dealt / template.config.decks) * 100)}% · 1–{Math.max(...template.config.ramp.map((point) => point.units))}</span>
+                  <span className="text-xs text-zinc-600">{template.config.decks}D · {Math.round((template.config.dealt / template.config.decks) * 100)}% · 1–{unitLabel(rampSpread(template.config.ramp))}</span>
                 </button>
-                <span className="text-xs font-semibold text-emerald-300">Load Template</span>
+                <span className="text-xs font-semibold text-emerald-300">Load</span>
                 <button type="button" aria-label={`Delete ${template.name}`} onClick={() => setPendingDeleteTemplate(template)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
                   <i className="fa-solid fa-trash-can" aria-hidden="true" />
                 </button>
               </div>
             ))}
           </div>
+          {venuePresets.length > 0 && (
+            <div className="mt-4">
+              <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
+                <option value="">Choose a venue…</option>
+                {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+              </Select>
+            </div>
+          )}
+          <div className="mt-3 flex gap-2">
+            <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
+          </div>
         </div>
       </details>
 
-      <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mb-5 flex gap-2 overflow-x-auto border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:grid sm:grid-cols-5 sm:rounded-2xl sm:border sm:bg-black/20 sm:p-1.5">
-        {views.map(([id, label, icon]) => (
-          <button
-            key={id}
-            type="button"
-            aria-current={view === id ? "page" : undefined}
-            onClick={() => { setView(id); track("cvcx_tab_changed", { tab: id }); }}
-            className={`pressable min-h-11 min-w-[10.5rem] shrink-0 rounded-xl px-2 text-left text-sm font-medium hover:text-zinc-200 sm:min-w-0 sm:text-center ${view === id ? "bg-white/[.1] text-white shadow-sm" : "text-zinc-500"}`}
-          >
-            <i className={`fa-solid ${icon} mr-2 text-xs`} aria-hidden="true" />
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
+        <div className="space-y-5">
+          <Panel>
+            <h2 className="font-semibold">Bankroll &amp; pace</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <NumberField label="Available bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
+              <NumberField label="Unit amount" value={baseBet} min={1} step={1} prefix="$" onValueChange={setBaseBet} />
+              <div className="grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
+                <span># of units</span>
+                <div className="field flex min-h-11 w-full items-center rounded-xl px-3 text-zinc-400">{baseBet > 0 ? Math.round(bankroll / baseBet).toLocaleString() : "—"}</div>
+              </div>
+              <NumberField label="Rounds per hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
+              <NumberField label="Hours played" value={hours} min={0.1} step={1} onValueChange={setHours} />
+              <Select label="Target risk of ruin" value={targetRisk} onChange={(event) => setTargetRisk(+event.target.value)}>
+                <option value={0.01}>1%</option>
+                <option value={0.025}>2.5%</option>
+                <option value={0.05}>5%</option>
+                <option value={0.1}>10%</option>
+                <option value={0.135}>13.5% (Kelly)</option>
+                <option value={0.25}>25%</option>
+              </Select>
+            </div>
+          </Panel>
 
-      {view !== "calculator" && (
-      <div className="mb-5 grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4">
-          <p className="text-xs font-bold uppercase tracking-[.12em] text-emerald-400">Your game</p>
-          <p className="mt-2 font-semibold">{decks} decks, {percent(dealt / decks, 0)} dealt</p>
-          <p className="mt-1 text-sm text-zinc-400">{wongInAt === null ? "Play every count" : `Enter at TC +${wongInAt}`} · {compact(handsPerHour)} rounds/hr</p>
-        </div>
-        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
-          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Your bet plan</p>
-          <p className="mt-2 font-semibold">{money(baseBet, 0)} unit · 1–{maxSpread} spread</p>
-          <p className="mt-1 text-sm text-zinc-400">{extraHandsAt === null ? `${playerHands} hand${playerHands === 1 ? "" : "s"} at every count` : `${playerHands} → ${highCountHands} hands at TC +${extraHandsAt}`}</p>
-        </div>
-        <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
-          <p className="text-xs font-bold uppercase tracking-[.12em] text-zinc-500">Plain-English result</p>
-          <p className="mt-2 font-semibold text-emerald-300">About {money(custom.hourlyEv, 0)}/hr long run</p>
-          <p className="mt-1 text-sm text-zinc-400">{percent(custom.riskOfRuin)} lifetime ruin risk at fixed bets</p>
-        </div>
-      </div>
-      )}
+          <Panel>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-semibold">Table rules</h2>
+              <span className={`rounded-full px-3 py-1 text-xs ${estimated ? "border border-amber-300/20 bg-amber-300/[.08] text-amber-300" : "bg-white/[.05] text-zinc-400"}`}>
+                {estimated && <i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />}
+                {estimated ? "estimated" : "audited"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Select
+                label="Number of decks"
+                value={decks}
+                onChange={(event) => {
+                  const next = Number(event.target.value) as 6 | 8;
+                  setDecks(next);
+                  setDealt(next === 6 ? 4.5 : 6);
+                }}
+              >
+                <option value={6}>6 decks</option>
+                <option value={8}>8 decks</option>
+              </Select>
+              <Select label="Penetration" value={dealt} onChange={(event) => setDealt(+event.target.value)}>
+                {GAME_OPTIONS[decks].map((option) => (
+                  <option key={option.dealt} value={option.dealt}>{option.label}</option>
+                ))}
+              </Select>
+              <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
+              <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
+              <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
+              <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
+              <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>
+                <option value="peek">American hole card</option>
+                <option value="enhc">European no hole card</option>
+              </Select>
+              <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(+event.target.value as 1.5 | 1.2)}>
+                <option value={1.5}>3:2</option>
+                <option value={1.2}>6:5</option>
+              </Select>
+              <Select label="Double rule" value={doubleRule} onChange={(event) => setDoubleRule(event.target.value as "any2" | "9to11" | "10to11")}>
+                <option value="any2">Double any first 2 cards</option>
+                <option value="9to11">Double only 9-11</option>
+                <option value="10to11">Double only 10-11</option>
+              </Select>
+              <Select label="Deviations" value={deviationSkillLevel} onChange={(event) => setDeviationSkillLevel(event.target.value as keyof typeof DEVIATION_SKILL)}>
+                <option value="beginner">Beginner (70%)</option>
+                <option value="intermediate">Intermediate (82%)</option>
+                <option value="pro">Pro (92%)</option>
+                <option value="perfect">Perfect (100%)</option>
+              </Select>
+            </div>
+            {estimated && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+                <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+                <span>
+                  {ruleAdjustment !== 0 && `Rules that depart from the audited baseline apply a flat literature-estimated ${(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit. `}
+                  {deviationSkill < 1 && `Partial deviation skill interpolates between the audited full-index run and an equally weighted audited basic-strategy run.`}
+                </span>
+              </p>
+            )}
+          </Panel>
 
-      {view !== "calculator" && (
-      <Panel className="mb-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold">Build your scenario</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Change the game, bankroll, pace, or playing policy. Results update instantly.
-            </p>
-          </div>
-          <span className={`rounded-full px-3 py-1 text-xs ${estimated ? "border border-amber-300/20 bg-amber-300/[.08] text-amber-300" : "bg-white/[.05] text-zinc-400"}`}>
-            {estimated && <i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />}
-            {dealerHitsSoft17 ? "H17" : "S17"} · {doubleAfterSplit ? "DAS" : "no DAS"} · {resplitAces ? "RSA" : "no RSA"} · {lateSurrender ? "LS" : "no LS"} · {europeanNoHoleCard ? "ENHC" : "peek"} · {blackjackPayout === 1.5 ? "3:2" : "6:5"} · {doubleRule === "any2" ? "double any 2" : doubleRule === "9to11" ? "double 9-11" : "double 10-11"} · {playerHands} hand{playerHands === 1 ? "" : "s"}
-          </span>
+          <TrueCountDistributionPanel rows={result.rows} maxFrequency={maxFrequency} />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <Select
-            label="Decks"
-            value={decks}
-            onChange={(event) => {
-              const next = Number(event.target.value) as 6 | 8;
-              setDecks(next);
-              setDealt(next === 6 ? 4.5 : 6);
-            }}
-          >
-            <option value={6}>6 decks</option>
-            <option value={8}>8 decks</option>
-          </Select>
-          <Select label="Penetration" value={dealt} onChange={(event) => setDealt(+event.target.value)}>
-            {GAME_OPTIONS[decks].map((option) => (
-              <option key={option.dealt} value={option.dealt}>{option.label}</option>
-            ))}
-          </Select>
-          <NumberField label="Bankroll" value={bankroll} min={1} prefix="$" onValueChange={setBankroll} />
-          <NumberField label="Base bet" value={baseBet} min={1} step={1} prefix="$" onValueChange={setBaseBet} />
-        </div>
-        {venuePresets.length > 0 && (
-          <div className="mt-4">
-            <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
-              <option value="">Choose a venue…</option>
-              {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-            </Select>
-          </div>
-        )}
-        <div className="mt-3 flex gap-2">
-          <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
-          <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
-        </div>
-        <details className="mt-5 border-t border-white/[.07] pt-4">
-          <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
-            <span><i className="fa-solid fa-table-cells mr-2 text-emerald-400" aria-hidden="true" />Table rules</span>
-            <span className="text-xs text-zinc-500">departing from the audited baseline is estimated</span>
-          </summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
-            <Switch label="Double after split" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
-            <Switch label="Resplit aces" checked={resplitAces} onChange={setResplitAces} />
-            <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
-            <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>
-              <option value="peek">American hole card</option>
-              <option value="enhc">European no hole card</option>
-            </Select>
-            <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(+event.target.value as 1.5 | 1.2)}>
-              <option value={1.5}>3:2</option>
-              <option value={1.2}>6:5</option>
-            </Select>
-            <Select label="Double rule" value={doubleRule} onChange={(event) => setDoubleRule(event.target.value as "any2" | "9to11" | "10to11")}>
-              <option value="any2">Double any first 2 cards</option>
-              <option value="9to11">Double only 9-11</option>
-              <option value="10to11">Double only 10-11</option>
-            </Select>
-            <Select label="Deviations" value={deviationSkillLevel} onChange={(event) => setDeviationSkillLevel(event.target.value as keyof typeof DEVIATION_SKILL)}>
-              <option value="beginner">Beginner (70%)</option>
-              <option value="intermediate">Intermediate (82%)</option>
-              <option value="pro">Pro (92%)</option>
-              <option value="perfect">Perfect (100%)</option>
-            </Select>
-          </div>
-          {estimated && (
-            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
-              <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
-              The audited simulation only covers H17 · DAS · RSA · LS · American peek · 3:2 · perfect deviation play. These results include an estimated adjustment ({(ruleAdjustment * 100).toFixed(2)}
-              {ruleAdjustment >= 0 ? "pp" : "pp"} rule delta{deviationSkill < 1 ? `, ${Math.round(deviationSkill * 100)}% deviation skill` : ""}) rather than a resimulated audit.
-            </p>
-          )}
-        </details>
-        <details className="mt-4 border-t border-white/[.07] pt-4">
-          <summary className="pressable flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl bg-white/[.04] px-4 text-sm font-medium text-zinc-200">
-            <span><i className="fa-solid fa-sliders mr-2 text-emerald-400" aria-hidden="true" />Advanced playing and risk controls</span>
-            <span className="text-xs text-zinc-500">hands, pace, RoR, Wonging, rounding</span>
-          </summary>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Select label="Player hands" value={playerHands} onChange={(event) => setPlayerHands(+event.target.value)}>
-            {[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}
-          </Select>
-          <Select label="Add hands at" value={extraHandsAt ?? "never"} onChange={(event) => setExtraHandsAt(event.target.value === "never" ? null : +event.target.value)}>
-            <option value="never">Never</option><option value={1}>TC +1</option><option value={2}>TC +2</option><option value={3}>TC +3</option><option value={4}>TC +4</option>
-          </Select>
-          <Select label="High-count hands" value={highCountHands} disabled={extraHandsAt === null} onChange={(event) => setHighCountHands(+event.target.value)}>
-            {[2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hands</option>)}
-          </Select>
-          <NumberField label="Rounds / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
-          <NumberField label="Hours" value={hours} min={0.1} step={1} onValueChange={setHours} />
-          <Select label="Target RoR" value={targetRisk} onChange={(event) => setTargetRisk(+event.target.value)}>
-            <option value={0.01}>1%</option><option value={0.025}>2.5%</option>
-            <option value={0.05}>5%</option><option value={0.1}>10%</option>
-            <option value={0.135}>13.5% (Kelly)</option><option value={0.25}>25%</option>
-          </Select>
-          <Select label="Wong in" value={wongInAt ?? "play-all"} onChange={(event) => setWongInAt(event.target.value === "play-all" ? null : +event.target.value)}>
-            <option value="play-all">Play all</option>
-            <option value={0}>TC 0+</option><option value={1}>TC +1+</option>
-            <option value={2}>TC +2+</option><option value={3}>TC +3+</option>
-          </Select>
-          <Select label="Optimal bet rounding" value={chipIncrement} onChange={(event) => setChipIncrement(+event.target.value)}>
-            <option value={0}>Exact units</option><option value={0.25}>Quarter units</option><option value={0.5}>Half units</option><option value={1}>Whole units</option>
-          </Select>
-          </div>
-          <p className="mt-3 text-xs leading-5 text-zinc-500">Changing hands by count mirrors CVCX-style hand spreading. The model supports up to seven simultaneous hands; shared dealer-result covariance is not available in the source profiles.</p>
-        </details>
-      </Panel>
-      )}
 
-      <div ref={viewResultsRef} className="scroll-mt-[calc(7.5rem+env(safe-area-inset-top))]">
-      {view === "viewer" && (
-        <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="Expected value" value={`${money(viewerResult.hourlyEv, 2)}/hr`} sub={`${percent(viewerResult.playerEdge, 3, true)} player edge${estimated ? " · est." : ""}`} />
-            <Metric label="1 standard deviation" value={`± ${money(viewerResult.sdPerHour, 2)}`} sub="per hour" />
-            <Metric label="Risk of ruin" value={percent(viewerResult.riskOfRuin)} sub={`${percent(viewerResult.tripRiskOfRuin)} over this trip${estimated ? " · est." : ""}`} />
-            <Metric label="Hours 'til N₀" value={compact(viewerResult.nZeroHours)} sub={`${compact(viewerResult.nZeroRounds)} rounds${estimated ? " · est." : ""}`} />
-          </div>
-
+        <div className="space-y-5">
           <BetSpreadPanel
-            rows={custom.rows}
-            effectiveHands={effectiveHands}
-            onHandsChange={(trueCount, hands) => setHandsOverride((current) => ({ ...current, [trueCount]: hands }))}
+            rows={result.rows}
+            rampName={rampName}
+            maxSpread={maxSpread}
+            chipIncrement={chipIncrement}
+            wongInAt={wongInAt}
+            optimalUnit={optimalUnit}
+            onPreset={setPreset}
+            onMaxSpread={setMaxSpread}
+            onChipIncrement={setChipIncrement}
+            onWongIn={setWongInAt}
+            onGenerate={useOptimal}
             onBetChange={updateDollarBet}
-            onAllHands={setAllHands}
-            onZeroAll={() => scaleRamp(0)}
+            onHandsChange={(trueCount, hands) =>
+              setHandsByCount((current) => ({ ...current, [trueCount]: hands }))
+            }
+            onScale={scaleRamp}
             onReset={resetBetSpread}
           />
 
-          <div className="mt-5 grid gap-5 lg:grid-cols-2">
-            <TrueCountDistributionPanel rows={custom.rows} maxFrequency={maxFrequency} />
-            <TripBankrollPanel
-              tripBankrollAmount={tripBankrollAmount}
-              tripHoursPlayed={tripHoursPlayed}
-              tripBankrollRisk={tripBankrollRisk}
-              onAmountChange={setTripBankrollAmount}
-              onHoursChange={setTripHoursPlayed}
-            />
-          </div>
-
-          <SummaryStatisticsPanel averageBet={viewerResult.averageBet} playerEdge={viewerResult.playerEdge} evPerRound={viewerResult.evPerRound} />
-
-          <div className="mb-2 mt-8 flex flex-wrap items-end justify-between gap-3">
-            <div><p className="text-xs font-bold uppercase tracking-[.16em] text-zinc-500">Deeper detail</p><h2 className="mt-1 text-lg font-semibold">Bankroll path &amp; optimized comparison</h2></div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Metric label="c-SCORE" value={custom.cScore.toFixed(2)} sub={`DI ${custom.desirabilityIndex.toFixed(2)}${estimated ? " · est." : ""}`} />
-            <Metric label="Average total action" value={money(custom.averageBet, 2)} sub={`${percent(custom.playedFrequency, 1)} rounds played · ${playerHands} hand${playerHands === 1 ? "" : "s"}`} />
-            <Metric label="Trip EV" value={money(custom.tripEv, 0)} sub={`${percent(custom.chanceOfProfit)} chance of profit`} />
-            <Metric label="Risk-adjusted EV" value={money(custom.certaintyEquivalentHourly, 2)} sub={`${percent(custom.certaintyEquivalentRatio, 0)} CE / win rate`} />
-          </div>
-          <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]">
-            <Panel>
-              <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-                <div><h2 className="font-semibold">Expected bankroll path</h2><p className="mt-1 text-sm text-zinc-500">90% terminal-result band; it is not a stop-loss boundary.</p></div>
-                <span className="text-sm text-zinc-400">σ / hour {money(custom.sdPerHour, 0)}</span>
-              </div>
-              <div className="h-72 w-full" aria-label="Expected result projection chart">
-                <ResponsiveContainer>
-                  <AreaChart data={projection} margin={{ left: 8, right: 12 }}>
-                    <defs><linearGradient id="resultBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a8ee72" stopOpacity={0.2}/><stop offset="1" stopColor="#a8ee72" stopOpacity={0.02}/></linearGradient></defs>
-                    <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-                    <XAxis dataKey="hours" stroke="#71717a" tickLine={false} axisLine={false} tickFormatter={(value) => `${value}h`} />
-                    <YAxis stroke="#71717a" tickLine={false} axisLine={false} tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={48} />
-                    <Tooltip contentStyle={{ background: "#151916", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} formatter={(value) => money(Number(value), 0)} labelFormatter={(value) => `${value} hours`} />
-                    <Area type="monotone" dataKey="band" name="90% range" stroke="rgba(168,238,114,.22)" fill="url(#resultBand)" />
-                    <Line type="monotone" dataKey="expected" stroke="#a8ee72" strokeWidth={2.5} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </Panel>
-            <Panel>
-              <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Optimal vs. custom</h2><p className="mt-1 text-sm text-zinc-500">Risk-sized Kelly-weight ramp.</p></div><div className="flex gap-2"><GhostButton onClick={useOptimal} className="px-3 text-xs">Use optimal</GhostButton><GhostButton onClick={testInSessionSimulator} className="px-3 text-xs"><i className="fa-solid fa-dice mr-2" aria-hidden="true" />Test in Session Simulator</GhostButton></div></div>
-              <div className="mt-5 overflow-x-auto">
-                <table className="w-full min-w-[400px] text-right text-sm">
-                  <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Schedule</th><th className="pb-3">Base</th><th className="pb-3">$/hr</th><th className="pb-3">RoR</th><th className="pb-3">SCORE</th></tr></thead>
-                  <tbody>
-                    <tr className="border-t border-white/[.06]"><td className="py-4 text-left font-medium">{rampName}</td><td>{money(baseBet, 0)}</td><td>{money(custom.hourlyEv, 0)}</td><td>{percent(custom.riskOfRuin)}</td><td>{custom.cScore.toFixed(1)}</td></tr>
-                    <tr className="border-t border-white/[.06] text-emerald-300"><td className="py-4 text-left font-medium">Optimized</td><td>{money(optimalUnit, 0)}</td><td>{money(optimized.hourlyEv, 0)}</td><td>{percent(optimized.riskOfRuin)}</td><td>{optimized.cScore.toFixed(1)}</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="mt-3 text-xs leading-5 text-zinc-500">The optimized row sizes positive-edge bets by conditional Kelly weight, caps them at the selected spread, and scales the unit to the target lifetime RoR.</p>
-            </Panel>
-          </div>
-        </>
-      )}
-
-      {view === "ramp" && (
-        <div className="grid gap-5 xl:grid-cols-[.72fr_1.28fr]">
           <Panel>
-            <h2 className="font-semibold">Ramp designer</h2>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">Start with a common spread or generate a risk-sized Kelly-weight ramp. Edit any dollar bet afterward.</p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-              <Select label="Preset" value={Object.hasOwn(RAMPS, rampName) ? rampName : "custom"} onChange={(event) => event.target.value !== "custom" && setPreset(event.target.value)}>
-                {Object.keys(RAMPS).map((name) => <option key={name} value={name}>{name} spread</option>)}
-                {!Object.hasOwn(RAMPS, rampName) && <option value="custom">{rampName}</option>}
-              </Select>
-              <NumberField label="Maximum spread" value={maxSpread} min={1} max={100} onValueChange={setMaxSpread} />
-              <Select label="Bet rounding" value={chipIncrement} onChange={(event) => setChipIncrement(+event.target.value)}>
-                <option value={0}>Exact units</option><option value={0.25}>Quarter units</option><option value={0.5}>Half units</option><option value={1}>Whole units</option>
-              </Select>
-              <Button onClick={useOptimal}>Generate optimized ramp</Button>
-            </div>
-            <div className="mt-5 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200"><b>{money(optimalUnit, 2)}</b> risk-sized base bet per hand for {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} at a {percent(targetRisk)} lifetime RoR target.</div>
-          </Panel>
-          <Panel className="overflow-x-auto">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div><h2 className="font-semibold">Bets by true count</h2><p className="mt-1 text-sm text-zinc-500">Zero-dollar buckets are observed but not played.</p></div>
-              <div className="flex gap-2 text-xs">
-                <button type="button" onClick={() => scaleRamp(0.5)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">½X</button>
-                <button type="button" onClick={() => scaleRamp(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">2X</button>
-                <button type="button" onClick={() => setPreset(Object.hasOwn(RAMPS, rampName) ? rampName : "1-8")} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset to defaults</button>
-              </div>
-            </div>
-            <table className="w-full min-w-[940px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">TC</th><th className="pb-3">Frequency</th><th className="pb-3">Advantage</th><th className="pb-3">Hands</th><th className="pb-3">Units</th><th className="pb-3">Bet / hand</th><th className="pb-3">Quick set</th><th className="pb-3">Total action</th><th className="pb-3">EV contribution</th></tr></thead>
-              <tbody>{custom.rows.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-2.5 text-left font-semibold">{row.label}</td><td>{percent(row.frequency, 2)}</td><td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</td><td>{row.playerHands}</td><td>{row.units.toFixed(2)}</td><td className="py-2"><NumberField ariaLabel={`Bet per hand at true count ${row.label}`} value={Math.round(row.bet * 100) / 100} min={0} prefix="$" className="ml-auto w-32" onValueChange={(value) => updateDollarBet(row.trueCount, value)} /></td><td className="whitespace-nowrap py-2"><button type="button" aria-label={`Zero bet at true count ${row.label}`} disabled={row.bet === 0} onClick={() => updateDollarBet(row.trueCount, 0)} className="rounded-md border border-red-400/20 bg-red-400/[.06] px-2 py-1 text-xs font-medium text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35">Zero</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">1X</button><button type="button" onClick={() => updateDollarBet(row.trueCount, baseBet * 2)} className="ml-1.5 rounded-md border border-white/[.08] px-2 py-1 text-xs font-medium text-zinc-400 hover:bg-white/[.05]">2X</button></td><td>{money(row.totalBet, 0)}</td><td>{money(row.frequency * row.advantage * row.totalBet, 3)}</td></tr>)}</tbody>
-            </table>
-          </Panel>
-          <Panel className="xl:col-span-2">
-            <h2 className="mb-4 font-semibold">Count economics</h2>
-            <div className="h-72"><ResponsiveContainer><ComposedChart data={countChart}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false}/><XAxis dataKey="count" stroke="#71717a" tickLine={false} axisLine={false}/><YAxis yAxisId="edge" stroke="#71717a" tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false}/><YAxis yAxisId="bet" orientation="right" stroke="#71717a" tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false}/><Tooltip contentStyle={{ background: "#151916", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }}/><Legend/><Bar yAxisId="bet" dataKey="totalBet" name="Total action" fill="#3f6f4a" radius={[4,4,0,0]}/><Line yAxisId="edge" dataKey="advantage" name="Advantage %" stroke="#a8ee72" strokeWidth={2} dot={false}/></ComposedChart></ResponsiveContainer></div>
-          </Panel>
-        </div>
-      )}
-
-      {view === "risk" && (
-        <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
-          <Panel>
-            <h2 className="font-semibold">Goal & results calculator</h2>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">Stress-test the active game and ramp without changing its simulation inputs.</p>
-            <div className="mt-5 grid gap-4">
-              <NumberField label="Profit goal" value={goal} min={0} prefix="$" onValueChange={setGoal}/>
-              <Select label="Goal confidence" value={goalProbability} onChange={(event) => setGoalProbability(+event.target.value)}>
-                <option value={0.6}>60%</option><option value={0.75}>75%</option><option value={0.8}>80%</option><option value={0.9}>90%</option><option value={0.95}>95%</option>
-              </Select>
-              <NumberField label="Actual trip result" value={actualResult} prefix="$" onValueChange={setActualResult}/>
-              <div className="rounded-xl bg-black/20 p-4 text-sm leading-6 text-zinc-400">Trip horizon: <b className="text-zinc-100">{hours.toLocaleString()} hours</b><br/>Observed rounds: <b className="text-zinc-100">{compact(hours * handsPerHour)}</b></div>
-            </div>
-          </Panel>
-          <div className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Metric label="Required bankroll" value={money(custom.requiredBankroll, 0)} sub={`for ${percent(targetRisk)} lifetime RoR`} />
-              <Metric label="Trip ruin risk" value={percent(custom.tripRiskOfRuin, 3)} sub={`${compact(hours * handsPerHour)} observed rounds`} />
-              <Metric label="Reach goal first" value={percent(goalChance)} sub={`before ruin, no time limit`} />
-              <Metric label="Goal by this trip" value={percent(goalByTrip)} sub="terminal normal estimate" />
-              <Metric label="Time to goal" value={Number.isFinite(goalRounds) ? `${compact(goalRounds / handsPerHour)} hr` : "Not available"} sub={`for ${percent(goalProbability, 0)} terminal confidence`} />
-              <Metric label="Actual percentile" value={percent(actualPercentile, 1)} sub={actualResult >= custom.tripEv ? "above expected result" : "below expected result"} />
-            </div>
-            <Panel>
-              <h2 className="font-semibold">Range of probable trip results</h2>
-              <p className="mt-1 text-sm text-zinc-500">Terminal normal approximation around {money(custom.tripEv, 0)} expected value.</p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {[["68% range", 1], ["90% range", 1.645], ["95% range", 1.96]].map(([label, z]) => <div key={String(label)} className="rounded-2xl bg-black/20 p-4"><p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p><p className="mt-2 font-semibold">{money(custom.tripEv - Number(z) * custom.standardDeviation, 0)}</p><p className="text-zinc-500">to</p><p className="font-semibold">{money(custom.tripEv + Number(z) * custom.standardDeviation, 0)}</p></div>)}
-              </div>
-            </Panel>
-            <Panel>
-              <h2 className="font-semibold">What the numbers say</h2>
-              <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-400">
-                <li>• Chance of finishing this horizon ahead: <b className="text-zinc-100">{percent(custom.chanceOfProfit)}</b>.</li>
-                <li>• One standard deviation is <b className="text-zinc-100">{money(custom.standardDeviation, 0)}</b>; short-term results can swamp the {money(custom.tripEv, 0)} expectation.</li>
-                <li>• An actual result of {money(actualResult, 0)} is at the <b className="text-zinc-100">{percent(actualPercentile, 1)}</b> percentile under this model.</li>
-              </ul>
-            </Panel>
-          </div>
-        </div>
-      )}
-
-      {view === "compare" && (
-        <div className="space-y-5">
-          <Panel>
-            <div className="mb-5"><h2 className="font-semibold">Penetration comparison</h2><p className="mt-1 text-sm text-zinc-500">Same bankroll, spread, wonging point, pace, and base bet; each game receives its own Kelly-weight ramp.</p></div>
-            <div className="h-72"><ResponsiveContainer><BarChart data={comparisons}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false}/><XAxis dataKey="name" stroke="#71717a" tickLine={false} axisLine={false} fontSize={11}/><YAxis stroke="#71717a" tickLine={false} axisLine={false}/><Tooltip contentStyle={{ background: "#151916", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }}/><Bar dataKey="cScore" name="c-SCORE" radius={[5,5,0,0]}>{comparisons.map((row) => <Cell key={row.name} fill={row.decks === decks && Math.abs(row.penetration - dealt / decks) < .001 ? "#a8ee72" : "#355d40"}/>)}</Bar></BarChart></ResponsiveContainer></div>
-          </Panel>
-          <Panel className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">Penetration</th><th className="pb-3">Play rate</th><th className="pb-3">Average action</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">c-SCORE</th></tr></thead>
-              <tbody>{[...comparisons].sort((a,b) => b.cScore - a.cScore).map((row, index) => <tr key={row.name} className="border-t border-white/[.06]"><td className="py-3 text-left"><span className="mr-2 text-xs text-zinc-600">#{index + 1}</span><b>{row.name}</b></td><td>{percent(row.penetration, 1)}</td><td>{percent(row.playedFrequency, 1)}</td><td>{money(row.averageBet, 2)}</td><td className="text-emerald-300">{money(row.hourlyEv, 2)}</td><td>{percent(row.riskOfRuin)}</td><td>{compact(row.nZeroRounds)}</td><td className="font-semibold">{row.cScore.toFixed(2)}</td></tr>)}</tbody>
-            </table>
-          </Panel>
-        </div>
-      )}
-
-      {view === "calculator" && (
-        <>
-          <div className="sticky top-[calc(7.5rem+env(safe-area-inset-top))] z-10 -mx-4 mb-5 border-b border-white/[.07] bg-[#0c100d]/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:px-3">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Metric label="Expected value" value={`${money(viewerResult.hourlyEv, 2)}/hr`} sub={`${percent(viewerResult.playerEdge, 3, true)} player edge${estimated ? " · est." : ""}`} />
-              <Metric label="1 standard deviation" value={`± ${money(viewerResult.sdPerHour, 2)}`} sub="per hour" />
-              <Metric label="Risk of ruin" value={percent(viewerResult.riskOfRuin)} sub={`${percent(viewerResult.tripRiskOfRuin)} over this trip${estimated ? " · est." : ""}`} />
-              <Metric label="Hours 'til N₀" value={compact(viewerResult.nZeroHours)} sub={`${compact(viewerResult.nZeroRounds)} rounds${estimated ? " · est." : ""}`} />
-            </div>
-          </div>
-
-          <div className="grid gap-5 xl:grid-cols-[.85fr_1.15fr]">
-            <div className="space-y-5">
-              <Panel>
-                <h2 className="font-semibold">Bankroll settings</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <NumberField label="Available bankroll" value={bankroll} min={0} prefix="$" onValueChange={setBankroll} />
-                  <NumberField label="Unit amount" value={baseBet} min={1} prefix="$" onValueChange={setBaseBet} />
-                  <div className="grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-zinc-400">
-                    <span># of units</span>
-                    <div className="field flex min-h-11 w-full items-center rounded-xl px-3 text-zinc-400">{baseBet > 0 ? Math.round(bankroll / baseBet).toLocaleString() : "—"}</div>
-                  </div>
-                  <NumberField label="Rounds per hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
-                  <Select
-                    label="Spread"
-                    value={maxSpread}
-                    onChange={(event) => {
-                      const next = +event.target.value;
-                      setMaxSpread(next);
-                      setRampName("Custom");
-                      setRamp(createOptimalRamp(rules, next, null, chipIncrement, ruleAdjustment, deviationSkill));
-                      track("cvcx_preset_selected", { preset: `1-${next}` });
-                    }}
-                  >
-                    {[6, 8, 10, 12, 16, 20].map((spread) => <option key={spread} value={spread}>{`1-${spread}`}</option>)}
-                  </Select>
+            <h2 className="font-semibold">Where this lands over {compact(hours)} hours</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Expected result {money(result.tripEv, 0)}, with a {percent(result.chanceOfProfit)} chance of finishing ahead. These are ranges, not limits.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {([["68% range", 1], ["90% range", 1.645], ["95% range", 1.96]] as const).map(([label, z]) => (
+                <div key={label} className="rounded-2xl bg-black/20 p-4">
+                  <p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p>
+                  <p className="mt-2 font-semibold">{money(result.tripEv - z * result.standardDeviation, 0)}</p>
+                  <p className="text-zinc-500">to</p>
+                  <p className="font-semibold">{money(result.tripEv + z * result.standardDeviation, 0)}</p>
                 </div>
-              </Panel>
-
-              <Panel>
-                <h2 className="font-semibold">Table rules</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Select
-                    label="Number of decks"
-                    value={decks}
-                    onChange={(event) => {
-                      const next = Number(event.target.value) as 6 | 8;
-                      setDecks(next);
-                      setDealt(next === 6 ? 4.5 : 6);
-                    }}
-                  >
-                    <option value={6}>6 decks</option>
-                    <option value={8}>8 decks</option>
-                  </Select>
-                  <Select label="Penetration" value={dealt} onChange={(event) => setDealt(+event.target.value)}>
-                    {GAME_OPTIONS[decks].map((option) => (
-                      <option key={option.dealt} value={option.dealt}>{option.label}</option>
-                    ))}
-                  </Select>
-                  <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
-                  <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
-                  <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
-                  <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
-                  <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>
-                    <option value="peek">American hole card</option>
-                    <option value="enhc">European no hole card</option>
-                  </Select>
-                  <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(+event.target.value as 1.5 | 1.2)}>
-                    <option value={1.5}>3:2</option>
-                    <option value={1.2}>6:5</option>
-                  </Select>
-                  <Select label="Double rule" value={doubleRule} onChange={(event) => setDoubleRule(event.target.value as "any2" | "9to11" | "10to11")}>
-                    <option value="any2">Double any first 2 cards</option>
-                    <option value="9to11">Double only 9-11</option>
-                    <option value="10to11">Double only 10-11</option>
-                  </Select>
-                  <Select label="Deviations" value={deviationSkillLevel} onChange={(event) => setDeviationSkillLevel(event.target.value as keyof typeof DEVIATION_SKILL)}>
-                    <option value="beginner">Beginner (70%)</option>
-                    <option value="intermediate">Intermediate (82%)</option>
-                    <option value="pro">Pro (92%)</option>
-                    <option value="perfect">Perfect (100%)</option>
-                  </Select>
-                </div>
-                {estimated && (
-                  <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
-                    <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
-                    These results include an estimated adjustment ({(ruleAdjustment * 100).toFixed(2)}pp rule delta{deviationSkill < 1 ? `, ${Math.round(deviationSkill * 100)}% deviation skill` : ""}) rather than a resimulated audit.
-                  </p>
-                )}
-              </Panel>
-
-              <TripBankrollPanel
-                tripBankrollAmount={tripBankrollAmount}
-                tripHoursPlayed={tripHoursPlayed}
-                tripBankrollRisk={tripBankrollRisk}
-                onAmountChange={setTripBankrollAmount}
-                onHoursChange={setTripHoursPlayed}
-              />
+              ))}
             </div>
+            <dl className="mt-5 grid gap-4 border-t border-white/[.06] pt-4 sm:grid-cols-3">
+              <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Average action / round</dt><dd className="mt-1 text-xl font-semibold">{money(result.averageBet, 2)}</dd></div>
+              <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Rounds for EV to match one σ (N₀)</dt><dd className="mt-1 text-xl font-semibold">{compact(result.nZeroRounds)}</dd></div>
+              <div><dt className="text-xs uppercase tracking-wide text-zinc-500">c-SCORE</dt><dd className="mt-1 text-xl font-semibold">{result.cScore.toFixed(1)}</dd></div>
+            </dl>
+          </Panel>
 
-            <div className="space-y-5">
-              <BetSpreadPanel
-                rows={custom.rows}
-                effectiveHands={effectiveHands}
-                onHandsChange={(trueCount, hands) => setHandsOverride((current) => ({ ...current, [trueCount]: hands }))}
-                onBetChange={updateDollarBet}
-                onAllHands={setAllHands}
-                onZeroAll={() => scaleRamp(0)}
-                onReset={resetBetSpread}
-              />
-              <TrueCountDistributionPanel rows={custom.rows} maxFrequency={maxFrequency} />
+          <details className="surface group rounded-2xl border border-white/[.07]">
+            <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-chart-column" aria-hidden="true" /></span>
+              <div className="min-w-0 flex-1"><h2 className="text-sm font-semibold">Compare against the other games</h2><p className="truncate text-xs text-zinc-500">Same bankroll and unit; each game gets its own Kelly ramp</p></div>
+              <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="overflow-x-auto border-t border-white/[.06] p-4 sm:p-5">
+              <table className="w-full min-w-[560px] text-right text-sm">
+                <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">c-SCORE</th></tr></thead>
+                <tbody>
+                  {[...comparisons].sort((a, b) => b.cScore - a.cScore).map((row, index) => {
+                    const active = row.decks === decks && Math.abs(row.penetration - dealt / decks) < 0.001;
+                    return (
+                      <tr key={row.name} className={`border-t border-white/[.06] ${active ? "text-emerald-300" : ""}`}>
+                        <td className="py-3 text-left"><span className="mr-2 text-xs text-zinc-600">#{index + 1}</span><b>{row.name}</b></td>
+                        <td>{money(row.hourlyEv, 2)}</td>
+                        <td>{percent(row.riskOfRuin)}</td>
+                        <td>{compact(row.nZeroRounds)}</td>
+                        <td className="font-semibold">{row.cScore.toFixed(2)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </details>
 
-          <SummaryStatisticsPanel averageBet={viewerResult.averageBet} playerEdge={viewerResult.playerEdge} evPerRound={viewerResult.evPerRound} />
-
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[.07] bg-black/20 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[.07] bg-black/20 p-4">
             <div>
               <h2 className="font-semibold">Want variance and streak simulation?</h2>
-              <p className="mt-1 text-sm text-zinc-500">Run this exact bankroll and bet spread through thousands of simulated shoes in the Session Simulator.</p>
+              <p className="mt-1 text-sm text-zinc-500">Run this exact bankroll and bet spread through thousands of simulated shoes.</p>
             </div>
             <GhostButton onClick={testInSessionSimulator}><i className="fa-solid fa-dice mr-2" aria-hidden="true" />Open Session Simulator</GhostButton>
           </div>
-        </>
-      )}
+        </div>
       </div>
 
       <p className="mt-5 text-xs leading-5 text-zinc-500">
-        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2 · perfect deviation play). Multiple-hand results retain shared true-count-state variance and treat hand outcomes as conditionally independent; dealer-result covariance is unavailable. Wonging treats skipped rounds as observed opportunities. Risk, goals, and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
-        {estimated && " Table rules and deviation skill currently set away from that baseline apply a flat literature-estimated edge adjustment rather than a resimulated audit — treat those numbers as directional, not audited."}
+        Scope: this is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {COEFFICIENT_METADATA.totalRounds.toLocaleString()} audited resolved rounds at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2). Partial deviation skill interpolates between that run and an equally weighted audited basic-strategy run. Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+        {estimated && " Table rules set away from the audited baseline apply a flat literature-estimated edge adjustment — treat those numbers as directional, not audited."}
       </p>
       <ConfirmModal
         open={pendingDeleteTemplate !== undefined}

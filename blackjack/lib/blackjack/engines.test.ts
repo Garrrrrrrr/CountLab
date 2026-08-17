@@ -16,7 +16,9 @@ import {
   getCountProfile,
   RAMPS,
   recommendUnit,
+  simultaneousHandVarianceFactor,
   unitsAt,
+  zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
 import { COEFFICIENT_METADATA } from "./coefficients";
@@ -26,10 +28,8 @@ import {
   createOptimalRamp,
   finiteHorizonRisk,
   goalByHorizonProbability,
-  goalBeforeRuinProbability,
   normalCdf,
   requiredBankroll,
-  roundsToGoalProbability,
 } from "./cvcx";
 const c = (rank: Card["rank"], suit: Card["suit"] = "spades"): Card => ({
   rank,
@@ -197,6 +197,36 @@ describe("advantage model", () => {
     expect(unitsAt(0, ramp)).toBe(1);
     expect(unitsAt(1, ramp)).toBe(2);
   });
+  it("drops wonged-out counts from EV, action and rounds played", () => {
+    // The Lab's Wong-in control used to reshape only the generated ramp, so the
+    // headline numbers still priced playing every count. Zeroing the live ramp
+    // has to actually remove those rounds from the aggregates.
+    const base = {
+      bankroll: 25_000,
+      minimumBet: 10,
+      handsPerHour: 100,
+      hours: 100,
+      targetRisk: 0.05,
+      maxSpread: 12,
+      wongInAt: null,
+      rules: DEFAULT_ADVANTAGE_RULES,
+    };
+    const ramp = Array.from({ length: 17 }, (_, index) => ({
+      trueCount: index - 8,
+      units: unitsAt(index - 8, RAMPS["1-12"]),
+    }));
+    const playAll = analyzeCvcx(base, ramp, 10);
+    const wonged = analyzeCvcx(base, zeroBetsBelow(ramp, 2), 10);
+    expect(playAll.playedFrequency).toBeCloseTo(1, 10);
+    expect(wonged.playedFrequency).toBeLessThan(0.2);
+    expect(wonged.averageBet).toBeLessThan(playAll.averageBet);
+    // Skipping every negative count removes losses, so EV per observed round rises.
+    expect(wonged.evPerRound).toBeGreaterThan(playAll.evPerRound);
+    for (const row of wonged.rows.filter((entry) => entry.trueCount < 2)) {
+      expect(row.bet).toBe(0);
+      expect(row.totalBet).toBe(0);
+    }
+  });
   it("returns finite risk and scales units with risk tolerance", () => {
     const result = calculateAdvantage({
       bankroll: 1000,
@@ -233,6 +263,65 @@ describe("advantage model", () => {
     expect(three.sdPerRound).toBeGreaterThan(one.sdPerRound);
     expect(three.riskOfRuin).toBeGreaterThanOrEqual(0);
     expect(three.riskOfRuin).toBeLessThanOrEqual(1);
+  });
+  it("prices simultaneous hands as correlated, not independent", () => {
+    // Hands in one round are settled against a single dealer hand, so they are
+    // strongly positively correlated. blackjack-simulator/covariance.py measures
+    // the round-total variance of n equal hands at n * (1 + (n - 1) * rho) times
+    // a single hand's variance, with rho = 0.3724. Treating them as independent
+    // (a plain n x multiplier) understates variance and therefore risk of ruin.
+    expect(simultaneousHandVarianceFactor(1)).toBe(1);
+    expect(simultaneousHandVarianceFactor(2)).toBeCloseTo(2.7448, 10);
+    expect(simultaneousHandVarianceFactor(3)).toBeCloseTo(5.2344, 10);
+    expect(simultaneousHandVarianceFactor(4)).toBeCloseTo(8.4688, 10);
+
+    // A flat one-unit ramp isolates the conditional term: with no bet ramping
+    // the round variance is just the per-hand variance times that factor.
+    const flat = Array.from({ length: 17 }, (_, index) => ({
+      trueCount: index - 8,
+      units: 1,
+    }));
+    const base = {
+      bankroll: 10_000,
+      bettingUnit: 10,
+      handsPerHour: 100,
+      hours: 1,
+      rules: DEFAULT_ADVANTAGE_RULES,
+      ramp: flat,
+    };
+    const one = calculateAdvantage({ ...base, playerHands: 1 });
+    const two = calculateAdvantage({ ...base, playerHands: 2 });
+    expect(two.sdPerRound ** 2 / one.sdPerRound ** 2).toBeCloseTo(
+      simultaneousHandVarianceFactor(2),
+      3,
+    );
+    // Independence would have given exactly 2x, understating variance.
+    expect(two.sdPerRound ** 2 / one.sdPerRound ** 2).toBeGreaterThan(2.7);
+
+    // On a real positive-EV ramp the understatement lands on risk of ruin: the
+    // old independent model reported a materially safer game than it is.
+    const ramped = calculateAdvantage({
+      ...base,
+      ramp: RAMPS["1-8"],
+      playerHands: 2,
+    });
+    const independentVariance = ramped.rows.reduce(
+      (sum, row) =>
+        sum +
+        row.frequency *
+          (row.playerHands * (row.sdUnits * row.bet) ** 2 +
+            (row.advantage * row.totalBet) ** 2),
+      0,
+    ) - ramped.evPerRound ** 2;
+    const independentRisk = Math.exp(
+      (-2 * base.bankroll * ramped.evPerRound) / independentVariance,
+    );
+    expect(ramped.evPerRound).toBeGreaterThan(0);
+    expect(ramped.sdPerRound ** 2).toBeGreaterThan(independentVariance);
+    expect(ramped.riskOfRuin).toBeGreaterThan(independentRisk);
+    expect(ramped.nZeroRounds).toBeGreaterThan(
+      independentVariance / ramped.evPerRound ** 2,
+    );
   });
   it("changes the number of hands at a true-count threshold", () => {
     const result = calculateAdvantage({
@@ -304,7 +393,6 @@ describe("CVCX-style analysis", () => {
     expect(tenDollar.cScore).toBeCloseTo(twentyDollar.cScore, 10);
     expect(twentyDollar.hourlyEv).toBeCloseTo(tenDollar.hourlyEv * 2, 10);
     expect(tenDollar.requiredBankroll).toBeGreaterThan(0);
-    expect(Number.isFinite(tenDollar.certaintyEquivalentHourly)).toBe(true);
   });
 
   it("keeps probability and risk calculators numerically sane", () => {
@@ -316,11 +404,10 @@ describe("CVCX-style analysis", () => {
     expect(shortRisk).toBeGreaterThanOrEqual(0);
     expect(longRisk).toBeGreaterThan(shortRisk);
     expect(longRisk).toBeLessThanOrEqual(1);
-    expect(goalBeforeRuinProbability(1_000, 1_000, 0, 100)).toBeCloseTo(0.5);
     expect(requiredBankroll(0.5, 100, 0.05)).toBeCloseTo(299.573, 2);
     expect(goalByHorizonProbability(100, 1, 100, 100)).toBeCloseTo(0.5, 6);
-    const rounds = roundsToGoalProbability(100, 0.75, 1, 100);
-    expect(rounds).toBeGreaterThan(100);
-    expect(goalByHorizonProbability(100, 1, 100, rounds)).toBeGreaterThanOrEqual(0.75);
+    expect(goalByHorizonProbability(100, 1, 100, 300)).toBeGreaterThan(
+      goalByHorizonProbability(100, 1, 100, 100),
+    );
   });
 });
