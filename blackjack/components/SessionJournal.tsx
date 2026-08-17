@@ -188,7 +188,7 @@ export function SessionJournal() {
         seed: Math.floor(Math.random() * 2 ** 31),
         rules: session.rules,
         ramp: session.ramp,
-        deviationGroups: ["freebj"],
+        deviationGroups: ["h17-pro"],
       });
       setShoeReplay({ sessionId: session.id, result });
     } finally {
@@ -512,7 +512,7 @@ export function SessionJournal() {
           </Panel>
         </div>
       </div>
-      <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation are computed from the audited basic-strategy true-count profile for the entered rules and ramp, using the same engine as the Game &amp; Bankroll Lab. They are not fit to your results or used to price FreeBJ deviations.</p>
+      <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation are computed from the audited basic-strategy true-count profile for the entered rules and ramp, using the same engine as the Game &amp; Bankroll Lab. They are not fit to your results or used to price H17 Pro deviations.</p>
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>

@@ -8,5 +8,7 @@ results/*
 !results/multi-hand-covariance-8deck.json
 !results/no-index-coefficients.json
 !results/freebj17-coefficients.json
+!results/h17-i18-fab4-coefficients.json
+!results/h17-pro-coefficients.json
 !results/ramp-variance-h17-pro.json
 !results/ramp-variance-countlab.json

@@ -18,7 +18,7 @@ const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulati
 });
 
 describe("simulateShoeSession", () => {
-  it("labels FreeBJ soft and pair departures without collapsing them to hard totals", () => {
+  it("labels the reference product soft and pair departures without collapsing them to hard totals", () => {
     expect(deviationHandLabel([{ rank: "A", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Soft 19");
     expect(deviationHandLabel([{ rank: "10", suit: "spades" }, { rank: "K", suit: "hearts" }])).toBe("10,10");
   });

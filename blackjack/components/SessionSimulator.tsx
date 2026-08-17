@@ -7,8 +7,7 @@ import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { NO_INDEX_METADATA } from "@/lib/blackjack/noIndexCoefficients";
 import { SavedSimulationRun, simulationLibrary, SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig, SessionSimulationResult } from "@/lib/blackjack/sessionSimulation";
-import type { DeviationGroup } from "@/lib/blackjack/fullHiLoIndices";
-import type { ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
+import type { DeviationGroup, ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
 import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
 import { ShoeExplorer } from "./ShoeExplorer";
 import { HandReplayer } from "./HandReplayer";
@@ -67,7 +66,7 @@ export function SessionSimulator() {
   const [mode, setMode] = useState<"profile" | "shoes">("shoes");
   const [handsToSimulate, setHandsToSimulate] = useState(10_000);
   const [highSpeed, setHighSpeed] = useState(false);
-  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["freebj"]);
+  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["h17-pro"]);
   const [shoeResult, setShoeResult] = useState<ShoeSimulationResult>();
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
   const shoeWorkerRef = useRef<Worker | undefined>(undefined);
@@ -287,7 +286,7 @@ export function SessionSimulator() {
             <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
             <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it samples audited basic-strategy true-count frequencies and conditional payoff moments independently. It does not reproduce card order, count clustering, FreeBJ deviations, or card-level drawdowns. Use Real shoes for those results.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it samples audited basic-strategy true-count frequencies and conditional payoff moments independently. It does not reproduce card order, count clustering, H17 Pro deviations, or card-level drawdowns. Use Real shoes for those results.</p>
         </details>
       ) : (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
@@ -357,7 +356,7 @@ export function SessionSimulator() {
                 <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">
                   Index deviations
                   <div className="flex min-h-11 items-center gap-4 px-1">
-                    {(["freebj"] as DeviationGroup[]).map((group) => (
+                    {(["h17-pro"] as DeviationGroup[]).map((group) => (
                       <label key={group} className="flex items-center gap-2 text-sm text-zinc-300">
                         <input
                           type="checkbox"
@@ -366,7 +365,7 @@ export function SessionSimulator() {
                           onChange={() => setDeviationGroups((current) => current.includes(group) ? current.filter((value) => value !== group) : [...current, group])}
                           className="h-4 w-4 accent-emerald-400"
                         />
-                        FreeBJ default set
+                        H17 Pro set
                       </label>
                     ))}
                   </div>

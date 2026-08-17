@@ -1,6 +1,6 @@
 import { unitsAt, RAMPS } from "./advantage";
 import { getBasicStrategyDecision } from "./basicStrategy";
-import { applyDeviationToBasic, DEVIATIONS, deviationDecision, DeviationAction } from "./deviations";
+import { DEVIATIONS, deviationDecision, DeviationAction, resolveDeviation } from "./deviations";
 import { calculateHandValue, isPair, isSoft } from "./hand";
 import { hiLoValue, runningCount, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
@@ -160,8 +160,9 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
       ? `Soft ${total}`
       : String(total);
   const dealerLabel = dealerUpcard.rank === "J" || dealerUpcard.rank === "Q" || dealerUpcard.rank === "K" ? "10" : dealerUpcard.rank;
-  const deviation = DEVIATIONS.find((d) => d.hand === handLabel && d.dealer === dealerLabel);
-  const correctPlay = deviation ? applyDeviationToBasic(deviation, basic.action, currentTrueCount) : basic.action;
+  const resolvedDeviation = resolveDeviation(basic.action, handLabel, dealerLabel, currentTrueCount, rules);
+  const deviation = resolvedDeviation.deviation;
+  const correctPlay = resolvedDeviation.action;
   const insurance = dealerUpcard.rank === "A" ? DEVIATIONS.find((d) => d.hand === "Insurance") : undefined;
   const playerHands = initial.flatMap((hand) => playHand(hand, dealerUpcard, shoe, rules));
   while (calculateHandValue(dealer) < 17 || (calculateHandValue(dealer) === 17 && isSoft(dealer) && rules.dealerHitsSoft17)) {

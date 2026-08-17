@@ -10,11 +10,11 @@ import {
 import { signed } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import {
-  DEVIATIONS,
   DEVIATION_ACTION_NAMES,
   DeviationAction,
-  applyDeviationToBasic,
+  resolveDeviation,
 } from "@/lib/blackjack/deviations";
+import { applyH17Deviation, h17DeviationApplies, H17_PRO_DEVIATIONS } from "@/lib/blackjack/h17Pro";
 import {
   DEFAULT_SETTINGS,
   makeSession,
@@ -434,12 +434,13 @@ export function DeviationDrill() {
       index: number;
       tc: number;
       direction?: "atOrAbove" | "atOrBelow";
+      always?: true;
     }>();
   useEffect(() => {
     track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
   }, []);
   const d = useMemo(
-    () => DEVIATIONS[Math.floor(Math.random() * DEVIATIONS.length)],
+    () => H17_PRO_DEVIATIONS[Math.floor(Math.random() * H17_PRO_DEVIATIONS.length)],
     [q],
   );
   const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
@@ -475,15 +476,23 @@ export function DeviationDrill() {
       [d],
     ),
     availableActions = useMemo<DeviationAction[]>(
-      () => ["H", "S", "D", "P", "R"],
-      [],
+      () => d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"],
+      [d.hand],
     );
   const basic = useMemo(
       () => getBasicStrategyDecision({ playerCards, dealerUpcard: dealerCard, rules: { decks: settings.decks, dealerHitsSoft17: settings.dealerHitsSoft17, doubleAfterSplit: settings.doubleAfterSplit, resplitAces: settings.resplitAces, lateSurrender: settings.lateSurrender, doubleRule: "any" } }).action,
       [dealerCard, playerCards, settings.dealerHitsSoft17, settings.decks, settings.doubleAfterSplit, settings.lateSurrender, settings.resplitAces],
     ),
-    correct = applyDeviationToBasic(d, basic, tc),
-    departureApplies = basic === d.normalAction;
+    resolved = useMemo(() => {
+      if (d.hand === "Insurance") {
+        const applies = h17DeviationApplies(d, basic, tc, settings);
+        return { action: applyH17Deviation(d, basic, tc, settings), deviation: applies ? d : undefined };
+      }
+      return resolveDeviation(basic, d.hand, d.dealer, tc, settings);
+    }, [basic, d, settings, tc]),
+    correct = resolved.action,
+    activeDeviation = resolved.deviation,
+    departureApplies = Boolean(activeDeviation);
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories,
   } satisfies DeviationSaved);
@@ -514,7 +523,9 @@ export function DeviationDrill() {
             question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
             userAnswer: DEVIATION_ACTION_NAMES[chosen],
             correctAnswer: DEVIATION_ACTION_NAMES[correct],
-            explanation: departureApplies ? `${DEVIATION_ACTION_NAMES[d.deviationAction]} at ${signed(d.index)} ${d.direction === "atOrBelow" ? "or lower" : "or higher"}.` : "This FreeBJ departure is not applicable to the selected table rules; keep basic strategy.",
+            explanation: departureApplies
+              ? `${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction]} ${activeDeviation!.always ? "is the chart's standing late-surrender play" : `at ${signed(activeDeviation!.index)} ${activeDeviation!.direction === "atOrBelow" ? "or lower" : "or higher"}`}.`
+              : "This H17 departure is not active under the current count or table rules; keep basic strategy.",
           }];
       const nextCategories = {
         ...categories,
@@ -528,10 +539,11 @@ export function DeviationDrill() {
         chosen,
         correct,
         normalAction: basic,
-        deviationAction: d.deviationAction,
-        index: d.index,
+        deviationAction: activeDeviation?.deviationAction ?? d.deviationAction,
+        index: activeDeviation?.index ?? d.index,
         tc,
-        direction: d.direction,
+        direction: activeDeviation?.direction ?? d.direction,
+        always: activeDeviation?.always,
       });
       setCorrectCount(nextCorrect);
       setStreak(nextStreak);
@@ -540,7 +552,7 @@ export function DeviationDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
-      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies && correct === d.deviationAction });
+      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies && correct === activeDeviation?.deviationAction });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -548,7 +560,7 @@ export function DeviationDrill() {
         setStarted(Date.now());
       }
     },
-    [basic, best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
+    [activeDeviation, basic, best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -607,10 +619,12 @@ export function DeviationDrill() {
           </b>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
             <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>
-            <span>Index: {signed(feedback.index)}</span>
+            <span>Index: {feedback.always ? "Always" : signed(feedback.index)}</span>
           </div>
           <p className="mt-2 text-sm text-zinc-400">
-            {DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC {signed(feedback.index)} {feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count {feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.
+            {feedback.always
+              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing late-surrender play.`
+              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.`}
           </p>
         </div>
       )}

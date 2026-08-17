@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, getCountProfile, RAMPS } from "./advantage";
-import { FREEBJ_17_COEFFICIENTS } from "./freebj17Coefficients";
+import { H17_PRO_COEFFICIENTS } from "./h17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
 import { RULE_DELTAS, sumRuleAdjustment, isEstimated } from "./ruleAdjustments";
 
@@ -29,8 +29,8 @@ describe("rule-adjustment defaults", () => {
     }
   });
 
-  it("uses separately audited FreeBJ and basic-strategy curves", () => {
-    const measured = FREEBJ_17_COEFFICIENTS["6-4.5"];
+  it("uses separately audited H17 Pro and basic-strategy curves", () => {
+    const measured = H17_PRO_COEFFICIENTS["6-4.5"];
     for (const skill of [undefined, 0, 0.5, 1]) {
       const result = calculateAdvantage({ ...baseInput, deviationSkill: skill });
       result.rows.forEach((row, index) => {

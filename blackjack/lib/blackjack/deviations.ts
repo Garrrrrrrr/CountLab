@@ -1,15 +1,66 @@
-import { FREEBJ_DEFAULT_HILO_DEVIATIONS } from "./fullHiLoIndices";
 import { Action } from "./types";
+import { H17_PRO_DEVIATIONS } from "./h17Pro";
 export type DeviationAction = Action | "I" | "N";
 export const DEVIATION_ACTION_NAMES:Record<DeviationAction,string>={H:"Hit",S:"Stand",D:"Double",P:"Split",R:"Surrender",I:"Take insurance",N:"Decline insurance"};
-export interface Deviation { hand:string; dealer:string; index:number; normalAction:DeviationAction; deviationAction:DeviationAction; direction?:"atOrAbove"|"atOrBelow" }
-/**
- * One canonical, MIT-licensed departure set for every drill and simulator.
- * FreeBJ's defaults intentionally do not include insurance or surrender
- * departures, so those actions remain basic-strategy decisions here.
- */
-export const DEVIATIONS:Deviation[]=FREEBJ_DEFAULT_HILO_DEVIATIONS.map(({hand,dealer,index,normalAction,deviationAction,direction})=>({hand,dealer,index,normalAction,deviationAction,direction}));
+export interface Deviation {
+  hand: string;
+  dealer: string;
+  index: number;
+  normalAction: DeviationAction;
+  deviationAction: DeviationAction;
+  direction?: "atOrAbove" | "atOrBelow";
+  always?: true;
+  priority?: number;
+  overridesSurrender?: true;
+}
+/** The supplied H17 Pro catalog used throughout CountLab. */
+export const DEVIATIONS:Deviation[] = [...H17_PRO_DEVIATIONS];
 export const deviationDecision=(d:Deviation,tc:number)=>((d.direction==="atOrBelow"?tc<=d.index:tc>=d.index)?d.deviationAction:d.normalAction);
 /** Apply a catalog departure without replacing a rule-specific basic action. */
 export const applyDeviationToBasic=(d:Deviation,basic:DeviationAction,tc:number)=>
   basic === d.normalAction && deviationDecision(d, tc) === d.deviationAction ? d.deviationAction : basic;
+
+export interface DeviationRules {
+  dealerHitsSoft17: boolean;
+  lateSurrender: boolean;
+}
+
+/**
+ * Resolves every matching the reference product entry, rather than trusting catalog order.
+ * Some H17 Pro cells overlap by design: the indexed stand takes precedence over
+ * a surrender threshold once both have been reached (16 vs 9 and 15 vs 10).
+ */
+export function resolveDeviation(
+  basicAction: DeviationAction,
+  hand: string,
+  dealer: string,
+  tc: number,
+  rules: DeviationRules,
+): { action: DeviationAction; deviation?: Deviation } {
+  if (!rules.dealerHitsSoft17 || hand === "Insurance") return { action: basicAction };
+
+  // The supplied chart narrows two generic H17/LS surrenders to count-based
+  // decisions. Below their surrender thresholds, the chart's baseline is hit.
+  const effectiveBasic = rules.lateSurrender && basicAction === "R"
+    && ((hand === "16" && dealer === "9" && tc < -1) || (hand === "15" && dealer === "10" && tc < 0))
+    ? "H"
+    : basicAction;
+
+  const candidates = DEVIATIONS.filter((deviation) => {
+    if (deviation.hand !== hand || deviation.dealer !== dealer) return false;
+    if (deviation.always) return rules.lateSurrender;
+    if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
+    const crossed = deviation.direction === "atOrBelow" ? tc <= deviation.index : tc >= deviation.index;
+    if (!crossed) return false;
+    return effectiveBasic === deviation.normalAction
+      || deviation.overridesSurrender === true
+      || deviation.deviationAction === "R";
+  });
+  if (!candidates.length) return { action: effectiveBasic };
+
+  const selected = [...candidates].sort((a, b) => {
+    const priority = (deviation: Deviation) => deviation.priority ?? (deviation.always ? 1 : 0);
+    return priority(b) - priority(a);
+  })[0];
+  return { action: selected.deviationAction, deviation: selected };
+}

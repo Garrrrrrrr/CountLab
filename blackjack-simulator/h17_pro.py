@@ -1,19 +1,7 @@
-"""Generate reproducible coefficients for CountLab's FreeBJ-17 policy.
+"""Generate reproducible H17 Pro calibration coefficients.
 
-This is deliberately a separate kernel from ``simulate.py``.  The historical
-generator embeds a different, larger index set (including insurance and
-surrender departures), so reusing it would not calibrate the policy taught by
-the app.  The policy here is:
-
-* CountLab's H17/DAS/RSA/late-surrender basic strategy;
-* the 17 MIT-licensed FreeBJ default departures when their stated normal action
-  matches that basic-strategy action; and
-* no insurance or surrender departure, because FreeBJ's published default set
-  contains neither.
-
-The compatibility guard is material: FreeBJ's default game has no surrender,
-whereas CountLab's calibrated baseline does.  A no-surrender departure must not
-replace a valid late-surrender basic-strategy action.
+This dedicated kernel implements the supplied 34-deviation H17 Pro chart over
+CountLab's H17/DAS/RSA/late-surrender baseline, including insurance at TC +3.
 """
 
 from __future__ import annotations
@@ -35,6 +23,7 @@ from numba import njit, prange
 from simulate import BUCKETS, GAME_OPTIONS, Z95, bucket_index, git_metadata, hand_value, hilo, summarize, task_layout
 
 HIT, STAND, DOUBLE, SPLIT, SURRENDER = 0, 1, 2, 3, 4
+H17_PRO_POLICY = 1
 
 
 def normalized_sha256(path: Path) -> str:
@@ -107,45 +96,83 @@ def basic_action(cards: np.ndarray, count: int, dealer: int, can_split: bool, ca
 
 
 @njit(cache=True)
-def freebj_action(cards: np.ndarray, count: int, dealer: int, can_split: bool, can_double: bool, can_surrender: bool, split_aces: bool, tc: int) -> int:
+def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bool, can_double: bool, can_surrender: bool, split_aces: bool, tc: int) -> int:
+    """Exact policy encoded from the supplied H17 Pro chart."""
     action = basic_action(cards, count, dealer, can_split, can_double, can_surrender, split_aces)
     if count != 2:
         return action
     total, soft = hand_value(cards, count)
     pair_tens = cards[0] == 10 and cards[1] == 10
-    # Every branch includes its stated normal action. This prevents a FreeBJ
-    # no-surrender departure from suppressing CountLab's late surrender.
-    if not soft:
-        if total == 16 and dealer == 8 and action == HIT and tc >= 5:
-            return STAND
-        if total == 16 and dealer == 9 and action == HIT and tc >= 4:
-            return STAND
-        if total == 15 and dealer == 7 and action == HIT and tc >= 6:
-            return STAND
-        if total == 15 and dealer == 8 and action == HIT and tc >= 7:
-            return STAND
-        if total == 15 and dealer == 9 and action == HIT and tc >= 6:
-            return STAND
-        if total == 15 and dealer == 10 and action == HIT and tc >= 4:
-            return STAND
-        if total == 13 and dealer == 3 and action == STAND and tc <= -3:
-            return HIT
-        if total == 12 and dealer == 2 and action == HIT and tc >= 6:
-            return STAND
-        if total == 12 and dealer == 3 and action == HIT and tc >= 3:
-            return STAND
-        if total == 11 and dealer == 1 and action == HIT and can_double and tc >= 2:
+    pair_eights = cards[0] == 8 and cards[1] == 8
+    if soft:
+        if total == 19 and dealer == 4 and can_double and tc >= 3:
             return DOUBLE
-        if total == 10 and dealer == 1 and action == HIT and can_double and tc >= 5:
+        if total == 19 and dealer == 5 and can_double and tc >= 1:
             return DOUBLE
-        if total == 10 and dealer == 10 and action == HIT and can_double and tc >= 6:
-            return DOUBLE
-        if total == 9 and dealer == 8 and action == HIT and can_double and tc >= 8:
-            return DOUBLE
-    else:
-        if total == 19 and dealer == 5 and action == STAND and can_double and tc >= 2:
-            return DOUBLE
-    if pair_tens and action == STAND and can_split:
+        return action
+    # Higher-priority stand indices override the surrender play below.
+    if total == 16 and dealer == 9 and tc >= 5:
+        return STAND
+    if total == 16 and dealer == 10 and tc >= 0:
+        return STAND
+    if total == 16 and dealer == 1 and tc >= 3:
+        return STAND
+    if total == 15 and dealer == 10 and tc >= 4:
+        return STAND
+    if total == 15 and dealer == 1 and tc >= 5:
+        return STAND
+    # The chart's indexed surrender rows replace CountLab's broader static
+    # late-surrender baseline for these two decisions.
+    if total == 16 and dealer == 9 and tc < -1:
+        return HIT
+    if total == 15 and dealer == 10 and tc < 0:
+        return HIT
+    if can_surrender:
+        if total == 17 and dealer == 1:
+            return SURRENDER
+        if total == 16 and dealer in (10, 1):
+            return SURRENDER
+        if total == 15 and dealer == 1:
+            return SURRENDER
+        if pair_eights and dealer == 1:
+            return SURRENDER
+        if total == 16 and dealer == 8 and tc >= 4:
+            return SURRENDER
+        if total == 16 and dealer == 9 and tc >= -1:
+            return SURRENDER
+        if total == 15 and dealer == 9 and tc >= 2:
+            return SURRENDER
+        if total == 15 and dealer == 10 and tc >= 0:
+            return SURRENDER
+        if total == 14 and dealer == 10 and tc >= 3:
+            return SURRENDER
+        if pair_eights and dealer == 10 and tc >= 2:
+            return SURRENDER
+    if total == 13 and dealer == 2 and tc >= -1:
+        return STAND
+    if total == 12 and dealer == 2 and tc >= 3:
+        return STAND
+    if total == 12 and dealer == 3 and tc >= 2:
+        return STAND
+    if total == 12 and dealer == 4 and tc >= 0:
+        return STAND
+    if total == 12 and dealer == 5 and tc >= -2:
+        return STAND
+    if total == 11 and dealer == 1 and can_double and tc >= -1:
+        return DOUBLE
+    if total == 10 and dealer == 10 and can_double and tc >= 7:
+        return DOUBLE
+    if total == 10 and dealer == 1 and can_double and tc >= 3:
+        return DOUBLE
+    if total == 9 and dealer == 2 and can_double and tc >= 1:
+        return DOUBLE
+    if total == 9 and dealer == 7 and can_double and tc >= 3:
+        return DOUBLE
+    if total == 8 and dealer == 5 and can_double and tc >= 4:
+        return DOUBLE
+    if total == 8 and dealer == 6 and can_double and tc >= 2:
+        return DOUBLE
+    if pair_tens and can_split:
         if dealer == 4 and tc >= 7:
             return SPLIT
         if dealer == 5 and tc >= 5:
@@ -156,7 +183,7 @@ def freebj_action(cards: np.ndarray, count: int, dealer: int, can_split: bool, c
 
 
 @njit(cache=True)
-def play_player(first: int, second: int, dealer: int, shoe: np.ndarray, position: int, running_count: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int, int, int, bool]:
+def play_player(first: int, second: int, dealer: int, shoe: np.ndarray, position: int, running_count: int, policy: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, int, int, int, bool]:
     cards = np.zeros((4, 12), dtype=np.int8)
     counts = np.zeros(4, dtype=np.int8)
     bets = np.ones(4, dtype=np.int8)
@@ -175,7 +202,8 @@ def play_player(first: int, second: int, dealer: int, shoe: np.ndarray, position
         pair = count == 2 and cards[index, 0] == cards[index, 1]
         can_split = pair and hands < 4
         tc = int(math.floor((running_count * 52.0) / (len(shoe) - position + 1)))
-        action = freebj_action(cards[index], count, dealer, can_split, count == 2, index == 0 and hands == 1 and count == 2, ace_split[index] == 1, tc)
+        can_surrender = index == 0 and hands == 1 and count == 2
+        action = h17_pro_pro_action(cards[index], count, dealer, can_split, count == 2, can_surrender, ace_split[index] == 1, tc)
         if action == SPLIT and can_split:
             rank = int(cards[index, 0])
             next_index = hands
@@ -244,7 +272,7 @@ def settle(cards: np.ndarray, counts: np.ndarray, bets: np.ndarray, surrendered:
 
 
 @njit(cache=True)
-def simulate_task(decks: int, dealt_decks: float, shoes: int, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+def simulate_task(decks: int, dealt_decks: float, shoes: int, seed: int, policy: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
     np.random.seed(seed)
     total_cards = decks * 52
     cut_position = int(round(dealt_decks * 52.0))
@@ -274,11 +302,13 @@ def simulate_task(decks: int, dealt_decks: float, shoes: int, seed: int) -> tupl
             dealer_hole = int(shoe[position]); position += 1
             dealer_blackjack = (dealer_up == 1 and dealer_hole == 10) or (dealer_up == 10 and dealer_hole == 1)
             hero_blackjack = (first == 1 and second == 10) or (first == 10 and second == 1)
+            tc = int(math.floor((running_count * 52.0) / (len(shoe) - position + 1)))
+            take_insurance = policy == H17_PRO_POLICY and dealer_up == 1 and tc >= 3
             if dealer_blackjack:
                 running_count += hilo(dealer_hole)
-                profit = 0.0 if hero_blackjack else -1.0
+                profit = (0.0 if hero_blackjack else -1.0) + (1.0 if take_insurance else 0.0)
             else:
-                cards, hand_counts, bets, surrendered, hands, position, running_count, needs_dealer = play_player(first, second, dealer_up, shoe, position, running_count)
+                cards, hand_counts, bets, surrendered, hands, position, running_count, needs_dealer = play_player(first, second, dealer_up, shoe, position, running_count, policy)
                 running_count += hilo(dealer_hole)
                 dealer_cards = np.zeros(12, dtype=np.int8)
                 dealer_cards[0], dealer_cards[1] = dealer_up, dealer_hole
@@ -290,7 +320,7 @@ def simulate_task(decks: int, dealt_decks: float, shoes: int, seed: int) -> tupl
                         dealer_cards[dealer_count] = card; dealer_count += 1
                         running_count += hilo(card)
                         dealer_total, dealer_soft = hand_value(dealer_cards, dealer_count)
-                profit = settle(cards, hand_counts, bets, surrendered, hands, dealer_total, dealer_total > 21, hero_blackjack)
+                profit = settle(cards, hand_counts, bets, surrendered, hands, dealer_total, dealer_total > 21, hero_blackjack) - (0.5 if take_insurance else 0.0)
             counts[start_bucket] += 1
             sums[start_bucket] += profit
             squares[start_bucket] += profit * profit
@@ -299,22 +329,22 @@ def simulate_task(decks: int, dealt_decks: float, shoes: int, seed: int) -> tupl
 
 
 @njit(parallel=True, cache=True)
-def simulate_parallel(decks: int, dealt_decks: float, task_shoes: np.ndarray, seeds: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def simulate_parallel(decks: int, dealt_decks: float, task_shoes: np.ndarray, seeds: np.ndarray, policy: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     tasks = len(task_shoes)
     counts = np.zeros((tasks, BUCKETS), dtype=np.int64)
     sums = np.zeros((tasks, BUCKETS), dtype=np.float64)
     squares = np.zeros((tasks, BUCKETS), dtype=np.float64)
     rounds = np.zeros(tasks, dtype=np.int64)
     for task in prange(tasks):
-        c, s, q, r = simulate_task(decks, dealt_decks, int(task_shoes[task]), int(seeds[task]))
+        c, s, q, r = simulate_task(decks, dealt_decks, int(task_shoes[task]), int(seeds[task]), policy)
         counts[task], sums[task], squares[task], rounds[task] = c, s, q, r
     return counts, sums, squares, rounds
 
 
-def run_configuration(decks: int, dealt: float, shoes: int, tasks: int, seed: int) -> dict:
+def run_configuration(decks: int, dealt: float, shoes: int, tasks: int, seed: int, policy: int) -> dict:
     task_shoes, seeds = task_layout(shoes, tasks, seed, decks * 1000 + int(round(dealt * 100)) + 2_000_000)
     started = time.perf_counter()
-    counts, sums, squares, rounds = simulate_parallel(decks, dealt, task_shoes, seeds)
+    counts, sums, squares, rounds = simulate_parallel(decks, dealt, task_shoes, seeds, policy)
     result = summarize(counts, sums, squares)
     result.update(shoes=int(task_shoes.sum()), tasks=len(task_shoes), seed=seed, runtime_seconds=time.perf_counter() - started)
     result["rounds_per_second"] = result["rounds"] / result["runtime_seconds"]
@@ -338,22 +368,22 @@ def merge_results(previous: dict, incoming: dict) -> dict:
     return result
 
 
-def write_typescript(payload: dict, destination: Path) -> None:
+def write_typescript(payload: dict, destination: Path, symbol: str, generator_name: str) -> None:
     def number(value: float) -> str: return format(value, ".12g")
     metadata = payload["metadata"]
     lines = [
-        "// Generated by ../blackjack-simulator/freebj.py.",
+        f"// Generated by ../blackjack-simulator/{generator_name}.",
         "// Do not edit these coefficients by hand; regenerate the audited artifact.",
         'import type { RawCoefficient } from "./coefficients";',
-        "export const FREEBJ_17_METADATA = {",
+        f"export const {symbol}_METADATA = {{",
         f'  generatedUtc: "{metadata["created_utc"]}",',
         f'  sourceSha256: "{metadata["source_sha256"]}",',
         f'  seed: {metadata["seed"]},',
         f'  shoesPerProfile: {metadata["requested_shoes_per_configuration"]},',
         f'  totalRounds: {sum(p["rounds"] for p in payload["profiles"].values())},',
-        '  model: "6/8 deck | H17 | DAS | RSA | LS | peek | 3:2 | one spot | FreeBJ-17 compatible departures | no insurance",',
+        f'  model: "{metadata["model"]}",',
         "} as const;",
-        "export const FREEBJ_17_COEFFICIENTS: Record<string, readonly RawCoefficient[]> = {",
+        f"export const {symbol}_COEFFICIENTS: Record<string, readonly RawCoefficient[]> = {{",
     ]
     for key, profile in payload["profiles"].items():
         lines.append(f'  "{key}": [')
@@ -365,10 +395,11 @@ def write_typescript(payload: dict, destination: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate CountLab FreeBJ-17 coefficients")
+    parser = argparse.ArgumentParser(description="Generate CountLab H17 Pro coefficients")
     parser.add_argument("--shoes", type=int, default=100_000_000)
     parser.add_argument("--tasks", type=int, default=max(1, os.cpu_count() or 1))
     parser.add_argument("--seed", type=int, default=20260817)
+    parser.add_argument("--policy", choices=("h17-pro",), default="h17-pro")
     parser.add_argument("--decks", type=int, choices=(6, 8))
     parser.add_argument("--dealt", type=float)
     parser.add_argument("--append", action="store_true", help="merge an independent chunk into an existing artifact")
@@ -376,7 +407,8 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--typescript", type=Path, required=True)
     args = parser.parse_args()
-    simulate_parallel(6, 4.5, np.array([1], dtype=np.int64), np.array([1], dtype=np.int64))
+    policy = H17_PRO_POLICY
+    simulate_parallel(6, 4.5, np.array([1], dtype=np.int64), np.array([1], dtype=np.int64), policy)
     if (args.decks is None) != (args.dealt is None):
         parser.error("--decks and --dealt must be supplied together")
     profiles = {}
@@ -392,8 +424,8 @@ def main() -> None:
         if requested_shoes == 0:
             print(f"Skipping {decks}D, {dealt:g} dealt; already has {existing_shoes:,} shoes.", flush=True)
             continue
-        print(f"Simulating {decks}D, {dealt:g} dealt, FreeBJ-17, shoes={requested_shoes:,} ...", flush=True)
-        result = run_configuration(decks, dealt, requested_shoes, args.tasks, args.seed)
+        print(f"Simulating {decks}D, {dealt:g} dealt, {args.policy}, shoes={requested_shoes:,} ...", flush=True)
+        result = run_configuration(decks, dealt, requested_shoes, args.tasks, args.seed, policy)
         profiles[key] = merge_results(profiles[key], result) if args.append and key in profiles else result
         complete = profiles[key]
         print(f"  {complete['rounds']:,} rounds in {complete['runtime_seconds']:.1f}s; EV {complete['mean']:+.6%} +/- {Z95 * complete['standard_error']:.6%} (95%)", flush=True)
@@ -403,13 +435,14 @@ def main() -> None:
             "git": git_metadata(), "python": platform.python_version(), "numpy": np.__version__, "numba": numba.__version__,
             "platform": platform.platform(), "cpu_count": os.cpu_count(), "requested_shoes_per_configuration": max(profile["shoes"] for profile in profiles.values()),
             "tasks": args.tasks, "seed": args.seed,
-            "strategy": "CountLab H17/DAS/RSA/LS basic strategy plus compatible FreeBJ default 17 departures; no insurance",
+            "strategy": "CountLab H17/DAS/RSA/LS basic strategy plus the supplied H17 Pro 34-deviation chart, including insurance at TC +3",
+            "model": "6/8 deck | H17 | DAS | RSA | LS | peek | 3:2 | one spot | H17 Pro 34 deviations | insurance TC +3",
         }, "profiles": profiles,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     args.typescript.parent.mkdir(parents=True, exist_ok=True)
-    write_typescript(payload, args.typescript)
+    write_typescript(payload, args.typescript, "H17_PRO_POLICY", Path(__file__).name)
 
 
 if __name__ == "__main__":

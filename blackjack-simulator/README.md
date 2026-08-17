@@ -48,11 +48,11 @@ published -0.473% benchmark for the core rules.
 
 ## Training-deviation source
 
-The web app&rsquo;s drills and shoe-by-shoe simulator use FreeBJ&rsquo;s compact, MIT-licensed
+The web app&rsquo;s drills and shoe-by-shoe simulator use the H17 Pro
 17-deviation default Hi-Lo set. It intentionally contains no insurance or
 surrender departures. The attribution and full MIT notice are in
 `../THIRD_PARTY_NOTICES.md`. The audited coefficient curves predate this training
-catalog and are not presented as a calibration of the FreeBJ set.
+catalog and are calibrated from the matching H17 Pro policy.
 
 ## No-index counterpart
 
@@ -130,10 +130,9 @@ reproduce the production coefficients (1.14377), which cross-validates the
 kernel reuse. The constant is consumed by `SIMULTANEOUS_HAND_CORRELATION` in
 `blackjack/lib/blackjack/advantage.ts`.
 
-The strategy deliberately has a concrete definition rather than relying on a
-label such as "I18 + Fab 4," whose exact indices and boundary conventions vary
-with rules and source. See `strategy_manifest()` in `simulate.py` for every
-departure used by the production run.
+The strategy has a concrete definition: the supplied H17 Pro chart,
+including its exact thresholds and boundary conventions. The production policy
+is encoded directly in `h17_pro.py`.
 
 ## Commands
 
