@@ -1,5 +1,6 @@
-import { GAME_OPTIONS, RAW_COEFFICIENTS } from "./coefficients";
-import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+import { GAME_OPTIONS } from "./coefficients";
+import { INDEX_TIER_COEFFICIENTS, type IndexTier } from "./indexTierCoefficients";
+export type { IndexTier } from "./indexTierCoefficients";
 export interface AdvantageRules {
   decks: number;
   dealerHitsSoft17: boolean;
@@ -9,8 +10,7 @@ export interface AdvantageRules {
   blackjackPayout: 1.5 | 1.2;
   penetration: number;
   /** Recorded by the session journal's CSV format. The advantage model ignores
-   * it: partial index play is expressed by `deviationSkill`, which interpolates
-   * between the audited index and no-index coefficient tables. */
+   * it: index coverage is selected explicitly with `indexTier`. */
   useIndices?: boolean;
 }
 export interface RampPoint {
@@ -32,8 +32,8 @@ export interface AdvantageInput {
   ramp: RampPoint[];
   /** Flat edge-percentage shift applied to every count row, e.g. from RULE_DELTAS. Default 0. */
   ruleAdjustment?: number;
-  /** 0-1 multiplier on the count-dependent portion of edge, modeling imperfect deviation play. Default 1 (perfect play). */
-  deviationSkill?: number;
+  /** Independently simulated index-play coverage. Defaults to the full matrix. */
+  indexTier?: IndexTier;
 }
 export interface CountRow {
   trueCount: number;
@@ -102,43 +102,19 @@ function profileKey(rules: AdvantageRules) {
       (a, b) => Math.abs(a.dealt - requested) - Math.abs(b.dealt - requested),
     )[0];
   const key = `${rules.decks}-${selected.dealt}`;
-  return key in RAW_COEFFICIENTS ? key : "6-4.5";
+  return key in INDEX_TIER_COEFFICIENTS.full ? key : "6-4.5";
 }
 /**
  * Per-true-count edge, frequency, and variance for a game.
  *
- * `deviationSkill` is the fraction of index-play EV the player actually
- * captures. Rather than shrinking the audited curve toward an invented anchor,
- * this interpolates between two independently measured curves: the same nine
- * profiles simulated with the Hi-Lo index set on (`RAW_COEFFICIENTS`) and off
- * (`NO_INDEX_COEFFICIENTS`). Skill 1 reproduces the audited index run exactly,
- * skill 0 reproduces the audited basic-strategy run exactly, and values between
- * are a linear blend of the two. Both frequency vectors sum to one, so every
- * blend does too.
+ * Every tier is a direct table lookup from its own simulation run.  There is
+ * deliberately no interpolation: a displayed edge, error bar, and sample
+ * count always belong to one concrete index-play set.
  */
-export function getCountProfile(rules: AdvantageRules, deviationSkill = 1) {
-  const key = profileKey(rules),
-    skill = Math.min(1, Math.max(0, deviationSkill)),
-    withIndices = RAW_COEFFICIENTS[key],
-    withoutIndices = NO_INDEX_COEFFICIENTS[key];
-  return withIndices.map((indexed, position) => {
-    const plain = withoutIndices[position],
-      mix = (a: number, b: number) => a + skill * (b - a),
-      p = mix(plain[0], indexed[0]),
-      adv = mix(plain[1], indexed[1]),
-      sd = mix(plain[2], indexed[2]),
-      // The two runs are independent samples, so the blended estimator's
-      // standard error combines in quadrature.
-      standardError = Math.hypot(
-        (1 - skill) * plain[4],
-        skill * indexed[4],
-      ),
-      samples =
-        skill >= 1
-          ? indexed[3]
-          : skill <= 0
-            ? plain[3]
-            : Math.min(plain[3], indexed[3]);
+export function getCountProfile(rules: AdvantageRules, tier: IndexTier = "full") {
+  const key = profileKey(rules), coefficients = INDEX_TIER_COEFFICIENTS[tier][key];
+  return coefficients.map((row, position) => {
+    const [p, adv, sd, samples, standardError] = row;
     return {
       tc: position - 8,
       label: TC_LABELS[position],
@@ -215,7 +191,7 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   const ruleAdjustment = input.ruleAdjustment ?? 0;
-  return getCountProfile(input.rules, input.deviationSkill).map((row) => {
+  return getCountProfile(input.rules, input.indexTier).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
       row.tc,
@@ -285,7 +261,7 @@ export function recommendUnit(
   playerHands = 1,
   handsByTrueCount?: HandCountPoint[],
   ruleAdjustment = 0,
-  deviationSkill = 1,
+  indexTier: IndexTier = "full",
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
@@ -298,7 +274,7 @@ export function recommendUnit(
     rules,
     ramp,
     ruleAdjustment,
-    deviationSkill,
+    indexTier,
   });
   if (result.evPerRound <= 0) return 0;
   return Math.max(

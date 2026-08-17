@@ -1,5 +1,4 @@
-import type { HandCountPoint, RampPoint } from "./advantage";
-import type { DEVIATION_SKILL } from "./ruleAdjustments";
+import type { HandCountPoint, IndexTier, RampPoint } from "./advantage";
 
 export interface CvcxTemplateConfig {
   decks: 6 | 8;
@@ -29,7 +28,10 @@ export interface CvcxTemplateConfig {
   lateSurrender: boolean;
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
-  deviationSkillLevel: keyof typeof DEVIATION_SKILL;
+  /** Directly simulated index tier. */
+  indexTier?: IndexTier;
+  /** @deprecated Migrated to `indexTier` while reading older local saves. */
+  deviationSkillLevel?: "beginner" | "intermediate" | "pro" | "perfect";
   doubleRule?: "any2" | "9to11" | "10to11";
 }
 
@@ -78,7 +80,7 @@ const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && typeof config.lateSurrender === "boolean"
     && typeof config.europeanNoHoleCard === "boolean"
     && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2)
-    && typeof config.deviationSkillLevel === "string";
+    && (typeof config.indexTier === "string" || typeof config.deviationSkillLevel === "string");
 };
 const validTemplate = (value: unknown): value is CvcxTemplate => {
   if (!value || typeof value !== "object") return false;
@@ -125,6 +127,19 @@ export function templateHandSchedule(config: CvcxTemplateConfig): HandCountPoint
   });
 }
 
+const LEGACY_TIER: Record<NonNullable<CvcxTemplateConfig["deviationSkillLevel"]>, IndexTier> = {
+  beginner: "70",
+  intermediate: "82",
+  pro: "i18fab4",
+  perfect: "full",
+};
+
+export function templateIndexTier(config: CvcxTemplateConfig): IndexTier {
+  if (config.indexTier && ["none", "70", "82", "i18fab4", "full"].includes(config.indexTier))
+    return config.indexTier;
+  return config.deviationSkillLevel ? LEGACY_TIER[config.deviationSkillLevel] : "full";
+}
+
 export function defaultCvcxTemplateName(config: CvcxTemplateConfig) {
   const maximum = Math.max(...config.ramp.map((point) => point.units));
   return `${config.decks}D ${Math.round((config.dealt / config.decks) * 100)}% · 1–${maximum}`;
@@ -133,7 +148,10 @@ export function defaultCvcxTemplateName(config: CvcxTemplateConfig) {
 export const cvcxLibrary = {
   event: LIBRARY_EVENT,
   templates(store?: StorageLike) {
-    return read(TEMPLATES_KEY, validTemplate, store);
+    return read(TEMPLATES_KEY, validTemplate, store).map((template) => ({
+      ...template,
+      config: { ...template.config, indexTier: templateIndexTier(template.config) },
+    }));
   },
   saveTemplate(config: CvcxTemplateConfig, name: string, store?: StorageLike, now = new Date()) {
     const template: CvcxTemplate = { id: createId(), name: name.trim() || defaultCvcxTemplateName(config), createdAt: now.toISOString(), config };

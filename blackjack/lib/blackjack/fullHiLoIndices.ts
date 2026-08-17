@@ -790,6 +790,20 @@ const RAW_HI_LO_INDICES = `
 -12	10	0	1	0	2	-9	4	1000
 -12	10	1	0	0	2	1000
 -12	10	1	1	0	2	-9	4	1000
+# Late-surrender overlays for CountLab's audited H17 / DAS / RSA / LS / peek
+# baseline.  The upstream Farmer Hi-Lo file above is the no-surrender variant;
+# these rows use its documented fifth availability flag (1 = LS available) and
+# override only the initial, two-card contexts where late surrender is legal.
+# They are part of the same table so simulations, tier masks, and the reference
+# page have one strategy source.  Actions: 1=stand, 2=hit, 5=surrender.
+16	1	1	0	1	5	1000
+16	9	1	0	1	5	5	1	1000
+16	10	1	0	1	5	1000
+15	1	1	0	1	2	-1	5	1000
+15	9	1	0	1	2	2	5	1000
+15	10	1	0	1	2	0	5	4	1	1000
+14	10	1	0	1	2	3	5	1000
+16	1	1	1	1	5	1000
 `;
 
 const ACTIONS: Record<number, DeviationAction> = {

@@ -21,7 +21,7 @@ import {
   zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
-import { COEFFICIENT_METADATA } from "./coefficients";
+import { INDEX_TIER_COEFFICIENTS } from "./indexTierCoefficients";
 import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
@@ -176,10 +176,10 @@ describe("advantage model", () => {
     expect(profile).toHaveLength(17);
     expect(profile.reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
     const neutral = profile.find((row) => row.tc === 0)!;
-    expect(neutral.p).toBeCloseTo(0.28426959002, 10);
-    expect(neutral.samples).toBeGreaterThan(1_000_000_000);
-    expect(neutral.standardError).toBeLessThan(0.00003);
-    expect(COEFFICIENT_METADATA.totalRounds).toBe(46_734_162_152);
+    const measured = INDEX_TIER_COEFFICIENTS.full["8-6"][8];
+    expect(neutral.p).toBeCloseTo(measured[0], 12);
+    expect(neutral.samples).toBe(measured[3]);
+    expect(neutral.standardError).toBe(measured[4]);
   });
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);
