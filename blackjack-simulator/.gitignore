@@ -7,3 +7,5 @@ results/*
 !results/multi-hand-covariance.json
 !results/multi-hand-covariance-8deck.json
 !results/no-index-coefficients.json
+!results/ramp-variance-h17-pro.json
+!results/ramp-variance-countlab.json

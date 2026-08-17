@@ -71,6 +71,29 @@ As a cross-check, its 6-deck/4.5-dealt profile returned -0.497870% (95% half
 width 0.003394) against the independently seeded `--validate` run's -0.496496%,
 a 0.0014-point difference well inside both intervals.
 
+## Are rounds independent?
+
+`advantage.ts` builds variance per round from the per-true-count coefficients and
+then treats rounds as independent draws from the true-count distribution, so N
+rounds carry N times one round's variance and risk of ruin follows from
+exp(-2 * B * mu / sigma^2). True counts are strongly autocorrelated inside a
+shoe, so it is reasonable to worry that a ramped bettor's large wagers arrive in
+runs and that the real bankroll swings harder than that model admits.
+
+`rampvariance.py` measures it directly: it plays a real ramped bettor through
+real shuffled shoes and compares the measured variance of a whole shoe's profit
+against `rounds_per_shoe x variance of one round`. Over 86,875,710 rounds
+(2,000,000 shoes, 6 decks, 4.5 dealt) the ratio is 0.9944 for a 1-12 ramp wonging
+in at TC +1 and 0.9967 for one wonging in at TC +2 -- at or just below 1.0, so
+clustering does not inflate variance and the independent-rounds model is accurate
+here, very slightly on the conservative side.
+
+The same runs reconcile the whole pipeline end to end. For the TC +2 ramp the
+real-card simulation gives $24.95/hr EV and $364.21/hr standard deviation against
+the app's $24.86 and $364.36; for the TC +1 ramp, $22.25 and $310.76 against
+$22.09 and $310.91. Risk of ruin on a 600-unit bankroll measures 10.47% and 6.30%
+against the app's 10.57% and 6.44%.
+
 ## Simultaneous-hand covariance
 
 `simulate.py` measures one spot, so it reports the variance of a single hand and
@@ -114,6 +137,7 @@ python simulate.py --all --shoes 2000000 --tasks 64 --output results/coefficient
 python noindex.py --shoes 100000000 --tasks 256 --output results/no-index-coefficients.json --typescript ../blackjack/lib/blackjack/noIndexCoefficients.ts
 python covariance.py --shoes 2000000 --spots 2 3 4 --output results/multi-hand-covariance.json
 python covariance.py --decks 8 --dealt 6 --shoes 1500000 --spots 2 3 --output results/multi-hand-covariance-8deck.json
+python rampvariance.py --shoes 2000000 --units 0 0 0 0 0 0 0 0 0 2 4 6 8 10 12 12 12 --bankroll-units 600 --output results/ramp-variance-h17-pro.json
 ```
 
 `--shoes` is the total requested number of shoes per configuration, divided
