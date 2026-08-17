@@ -13,7 +13,7 @@ import {
   DEVIATIONS,
   DEVIATION_ACTION_NAMES,
   DeviationAction,
-  deviationDecision,
+  applyDeviationToBasic,
 } from "@/lib/blackjack/deviations";
 import {
   DEFAULT_SETTINGS,
@@ -443,8 +443,7 @@ export function DeviationDrill() {
     [q],
   );
   const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
-    rc = tc * 3,
-    correct = deviationDecision(d, tc);
+    rc = tc * 3;
   const deviationPresented = useRef("");
   useEffect(() => {
     const scenario = `${d.hand}_v_${d.dealer}`;
@@ -479,6 +478,12 @@ export function DeviationDrill() {
       () => ["H", "S", "D", "P", "R"],
       [],
     );
+  const basic = useMemo(
+      () => getBasicStrategyDecision({ playerCards, dealerUpcard: dealerCard, rules: { decks: settings.decks, dealerHitsSoft17: settings.dealerHitsSoft17, doubleAfterSplit: settings.doubleAfterSplit, resplitAces: settings.resplitAces, lateSurrender: settings.lateSurrender, doubleRule: "any" } }).action,
+      [dealerCard, playerCards, settings.dealerHitsSoft17, settings.decks, settings.doubleAfterSplit, settings.lateSurrender, settings.resplitAces],
+    ),
+    correct = applyDeviationToBasic(d, basic, tc),
+    departureApplies = basic === d.normalAction;
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories,
   } satisfies DeviationSaved);
@@ -509,7 +514,7 @@ export function DeviationDrill() {
             question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
             userAnswer: DEVIATION_ACTION_NAMES[chosen],
             correctAnswer: DEVIATION_ACTION_NAMES[correct],
-            explanation: `${DEVIATION_ACTION_NAMES[d.deviationAction]} at ${signed(d.index)} ${d.direction === "atOrBelow" ? "or lower" : "or higher"}.`,
+            explanation: departureApplies ? `${DEVIATION_ACTION_NAMES[d.deviationAction]} at ${signed(d.index)} ${d.direction === "atOrBelow" ? "or lower" : "or higher"}.` : "This FreeBJ departure is not applicable to the selected table rules; keep basic strategy.",
           }];
       const nextCategories = {
         ...categories,
@@ -522,7 +527,7 @@ export function DeviationDrill() {
         hand: `${playerCards.map((card) => card.rank).join(", ")} vs ${dealerCard.rank}`,
         chosen,
         correct,
-        normalAction: d.normalAction,
+        normalAction: basic,
         deviationAction: d.deviationAction,
         index: d.index,
         tc,
@@ -535,7 +540,7 @@ export function DeviationDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
-      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: correct === d.deviationAction });
+      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies && correct === d.deviationAction });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -543,7 +548,7 @@ export function DeviationDrill() {
         setStarted(Date.now());
       }
     },
-    [best, categories, correct, correctCount, d, dealerCard.rank, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
+    [basic, best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
