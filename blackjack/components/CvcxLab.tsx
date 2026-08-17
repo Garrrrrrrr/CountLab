@@ -13,25 +13,19 @@ import {
   CountRow,
   DEFAULT_ADVANTAGE_RULES,
   HandCountPoint,
-  IndexTier,
   RampPoint,
   RAMPS,
   unitsAt,
   zeroBetsBelow,
 } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { INDEX_TIER_METADATA } from "@/lib/blackjack/indexTierCoefficients";
-import {
-  INDEX_TIERS,
-  isEstimated,
-  sumRuleAdjustment,
-} from "@/lib/blackjack/ruleAdjustments";
+import { FREEBJ_17_METADATA } from "@/lib/blackjack/freebj17Coefficients";
+import { isEstimated, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 import {
   cvcxLibrary,
   CvcxTemplate,
   CvcxTemplateConfig,
   templateHandSchedule,
-  templateIndexTier,
 } from "@/lib/blackjack/cvcxLibrary";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
@@ -388,7 +382,6 @@ export function CvcxLab() {
     [lateSurrender, setLateSurrender] = useState(true),
     [europeanNoHoleCard, setEuropeanNoHoleCard] = useState(false),
     [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5),
-    [indexTier, setIndexTier] = useState<IndexTier>("full"),
     [doubleRule, setDoubleRule] = useState<"any2" | "9to11" | "10to11">("any2"),
     [cvcxTemplateName, setCvcxTemplateName] = useState(""),
     [cvcxTemplates, setCvcxTemplates] = useState<CvcxTemplate[]>([]),
@@ -424,7 +417,6 @@ export function CvcxLab() {
       [dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, doubleRule],
     ),
     ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleFlags), [ruleFlags]),
-    tier = INDEX_TIERS[indexTier],
     estimated = isEstimated(ruleFlags);
 
   // The bet-spread table is the only place hand counts are set, so this is the
@@ -471,24 +463,22 @@ export function CvcxLab() {
         wongInAt,
         rules,
         ruleAdjustment,
-        indexTier,
       }),
-      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment, indexTier],
+      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment],
     ),
     result = useMemo(
       () => analyzeCvcx(scenario, activeRamp, baseBet),
       [scenario, activeRamp, baseBet],
     ),
     optimalRamp = useMemo(
-      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier),
-      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier],
+      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment),
+      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment],
     ),
     optimalUnit = useMemo(
       () => riskSizedUnit(scenario, optimalRamp),
       [scenario, optimalRamp],
     ),
     maxFrequency = Math.max(...result.rows.map((row) => row.frequency));
-
   const setPreset = (name: string) => {
     setRampName(name);
     setRamp(expandPreset(name));
@@ -528,7 +518,7 @@ export function CvcxLab() {
   const currentCvcxConfig = (): CvcxTemplateConfig => ({
     decks, dealt, bankroll, baseBet, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
     rampName, ramp, chipIncrement, hands: handsSchedule,
-    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, indexTier, doubleRule,
+    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, deviationSkillLevel: "beginner", doubleRule,
   });
   const saveCvcxTemplate = () => {
     const saved = cvcxLibrary.saveTemplate(currentCvcxConfig(), cvcxTemplateName);
@@ -562,7 +552,6 @@ export function CvcxLab() {
     setLateSurrender(config.lateSurrender);
     setEuropeanNoHoleCard(config.europeanNoHoleCard);
     setBlackjackPayout(config.blackjackPayout);
-    setIndexTier(templateIndexTier(config));
     setDoubleRule(config.doubleRule ?? "any2");
     setCvcxTemplateName(template.name);
     setCvcxNotice(`Loaded “${template.name}”.`);
@@ -622,7 +611,6 @@ export function CvcxLab() {
             wongInAt,
             chipIncrement,
             ruleAdjustment,
-            indexTier,
           );
           return {
             name: `${comparisonDecks}D · ${option.dealt} dealt`,
@@ -632,7 +620,7 @@ export function CvcxLab() {
           };
         }),
       ),
-    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, indexTier, scenario, baseBet],
+    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, scenario, baseBet],
   );
 
   const estimateSuffix = estimated ? " · est." : "";
@@ -738,7 +726,7 @@ export function CvcxLab() {
 
         <Section
           title="Table rules"
-          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${tier.label} (${tier.coverage}% · ${tier.plays} plays) · ${estimated ? "estimated" : "audited"}`}
+          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · FreeBJ-17 · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -759,9 +747,10 @@ export function CvcxLab() {
                 <option key={option.dealt} value={option.dealt}>{option.label}</option>
               ))}
             </Select>
-            <Select label="Deviations" value={indexTier} onChange={(event) => setIndexTier(event.target.value as IndexTier)}>
-              {Object.values(INDEX_TIERS).map((option) => <option key={option.key} value={option.key}>{option.label} ({option.coverage}% · {option.plays} plays)</option>)}
-            </Select>
+            <div className="field grid min-h-11 content-center rounded-xl px-3 text-sm text-zinc-300">
+              <span className="text-xs text-zinc-500">Playing decisions</span>
+              Audited FreeBJ-17 indices
+            </div>
             <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
             <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
             <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
@@ -928,7 +917,7 @@ export function CvcxLab() {
           open={false}
         >
           <p className="text-xs leading-5 text-zinc-500">
-            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. Every deviation option is a separately simulated subset of one complete Hi-Lo matrix—there is no blended skill curve. The currently loaded tier runs use {INDEX_TIER_METADATA.requested_shoes.toLocaleString()} shoes per profile at the audited baseline (H17 · DAS · RSA · LS · American peek · 3:2). Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {FREEBJ_17_METADATA.totalRounds.toLocaleString()} audited FreeBJ-17-policy resolved rounds at the baseline (H17 · DAS · RSA · LS · American peek · 3:2). Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
             {estimated && " Table rules set away from the audited baseline apply a flat literature-estimated edge adjustment — treat those numbers as directional, not audited."}
           </p>
         </Section>

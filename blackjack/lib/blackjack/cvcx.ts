@@ -2,7 +2,6 @@ import {
   AdvantageResult,
   AdvantageRules,
   HandCountPoint,
-  IndexTier,
   RampPoint,
   calculateAdvantage,
   getCountProfile,
@@ -22,8 +21,8 @@ export interface CvcxScenario {
   rules: AdvantageRules;
   /** Flat edge-percentage shift from rule toggles that depart from the audited baseline. Default 0. */
   ruleAdjustment?: number;
-  /** Directly simulated index-play tier. */
-  indexTier?: IndexTier;
+  /** 0-1 multiplier on the count-dependent portion of edge. Default 1 (perfect play). */
+  deviationSkill?: number;
 }
 
 export interface CvcxPerformance extends AdvantageResult {
@@ -89,9 +88,9 @@ export function createOptimalRamp(
   wongInAt: number | null,
   chipIncrement = 0.5,
   ruleAdjustment = 0,
-  indexTier: IndexTier = "full",
+  deviationSkill = 1,
 ): RampPoint[] {
-  const rows = getCountProfile(rules, indexTier).map((row) => ({
+  const rows = getCountProfile(rules, deviationSkill).map((row) => ({
     tc: row.tc,
     adv: row.adv + ruleAdjustment,
     sd: row.sd,
@@ -136,7 +135,7 @@ export function analyzeCvcx(
     rules: scenario.rules,
     ramp,
     ruleAdjustment: scenario.ruleAdjustment,
-    indexTier: scenario.indexTier,
+    deviationSkill: scenario.deviationSkill,
   });
   const variance = result.sdPerRound ** 2;
   const playedFrequency = result.rows.reduce(
@@ -182,7 +181,7 @@ export function riskSizedUnit(
     scenario.playerHands,
     scenario.handsByTrueCount,
     scenario.ruleAdjustment,
-    scenario.indexTier,
+    scenario.deviationSkill,
   );
 }
 
@@ -195,13 +194,19 @@ export function goalByHorizonProbability(
   if (goal <= 0) return 1;
   if (rounds <= 0 || variancePerRound <= 0)
     return Number(meanPerRound * rounds >= goal);
-  return clamp(
-    1 -
-      normalCdf(
-        (goal - meanPerRound * rounds) /
-          Math.sqrt(variancePerRound * rounds),
-      ),
+  const deviation = Math.sqrt(variancePerRound * rounds);
+  // Reflection principle for a Brownian process with drift: this measures
+  // reaching the upper boundary at any time, not just ending beyond it.
+  const terminalTail = normalCdf((meanPerRound * rounds - goal) / deviation);
+  const exponent = clamp(
+    (2 * meanPerRound * goal) / variancePerRound,
+    -745,
+    709,
   );
+  const reflectedTail = Math.exp(exponent) * normalCdf(
+    (-meanPerRound * rounds - goal) / deviation,
+  );
+  return clamp(terminalTail + reflectedTail);
 }
 
 

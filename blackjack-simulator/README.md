@@ -15,7 +15,7 @@ and risk-of-ruin coefficients displayed by the CountLab blackjack app.
 - one player spot;
 - splitting is allowed to a maximum of four hands;
 - Hi-Lo true count is floored using the exact undealt-card count;
-- the measured player's playing decisions use the documented H17 index set;
+- the audited coefficient run uses its documented H17 decision model;
 - insurance is taken at a floored true count of +3 or greater;
 - no burn card; a round that starts before the cut card is completed.
 
@@ -46,25 +46,15 @@ A separate 500,000,000-hand off-the-top run removes cut-card weighting. It
 returned -0.48173% with a 0.01001-point 95% half-width, overlapping the commonly
 published -0.473% benchmark for the core rules.
 
-## Index tiers
+## Training-deviation source
 
-`indextiers.py` replaces the former partial-skill interpolation with five
-separately simulated table-backed tiers: None, measured ~70%, measured ~82%,
-Illustrious 18 + Fab 4, and the complete Hi-Lo matrix. It parses
-`fullHiLoIndices.ts` (including its late-surrender rows), uses the table's
-TC-0 decision as basic strategy, and never interpolates a displayed curve.
+The web app&rsquo;s drills and shoe-by-shoe simulator use FreeBJ&rsquo;s compact, MIT-licensed
+17-deviation default Hi-Lo set. It intentionally contains no insurance or
+surrender departures. The attribution and full MIT notice are in
+`../THIRD_PARTY_NOTICES.md`. The audited coefficient curves predate this training
+catalog and are not presented as a calibration of the FreeBJ set.
 
-```text
-python indextiers.py --rank --rank-shoes 500000 --tasks 32
-python indextiers.py --all --shoes 100000000 --tasks 32 --typescript ../blackjack/lib/blackjack/indexTierCoefficients.ts
-```
-
-Review and pin the membership emitted by the ranking before the production
-run. The command emits one provenance-bound JSON artifact per tier and the app
-module. The raw source is GPL-3.0-derived; resolve that license dependency
-before release.
-
-## Superseded no-index counterpart
+## No-index counterpart
 
 The app offers a Deviations skill setting, which has to price a player who only
 captures part of the index EV. Doing that honestly needs the edge at every true

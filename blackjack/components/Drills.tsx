@@ -455,7 +455,6 @@ export function DeviationDrill() {
   }, [d.dealer, d.hand, q, tc]);
   const playerCards = useMemo(() => {
       const hands: Record<string, [Card["rank"], Card["rank"]]> = {
-        Insurance: ["10", "6"],
         "16": ["10", "6"],
         "15": ["10", "5"],
         "13": ["10", "3"],
@@ -463,6 +462,8 @@ export function DeviationDrill() {
         "11": ["6", "5"],
         "10": ["6", "4"],
         "9": ["5", "4"],
+        "Soft 19": ["A", "8"],
+        "10,10": ["10", "10"],
       };
       const ranks = hands[d.hand] ?? ["10", "6"];
       return [
@@ -475,8 +476,8 @@ export function DeviationDrill() {
       [d],
     ),
     availableActions = useMemo<DeviationAction[]>(
-      () => (d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"]),
-      [d.hand],
+      () => ["H", "S", "D", "P", "R"],
+      [],
     );
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories,

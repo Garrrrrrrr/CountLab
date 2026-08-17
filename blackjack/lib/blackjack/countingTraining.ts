@@ -1,7 +1,7 @@
 import { unitsAt, RAMPS } from "./advantage";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { DEVIATIONS, deviationDecision, DeviationAction } from "./deviations";
-import { calculateHandValue, isSoft } from "./hand";
+import { calculateHandValue, isPair, isSoft } from "./hand";
 import { hiLoValue, runningCount, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { Action, BlackjackRules, Card } from "./types";
@@ -154,9 +154,13 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
   const dealerUpcard = dealer[0];
   const basic = getBasicStrategyDecision({ playerCards: heroInitial, dealerUpcard, rules });
   const total = calculateHandValue(heroInitial);
-  const deviation = !isSoft(heroInitial)
-    ? DEVIATIONS.find((d) => d.hand === String(total) && d.dealer === dealerUpcard.rank)
-    : undefined;
+  const handLabel = isPair(heroInitial)
+    ? `${heroInitial[0].rank === "J" || heroInitial[0].rank === "Q" || heroInitial[0].rank === "K" ? "10" : heroInitial[0].rank},${heroInitial[1].rank === "J" || heroInitial[1].rank === "Q" || heroInitial[1].rank === "K" ? "10" : heroInitial[1].rank}`
+    : isSoft(heroInitial)
+      ? `Soft ${total}`
+      : String(total);
+  const dealerLabel = dealerUpcard.rank === "J" || dealerUpcard.rank === "Q" || dealerUpcard.rank === "K" ? "10" : dealerUpcard.rank;
+  const deviation = DEVIATIONS.find((d) => d.hand === handLabel && d.dealer === dealerLabel);
   const correctPlay = deviation ? deviationDecision(deviation, currentTrueCount) : basic.action;
   const insurance = dealerUpcard.rank === "A" ? DEVIATIONS.find((d) => d.hand === "Insurance") : undefined;
   const playerHands = initial.flatMap((hand) => playHand(hand, dealerUpcard, shoe, rules));

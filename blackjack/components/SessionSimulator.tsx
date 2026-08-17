@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
-import { COEFFICIENT_METADATA, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { NO_INDEX_METADATA } from "@/lib/blackjack/noIndexCoefficients";
 import { SavedSimulationRun, simulationLibrary, SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig, SessionSimulationResult } from "@/lib/blackjack/sessionSimulation";
 import type { DeviationGroup } from "@/lib/blackjack/fullHiLoIndices";
@@ -63,10 +64,10 @@ export function SessionSimulator() {
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<SessionSimulationResult>();
   const [error, setError] = useState<string>();
-  const [mode, setMode] = useState<"profile" | "shoes">("profile");
+  const [mode, setMode] = useState<"profile" | "shoes">("shoes");
   const [handsToSimulate, setHandsToSimulate] = useState(10_000);
   const [highSpeed, setHighSpeed] = useState(false);
-  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["i18", "fab4"]);
+  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["freebj"]);
   const [shoeResult, setShoeResult] = useState<ShoeSimulationResult>();
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
   const shoeWorkerRef = useRef<Worker | undefined>(undefined);
@@ -269,12 +270,12 @@ export function SessionSimulator() {
         </div>
         <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
           <span className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5">H17 · DAS · RSA · LS</span>
-          <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1.5 text-emerald-300">Audited Hi-Lo profiles</span>
+          <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1.5 text-emerald-300">Card-level shoes by default</span>
         </div>
       </div>
 
       <div className="mb-5 flex gap-2 text-sm">
-        <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Profile model</button>
+        <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Fast approximation</button>
         <button type="button" disabled={running} onClick={() => setMode("shoes")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "shoes" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Real shoes</button>
       </div>
 
@@ -286,7 +287,7 @@ export function SessionSimulator() {
             <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
             <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">Each round samples audited 6D/8D H17 Hi-Lo true-count frequencies and conditional payoff moments, then applies your ramp. This fast model does not reproduce card-by-card shoe order or shoe replays. Multi-hand variance uses the documented conditional-independence approximation.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it samples audited basic-strategy true-count frequencies and conditional payoff moments independently. It does not reproduce card order, count clustering, FreeBJ deviations, or card-level drawdowns. Use Real shoes for those results.</p>
         </details>
       ) : (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
@@ -329,7 +330,7 @@ export function SessionSimulator() {
               ) : (
                 <>
                   <NumberField
-                    label="Hands to simulate"
+                    label="Rounds to simulate"
                     value={handsToSimulate}
                     min={100}
                     max={highSpeed ? 1_000_000 : 250_000}
@@ -356,7 +357,7 @@ export function SessionSimulator() {
                 <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">
                   Index deviations
                   <div className="flex min-h-11 items-center gap-4 px-1">
-                    {(["i18", "fab4"] as DeviationGroup[]).map((group) => (
+                    {(["freebj"] as DeviationGroup[]).map((group) => (
                       <label key={group} className="flex items-center gap-2 text-sm text-zinc-300">
                         <input
                           type="checkbox"
@@ -365,7 +366,7 @@ export function SessionSimulator() {
                           onChange={() => setDeviationGroups((current) => current.includes(group) ? current.filter((value) => value !== group) : [...current, group])}
                           className="h-4 w-4 accent-emerald-400"
                         />
-                        {group === "i18" ? "Illustrious 18" : "Fab 4"}
+                        FreeBJ default set
                       </label>
                     ))}
                   </div>
@@ -461,7 +462,7 @@ export function SessionSimulator() {
           {mode === "shoes" && !shoeResult && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-cards-blank" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Bankroll trace, and every shoe/hand dealt if High-Speed Mode is off.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
           {mode === "shoes" && shoeResult && <>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <Metric label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} hands`} />
+              <Metric label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} rounds`} />
               <Metric label="Total profit" value={money(shoeResult.totalProfit, 2)} sub={`${shoeResult.totalShoes} shoes`} />
               <Metric label="Starting bankroll" value={money(shoeResult.startingBankroll)} />
               <Metric label="Ending bankroll" value={money(shoeResult.endingBankroll)} />
@@ -469,7 +470,7 @@ export function SessionSimulator() {
               <Metric label="Low bankroll" value={money(shoeResult.lowBankroll)} />
             </div>
             <Panel>
-              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Bankroll history</h2><p className="mt-1 text-xs text-zinc-500">Sampled trajectory over the simulation.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{compact(shoeResult.totalHands)} hands</span></div>
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Bankroll history</h2><p className="mt-1 text-xs text-zinc-500">Sampled trajectory over the simulation.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{compact(shoeResult.totalHands)} rounds</span></div>
               <div className="mt-5 h-72 min-w-0"><ResponsiveContainer width="100%" height="100%"><LineChart data={shoeResult.bankrollTrace} margin={{ left: 8, right: 8 }}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} /><XAxis dataKey="round" stroke="#71717a" tickFormatter={compact} minTickGap={35} /><YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} /><Tooltip formatter={(value) => money(Number(value))} labelFormatter={(value) => `Hand ${compact(Number(value))}`} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} /><Line type="monotone" dataKey="bankroll" stroke="#86efac" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
             </Panel>
 
@@ -482,7 +483,7 @@ export function SessionSimulator() {
             )}
           </>}
       </div>
-      <p className="mt-6 text-xs leading-5 text-zinc-600">Audit basis: {COEFFICIENT_METADATA.totalRounds.toLocaleString()} resolved rounds · source seed {COEFFICIENT_METADATA.seed} · coefficient uncertainty remains separate from this session sampler&apos;s Monte Carlo standard error. A single path may go below zero because the expected-value process is shown without forced bankroll resizing; “crossed zero” records that event.</p>
+      <p className="mt-6 text-xs leading-5 text-zinc-600">Analytical audit basis: {NO_INDEX_METADATA.totalRounds.toLocaleString()} basic-strategy resolved rounds · source seed {NO_INDEX_METADATA.seed} · coefficient uncertainty remains separate from the fast approximation&apos;s Monte Carlo standard error. Real-shoe runs resolve cards directly. A path may go below zero because neither mode force-resizes bets; “crossed zero” records that event.</p>
       <MobileActionDock label="Simulation actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">{running ? "Simulation progress" : mode === "profile" ? "Profile workload" : "Hands to simulate"}</p><b className="block truncate text-zinc-200">{running ? percent(progress, 0) : mode === "profile" ? `${compact(modeledOutcomes)} rounds` : `${compact(handsToSimulate)} hands`}</b></div>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, unitsAt } from "./advantage";
 import { calculateHandValue, isBlackjack } from "./hand";
-import { ShoeSimulationConfig, simulateShoeSession } from "./shoeSimulation";
+import { ShoeSimulationConfig, deviationHandLabel, simulateShoeSession } from "./shoeSimulation";
 
 const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulationConfig => ({
   bankroll: 10_000,
@@ -18,6 +18,10 @@ const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulati
 });
 
 describe("simulateShoeSession", () => {
+  it("labels FreeBJ soft and pair departures without collapsing them to hard totals", () => {
+    expect(deviationHandLabel([{ rank: "A", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Soft 19");
+    expect(deviationHandLabel([{ rank: "10", suit: "spades" }, { rank: "K", suit: "hearts" }])).toBe("10,10");
+  });
   it("is deterministic for a fixed seed", async () => {
     const [first, second] = await Promise.all([
       simulateShoeSession(baseConfig()),
@@ -95,5 +99,13 @@ describe("simulateShoeSession", () => {
         }
       }
     }
+  });
+
+  it("honors double-after-split and resplit settings in card-level play", async () => {
+    const result = await simulateShoeSession(baseConfig({ handsToSimulate: 20_000 }));
+    const splitRounds = result.shoes.flatMap((shoe) => shoe.hands).filter((hand) => hand.playerHands.length >= 2);
+    expect(splitRounds.length).toBeGreaterThan(0);
+    expect(splitRounds.some((hand) => hand.playerHands.some((box) => box.bet === hand.bet * 2))).toBe(true);
+    expect(splitRounds.some((hand) => hand.playerHands.length >= 3)).toBe(true);
   });
 });

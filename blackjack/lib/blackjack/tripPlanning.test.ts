@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "./advantage";
+import { normalCdf } from "./cvcx";
 import { planTrip } from "./tripPlanning";
 
 const baseInput = {
@@ -36,6 +37,13 @@ describe("planTrip", () => {
   it("goal probability decreases as the goal grows", () => {
     const plan = planTrip({ ...baseInput, bankroll: 10_000 });
     expect(plan.goalProbability(100)).toBeGreaterThanOrEqual(plan.goalProbability(10_000));
+  });
+
+  it("uses a first-passage probability for a win goal, not only the terminal tail", () => {
+    const goal = 1_000;
+    const plan = planTrip({ ...baseInput, bankroll: 10_000 });
+    const terminalTail = 1 - normalCdf((goal - plan.tripEv) / plan.standardDeviation);
+    expect(plan.goalProbability(goal)).toBeGreaterThan(terminalTail);
   });
 
   it("expected ending bankroll is bankroll plus trip EV, with a symmetric 95% band", () => {
