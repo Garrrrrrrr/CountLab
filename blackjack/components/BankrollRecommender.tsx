@@ -361,7 +361,7 @@ export function BankrollRecommender() {
       </div>
       <p className="mt-5 text-xs leading-5 text-zinc-500">
         EV and variance use the audited fixed-strategy simulation coefficients.
-        Multiple-hand results retain shared true-count-state variance and approximate hand outcomes as conditionally independent; dealer-result covariance is not present in the source coefficients. {" "}
+        Multiple-hand results retain shared true-count-state variance and price simultaneous hands as correlated (ρ = 0.372, measured on the audited kernel), because every hand in a round is settled against the same dealer hand. {" "}
         Lifetime risk of ruin is a diffusion approximation; it is not a guarantee
         and does not model bankroll resizing, playing errors, table limits, heat,
         or backoffs.

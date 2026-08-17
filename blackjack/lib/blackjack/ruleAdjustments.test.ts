@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, estimateOffTopEdge, RAMPS } from "./advantage";
+import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, getCountProfile, RAMPS } from "./advantage";
+import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+import { RAW_COEFFICIENTS } from "./coefficients";
 import { RULE_DELTAS, sumRuleAdjustment, isEstimated } from "./ruleAdjustments";
 
 const baseInput = {
@@ -27,23 +29,67 @@ describe("rule-adjustment defaults", () => {
     }
   });
 
-  it("collapses every row's advantage to the flat off-top edge when deviationSkill is 0", () => {
-    const offTop = estimateOffTopEdge(DEFAULT_ADVANTAGE_RULES);
+  it("reproduces the audited basic-strategy curve when deviationSkill is 0", () => {
+    // The old model shrank every count toward the neutral-count edge, which
+    // claimed a +8 shoe was worth about -0.2% to a basic-strategy player. The
+    // measured value is around +4.2%. Skill 0 must now BE the audited no-index
+    // run, not an invented anchor.
     const result = calculateAdvantage({ ...baseInput, deviationSkill: 0 });
-    for (const row of result.rows) {
-      expect(row.advantage).toBeCloseTo(offTop, 12);
+    const measured = NO_INDEX_COEFFICIENTS["6-4.5"];
+    result.rows.forEach((row, index) => {
+      expect(row.advantage).toBeCloseTo(measured[index][1], 12);
+      expect(row.frequency).toBeCloseTo(measured[index][0], 12);
+      expect(row.sdUnits).toBeCloseTo(measured[index][2], 12);
+    });
+    expect(result.rows.at(-1)!.advantage).toBeGreaterThan(0.03);
+  });
+
+  it("reproduces the audited full-index curve when deviationSkill is 1", () => {
+    const result = calculateAdvantage({ ...baseInput, deviationSkill: 1 });
+    const measured = RAW_COEFFICIENTS["6-4.5"];
+    result.rows.forEach((row, index) => {
+      expect(row.advantage).toBeCloseTo(measured[index][1], 12);
+      expect(row.frequency).toBeCloseTo(measured[index][0], 12);
+      expect(row.sdUnits).toBeCloseTo(measured[index][2], 12);
+    });
+  });
+
+  it("interpolates linearly between the two measured curves", () => {
+    const plain = calculateAdvantage({ ...baseInput, deviationSkill: 0 });
+    const indexed = calculateAdvantage({ ...baseInput, deviationSkill: 1 });
+    const half = calculateAdvantage({ ...baseInput, deviationSkill: 0.5 });
+    half.rows.forEach((row, index) => {
+      expect(row.advantage).toBeCloseTo(
+        (plain.rows[index].advantage + indexed.rows[index].advantage) / 2,
+        12,
+      );
+    });
+    // Index play is worth more at the counts where the money goes in, so
+    // partial skill must sit strictly between the two curves at high counts.
+    const top = half.rows.length - 1;
+    expect(half.rows[top].advantage).toBeGreaterThan(plain.rows[top].advantage);
+    expect(half.rows[top].advantage).toBeLessThan(indexed.rows[top].advantage);
+  });
+
+  it("keeps the count distribution normalized at every skill level", () => {
+    for (const skill of [0, 0.7, 0.82, 0.92, 1]) {
+      const total = getCountProfile(DEFAULT_ADVANTAGE_RULES, skill).reduce(
+        (sum, row) => sum + row.p,
+        0,
+      );
+      expect(total).toBeCloseTo(1, 10);
     }
   });
 
-  it("partially regresses advantage toward off-top edge for intermediate skill", () => {
-    const offTop = estimateOffTopEdge(DEFAULT_ADVANTAGE_RULES);
-    const base = calculateAdvantage(baseInput);
-    const half = calculateAdvantage({ ...baseInput, deviationSkill: 0.5 });
-    for (let index = 0; index < base.rows.length; index += 1) {
-      const expected = offTop + 0.5 * (base.rows[index].advantage - offTop);
-      expect(half.rows[index].advantage).toBeCloseTo(expected, 12);
+  it("lowers hourly EV as deviation skill drops", () => {
+    const evs = [0, 0.7, 0.92, 1].map(
+      (skill) => calculateAdvantage({ ...baseInput, deviationSkill: skill }).hourlyEv,
+    );
+    for (let index = 1; index < evs.length; index += 1) {
+      expect(evs[index]).toBeGreaterThan(evs[index - 1]);
     }
   });
+
 });
 
 describe("sumRuleAdjustment", () => {

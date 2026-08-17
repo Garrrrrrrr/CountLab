@@ -1,12 +1,10 @@
-import type { RampPoint } from "./advantage";
+import type { HandCountPoint, RampPoint } from "./advantage";
 import type { DEVIATION_SKILL } from "./ruleAdjustments";
 
 export interface CvcxTemplateConfig {
   decks: 6 | 8;
   dealt: number;
   bankroll: number;
-  baseBet: number;
-  playerHands: number;
   handsPerHour: number;
   hours: number;
   targetRisk: number;
@@ -15,8 +13,16 @@ export interface CvcxTemplateConfig {
   rampName: string;
   ramp: RampPoint[];
   chipIncrement: number;
-  extraHandsAt: number | null;
-  highCountHands: number;
+  baseBet: number;
+  /** Hands played at each true count. Canonical since the Lab merged its three
+   * separate hand-count controls into the bet-spread table. */
+  hands?: HandCountPoint[];
+  /** @deprecated Superseded by `hands`; still read so older saves keep loading. */
+  playerHands?: number;
+  /** @deprecated Superseded by `hands`. */
+  extraHandsAt?: number | null;
+  /** @deprecated Superseded by `hands`. */
+  highCountHands?: number;
   dealerHitsSoft17: boolean;
   doubleAfterSplit: boolean;
   resplitAces: boolean;
@@ -58,7 +64,6 @@ const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && finite(config.dealt)
     && finite(config.bankroll)
     && finite(config.baseBet)
-    && finite(config.playerHands)
     && finite(config.handsPerHour)
     && finite(config.hours)
     && finite(config.targetRisk)
@@ -67,7 +72,6 @@ const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && Array.isArray(config.ramp)
     && config.ramp.every((point) => finite(point?.trueCount) && finite(point?.units))
     && finite(config.chipIncrement)
-    && finite(config.highCountHands)
     && typeof config.dealerHitsSoft17 === "boolean"
     && typeof config.doubleAfterSplit === "boolean"
     && typeof config.resplitAces === "boolean"
@@ -102,6 +106,24 @@ function write<T>(key: string, items: T[], store = availableStorage()) {
 const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+/** Hand schedule for a saved scenario, migrating pre-merge saves that stored the
+ * old "player hands" / "add hands at" / "high-count hands" triple. */
+export function templateHandSchedule(config: CvcxTemplateConfig): HandCountPoint[] {
+  if (config.hands?.length) return config.hands;
+  const base = config.playerHands ?? 1;
+  const step = config.extraHandsAt;
+  return Array.from({ length: 17 }, (_, index) => {
+    const trueCount = index - 8;
+    return {
+      trueCount,
+      hands:
+        step !== null && step !== undefined && trueCount >= step
+          ? (config.highCountHands ?? base)
+          : base,
+    };
+  });
+}
 
 export function defaultCvcxTemplateName(config: CvcxTemplateConfig) {
   const maximum = Math.max(...config.ramp.map((point) => point.units));
