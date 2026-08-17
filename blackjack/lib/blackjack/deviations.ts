@@ -10,3 +10,6 @@ export interface Deviation { hand:string; dealer:string; index:number; normalAct
  */
 export const DEVIATIONS:Deviation[]=FREEBJ_DEFAULT_HILO_DEVIATIONS.map(({hand,dealer,index,normalAction,deviationAction,direction})=>({hand,dealer,index,normalAction,deviationAction,direction}));
 export const deviationDecision=(d:Deviation,tc:number)=>((d.direction==="atOrBelow"?tc<=d.index:tc>=d.index)?d.deviationAction:d.normalAction);
+/** Apply a catalog departure without replacing a rule-specific basic action. */
+export const applyDeviationToBasic=(d:Deviation,basic:DeviationAction,tc:number)=>
+  basic === d.normalAction && deviationDecision(d, tc) === d.deviationAction ? d.deviationAction : basic;
