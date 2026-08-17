@@ -1,6 +1,7 @@
 import { GAME_OPTIONS } from "./coefficients";
-import { FREEBJ_17_COEFFICIENTS } from "./freebj17Coefficients";
+import { AP_TOOLBOX_H17_PRO_COEFFICIENTS } from "./apToolboxH17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+export type IndexPolicy = "ap-toolbox-h17-pro";
 export interface AdvantageRules {
   decks: number;
   dealerHitsSoft17: boolean;
@@ -9,8 +10,10 @@ export interface AdvantageRules {
   lateSurrender: boolean;
   blackjackPayout: 1.5 | 1.2;
   penetration: number;
-  /** Enables the audited FreeBJ-17 policy curve. Set false for basic strategy. */
+  /** Enables an audited index policy curve. Set false for basic strategy. */
   useIndices?: boolean;
+  /** Defaults to the supplied AP Toolbox H17 Pro chart. */
+  indexPolicy?: IndexPolicy;
 }
 export interface RampPoint {
   trueCount: number;
@@ -72,6 +75,7 @@ export const DEFAULT_ADVANTAGE_RULES: AdvantageRules = {
   blackjackPayout: 1.5,
   penetration: 0.75,
   useIndices: true,
+  indexPolicy: "ap-toolbox-h17-pro",
 };
 const TC_LABELS = [
   "≤ -8",
@@ -106,13 +110,14 @@ function profileKey(rules: AdvantageRules) {
 /**
  * Per-true-count edge, frequency, and variance for a game.
  *
- * The FreeBJ-17 and basic-strategy policies are separately audited; no curve
- * is interpolated. Old saved scenarios without `useIndices` retain FreeBJ-17.
+ * Every selectable policy is independently audited; no curve is interpolated.
  */
 export function getCountProfile(rules: AdvantageRules, _deviationSkill?: number) {
   void _deviationSkill;
   const key = profileKey(rules);
-  const coefficients = rules.useIndices === false ? NO_INDEX_COEFFICIENTS[key] : FREEBJ_17_COEFFICIENTS[key];
+  const coefficients = rules.useIndices === false
+    ? NO_INDEX_COEFFICIENTS[key]
+    : AP_TOOLBOX_H17_PRO_COEFFICIENTS[key];
   return coefficients.map((plain, position) => {
     const [p, adv, sd, samples, standardError] = plain;
     return {

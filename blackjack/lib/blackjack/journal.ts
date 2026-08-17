@@ -59,7 +59,7 @@ const MAX_BANKROLLS = 20;
 const MAX_SESSIONS = 500;
 const MAX_TRANSACTIONS = 500;
 
-const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "ramp", "netResult", "expenses", "notes"];
+const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes"];
 const TRANSACTION_CSV_COLUMNS = ["date", "bankroll", "type", "amount", "note"];
 const encodeRampCsv = (ramp: RampPoint[]) => ramp.map((point) => `${point.trueCount}:${point.units}`).join(";");
 const decodeRampCsv = (value: string): RampPoint[] => value.split(";").filter(Boolean).map((chunk) => {
@@ -391,6 +391,7 @@ export const journalLibrary = {
       lateSurrender: session.rules.lateSurrender,
       blackjackPayout: session.rules.blackjackPayout,
       useIndices: session.rules.useIndices,
+      indexPolicy: session.rules.indexPolicy ?? "ap-toolbox-h17-pro",
       ramp: encodeRampCsv(session.ramp),
       netResult: session.netResult,
       expenses: session.expenses,
@@ -447,6 +448,7 @@ export const journalLibrary = {
           lateSurrender: row.lateSurrender === "true",
           blackjackPayout: Number(row.blackjackPayout) === 1.2 ? 1.2 : 1.5,
           useIndices: row.useIndices !== "false",
+          indexPolicy: "ap-toolbox-h17-pro",
         },
         ramp,
         netResult,

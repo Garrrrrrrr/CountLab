@@ -4,7 +4,6 @@ import { BlackjackShoe } from "./shoe";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "./hand";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { DEVIATIONS, deviationDecision } from "./deviations";
-import { FREEBJ_DEFAULT_HILO_DEVIATIONS } from "./fullHiLoIndices";
 import { Card, DEFAULT_RULES, RANKS, SUITS } from "./types";
 import {
   calculateAdvantage,
@@ -17,7 +16,7 @@ import {
   zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
-import { FREEBJ_17_COEFFICIENTS, FREEBJ_17_METADATA } from "./freebj17Coefficients";
+import { AP_TOOLBOX_H17_PRO_COEFFICIENTS, AP_TOOLBOX_H17_PRO_METADATA } from "./apToolboxH17ProCoefficients";
 import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
@@ -138,18 +137,13 @@ describe("strategy", () => {
   });
 });
 describe("deviations", () => {
-  it("uses FreeBJ's published thresholds", () => {
-    const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10")!;
-    expect(deviationDecision(d, 3)).toBe("H");
+  it("uses the AP Toolbox H17 Pro thresholds", () => {
+    const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10" && x.deviationAction === "S")!;
+    expect(deviationDecision(d, 3)).toBe("R");
     expect(deviationDecision(d, 4)).toBe("S");
   });
-  it("uses one compact, MIT-licensed catalog", () => {
-    expect(DEVIATIONS).toHaveLength(17);
-    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS).toHaveLength(17);
-    expect(new Set(FREEBJ_DEFAULT_HILO_DEVIATIONS.map((entry) => entry.id)).size).toBe(17);
-    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.hand === "Soft 19")).toBe(true);
-    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.splitAllowed)).toBe(true);
-    expect(FREEBJ_DEFAULT_HILO_DEVIATIONS.some((entry) => entry.surrenderAllowed)).toBe(false);
+  it("uses the complete supplied AP Toolbox H17 Pro catalog", () => {
+    expect(DEVIATIONS).toHaveLength(34);
   });
 });
 describe("advantage model", () => {
@@ -162,11 +156,11 @@ describe("advantage model", () => {
     expect(profile).toHaveLength(17);
     expect(profile.reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
     const neutral = profile.find((row) => row.tc === 0)!;
-    const measured = FREEBJ_17_COEFFICIENTS["8-6"][8];
+    const measured = AP_TOOLBOX_H17_PRO_COEFFICIENTS["8-6"][8];
     expect(neutral.p).toBeCloseTo(measured[0], 12);
     expect(neutral.samples).toBe(measured[3]);
     expect(neutral.standardError).toBe(measured[4]);
-    expect(FREEBJ_17_METADATA.totalRounds).toBeGreaterThan(46_000_000_000);
+    expect(AP_TOOLBOX_H17_PRO_METADATA.totalRounds).toBeGreaterThan(100_000_000_000);
   });
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);

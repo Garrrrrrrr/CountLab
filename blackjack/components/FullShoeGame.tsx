@@ -2,7 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { DEVIATIONS, DEVIATION_ACTION_NAMES, deviationDecision } from "@/lib/blackjack/deviations";
+import { DEVIATIONS, DEVIATION_ACTION_NAMES, deviationDecision, resolveDeviation } from "@/lib/blackjack/deviations";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
 import { signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
@@ -397,7 +397,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       take === correct ? "Insurance decision correct" : "Insurance deviation missed",
       insuranceDeviation
         ? `Take insurance ${insuranceDeviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(insuranceDeviation.index)}. Current TC is ${signed(tc)}.`
-        : "The active FreeBJ default set has no insurance departure, so decline insurance.",
+        : "The AP Toolbox H17 Pro insurance index is not reached, so decline insurance.",
       "play",
     );
     const maximumInsurance = hands.reduce((sum, hand) => sum + hand.bet / 2, 0);
@@ -420,7 +420,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       correct ? "Even money is worth taking here" : "Even money isn't worth it here",
       insuranceDeviation
         ? `Taking even money is maximum insurance; follow the active insurance index at TC ${signed(tc)}.`
-        : "The active FreeBJ default set has no insurance departure, so do not take even money.",
+        : "The AP Toolbox H17 Pro insurance index is not reached, so do not take even money.",
       "play",
     );
     const evenMoneyStake = hands.filter((hand) => hand.status === "stood").reduce((sum, hand) => sum + hand.bet / 2, 0);
@@ -452,9 +452,9 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       : isSoft(hand.cards)
         ? `Soft ${total}`
         : String(total);
-    const deviation = DEVIATIONS.find((item) => item.hand === handLabel && item.dealer === rankForIndex(dealer[0]));
-    const indexed = deviation ? deviationDecision(deviation, tc) : basic.action;
-    let action = indexed as Action;
+    const resolvedDeviation = resolveDeviation(basic.action, handLabel, rankForIndex(dealer[0]), tc, rules);
+    const deviation = resolvedDeviation.deviation;
+    let action = resolvedDeviation.action as Action;
     if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? "H" : action === "R" ? "H" : basic.action;
     if (!legal.includes(action)) action = "H";
     const explanation = deviation

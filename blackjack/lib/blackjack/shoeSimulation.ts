@@ -1,11 +1,11 @@
 import { AdvantageRules, RampPoint, unitsAt } from "./advantage";
-import { DeviationAction } from "./deviations";
-import { FREEBJ_DEFAULT_HILO_DEVIATIONS, FullHiLoDeviation, DeviationGroup } from "./fullHiLoIndices";
+import { DEVIATIONS, Deviation, DeviationAction, resolveDeviation } from "./deviations";
 import { calculateHandValue, canSplit, isBlackjack, isSoft } from "./hand";
 import { hiLoValue, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { Card, Rank } from "./types";
+export type DeviationGroup = "ap-toolbox-h17-pro";
 
 export interface SimulatedPlayerHand {
   cards: Card[];
@@ -94,7 +94,7 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Matches the hand/dealer string labels used by the FreeBJ deviation table. */
+/** Matches the hand/dealer labels used by the AP Toolbox H17 Pro chart. */
 const rankLabel = (rank: Rank) => (rank === "A" ? "A" : ["J", "Q", "K"].includes(rank) ? "10" : rank);
 export const deviationHandLabel = (cards: Card[]) =>
   cards.length === 2 && rankLabel(cards[0].rank) === rankLabel(cards[1].rank)
@@ -103,8 +103,8 @@ export const deviationHandLabel = (cards: Card[]) =>
       ? `Soft ${calculateHandValue(cards)}`
     : String(calculateHandValue(cards));
 
-function activeDeviations(groups: DeviationGroup[]): FullHiLoDeviation[] {
-  return FREEBJ_DEFAULT_HILO_DEVIATIONS.filter((deviation) => deviation.groups.some((group) => groups.includes(group)));
+function activeDeviations(groups: DeviationGroup[]): Deviation[] {
+  return groups.includes("ap-toolbox-h17-pro") ? DEVIATIONS : [];
 }
 
 function applyIndexDeviation(
@@ -112,20 +112,16 @@ function applyIndexDeviation(
   playerCards: Card[],
   dealerUpcard: Card,
   tc: number,
-  deviations: FullHiLoDeviation[],
+  deviations: Deviation[],
+  rules: AdvantageRules,
 ): DeviationAction {
+  if (!deviations.length) return action;
   const hand = deviationHandLabel(playerCards);
   const dealer = rankLabel(dealerUpcard.rank);
-  const match = deviations.find((deviation) => deviation.hand === hand && deviation.dealer === dealer);
-  if (!match) return action;
-  const crossed = match.direction === "atOrBelow" ? tc <= match.index : tc >= match.index;
-  // The source catalog describes the action it departs from, but CountLab's
-  // selected rules can legitimately have a different basic action (for example
-  // late surrender). Never let a non-crossed departure overwrite that action.
-  return crossed && action === match.normalAction ? match.deviationAction : action;
+  return resolveDeviation(action, hand, dealer, tc, rules).action;
 }
 
-function insuranceDecision(tc: number, deviations: FullHiLoDeviation[]): boolean {
+function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
   const match = deviations.find((deviation) => deviation.hand === "Insurance");
   if (!match) return false;
   return (match.direction === "atOrBelow" ? tc <= match.index : tc >= match.index) === (match.deviationAction === "I");
@@ -139,7 +135,7 @@ function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => num
     const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules });
     // Resplitting isn't modeled here, so an in-progress hand that would normally split just stands.
     const base = decision.action === "D" ? decision.fallback ?? "H" : decision.action === "P" ? "S" : decision.action;
-    const action = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active);
+    const action = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active, rules);
     if (action !== "H") break;
     const card = shoe.deal();
     if (!card) break;
@@ -202,7 +198,7 @@ function playBox(
       rules,
       canSplit: splitAllowed,
     });
-    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), activeDeviations(deviations));
+    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), activeDeviations(deviations), rules);
 
     // A split-only departure cannot be taken when the table's hand limit has
     // been reached, so fall back to the non-pair basic-strategy action.

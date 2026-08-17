@@ -19,7 +19,7 @@ import {
   zeroBetsBelow,
 } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { FREEBJ_17_METADATA } from "@/lib/blackjack/freebj17Coefficients";
+import { AP_TOOLBOX_H17_PRO_METADATA } from "@/lib/blackjack/apToolboxH17ProCoefficients";
 import { isEstimated, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 import {
   cvcxLibrary,
@@ -726,7 +726,7 @@ export function CvcxLab() {
 
         <Section
           title="Table rules"
-          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · FreeBJ-17 · ${estimated ? "estimated" : "audited"}`}
+          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · AP Toolbox H17 Pro · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -749,7 +749,7 @@ export function CvcxLab() {
             </Select>
             <div className="field grid min-h-11 content-center rounded-xl px-3 text-sm text-zinc-300">
               <span className="text-xs text-zinc-500">Playing decisions</span>
-              Audited FreeBJ-17 indices
+              Audited AP Toolbox H17 Pro deviations
             </div>
             <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
             <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
@@ -917,7 +917,7 @@ export function CvcxLab() {
           open={false}
         >
           <p className="text-xs leading-5 text-zinc-500">
-            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {FREEBJ_17_METADATA.totalRounds.toLocaleString()} audited FreeBJ-17-policy resolved rounds at the baseline (H17 · DAS · RSA · LS · American peek · 3:2). Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
+            This is a post-simulation analyzer for the nine included 6D/8D H17 Hi-Lo profiles, not a general rules simulator. EV and variance use {AP_TOOLBOX_H17_PRO_METADATA.totalRounds.toLocaleString()} audited AP Toolbox H17 Pro-policy resolved rounds at the baseline (H17 · DAS · RSA · LS · American peek · 3:2). Simultaneous hands are priced as correlated (ρ = 0.372, measured on the audited kernel across 137M multi-hand rounds), not independent. Wonging counts skipped rounds as observed opportunities. Risk and result ranges use continuous-diffusion or normal approximations and do not model heat, backoffs, travel time, or bankroll resizing.
             {estimated && " Table rules set away from the audited baseline apply a flat literature-estimated edge adjustment — treat those numbers as directional, not audited."}
           </p>
         </Section>
