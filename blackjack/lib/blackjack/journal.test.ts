@@ -31,6 +31,27 @@ describe("journal library", () => {
     expect(journalLibrary.sessions(store)).toEqual([]);
   });
 
+  it("updates a session's fields in place, keeping its id, createdAt, and bankrollId", () => {
+    const store = new MemoryStorage();
+    const saved = journalLibrary.addSession(sessionInput, store, new Date("2026-08-13T12:00:00Z"));
+    const updated = journalLibrary.updateSession(saved.id, { ...sessionInput, netResult: 500, notes: "corrected" }, store);
+    expect(updated?.id).toBe(saved.id);
+    expect(updated?.createdAt).toBe(saved.createdAt);
+    expect(updated?.bankrollId).toBe(saved.bankrollId);
+    expect(updated?.netResult).toBe(500);
+    expect(updated?.notes).toBe("corrected");
+    expect(journalLibrary.sessions(store)).toHaveLength(1);
+    expect(journalLibrary.sessions(store)[0].netResult).toBe(500);
+  });
+
+  it("returns undefined and changes nothing when updating an id that doesn't exist", () => {
+    const store = new MemoryStorage();
+    journalLibrary.addSession(sessionInput, store);
+    const result = journalLibrary.updateSession("nonexistent-id", { ...sessionInput, netResult: 999 }, store);
+    expect(result).toBeUndefined();
+    expect(journalLibrary.sessions(store).map((s) => s.netResult)).toEqual([120]);
+  });
+
   it("stores an optional per-true-count hands schedule alongside a session", () => {
     const store = new MemoryStorage();
     const handsByTrueCount = [{ trueCount: 0, hands: 1 }, { trueCount: 2, hands: 2 }];

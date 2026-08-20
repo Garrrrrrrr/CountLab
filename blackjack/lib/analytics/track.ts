@@ -292,9 +292,10 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "cvcx_template_saved":
     case "simulation_template_saved":
     case "journal_session_added":
+    case "journal_session_updated":
     case "journal_transaction_added":
     case "journal_bankroll_added":
-      analytics.track("result_saved", { feature: event.startsWith("cvcx") ? "game_bankroll_lab" : event.startsWith("journal") ? "session_journal" : "session_simulator", kind: event.replace(/_(saved|added)$/, "") });
+      analytics.track("result_saved", { feature: event.startsWith("cvcx") ? "game_bankroll_lab" : event.startsWith("journal") ? "session_journal" : "session_simulator", kind: event.replace(/_(saved|added|updated)$/, "") });
       return;
     case "cvcx_template_loaded":
     case "simulation_run_loaded":
