@@ -61,6 +61,8 @@ export const JOURNAL_SYNC_ERROR_EVENT = "countlab-journal-sync-error";
 const MAX_BANKROLLS = 20;
 const MAX_SESSIONS = 500;
 const MAX_TRANSACTIONS = 500;
+/** Leave a margin below Supabase's 30 journal-insert/minute limit when importing a backup. */
+const IMPORT_WRITE_INTERVAL_MS = 2_100;
 
 const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "handsByTrueCount", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes"];
 const TRANSACTION_CSV_COLUMNS = ["date", "bankroll", "type", "amount", "note"];
@@ -155,6 +157,8 @@ function reportJournalSyncError(operation: string, error: { message: string }) {
 const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const normalizedBankrollName = (name: string) => name.trim().toLocaleLowerCase();
+const wait = (milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
 /** Returns every saved bankroll, seeding an implicit "Main" bankroll on first access. */
 function ensureBankrolls(store?: StorageLike): Bankroll[] {
@@ -365,10 +369,14 @@ export const journalLibrary = {
   /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Bankrolls go first so sessions/transactions can reference them. Resolves only once every row has actually been upserted, so callers can rely on completion before reading remote state back. */
   async pushAllToRemote(store?: StorageLike) {
     for (const bankroll of this.bankrolls(store)) await pushBankroll(bankroll);
-    await Promise.all([
-      ...this.sessions(store).map((session) => pushJournalSession(session)),
-      ...this.transactions(store).map((transaction) => pushTransaction(transaction)),
-    ]);
+    const records = [
+      ...this.sessions(store).map((session) => () => pushJournalSession(session)),
+      ...this.transactions(store).map((transaction) => () => pushTransaction(transaction)),
+    ];
+    for (let index = 0; index < records.length; index++) {
+      await records[index]();
+      if (index < records.length - 1) await wait(IMPORT_WRITE_INTERVAL_MS);
+    }
   },
   exportData(store?: StorageLike) {
     track("data_exported", { scope: "journal" });
@@ -385,12 +393,32 @@ export const journalLibrary = {
     if (parsed.version !== 1 || !Array.isArray(parsed.sessions) || !Array.isArray(parsed.transactions)) throw new Error("This is not a valid CountLab journal backup.");
     const importedBankrolls = Array.isArray(parsed.bankrolls) ? parsed.bankrolls : [];
     if (!importedBankrolls.every(validBankroll) || !parsed.sessions.every(validSession) || !parsed.transactions.every(validTransaction)) throw new Error("The journal backup contains invalid or incomplete records.");
-    const bankrolls = [...importedBankrolls, ...this.bankrolls(store)].filter((bankroll, index, all) => all.findIndex((candidate) => candidate.id === bankroll.id) === index).slice(0, MAX_BANKROLLS);
-    const sessions = [...parsed.sessions, ...this.sessions(store)].filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index).slice(0, MAX_SESSIONS);
-    const transactions = [...parsed.transactions, ...this.transactions(store)].filter((transaction, index, all) => all.findIndex((candidate) => candidate.id === transaction.id) === index).slice(0, MAX_TRANSACTIONS);
+    // Backups from another device carry different UUIDs. Reuse a bankroll with
+    // the same human-facing name so importing cannot create a second "Main".
+    const existingBankrolls = this.bankrolls(store);
+    const canonicalByName = new Map(existingBankrolls.map((bankroll) => [normalizedBankrollName(bankroll.name), bankroll]));
+    const importedIdMap = new Map<string, string>();
+    const additions: Bankroll[] = [];
+    for (const imported of importedBankrolls) {
+      const key = normalizedBankrollName(imported.name);
+      const canonical = canonicalByName.get(key);
+      if (canonical) importedIdMap.set(imported.id, canonical.id);
+      else {
+        canonicalByName.set(key, imported);
+        importedIdMap.set(imported.id, imported.id);
+        additions.push(imported);
+      }
+    }
+    const bankrolls = [...existingBankrolls, ...additions].slice(0, MAX_BANKROLLS);
+    const remapBankroll = (bankrollId: string | undefined) => bankrollId ? (importedIdMap.get(bankrollId) ?? bankrollId) : defaultBankrollId(store);
+    const importedSessions = parsed.sessions.map((session) => ({ ...session, bankrollId: remapBankroll(session.bankrollId) }));
+    const importedTransactions = parsed.transactions.map((transaction) => ({ ...transaction, bankrollId: remapBankroll(transaction.bankrollId) }));
+    const sessions = [...importedSessions, ...this.sessions(store)].filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index).slice(0, MAX_SESSIONS);
+    const transactions = [...importedTransactions, ...this.transactions(store)].filter((transaction, index, all) => all.findIndex((candidate) => candidate.id === transaction.id) === index).slice(0, MAX_TRANSACTIONS);
     write(BANKROLLS_KEY, bankrolls, store);
     write(SESSIONS_KEY, sessions, store);
     write(TRANSACTIONS_KEY, transactions, store);
+    if (getCurrentUser()) void this.pushAllToRemote(store).catch((error) => reportJournalSyncError("sync imported journal data", error instanceof Error ? error : { message: "Unknown import sync error" }));
     track("data_imported", { scope: "journal", sessions: sessions.length, transactions: transactions.length });
     return { sessions: sessions.length, transactions: transactions.length };
   },
