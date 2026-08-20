@@ -135,6 +135,14 @@ describe("strategy", () => {
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("H");
   });
+  it("applies the H17-only 16 vs Ace surrender rule", () => {
+    const hand = [c("10"), c("6")];
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("H");
+    // 16 vs 9 and 16 vs 10 surrender under either dealer rule.
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("9"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("10"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");
+  });
 });
 describe("deviations", () => {
   it("uses the H17 Pro thresholds", () => {

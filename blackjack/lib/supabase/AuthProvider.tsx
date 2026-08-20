@@ -19,11 +19,15 @@ function authFailure(message: string | undefined): EventPropertyMap["login_faile
   return "other";
 }
 
+export type SyncStatus = "idle" | "syncing" | "synced" | "error";
+
 interface AuthState {
   user: User | null;
   loading: boolean;
   guest: boolean;
   passwordRecovery: boolean;
+  /** Reflects the most recent push/pull against Supabase; "error" only covers outright failures (e.g. offline), not row-level errors that are logged but otherwise swallowed. */
+  syncStatus: SyncStatus;
   continueAsGuest(): void;
   exitGuest(): void;
   signIn(email: string, password: string): Promise<string | undefined>;
@@ -42,15 +46,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [guest, setGuest] = useState(false);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
 
   useEffect(() => {
     setGuest(localStorage.getItem(GUEST_KEY) === "1");
     let cancelled = false;
+    const runSync = (work: () => Promise<void>) => {
+      setSyncStatus("syncing");
+      work()
+        .then(() => { if (!cancelled) setSyncStatus("synced"); })
+        .catch((error) => {
+          console.error("[countlab] sync failed", error);
+          if (!cancelled) setSyncStatus("error");
+        });
+    };
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (data.session?.user) void pullRemoteData(data.session.user.id);
+      if (data.session?.user) runSync(() => pullRemoteData(data.session!.user.id));
       const oauthIntent = sessionStorage.getItem(OAUTH_INTENT_KEY);
       if (data.session?.user && oauthIntent === "sign-in") analytics.track("login_succeeded", { method: "google" });
       if (oauthIntent) sessionStorage.removeItem(OAUTH_INTENT_KEY);
@@ -60,12 +74,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       if (event === "SIGNED_IN" && session?.user) {
         // Any data recorded while browsing as a guest belongs to this account now.
-        pushLocalDataToRemote();
+        // Push before pulling, so the pull's merge sees rows this device just
+        // wrote instead of racing a pull that started before the push landed.
+        runSync(() => pushLocalDataToRemote().then(() => pullRemoteData(session.user.id)));
         localStorage.removeItem(GUEST_KEY);
         setGuest(false);
-        void pullRemoteData(session.user.id);
       }
-      if (event === "SIGNED_OUT") clearLocalUserData();
+      if (event === "SIGNED_OUT") {
+        clearLocalUserData();
+        setSyncStatus("idle");
+      }
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       if (event === "TOKEN_REFRESHED" && !session) analytics.track("auth_session_expired", { reason: "refresh_failed" });
     });
@@ -80,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     guest,
     passwordRecovery,
+    syncStatus,
     continueAsGuest() {
       localStorage.setItem(GUEST_KEY, "1");
       setGuest(true);

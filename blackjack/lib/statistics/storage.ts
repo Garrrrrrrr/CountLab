@@ -94,8 +94,8 @@ function progressKey(drill: DrillType) {
 
 function pushSession(s: Session) {
   const user = getCurrentUser();
-  if (!user) return;
-  observeApiRequest("supabase", "drill_session_upsert", supabase
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "drill_session_upsert", supabase
     .from("drill_sessions")
     .upsert({
       id: s.id,
@@ -119,8 +119,8 @@ function pushSession(s: Session) {
 
 function pushProgress(p: DrillProgress) {
   const user = getCurrentUser();
-  if (!user) return;
-  observeApiRequest("supabase", "drill_progress_upsert", supabase
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "drill_progress_upsert", supabase
     .from("drill_progress")
     .upsert({ user_id: user.id, drill: p.drill, state: p.state, updated_at: p.updatedAt }))
     .then(({ error }) => {
@@ -143,8 +143,8 @@ function pushProgressClear(drill: DrillType) {
 
 function pushSettings(s: Settings) {
   const user = getCurrentUser();
-  if (!user) return;
-  observeApiRequest("supabase", "settings_upsert", supabase
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "settings_upsert", supabase
     .from("settings")
     .upsert({ user_id: user.id, data: s, updated_at: new Date().toISOString() }))
     .then(({ error }) => {
@@ -288,16 +288,16 @@ export const storage = {
     window.dispatchEvent(new Event("hilo-storage"));
     track("data_cleared", { scope: "sessions" });
   },
-  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. */
-  pushLocalToRemote() {
+  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Resolves only once every row has actually been upserted. */
+  async pushLocalToRemote() {
     if (typeof window === "undefined") return;
-    for (const session of this.sessions()) pushSession(session);
-    pushSettings(this.settings());
+    const pending = [...this.sessions().map((session) => pushSession(session)), pushSettings(this.settings())];
     for (const key of Object.keys(localStorage)) {
       if (!key.startsWith(PROGRESS_PREFIX)) continue;
       const progress = this.progress(key.slice(PROGRESS_PREFIX.length) as DrillType);
-      if (progress) pushProgress(progress);
+      if (progress) pending.push(pushProgress(progress));
     }
+    await Promise.all(pending);
   },
 };
 export function makeSession(

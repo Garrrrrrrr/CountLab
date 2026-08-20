@@ -31,6 +31,14 @@ describe("journal library", () => {
     expect(journalLibrary.sessions(store)).toEqual([]);
   });
 
+  it("stores an optional per-true-count hands schedule alongside a session", () => {
+    const store = new MemoryStorage();
+    const handsByTrueCount = [{ trueCount: 0, hands: 1 }, { trueCount: 2, hands: 2 }];
+    const saved = journalLibrary.addSession({ ...sessionInput, handsByTrueCount }, store);
+    expect(journalLibrary.sessions(store)[0].handsByTrueCount).toEqual(handsByTrueCount);
+    expect(saved.handsByTrueCount).toEqual(handsByTrueCount);
+  });
+
   it("adds and deletes bankroll transactions", () => {
     const store = new MemoryStorage();
     const deposit = journalLibrary.addTransaction({ date: "2026-08-01", type: "deposit", amount: 1000 }, store);
@@ -120,6 +128,17 @@ describe("CSV export/import", () => {
     expect(session.notes).toBe("line1\nline2, with a comma");
     const importedBankroll = journalLibrary.bankrolls(target).find((b) => b.id === session.bankrollId);
     expect(importedBankroll?.name).toBe("Vegas trip");
+  });
+
+  it("round-trips a per-true-count hands schedule through CSV", () => {
+    const source = new MemoryStorage();
+    const handsByTrueCount = [{ trueCount: 0, hands: 1 }, { trueCount: 3, hands: 3 }];
+    journalLibrary.addSession({ ...sessionInput, handsByTrueCount }, source, new Date("2026-08-13T12:00:00Z"));
+    const csv = journalLibrary.exportSessionsCsv(source);
+
+    const target = new MemoryStorage();
+    journalLibrary.importSessionsCsv(csv, target);
+    expect(journalLibrary.sessions(target)[0].handsByTrueCount).toEqual(handsByTrueCount);
   });
 
   it("skips malformed CSV rows instead of throwing", () => {

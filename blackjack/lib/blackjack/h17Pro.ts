@@ -70,7 +70,11 @@ export function applyH17Deviation(
   trueCount: number,
   rules: H17DeviationRules,
 ): DeviationAction {
-  return h17DeviationApplies(deviation, basicAction, trueCount, rules)
-    ? deviation.deviationAction
+  if (h17DeviationApplies(deviation, basicAction, trueCount, rules)) return deviation.deviationAction;
+  // A two-sided cell whose departure already is basic strategy (13 v 2, 12 v 4,
+  // 12 v 5, 11 v A) reverts to the chart's baseline below its index.
+  return deviation.hand !== "Insurance" && rules.dealerHitsSoft17 && !deviation.always
+    && basicAction === deviation.deviationAction && deviation.normalAction !== basicAction
+    ? deviation.normalAction
     : basicAction;
 }

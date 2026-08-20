@@ -67,6 +67,7 @@ export async function pullRemoteData(userId: string): Promise<void> {
       hours: row.hours,
       handsPerHour: row.hands_per_hour,
       playerHands: row.player_hands,
+      handsByTrueCount: row.hands_by_true_count ?? undefined,
       bettingUnit: row.betting_unit,
       rules: row.rules,
       ramp: row.ramp,
@@ -97,8 +98,7 @@ export function clearLocalUserData(): void {
   journalLibrary.clear();
 }
 
-/** Pushes locally cached data (e.g. recorded while browsing as a guest) to the just-signed-in account. */
-export function pushLocalDataToRemote(): void {
-  storage.pushLocalToRemote();
-  journalLibrary.pushAllToRemote();
+/** Pushes locally cached data (e.g. recorded while browsing as a guest) to the just-signed-in account. Resolves only once every row has actually been upserted, so callers can rely on completion before pulling remote state back. */
+export async function pushLocalDataToRemote(): Promise<void> {
+  await Promise.all([storage.pushLocalToRemote(), journalLibrary.pushAllToRemote()]);
 }

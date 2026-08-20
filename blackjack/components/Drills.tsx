@@ -435,6 +435,7 @@ export function DeviationDrill() {
       tc: number;
       direction?: "atOrAbove" | "atOrBelow";
       always?: true;
+      belowIndex?: boolean;
     }>();
   useEffect(() => {
     track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
@@ -492,6 +493,7 @@ export function DeviationDrill() {
     }, [basic, d, settings, tc]),
     correct = resolved.action,
     activeDeviation = resolved.deviation,
+    belowIndex = "belowIndex" in resolved && resolved.belowIndex === true,
     departureApplies = Boolean(activeDeviation);
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories,
@@ -524,7 +526,9 @@ export function DeviationDrill() {
             userAnswer: DEVIATION_ACTION_NAMES[chosen],
             correctAnswer: DEVIATION_ACTION_NAMES[correct],
             explanation: departureApplies
-              ? `${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction]} ${activeDeviation!.always ? "is the chart's standing late-surrender play" : `at ${signed(activeDeviation!.index)} ${activeDeviation!.direction === "atOrBelow" ? "or lower" : "or higher"}`}.`
+              ? belowIndex
+                ? `${DEVIATION_ACTION_NAMES[activeDeviation!.normalAction]} below ${signed(activeDeviation!.index)}; ${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction].toLowerCase()} at ${signed(activeDeviation!.index)} or higher.`
+                : `${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction]} ${activeDeviation!.always ? "is the chart's standing late-surrender play" : `at ${signed(activeDeviation!.index)} ${activeDeviation!.direction === "atOrBelow" ? "or lower" : "or higher"}`}.`
               : "This H17 departure is not active under the current count or table rules; keep basic strategy.",
           }];
       const nextCategories = {
@@ -544,6 +548,7 @@ export function DeviationDrill() {
         tc,
         direction: activeDeviation?.direction ?? d.direction,
         always: activeDeviation?.always,
+        belowIndex,
       });
       setCorrectCount(nextCorrect);
       setStreak(nextStreak);
@@ -624,7 +629,9 @@ export function DeviationDrill() {
           <p className="mt-2 text-sm text-zinc-400">
             {feedback.always
               ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing late-surrender play.`
-              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.`}
+              : feedback.belowIndex
+                ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} or higher; the previous count was below the index, so the chart reverts to ${DEVIATION_ACTION_NAMES[feedback.correct].toLowerCase()}.`
+                : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.`}
           </p>
         </div>
       )}
