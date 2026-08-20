@@ -86,6 +86,16 @@ describe("journal library", () => {
     expect(journalLibrary.sessions(target)[0].netResult).toBe(120);
     expect(() => journalLibrary.importData('{"version":1,"sessions":[{}],"transactions":[]}', target)).toThrow(/invalid/i);
   });
+
+  it("merges a backup's Main bankroll by name and remaps its records", () => {
+    const source = new MemoryStorage();
+    const importedSession = journalLibrary.addSession(sessionInput, source, new Date("2026-08-13T12:00:00Z"));
+    const target = new MemoryStorage();
+    const existingMain = journalLibrary.bankrolls(target)[0];
+    journalLibrary.importData(journalLibrary.exportData(source), target);
+    expect(journalLibrary.bankrolls(target)).toHaveLength(1);
+    expect(journalLibrary.sessions(target).find((session) => session.id === importedSession.id)?.bankrollId).toBe(existingMain.id);
+  });
 });
 
 describe("multi-bankroll support", () => {
