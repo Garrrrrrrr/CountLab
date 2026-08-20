@@ -36,7 +36,7 @@ export function resolveDeviation(
   dealer: string,
   tc: number,
   rules: DeviationRules,
-): { action: DeviationAction; deviation?: Deviation } {
+): { action: DeviationAction; deviation?: Deviation; belowIndex?: true } {
   if (!rules.dealerHitsSoft17 || hand === "Insurance") return { action: basicAction };
 
   // The supplied chart narrows two generic H17/LS surrenders to count-based
@@ -56,7 +56,21 @@ export function resolveDeviation(
       || deviation.overridesSurrender === true
       || deviation.deviationAction === "R";
   });
-  if (!candidates.length) return { action: effectiveBasic };
+  if (!candidates.length) {
+    // Two-sided cells: 13 v 2, 12 v 4, 12 v 5 and 11 v A already match basic
+    // strategy at TC 0, so their index marks where the play reverts *below* it
+    // rather than where it departs above it.
+    const reverted = DEVIATIONS.find((deviation) =>
+      deviation.hand === hand
+      && deviation.dealer === dealer
+      && !deviation.always
+      && deviation.deviationAction === effectiveBasic
+      && deviation.normalAction !== effectiveBasic
+      && !(deviation.direction === "atOrBelow" ? tc <= deviation.index : tc >= deviation.index));
+    return reverted
+      ? { action: reverted.normalAction, deviation: reverted, belowIndex: true }
+      : { action: effectiveBasic };
+  }
 
   const selected = [...candidates].sort((a, b) => {
     const priority = (deviation: Deviation) => deviation.priority ?? (deviation.always ? 1 : 0);

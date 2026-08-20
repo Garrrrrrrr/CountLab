@@ -1,4 +1,4 @@
-import type { AdvantageRules, RampPoint } from "./advantage";
+import type { AdvantageRules, HandCountPoint, RampPoint } from "./advantage";
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
@@ -22,6 +22,8 @@ export interface JournalSession {
   hours: number;
   handsPerHour: number;
   playerHands: number;
+  /** Per-true-count override of playerHands; counts absent from this schedule fall back to playerHands. */
+  handsByTrueCount?: HandCountPoint[];
   bettingUnit: number;
   rules: AdvantageRules;
   ramp: RampPoint[];
@@ -59,13 +61,18 @@ const MAX_BANKROLLS = 20;
 const MAX_SESSIONS = 500;
 const MAX_TRANSACTIONS = 500;
 
-const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes"];
+const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "handsByTrueCount", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes"];
 const TRANSACTION_CSV_COLUMNS = ["date", "bankroll", "type", "amount", "note"];
 const encodeRampCsv = (ramp: RampPoint[]) => ramp.map((point) => `${point.trueCount}:${point.units}`).join(";");
 const decodeRampCsv = (value: string): RampPoint[] => value.split(";").filter(Boolean).map((chunk) => {
   const [trueCount, units] = chunk.split(":").map(Number);
   return { trueCount, units };
 }).filter((point) => finite(point.trueCount) && finite(point.units));
+const encodeHandsCsv = (schedule: HandCountPoint[]) => schedule.map((point) => `${point.trueCount}:${point.hands}`).join(";");
+const decodeHandsCsv = (value: string): HandCountPoint[] => value.split(";").filter(Boolean).map((chunk) => {
+  const [trueCount, hands] = chunk.split(":").map(Number);
+  return { trueCount, hands };
+}).filter((point) => finite(point.trueCount) && finite(point.hands));
 
 const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
@@ -107,7 +114,9 @@ const validSession = (value: unknown): value is LegacySession => {
     && finite(session.expenses)
     && validRules(session.rules)
     && Array.isArray(session.ramp)
-    && session.ramp.every((point) => finite(point?.trueCount) && finite(point?.units));
+    && session.ramp.every((point) => finite(point?.trueCount) && finite(point?.units))
+    && (session.handsByTrueCount === undefined
+      || (Array.isArray(session.handsByTrueCount) && session.handsByTrueCount.every((point) => finite(point?.trueCount) && finite(point?.hands))));
 };
 const validTransaction = (value: unknown): value is LegacyTransaction => {
   if (!value || typeof value !== "object") return false;
@@ -189,8 +198,8 @@ function deleteRemoteBankroll(id: string) {
 
 function pushJournalSession(session: JournalSession) {
   const user = getCurrentUser();
-  if (!user) return;
-  observeApiRequest("supabase", "journal_session_upsert", supabase
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "journal_session_upsert", supabase
     .from("journal_sessions")
     .upsert({
       id: session.id,
@@ -202,6 +211,7 @@ function pushJournalSession(session: JournalSession) {
       hours: session.hours,
       hands_per_hour: session.handsPerHour,
       player_hands: session.playerHands,
+      hands_by_true_count: session.handsByTrueCount ?? null,
       betting_unit: session.bettingUnit,
       rules: session.rules,
       ramp: session.ramp,
@@ -224,8 +234,8 @@ function deleteRemoteJournalSession(id: string) {
 
 function pushTransaction(transaction: BankrollTransaction) {
   const user = getCurrentUser();
-  if (!user) return;
-  observeApiRequest("supabase", "journal_transaction_upsert", supabase
+  if (!user) return Promise.resolve();
+  return observeApiRequest("supabase", "journal_transaction_upsert", supabase
     .from("journal_transactions")
     .upsert({
       id: transaction.id,
@@ -341,11 +351,13 @@ export const journalLibrary = {
       .slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, merged, store);
   },
-  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Bankrolls go first so sessions/transactions can reference them. */
+  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Bankrolls go first so sessions/transactions can reference them. Resolves only once every row has actually been upserted, so callers can rely on completion before reading remote state back. */
   async pushAllToRemote(store?: StorageLike) {
     for (const bankroll of this.bankrolls(store)) await pushBankroll(bankroll);
-    for (const session of this.sessions(store)) pushJournalSession(session);
-    for (const transaction of this.transactions(store)) pushTransaction(transaction);
+    await Promise.all([
+      ...this.sessions(store).map((session) => pushJournalSession(session)),
+      ...this.transactions(store).map((transaction) => pushTransaction(transaction)),
+    ]);
   },
   exportData(store?: StorageLike) {
     track("data_exported", { scope: "journal" });
@@ -382,6 +394,7 @@ export const journalLibrary = {
       hours: session.hours,
       handsPerHour: session.handsPerHour,
       playerHands: session.playerHands,
+      handsByTrueCount: session.handsByTrueCount ? encodeHandsCsv(session.handsByTrueCount) : "",
       bettingUnit: session.bettingUnit,
       decks: session.rules.decks,
       penetration: session.rules.penetration,
@@ -426,6 +439,7 @@ export const journalLibrary = {
       const netResult = Number(row.netResult);
       const expenses = Number(row.expenses);
       const ramp = decodeRampCsv(row.ramp ?? "");
+      const handsByTrueCount = decodeHandsCsv(row.handsByTrueCount ?? "");
       if (![decks, penetration, bettingUnit, hours, handsPerHour, playerHands, netResult, expenses].every(finite) || ramp.length === 0 || !row.date) continue;
       let bankrollId = row.bankroll ? bankrollIdByName.get(row.bankroll) : undefined;
       if (!bankrollId && row.bankroll) {
@@ -438,6 +452,7 @@ export const journalLibrary = {
         hours,
         handsPerHour,
         playerHands,
+        handsByTrueCount: handsByTrueCount.length > 0 ? handsByTrueCount : undefined,
         bettingUnit,
         rules: {
           decks,

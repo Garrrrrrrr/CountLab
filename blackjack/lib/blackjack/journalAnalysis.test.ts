@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "./advantage";
+import { RULE_DELTAS } from "./ruleAdjustments";
 import type { JournalSession } from "./journal";
 import {
   aggregateJournal,
@@ -40,6 +41,41 @@ describe("theoreticalSessionOutcome", () => {
     const short = theoreticalSessionOutcome(makeSession({ hours: 1 }));
     const long = theoreticalSessionOutcome(makeSession({ hours: 4 }));
     expect(long.standardDeviation / short.standardDeviation).toBeCloseTo(Math.sqrt(4), 5);
+  });
+
+  it("applies the same off-baseline rule penalty as the Bankroll Lab, e.g. 6:5 blackjack payout", () => {
+    const baseline = theoreticalSessionOutcome(makeSession());
+    const sixToFive = theoreticalSessionOutcome(
+      makeSession({ rules: { ...DEFAULT_ADVANTAGE_RULES, blackjackPayout: 1.2 } }),
+    );
+    expect(sixToFive.playerEdge).toBeCloseTo(baseline.playerEdge + RULE_DELTAS.blackjackPays6to5, 8);
+  });
+
+  it("uses a per-true-count hands schedule when the session recorded one, like the Bankroll Lab", () => {
+    const flat = theoreticalSessionOutcome(makeSession({ playerHands: 1 }));
+    const spread = theoreticalSessionOutcome(
+      makeSession({ playerHands: 1, handsByTrueCount: [{ trueCount: 0, hands: 1 }, { trueCount: 2, hands: 3 }] }),
+    );
+    expect(spread.tripEv).toBeGreaterThan(flat.tripEv);
+    expect(spread.standardDeviation).toBeGreaterThan(flat.standardDeviation);
+  });
+
+  it("applies the S17 bonus and no-DAS/no-RSA/no-LS penalties together, like the Bankroll Lab", () => {
+    const baseline = theoreticalSessionOutcome(makeSession());
+    const offBaseline = theoreticalSessionOutcome(
+      makeSession({
+        rules: {
+          ...DEFAULT_ADVANTAGE_RULES,
+          dealerHitsSoft17: false,
+          doubleAfterSplit: false,
+          resplitAces: false,
+          lateSurrender: false,
+        },
+      }),
+    );
+    const expectedDelta =
+      RULE_DELTAS.dealerStandsSoft17 + RULE_DELTAS.noDoubleAfterSplit + RULE_DELTAS.noResplitAces + RULE_DELTAS.noLateSurrender;
+    expect(offBaseline.playerEdge).toBeCloseTo(baseline.playerEdge + expectedDelta, 8);
   });
 });
 

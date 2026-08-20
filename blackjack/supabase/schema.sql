@@ -53,6 +53,7 @@ create table if not exists journal_sessions (
   hours numeric not null,
   hands_per_hour numeric not null,
   player_hands numeric not null,
+  hands_by_true_count jsonb,
   betting_unit numeric not null,
   rules jsonb not null,
   ramp jsonb not null,
@@ -280,9 +281,11 @@ alter table drill_progress add constraint drill_progress_size_limit check (pg_co
 alter table journal_bankrolls drop constraint if exists journal_bankrolls_size_limit;
 alter table journal_bankrolls add constraint journal_bankrolls_size_limit check (char_length(name) < 200);
 
+alter table journal_sessions add column if not exists hands_by_true_count jsonb;
+
 alter table journal_sessions drop constraint if exists journal_sessions_size_limit;
 alter table journal_sessions add constraint journal_sessions_size_limit check (
-  pg_column_size(rules) < 5000 and pg_column_size(ramp) < 20000 and char_length(coalesce(notes, '')) < 5000 and char_length(coalesce(location, '')) < 200
+  pg_column_size(rules) < 5000 and pg_column_size(ramp) < 20000 and pg_column_size(hands_by_true_count) < 20000 and char_length(coalesce(notes, '')) < 5000 and char_length(coalesce(location, '')) < 200
 );
 
 alter table journal_transactions drop constraint if exists journal_transactions_size_limit;

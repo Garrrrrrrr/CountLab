@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
+import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 import { Bankroll, BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
 import { track } from "@/lib/analytics/track";
 import { useFormAnalytics } from "@/lib/analytics/react";
@@ -19,8 +20,10 @@ import {
 } from "@/lib/blackjack/journalAnalysis";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
+import { useAuth } from "@/lib/supabase/AuthProvider";
 import { simulateShoeSession, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
-import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
+import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select, Switch } from "./ui";
+import { BetSpreadTable } from "./BetSpreadTable";
 import { ConfirmModal } from "./ConfirmModal";
 import { ShoeExplorer } from "./ShoeExplorer";
 import { HandReplayer } from "./HandReplayer";
@@ -30,6 +33,8 @@ const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { st
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const shortDate = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
 const expandRamp = (ramp: RampPoint[]) => Array.from({ length: 17 }, (_, index) => ({ trueCount: index - 8, units: unitsAt(index - 8, ramp) }));
+/** The seventeen true-count buckets the audited coefficients are keyed on, matching the Bankroll Lab. */
+const TRUE_COUNTS = Array.from({ length: 17 }, (_, index) => index - 8);
 
 const ASSESSMENT_LABEL: Record<SessionAssessment, string> = {
   "insufficient-data": "Not enough data",
@@ -64,6 +69,7 @@ function AssessmentBadge({ assessment }: { assessment: SessionAssessment }) {
 }
 
 export function SessionJournal() {
+  const { user, syncStatus } = useAuth();
   const [sessions, setSessions] = useState<JournalSession[]>([]);
   const [transactions, setTransactions] = useState<BankrollTransaction[]>([]);
   const [bankrolls, setBankrolls] = useState<Bankroll[]>([]);
@@ -89,8 +95,14 @@ export function SessionJournal() {
   const [bettingUnit, setBettingUnit] = useState(25);
   const [decks, setDecks] = useState<6 | 8>(6);
   const [dealt, setDealt] = useState(4.5);
+  const [dealerHitsSoft17, setDealerHitsSoft17] = useState(true);
+  const [doubleAfterSplit, setDoubleAfterSplit] = useState(true);
+  const [resplitAces, setResplitAces] = useState(true);
+  const [lateSurrender, setLateSurrender] = useState(true);
+  const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
   const [spread, setSpread] = useState("1-8");
   const [ramp, setRamp] = useState<RampPoint[]>(() => expandRamp(RAMPS["1-8"]));
+  const [handsByCount, setHandsByCount] = useState<Record<number, number>>({});
   const [netResult, setNetResult] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [notes, setNotes] = useState("");
@@ -120,9 +132,24 @@ export function SessionJournal() {
     return () => removeEventListener(venuePresetLibrary.event, refresh);
   }, []);
 
-  const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks }), [decks, dealt]);
-  const draftSession = useMemo(() => ({ rules, ramp, bettingUnit, playerHands, handsPerHour, hours }), [rules, ramp, bettingUnit, playerHands, handsPerHour, hours]);
+  const rules = useMemo(
+    () => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout }),
+    [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout],
+  );
+  const ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleAdjustmentFlagsFromRules(rules)), [rules]);
+  const handsSchedule = useMemo<HandCountPoint[]>(
+    () => TRUE_COUNTS.map((trueCount) => ({ trueCount, hands: handsByCount[trueCount] ?? playerHands })),
+    [handsByCount, playerHands],
+  );
+  const draftSession = useMemo(
+    () => ({ rules, ramp, bettingUnit, playerHands, handsByTrueCount: handsSchedule, handsPerHour, hours }),
+    [rules, ramp, bettingUnit, playerHands, handsSchedule, handsPerHour, hours],
+  );
   const draftOutcome = useMemo(() => theoreticalSessionOutcome(draftSession), [draftSession]);
+  const countRows = useMemo<CountRow[]>(
+    () => calculateCountRows({ bankroll: 0, ...draftSession, ruleAdjustment }),
+    [draftSession, ruleAdjustment],
+  );
 
   const scopedSessions = useMemo(() => selectedBankrollId === "all" ? sessions : sessions.filter((session) => session.bankrollId === selectedBankrollId), [sessions, selectedBankrollId]);
   const scopedTransactions = useMemo(() => selectedBankrollId === "all" ? transactions : transactions.filter((transaction) => transaction.bankrollId === selectedBankrollId), [transactions, selectedBankrollId]);
@@ -135,14 +162,20 @@ export function SessionJournal() {
     setSpread(name);
     if (RAMPS[name]) setRamp(expandRamp(RAMPS[name]));
   };
-  const updateRamp = (trueCount: number, units: number) => {
+  const updateBet = (trueCount: number, bet: number) => {
     setSpread("Custom");
-    setRamp((current) => current.map((point) => {
-      const matches = point.trueCount === trueCount
-        || (trueCount === -1 && point.trueCount < -1)
-        || (trueCount === 6 && point.trueCount > 6);
-      return matches ? { ...point, units: Math.max(0, units) } : point;
-    }));
+    const units = bettingUnit > 0 ? Math.max(0, bet) / bettingUnit : 0;
+    setRamp((current) => current.map((point) => point.trueCount === trueCount ? { ...point, units } : point));
+  };
+  const updateHands = (trueCount: number, hands: number) => {
+    setHandsByCount((current) => ({ ...current, [trueCount]: hands }));
+  };
+  const applyRuleToggles = (r: { dealerHitsSoft17: boolean; doubleAfterSplit: boolean; resplitAces: boolean; lateSurrender: boolean; blackjackPayout: 1.5 | 1.2 }) => {
+    setDealerHitsSoft17(r.dealerHitsSoft17);
+    setDoubleAfterSplit(r.doubleAfterSplit);
+    setResplitAces(r.resplitAces);
+    setLateSurrender(r.lateSurrender);
+    setBlackjackPayout(r.blackjackPayout);
   };
   const applyTemplate = (id: string) => {
     const template = simulationLibrary.templates().find((item) => item.id === id);
@@ -150,8 +183,10 @@ export function SessionJournal() {
     const nextDecks = template.config.rules.decks === 8 ? 8 : 6;
     setDecks(nextDecks);
     setDealt(Number((template.config.rules.penetration * nextDecks).toFixed(2)));
+    applyRuleToggles(template.config.rules);
     setBettingUnit(template.config.bettingUnit);
     setPlayerHands(template.config.playerHands);
+    setHandsByCount({});
     setHandsPerHour(template.config.roundsPerHour);
     setRamp(expandRamp(template.config.ramp));
     setSpread("Custom");
@@ -163,6 +198,7 @@ export function SessionJournal() {
     const nextDecks = preset.rules.decks === 8 ? 8 : 6;
     setDecks(nextDecks);
     setDealt(Number((preset.rules.penetration * nextDecks).toFixed(2)));
+    applyRuleToggles(preset.rules);
     setRamp(expandRamp(preset.ramp));
     setSpread("Custom");
   };
@@ -204,6 +240,7 @@ export function SessionJournal() {
       hours,
       handsPerHour,
       playerHands,
+      handsByTrueCount: Object.keys(handsByCount).length > 0 ? handsSchedule : undefined,
       bettingUnit,
       rules,
       ramp,
@@ -287,6 +324,13 @@ export function SessionJournal() {
           <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Journal · Bankroll</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
+          {user && (
+            <p className="mt-2 text-xs text-zinc-500">
+              {syncStatus === "syncing" && <><i className="fa-solid fa-arrows-rotate mr-1.5 animate-spin" aria-hidden="true" />Syncing to your account…</>}
+              {syncStatus === "synced" && <><i className="fa-solid fa-check mr-1.5 text-emerald-400" aria-hidden="true" />Synced to your account — available on your other devices.</>}
+              {syncStatus === "error" && <span className="text-amber-300"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Sync failed — check your connection and reload to retry.</span>}
+            </p>
+          )}
         </div>
         <Metric label="Current bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"} logged`} />
       </div>
@@ -364,11 +408,25 @@ export function SessionJournal() {
             <NumberField label="Hours played" value={hours} min={0.1} step={0.5} onValueChange={setHours} />
             <NumberField label="Hands / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
             <NumberField label="Betting unit" value={bettingUnit} min={0.01} prefix="$" onValueChange={setBettingUnit} />
-            <Select label="Simultaneous hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
+            <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
           </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
+            <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
+            <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
+            <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
+            <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
+          </div>
+          {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
+            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+              <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+              <span>Rules set away from the audited baseline apply a flat literature-estimated {(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit, the same as the Bankroll Lab.</span>
+            </p>
+          )}
           <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Ramp played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
-            <div className="grid grid-cols-4 gap-2">{ramp.filter((point) => point.trueCount >= -1 && point.trueCount <= 6).map((point) => <NumberField key={point.trueCount} label={`TC ${point.trueCount > 0 ? "+" : ""}${point.trueCount}`} value={point.units} min={0} step={1} onValueChange={(value) => updateRamp(point.trueCount, value)} />)}</div>
+            <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
+            <p className="mb-2 text-xs text-zinc-500">Zero-dollar counts are watched but not played. Hands falls back to your default above unless overridden per count here — priced with the same engine as the Bankroll Lab.</p>
+            <BetSpreadTable rows={countRows} onBetChange={updateBet} onHandsChange={updateHands} />
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />

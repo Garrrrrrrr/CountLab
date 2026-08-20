@@ -34,6 +34,23 @@ export interface RuleAdjustmentFlags {
   doubleOnly10to11?: boolean;
 }
 
+/** Maps the rules stored on a session/scenario to the flags sumRuleAdjustment expects, so every consumer scores rule departures the same way. */
+export function ruleAdjustmentFlagsFromRules(rules: {
+  dealerHitsSoft17: boolean;
+  doubleAfterSplit: boolean;
+  resplitAces: boolean;
+  lateSurrender: boolean;
+  blackjackPayout: 1.5 | 1.2;
+}): Pick<RuleAdjustmentFlags, "dealerStandsSoft17" | "noDoubleAfterSplit" | "noResplitAces" | "noLateSurrender" | "blackjackPays6to5"> {
+  return {
+    dealerStandsSoft17: !rules.dealerHitsSoft17,
+    noDoubleAfterSplit: !rules.doubleAfterSplit,
+    noResplitAces: !rules.resplitAces,
+    noLateSurrender: !rules.lateSurrender,
+    blackjackPays6to5: rules.blackjackPayout === 1.2,
+  };
+}
+
 export function sumRuleAdjustment(flags: RuleAdjustmentFlags): number {
   let total = 0;
   if (flags.dealerStandsSoft17) total += RULE_DELTAS.dealerStandsSoft17;

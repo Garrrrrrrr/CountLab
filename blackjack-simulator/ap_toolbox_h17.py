@@ -148,18 +148,20 @@ def ap_toolbox_h17_pro_action(cards: np.ndarray, count: int, dealer: int, can_sp
             return SURRENDER
         if pair_eights and dealer == 10 and tc >= 2:
             return SURRENDER
-    if total == 13 and dealer == 2 and tc >= -1:
-        return STAND
+    # Two-sided cells: basic strategy already plays the departure at TC 0, so the
+    # index marks where the play reverts below it.
+    if total == 13 and dealer == 2:
+        return STAND if tc >= -1 else HIT
     if total == 12 and dealer == 2 and tc >= 3:
         return STAND
     if total == 12 and dealer == 3 and tc >= 2:
         return STAND
-    if total == 12 and dealer == 4 and tc >= 0:
-        return STAND
-    if total == 12 and dealer == 5 and tc >= -2:
-        return STAND
-    if total == 11 and dealer == 1 and can_double and tc >= -1:
-        return DOUBLE
+    if total == 12 and dealer == 4:
+        return STAND if tc >= 0 else HIT
+    if total == 12 and dealer == 5:
+        return STAND if tc >= -2 else HIT
+    if total == 11 and dealer == 1:
+        return DOUBLE if can_double and tc >= -1 else HIT
     if total == 10 and dealer == 10 and can_double and tc >= 7:
         return DOUBLE
     if total == 10 and dealer == 1 and can_double and tc >= 3:

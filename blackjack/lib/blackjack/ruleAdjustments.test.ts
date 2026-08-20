@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, getCountProfile, RAMPS } from "./advantage";
 import { AP_TOOLBOX_H17_PRO_COEFFICIENTS } from "./apToolboxH17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
-import { RULE_DELTAS, sumRuleAdjustment, isEstimated } from "./ruleAdjustments";
+import { RULE_DELTAS, sumRuleAdjustment, isEstimated, ruleAdjustmentFlagsFromRules } from "./ruleAdjustments";
 
 const baseInput = {
   bankroll: 10_000,
@@ -70,6 +70,36 @@ describe("sumRuleAdjustment", () => {
   it("applies the restricted-doubling delta matching the selected restriction", () => {
     expect(sumRuleAdjustment({ doubleOnly9to11: true })).toBeCloseTo(RULE_DELTAS.doubleOnly9to11, 12);
     expect(sumRuleAdjustment({ doubleOnly10to11: true })).toBeCloseTo(RULE_DELTAS.doubleOnly10to11, 12);
+  });
+});
+
+describe("ruleAdjustmentFlagsFromRules", () => {
+  it("maps the audited baseline rules to no active flags", () => {
+    expect(ruleAdjustmentFlagsFromRules(DEFAULT_ADVANTAGE_RULES)).toEqual({
+      dealerStandsSoft17: false,
+      noDoubleAfterSplit: false,
+      noResplitAces: false,
+      noLateSurrender: false,
+      blackjackPays6to5: false,
+    });
+  });
+
+  it("flags each rule that departs from baseline", () => {
+    const flags = ruleAdjustmentFlagsFromRules({
+      ...DEFAULT_ADVANTAGE_RULES,
+      dealerHitsSoft17: false,
+      doubleAfterSplit: false,
+      resplitAces: false,
+      lateSurrender: false,
+      blackjackPayout: 1.2,
+    });
+    expect(flags).toEqual({
+      dealerStandsSoft17: true,
+      noDoubleAfterSplit: true,
+      noResplitAces: true,
+      noLateSurrender: true,
+      blackjackPays6to5: true,
+    });
   });
 });
 

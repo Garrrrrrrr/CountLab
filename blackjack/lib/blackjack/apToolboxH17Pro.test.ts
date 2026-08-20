@@ -30,6 +30,28 @@ describe("AP Toolbox H17 Pro table", () => {
     expect(applyH17Deviation(fourteenVsTen, "H", 3, { dealerHitsSoft17: false, lateSurrender: true })).toBe("H");
   });
 
+  it("plays two-sided cells on both sides of their index", () => {
+    // Basic strategy already makes these plays at TC 0, so the index is where
+    // the chart reverts rather than where it departs.
+    expect(resolveDeviation("S", "13", "2", -2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "13", "2", -1, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "12", "4", -1, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "12", "4", 0, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "12", "5", -3, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "12", "5", -2, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("D", "11", "A", -2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("D", "11", "A", -1, h17LateSurrender).action).toBe("D");
+    expect(resolveDeviation("S", "13", "2", -2, h17LateSurrender).belowIndex).toBe(true);
+  });
+
+  it("leaves one-sided cells and S17 tables untouched", () => {
+    expect(resolveDeviation("H", "12", "2", 0, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "12", "2", 3, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("R", "16", "A", 2, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("R", "16", "A", 3, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "13", "2", -4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("S");
+  });
+
   it("resolves overlapping surrender and stand cells by chart precedence", () => {
     expect(resolveDeviation("R", "16", "9", -2, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("H", "16", "9", -1, h17LateSurrender).action).toBe("R");

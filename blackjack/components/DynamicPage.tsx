@@ -448,7 +448,7 @@ function StrategyReference() {
   );
 }
 function SettingsPage() {
-  const { user, signOut, exitGuest } = useAuth();
+  const { user, signOut, exitGuest, syncStatus } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
     [saved, setSaved] = useState(false),
     [dataMessage, setDataMessage] = useState(""),
@@ -702,6 +702,14 @@ function SettingsPage() {
               ? <>Signed in as <span className="text-zinc-300">{user.email}</span>. Your data syncs to this account.</>
               : "Browsing as a guest. Your data is saved on this device only — sign in to back it up and sync it across devices."}
           </p>
+          {user && (
+            <p className="mt-1 text-xs text-zinc-500">
+              {syncStatus === "syncing" && <><i className="fa-solid fa-arrows-rotate mr-1.5 animate-spin" aria-hidden="true" />Syncing…</>}
+              {syncStatus === "synced" && <><i className="fa-solid fa-check mr-1.5 text-emerald-400" aria-hidden="true" />Synced — journal, drills, and settings are up to date on this account.</>}
+              {syncStatus === "error" && <span className="text-amber-300"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Sync failed — check your connection and reload.</span>}
+              {syncStatus === "idle" && "Not synced yet."}
+            </p>
+          )}
           {user ? (
             <GhostButton className="mt-4" onClick={() => signOut()}>
               <i className="fa-solid fa-arrow-right-from-bracket mr-2" />
