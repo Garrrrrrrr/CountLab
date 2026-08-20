@@ -283,6 +283,35 @@ alter table journal_bankrolls add constraint journal_bankrolls_size_limit check 
 
 alter table journal_sessions add column if not exists hands_by_true_count jsonb;
 
+-- The first journal schema shipped before multi-bankroll support. `create table
+-- if not exists` intentionally does not change an existing table, so explicitly
+-- add these fields for projects created with that earlier schema.
+alter table journal_sessions add column if not exists bankroll_id uuid;
+alter table journal_transactions add column if not exists bankroll_id uuid;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'journal_sessions_bankroll_id_fkey'
+      and conrelid = 'public.journal_sessions'::regclass
+  ) then
+    alter table journal_sessions
+      add constraint journal_sessions_bankroll_id_fkey
+      foreign key (bankroll_id) references journal_bankrolls (id) on delete set null;
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'journal_transactions_bankroll_id_fkey'
+      and conrelid = 'public.journal_transactions'::regclass
+  ) then
+    alter table journal_transactions
+      add constraint journal_transactions_bankroll_id_fkey
+      foreign key (bankroll_id) references journal_bankrolls (id) on delete set null;
+  end if;
+end $$;
+
 alter table journal_sessions drop constraint if exists journal_sessions_size_limit;
 alter table journal_sessions add constraint journal_sessions_size_limit check (
   pg_column_size(rules) < 5000 and pg_column_size(ramp) < 20000 and pg_column_size(hands_by_true_count) < 20000 and char_length(coalesce(notes, '')) < 5000 and char_length(coalesce(location, '')) < 200

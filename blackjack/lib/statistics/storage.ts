@@ -87,6 +87,10 @@ export const DEFAULT_SETTINGS: Settings = {
 const SESSION_KEY = "hilo:sessions",
   SETTINGS_KEY = "hilo:settings",
   PROGRESS_PREFIX = "hilo:progress:";
+// The database enforces 60 drill-session inserts per rolling minute. A device
+// can have a large guest/offline history, so replay it deliberately instead of
+// turning a sign-in into dozens of rejected writes.
+const DRILL_SESSION_REPLAY_INTERVAL_MS = 1_100;
 
 function progressKey(drill: DrillType) {
   return `${PROGRESS_PREFIX}${drill}`;
@@ -291,13 +295,19 @@ export const storage = {
   /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Resolves only once every row has actually been upserted. */
   async pushLocalToRemote() {
     if (typeof window === "undefined") return;
-    const pending = [...this.sessions().map((session) => pushSession(session)), pushSettings(this.settings())];
+    const pending = [pushSettings(this.settings())];
     for (const key of Object.keys(localStorage)) {
       if (!key.startsWith(PROGRESS_PREFIX)) continue;
       const progress = this.progress(key.slice(PROGRESS_PREFIX.length) as DrillType);
       if (progress) pending.push(pushProgress(progress));
     }
     await Promise.all(pending);
+
+    const sessions = this.sessions();
+    for (let index = 0; index < sessions.length; index += 1) {
+      if (index > 0) await new Promise<void>((resolve) => setTimeout(resolve, DRILL_SESSION_REPLAY_INTERVAL_MS));
+      await pushSession(sessions[index]);
+    }
   },
 };
 export function makeSession(
