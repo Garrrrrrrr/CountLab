@@ -529,7 +529,7 @@ export default function AdminPage() {
           { key: "session_count", label: "Sessions" }, { key: "active_days", label: "Active days" },
           { key: "last_seen", label: "Last active", format: (value) => new Date(String(value)).toLocaleString() },
           { key: "first_seen", label: "First seen", format: (value) => new Date(String(value)).toLocaleDateString() },
-        ]} />{visitors.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{visitors.slice(0, 20).map((visitor) => <GhostButton className="min-h-8 px-3 py-1 text-xs" key={visitor.visitor_id} onClick={() => void viewVisitor(visitor)}>{visitorLabel(visitor)}</GhostButton>)}</div>}</Panel>
+        ]} />{visitors.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{visitors.slice(0, 20).map((visitor) => <GhostButton className="px-3 py-1 text-xs" key={visitor.visitor_id} onClick={() => void viewVisitor(visitor)}>{visitorLabel(visitor)}</GhostButton>)}</div>}</Panel>
 
         {selectedVisitor && <Panel className="mt-6"><div className="mb-5 flex items-center justify-between"><SectionTitle title={`High-level timeline · ${selectedVisitor.label}`} note="Answers and sensitive values are omitted" /><GhostButton onClick={() => setSelectedVisitor(undefined)}>Close</GhostButton></div>{timelineLoading ? <p className="py-8 text-center text-zinc-500">Loading…</p> : <DataTable rows={timeline} columns={[{ key: "occurred_at", label: "Time", format: (value) => new Date(String(value)).toLocaleString() }, { key: "event", label: "Event", format: (value) => displayName(String(value)) }, { key: "path", label: "Route" }, { key: "properties", label: "Safe details", format: (value) => JSON.stringify(value) }]} />}</Panel>}
 

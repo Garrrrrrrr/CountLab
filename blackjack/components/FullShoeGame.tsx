@@ -2,7 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { DEVIATIONS, DEVIATION_ACTION_NAMES, deviationDecision, resolveDeviation } from "@/lib/blackjack/deviations";
+import { DEVIATION_ACTION_NAMES, deviationDecision, getDeviationCatalog, resolveDeviation } from "@/lib/blackjack/deviations";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
 import { signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
@@ -390,14 +390,14 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
 
   const chooseInsurance = async (take: boolean) => {
     if (dealing) return;
-    const insuranceDeviation = DEVIATIONS.find((item) => item.hand === "Insurance" && item.dealer === "A");
+    const insuranceDeviation = getDeviationCatalog(rules).find((item) => item.hand === "Insurance" && item.dealer === "A");
     const correct = insuranceDeviation ? deviationDecision(insuranceDeviation, tc) === "I" : false;
     coach(
       take === correct,
       take === correct ? "Insurance decision correct" : "Insurance deviation missed",
       insuranceDeviation
         ? `Take insurance ${insuranceDeviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(insuranceDeviation.index)}. Current TC is ${signed(tc)}.`
-        : "The AP Toolbox H17 Pro insurance index is not reached, so decline insurance.",
+        : "The AP Toolbox Pro insurance index is not reached, so decline insurance.",
       "play",
     );
     const maximumInsurance = hands.reduce((sum, hand) => sum + hand.bet / 2, 0);
@@ -413,14 +413,14 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   // departure because it is the same wager in different clothing.
   const takeEvenMoney = async () => {
     if (dealing) return;
-    const insuranceDeviation = DEVIATIONS.find((item) => item.hand === "Insurance" && item.dealer === "A");
+    const insuranceDeviation = getDeviationCatalog(rules).find((item) => item.hand === "Insurance" && item.dealer === "A");
     const correct = insuranceDeviation ? deviationDecision(insuranceDeviation, tc) === "I" : false;
     coach(
       correct,
       correct ? "Even money is worth taking here" : "Even money isn't worth it here",
       insuranceDeviation
         ? `Taking even money is maximum insurance; follow the active insurance index at TC ${signed(tc)}.`
-        : "The AP Toolbox H17 Pro insurance index is not reached, so do not take even money.",
+        : "The AP Toolbox Pro insurance index is not reached, so do not take even money.",
       "play",
     );
     const evenMoneyStake = hands.filter((hand) => hand.status === "stood").reduce((sum, hand) => sum + hand.bet / 2, 0);

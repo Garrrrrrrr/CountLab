@@ -1,6 +1,6 @@
 import type { DeviationAction } from "./deviations";
 
-export type H17DeviationSet = "apToolboxPro";
+export type H17DeviationSet = "apToolboxH17Pro" | "apToolboxS17Pro";
 
 export interface H17Deviation {
   id: string;
@@ -41,7 +41,7 @@ const make = (set: H17DeviationSet, rows: readonly Row[]) => rows.map(
   }),
 );
 
-export const H17_PRO_DEVIATIONS = make("apToolboxPro", AP_TOOLBOX_PRO_ROWS);
+export const H17_PRO_DEVIATIONS = make("apToolboxH17Pro", AP_TOOLBOX_PRO_ROWS);
 
 export interface H17DeviationRules {
   dealerHitsSoft17: boolean;
@@ -72,9 +72,10 @@ export function applyH17Deviation(
 ): DeviationAction {
   if (h17DeviationApplies(deviation, basicAction, trueCount, rules)) return deviation.deviationAction;
   // A two-sided cell whose departure already is basic strategy (13 v 2, 12 v 4,
-  // 12 v 5, 11 v A) reverts to the chart's baseline below its index.
+  // 12 v 5, 11 v A) reverts to the chart's baseline at or below its index.
   return deviation.hand !== "Insurance" && rules.dealerHitsSoft17 && !deviation.always
     && basicAction === deviation.deviationAction && deviation.normalAction !== basicAction
+    && (deviation.direction === "atOrBelow" ? trueCount >= deviation.index : trueCount <= deviation.index)
     ? deviation.normalAction
     : basicAction;
 }

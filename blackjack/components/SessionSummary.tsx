@@ -35,7 +35,7 @@ export function SessionSummary({
       {session.mistakes.length > 0 && (
         <Panel>
           <h2 className="mb-4 text-lg font-semibold">Mistakes</h2>
-          <div className="space-y-3">
+          <div className="max-h-[50svh] space-y-3 overflow-y-auto pr-1">
             {session.mistakes.map((mistake, index) => (
               <div key={index} className="rounded-xl bg-black/20 p-4 text-sm">
                 <b>{mistake.question}</b>

@@ -11,10 +11,12 @@ import { signed } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import {
   DEVIATION_ACTION_NAMES,
+  deviationDecision,
   DeviationAction,
   resolveDeviation,
 } from "@/lib/blackjack/deviations";
-import { applyH17Deviation, h17DeviationApplies, H17_PRO_DEVIATIONS } from "@/lib/blackjack/apToolboxH17Pro";
+import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/apToolboxH17Pro";
+import { S17_PRO_DEVIATIONS } from "@/lib/blackjack/apToolboxS17Pro";
 import {
   DEFAULT_SETTINGS,
   makeSession,
@@ -401,7 +403,7 @@ export function StrategyDrill() {
         </p>
       </Panel>
       <MobileActionDock label="Basic strategy actions">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {(Object.keys(names) as Action[]).map((a) => <GhostButton key={a} className="px-2 text-sm" onClick={() => choose(a)}>{names[a]}</GhostButton>)}
         </div>
       </MobileActionDock>
@@ -440,9 +442,10 @@ export function DeviationDrill() {
   useEffect(() => {
     track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
   }, []);
+  const catalog = settings.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
   const d = useMemo(
-    () => H17_PRO_DEVIATIONS[Math.floor(Math.random() * H17_PRO_DEVIATIONS.length)],
-    [q],
+    () => catalog[Math.floor(Math.random() * catalog.length)],
+    [q, catalog],
   );
   const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
     rc = tc * 3;
@@ -464,6 +467,7 @@ export function DeviationDrill() {
         "10": ["6", "4"],
         "9": ["5", "4"],
         "Soft 19": ["A", "8"],
+        "Soft 18": ["A", "7"],
         "10,10": ["10", "10"],
       };
       const ranks = hands[d.hand] ?? ["10", "6"];
@@ -486,8 +490,7 @@ export function DeviationDrill() {
     ),
     resolved = useMemo(() => {
       if (d.hand === "Insurance") {
-        const applies = h17DeviationApplies(d, basic, tc, settings);
-        return { action: applyH17Deviation(d, basic, tc, settings), deviation: applies ? d : undefined };
+        return { action: deviationDecision(d, tc), deviation: d };
       }
       return resolveDeviation(basic, d.hand, d.dealer, tc, settings);
     }, [basic, d, settings, tc]),
@@ -529,7 +532,7 @@ export function DeviationDrill() {
               ? belowIndex
                 ? `${DEVIATION_ACTION_NAMES[activeDeviation!.normalAction]} below ${signed(activeDeviation!.index)}; ${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction].toLowerCase()} at ${signed(activeDeviation!.index)} or higher.`
                 : `${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction]} ${activeDeviation!.always ? "is the chart's standing late-surrender play" : `at ${signed(activeDeviation!.index)} ${activeDeviation!.direction === "atOrBelow" ? "or lower" : "or higher"}`}.`
-              : "This H17 departure is not active under the current count or table rules; keep basic strategy.",
+              : "This departure is not active under the current count or table rules; keep basic strategy.",
           }];
       const nextCategories = {
         ...categories,
@@ -542,7 +545,7 @@ export function DeviationDrill() {
         hand: `${playerCards.map((card) => card.rank).join(", ")} vs ${dealerCard.rank}`,
         chosen,
         correct,
-        normalAction: basic,
+        normalAction: d.hand === "Insurance" ? d.normalAction : basic,
         deviationAction: activeDeviation?.deviationAction ?? d.deviationAction,
         index: activeDeviation?.index ?? d.index,
         tc,

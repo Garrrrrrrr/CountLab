@@ -30,18 +30,30 @@ describe("AP Toolbox H17 Pro table", () => {
     expect(applyH17Deviation(fourteenVsTen, "H", 3, { dealerHitsSoft17: false, lateSurrender: true })).toBe("H");
   });
 
-  it("plays two-sided cells on both sides of their index", () => {
+  it("plays two-sided cells on both sides of their index, inclusive at the index", () => {
     // Basic strategy already makes these plays at TC 0, so the index is where
-    // the chart reverts rather than where it departs.
+    // the chart reverts rather than where it departs. The chart prints these
+    // as e.g. "-1-": the reverted play holds at that count too, not just below it.
     expect(resolveDeviation("S", "13", "2", -2, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("S", "13", "2", -1, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "13", "2", -1, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "13", "2", 0, h17LateSurrender).action).toBe("S");
     expect(resolveDeviation("S", "12", "4", -1, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("S", "12", "4", 0, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "12", "4", 0, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "12", "4", 1, h17LateSurrender).action).toBe("S");
     expect(resolveDeviation("S", "12", "5", -3, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("S", "12", "5", -2, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "12", "5", -2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "12", "5", -1, h17LateSurrender).action).toBe("S");
     expect(resolveDeviation("D", "11", "A", -2, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("D", "11", "A", -1, h17LateSurrender).action).toBe("D");
+    expect(resolveDeviation("D", "11", "A", -1, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("D", "11", "A", 0, h17LateSurrender).action).toBe("D");
     expect(resolveDeviation("S", "13", "2", -2, h17LateSurrender).belowIndex).toBe(true);
+  });
+
+  it("keeps the legacy single-row helper aligned with two-sided boundaries", () => {
+    const twelveVsFour = H17_PRO_DEVIATIONS.find((row) => row.hand === "12" && row.dealer === "4")!;
+    expect(applyH17Deviation(twelveVsFour, "S", -1, h17LateSurrender)).toBe("H");
+    expect(applyH17Deviation(twelveVsFour, "S", 0, h17LateSurrender)).toBe("H");
+    expect(applyH17Deviation(twelveVsFour, "S", 1, h17LateSurrender)).toBe("S");
   });
 
   it("leaves one-sided cells and S17 tables untouched", () => {

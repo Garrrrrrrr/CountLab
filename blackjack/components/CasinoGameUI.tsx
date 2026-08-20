@@ -86,7 +86,7 @@ export function BetSpot({
         <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
       </button>
       {detail && <p className="mt-1 text-[.65rem] text-zinc-500">{detail}</p>}
-      {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-8 px-2 text-xs text-zinc-500 hover:text-white">Clear</button>}
+      {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-11 px-2 text-xs text-zinc-500 hover:text-white">Clear</button>}
     </div>
   );
 }
