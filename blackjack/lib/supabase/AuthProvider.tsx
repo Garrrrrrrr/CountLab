@@ -137,7 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem(OAUTH_INTENT_KEY, intent);
       const { error } = await observeApiRequest("supabase", "auth_sign_in_google", supabase.auth.signInWithOAuth({
         provider: "google",
-        options: { redirectTo: typeof window !== "undefined" ? window.location.origin : undefined },
+        // Return to a concrete app route. GitHub Pages can briefly serve a stale
+        // repository-root document after an OAuth round trip, while /dashboard
+        // always resolves to CountLab's exported application entrypoint.
+        options: { redirectTo: typeof window !== "undefined" ? `${window.location.origin}/dashboard` : undefined },
       }));
       if (error) {
         sessionStorage.removeItem(OAUTH_INTENT_KEY);
