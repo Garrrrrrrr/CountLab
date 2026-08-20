@@ -87,18 +87,52 @@ export const DEFAULT_SETTINGS: Settings = {
 const SESSION_KEY = "hilo:sessions",
   SETTINGS_KEY = "hilo:settings",
   PROGRESS_PREFIX = "hilo:progress:";
+const SYNCED_SESSION_IDS_PREFIX = "countlab:drill-synced-session-ids:";
 // The database enforces 60 drill-session inserts per rolling minute. A device
 // can have a large guest/offline history, so replay it deliberately instead of
 // turning a sign-in into dozens of rejected writes.
 const DRILL_SESSION_REPLAY_INTERVAL_MS = 1_100;
+let replayRetryScheduled = false;
 
 function progressKey(drill: DrillType) {
   return `${PROGRESS_PREFIX}${drill}`;
 }
 
-function pushSession(s: Session) {
+function syncedSessionIdsKey(userId: string) {
+  return `${SYNCED_SESSION_IDS_PREFIX}${userId}`;
+}
+
+function syncedSessionIds(userId: string): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(syncedSessionIdsKey(userId)) || "[]");
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function markSessionsSynced(ids: string[], userId = getCurrentUser()?.id) {
+  if (typeof window === "undefined" || !userId || !ids.length) return;
+  const known = syncedSessionIds(userId);
+  ids.forEach((id) => known.add(id));
+  // Sessions are locally capped at 500, so this remains tiny and bounded.
+  localStorage.setItem(syncedSessionIdsKey(userId), JSON.stringify([...known].slice(-500)));
+}
+
+function scheduleSessionReplay() {
+  if (typeof window === "undefined" || replayRetryScheduled) return;
+  replayRetryScheduled = true;
+  setTimeout(() => {
+    replayRetryScheduled = false;
+    void storage.pushLocalToRemote();
+  }, 61_000);
+}
+
+type SessionPushOutcome = "synced" | "rate_limited" | "failed" | "skipped";
+
+function pushSession(s: Session): Promise<SessionPushOutcome> {
   const user = getCurrentUser();
-  if (!user) return Promise.resolve();
+  if (!user) return Promise.resolve("skipped");
   return observeApiRequest("supabase", "drill_session_upsert", supabase
     .from("drill_sessions")
     .upsert({
@@ -117,7 +151,16 @@ function pushSession(s: Session) {
       tags: s.tags ?? null,
     }))
     .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync drill session", error);
+      if (error) {
+        console.error("[countlab] failed to sync drill session", error);
+        if (error.code === "P0001") {
+          scheduleSessionReplay();
+          return "rate_limited";
+        }
+        return "failed";
+      }
+      markSessionsSynced([s.id], user.id);
+      return "synced";
     });
 }
 
@@ -238,6 +281,7 @@ export const storage = {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 500);
     localStorage.setItem(SESSION_KEY, JSON.stringify(merged));
+    markSessionsSynced(remote.map((session) => session.id));
     window.dispatchEvent(new Event("hilo-storage"));
   },
   /** Apply settings pulled from Supabase to the local cache without re-pushing them. */
@@ -303,10 +347,16 @@ export const storage = {
     }
     await Promise.all(pending);
 
-    const sessions = this.sessions();
+    const user = getCurrentUser();
+    if (!user) return;
+    const knownSyncedIds = syncedSessionIds(user.id);
+    const sessions = this.sessions().filter((session) => !knownSyncedIds.has(session.id));
     for (let index = 0; index < sessions.length; index += 1) {
       if (index > 0) await new Promise<void>((resolve) => setTimeout(resolve, DRILL_SESSION_REPLAY_INTERVAL_MS));
-      await pushSession(sessions[index]);
+      const outcome = await pushSession(sessions[index]);
+      // Continuing after a rejected row only creates console noise and extends
+      // the rolling rate-limit window. A single delayed retry resumes safely.
+      if (outcome === "rate_limited" || outcome === "failed") break;
     }
   },
 };
