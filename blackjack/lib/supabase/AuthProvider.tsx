@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
 import { clearLocalUserData, pullRemoteData, pushLocalDataToRemote } from "./sync";
+import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
 import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
 
 const GUEST_KEY = "countlab:guest";
@@ -64,7 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       setUser(data.session?.user ?? null);
       setLoading(false);
-      if (data.session?.user) runSync(() => pullRemoteData(data.session!.user.id));
+      if (data.session?.user) {
+        // Retry any writes that failed while this device was offline or while
+        // the remote schema was being upgraded before merging its remote copy.
+        runSync(() => pushLocalDataToRemote().then(() => pullRemoteData(data.session!.user.id)));
+      }
       const oauthIntent = sessionStorage.getItem(OAUTH_INTENT_KEY);
       if (data.session?.user && oauthIntent === "sign-in") analytics.track("login_succeeded", { method: "google" });
       if (oauthIntent) sessionStorage.removeItem(OAUTH_INTENT_KEY);
@@ -87,9 +92,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
       if (event === "TOKEN_REFRESHED" && !session) analytics.track("auth_session_expired", { reason: "refresh_failed" });
     });
+    const showJournalSyncError = () => { if (!cancelled) setSyncStatus("error"); };
+    addEventListener(JOURNAL_SYNC_ERROR_EVENT, showJournalSyncError);
     return () => {
       cancelled = true;
       subscription.subscription.unsubscribe();
+      removeEventListener(JOURNAL_SYNC_ERROR_EVENT, showJournalSyncError);
     };
   }, []);
 
