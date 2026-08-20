@@ -3,8 +3,9 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
-import { clearLocalUserData, pullRemoteData, pushLocalDataToRemote } from "./sync";
+import { pullRemoteData, pushLocalDataToRemote } from "./sync";
 import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
+import { setCurrentUser } from "./currentUser";
 import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
 
 const GUEST_KEY = "countlab:guest";
@@ -63,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
+      setCurrentUser(data.session?.user ?? null);
       setUser(data.session?.user ?? null);
       setLoading(false);
       if (data.session?.user) {
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (oauthIntent) sessionStorage.removeItem(OAUTH_INTENT_KEY);
     });
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user ?? null);
       setUser(session?.user ?? null);
       setLoading(false);
       if (event === "SIGNED_IN" && session?.user) {
@@ -86,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setGuest(false);
       }
       if (event === "SIGNED_OUT") {
-        clearLocalUserData();
+        // Keep the device cache until a confirmed upload. Clearing it here can
+        // permanently lose journal entries when a background write failed.
         setSyncStatus("idle");
       }
       if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
