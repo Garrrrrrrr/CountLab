@@ -178,6 +178,72 @@ export const Switch = ({
     </button>
   </div>
 );
+/**
+ * A collapsible page section: icon, title, one-line summary when closed, content when open.
+ * Keeps long dense pages scannable at every viewport width instead of one unbroken scroll.
+ *
+ * `open` is only ever the initial DOM state: the value never changes between
+ * renders, so React leaves the attribute alone afterwards and the reader's own
+ * expand/collapse choices survive every recalculation.
+ */
+export function Section({
+  title,
+  summary,
+  icon,
+  tone = "neutral",
+  open = true,
+  children,
+}: {
+  title: string;
+  summary: string;
+  icon: string;
+  tone?: "neutral" | "accent";
+  open?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <details open={open} className="surface group rounded-2xl border border-white/[.07]">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
+        <span
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-emerald-300" : "bg-sky-300/10 text-sky-300"}`}
+        >
+          <i className={`fa-solid ${icon}`} aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <p className="truncate text-xs text-zinc-500">{summary}</p>
+        </div>
+        <i
+          className="fa-solid fa-chevron-down shrink-0 text-xs text-zinc-500 transition-transform group-open:rotate-180"
+          aria-hidden="true"
+        />
+      </summary>
+      <div className="border-t border-white/[.06] p-4 sm:p-5">{children}</div>
+    </details>
+  );
+}
+/** One figure in a pinned stat bar. Deliberately terser than the full Metric card, which is too tall to keep on screen while scrolling. */
+export function PinnedStat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[.6rem] font-medium uppercase tracking-[.08em] text-zinc-500">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-base font-semibold leading-tight tracking-[-.025em] text-white sm:text-lg">
+        {value}
+      </p>
+      <p className="truncate text-[.65rem] font-medium text-emerald-400">{sub}</p>
+    </div>
+  );
+}
 export const Metric = ({
   label,
   value,

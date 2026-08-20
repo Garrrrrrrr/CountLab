@@ -23,8 +23,9 @@ export const COUNTING_PRESETS: Record<CountingPreset, {
 
 export function makeCountSequence(decks: number, amount: number, bias: CountBias = "none") {
   const shoe = new BlackjackShoe(decks);
+  shoe.deal(); // burn one random card so a full-deck session doesn't always resolve to a running count of 0
   const cards: Card[] = [];
-  while (cards.length < Math.min(amount, decks * 52)) {
+  while (cards.length < Math.min(amount, decks * 52 - 1)) {
     const card = shoe.deal();
     if (card) cards.push(card);
   }

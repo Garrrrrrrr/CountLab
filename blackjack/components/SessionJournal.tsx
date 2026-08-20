@@ -22,7 +22,7 @@ import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { simulateShoeSession, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
-import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select, Switch } from "./ui";
+import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, PinnedStat, Section, Select, Switch } from "./ui";
 import { BetSpreadTable } from "./BetSpreadTable";
 import { ConfirmModal } from "./ConfirmModal";
 import { ShoeExplorer } from "./ShoeExplorer";
@@ -317,25 +317,38 @@ export function SessionJournal() {
     }
   };
 
+  const syncStat = !user
+    ? { value: "Guest mode", sub: "Saved on this device only" }
+    : syncStatus === "syncing"
+      ? { value: "Syncing…", sub: "Pushing to your account" }
+      : syncStatus === "error"
+        ? { value: "Sync failed", sub: "Check your connection" }
+        : { value: "Synced", sub: "Up to date on your account" };
+  const performanceStat = aggregate.sessionCount > 0
+    ? { value: ASSESSMENT_LABEL[aggregate.assessment], sub: `${money(aggregate.totalActual, 0)} vs ${money(aggregate.totalTheoretical, 0)} EV` }
+    : { value: "No data yet", sub: "Log a session to compare" };
+
   return (
     <>
-      <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Journal · Bankroll</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
-          {user && (
-            <p className="mt-2 text-xs text-zinc-500">
-              {syncStatus === "syncing" && <><i className="fa-solid fa-arrows-rotate mr-1.5 animate-spin" aria-hidden="true" />Syncing to your account…</>}
-              {syncStatus === "synced" && <><i className="fa-solid fa-check mr-1.5 text-emerald-400" aria-hidden="true" />Synced to your account — available on your other devices.</>}
-              {syncStatus === "error" && <span className="text-amber-300"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Sync failed — check your connection and reload to retry.</span>}
-            </p>
-          )}
-        </div>
-        <Metric label="Current bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"} logged`} />
+      <div className="mb-4">
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Journal · Bankroll</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
       </div>
 
-      <Panel className="mb-5">
+      {/* Pinned directly under the app header so the numbers everything else
+          exists to produce stay readable while the reader works down the
+          page. z-20 keeps it below the z-30 header it tucks under. */}
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="Bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"}`} />
+          <PinnedStat label="Draft session EV" value={money(draftOutcome.tripEv, 2)} sub={`± ${money(draftOutcome.standardDeviation, 0)} SD`} />
+          <PinnedStat label="Actual vs. theoretical" value={performanceStat.value} sub={performanceStat.sub} />
+          <PinnedStat label="Sync" value={syncStat.value} sub={syncStat.sub} />
+        </div>
+      </div>
+
+      <Panel className="mb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Bankroll</p>
@@ -375,164 +388,212 @@ export function SessionJournal() {
         </div>
       </Panel>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.7fr)]">
-        <Panel>
+      <div className="space-y-3">
+        <Section
+          title="Log a session"
+          summary={`${decks}D ${percent(dealt / decks, 0)} · ${money(bettingUnit, 0)} unit · ${spread} spread`}
+          icon="fa-pen-to-square"
+          tone="accent"
+        >
           <div onChange={() => sessionForm.start("inputs")}>
-          <h2 className="font-semibold">Log a session</h2>
-          <p className="mt-1 text-xs text-zinc-500">Record the actual outcome. CountLab computes what that session was expected to earn from your rules and ramp.</p>
-          {simulationLibrary.templates().length > 0 && (
-            <div className="mt-4">
-              <Select label="Prefill from a saved setup" defaultValue="" onChange={(event) => event.target.value && applyTemplate(event.target.value)}>
-                <option value="">Choose a saved setup…</option>
-                {simulationLibrary.templates().map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
-              </Select>
-            </div>
-          )}
-          <div className="mt-4">
-            {venuePresets.length > 0 && (
-              <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
-                <option value="">Choose a venue…</option>
-                {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-              </Select>
+            <p className="text-xs text-zinc-500">Record the actual outcome. CountLab computes what that session was expected to earn from your rules and ramp.</p>
+            {simulationLibrary.templates().length > 0 && (
+              <div className="mt-4">
+                <Select label="Prefill from a saved setup" defaultValue="" onChange={(event) => event.target.value && applyTemplate(event.target.value)}>
+                  <option value="">Choose a saved setup…</option>
+                  {simulationLibrary.templates().map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+                </Select>
+              </div>
             )}
-            <div className="mt-2 flex gap-2">
-              <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
-              <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
+            <div className="mt-4">
+              {venuePresets.length > 0 && (
+                <Select label="Load a venue's rules and ramp" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
+                  <option value="">Choose a venue…</option>
+                  {venuePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+                </Select>
+              )}
+              <div className="mt-2 flex gap-2">
+                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+                <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Location (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Local only" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
+              <Select label="Decks" value={decks} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
+              <Select label="Penetration" value={dealt} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
+              <NumberField label="Hours played" value={hours} min={0.1} step={0.5} onValueChange={setHours} />
+              <NumberField label="Hands / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
+              <NumberField label="Betting unit" value={bettingUnit} min={0.01} prefix="$" onValueChange={setBettingUnit} />
+              <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
+              <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
+              <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
+              <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
+              <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
+            </div>
+            {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+                <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+                <span>Rules set away from the audited baseline apply a flat literature-estimated {(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit, the same as the Bankroll Lab.</span>
+              </p>
+            )}
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
+              <p className="mb-2 text-xs text-zinc-500">Zero-dollar counts are watched but not played. Hands falls back to your default above unless overridden per count here — priced with the same engine as the Bankroll Lab.</p>
+              <BetSpreadTable rows={countRows} onBetChange={updateBet} onHandsChange={updateHands} />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />
+              <NumberField label="Expenses (comps, travel)" value={expenses} min={0} prefix="$" onValueChange={setExpenses} />
+            </div>
+            <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
+            <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
+            <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+          </div>
+        </Section>
+
+        <Section
+          title="Actual vs. theoretical EV"
+          summary={`${inRange.length} session${inRange.length === 1 ? "" : "s"} · ${RANGE_OPTIONS.find(([value]) => value === range)?.[1] ?? ""}`}
+          icon="fa-chart-line"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-zinc-500">Cumulative across logged sessions in range, with a 95% band from combined session variance.</p>
+            <div className="flex gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
+              {RANGE_OPTIONS.map(([value, label]) => (
+                <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{label}</button>
+              ))}
             </div>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
-            <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Location (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Local only" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
-            <Select label="Decks" value={decks} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
-            <Select label="Penetration" value={dealt} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
-            <NumberField label="Hours played" value={hours} min={0.1} step={0.5} onValueChange={setHours} />
-            <NumberField label="Hands / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
-            <NumberField label="Betting unit" value={bettingUnit} min={0.01} prefix="$" onValueChange={setBettingUnit} />
-            <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
-            <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
-            <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
-            <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
-            <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
-          </div>
-          {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
-            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
-              <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
-              <span>Rules set away from the audited baseline apply a flat literature-estimated {(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit, the same as the Bankroll Lab.</span>
-            </p>
+          {inRange.length === 0 ? (
+            <div className="mt-5 rounded-xl border border-dashed border-white/[.09] p-8 text-center text-sm text-zinc-500">Log a session to start comparing actual results with theoretical EV.</div>
+          ) : (
+            <>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${aggregate.totalHours.toFixed(1)} hours · ${aggregate.sessionCount} sessions`} />
+                <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% CI ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
+                <Metric label="Winning sessions" value={percent(aggregate.winRate, 0)} sub={`${aggregate.combinedZ === null ? "n/a" : `z = ${aggregate.combinedZ.toFixed(2)}`}`} />
+                <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-zinc-500">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
+              </div>
+              <div className="mt-5 h-72 min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={cumulative} margin={{ left: 8, right: 12 }}>
+                    <defs><linearGradient id="journalBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a8ee72" stopOpacity={0.18} /><stop offset="1" stopColor="#a8ee72" stopOpacity={0.02} /></linearGradient></defs>
+                    <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
+                    <XAxis dataKey="date" stroke="#71717a" tickFormatter={shortDate} minTickGap={40} />
+                    <YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} />
+                    <Tooltip formatter={(value, name) => [money(Number(value)), name]} labelFormatter={(value) => shortDate(String(value))} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} />
+                    <Area type="monotone" dataKey="upper" name="95% upper" stroke="none" fill="url(#journalBand)" />
+                    <Area type="monotone" dataKey="lower" name="95% lower" stroke="none" fill="#0c100d" fillOpacity={1} />
+                    <Line type="monotone" dataKey="theoretical" name="Theoretical EV" stroke="rgba(168,238,114,.55)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="actual" name="Actual" stroke="#86efac" strokeWidth={2.5} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </>
           )}
-          <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
-            <p className="mb-2 text-xs text-zinc-500">Zero-dollar counts are watched but not played. Hands falls back to your default above unless overridden per count here — priced with the same engine as the Bankroll Lab.</p>
-            <BetSpreadTable rows={countRows} onBetChange={updateBet} onHandsChange={updateHands} />
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />
-            <NumberField label="Expenses (comps, travel)" value={expenses} min={0} prefix="$" onValueChange={setExpenses} />
-          </div>
-          <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
-          <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
-          <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
-          </div>
-        </Panel>
+        </Section>
 
-        <div className="space-y-5">
+        <Section
+          title="Session log"
+          summary={inRange.length === 0 ? "No sessions in range" : `${inRange.length} session${inRange.length === 1 ? "" : "s"} in range`}
+          icon="fa-table-list"
+        >
+          {inRange.length === 0 ? <p className="text-sm text-zinc-600">No sessions in this range.</p> : (
+            <>
+              {/* A 6-column table needs sideways scrolling below md, and its
+                  action links are too small to tap reliably, so narrow
+                  viewports get one full-width card per session instead. */}
+              <div className="grid gap-2.5 md:hidden">
+                {[...inRange].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
+                  const outcome = theoreticalSessionOutcome(session);
+                  const z = sessionZScore(session, outcome);
+                  return (
+                    <div key={session.id} className="rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{shortDate(session.date)}</p>
+                          {session.location && <p className="truncate text-xs text-zinc-600">{session.location}</p>}
+                        </div>
+                        <AssessmentBadge assessment={classifySessionAssessment(z)} />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                        <span className={`font-semibold ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</span>
+                        <span className="text-zinc-500">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
+                        <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05] disabled:opacity-40">
+                          {shoeReplayLoading === session.id ? "Simulating…" : <><i className="fa-solid fa-shuffle mr-1.5" aria-hidden="true" />Shoe</>}
+                        </button>
+                        <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-red-300/80 hover:bg-red-400/10"><i className="fa-solid fa-trash mr-1.5" aria-hidden="true" />Delete</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[46rem] text-left text-sm">
+                  <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
+                  <tbody>
+                    {[...inRange].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
+                      const outcome = theoreticalSessionOutcome(session);
+                      const z = sessionZScore(session, outcome);
+                      return (
+                        <tr key={session.id} className="border-t border-white/[.06]">
+                          <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}{session.location && <span className="block text-xs text-zinc-600">{session.location}</span>}</td>
+                          <td className="py-2.5 pr-3">{session.hours}h</td>
+                          <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
+                          <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
+                          <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
+                          <td className="py-2.5 text-right whitespace-nowrap">
+                            <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
+                            <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
+                              {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
+                            </button>
+                            <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </Section>
+
+        {shoeReplay && (
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="font-semibold">Actual vs. theoretical EV</h2><p className="mt-1 text-xs text-zinc-500">Cumulative across logged sessions in range, with a 95% band from combined session variance.</p></div>
-              <div className="flex gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
-                {RANGE_OPTIONS.map(([value, label]) => (
-                  <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{label}</button>
-                ))}
+              <div>
+                <h2 className="font-semibold">Simulated shoes for this session</h2>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  A representative simulation using this session&apos;s rules, ramp, and betting unit — not your actual historical hands. CountLab never recorded the real cards from this session, so this shows what a session like it typically looks like.
+                </p>
               </div>
+              <GhostButton onClick={() => { setShoeReplay(undefined); setSelectedShoeIndex(undefined); }}>Close</GhostButton>
             </div>
-            {inRange.length === 0 ? (
-              <div className="mt-5 rounded-xl border border-dashed border-white/[.09] p-8 text-center text-sm text-zinc-500">Log a session to start comparing actual results with theoretical EV.</div>
-            ) : (
-              <>
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${aggregate.totalHours.toFixed(1)} hours · ${aggregate.sessionCount} sessions`} />
-                  <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% CI ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
-                  <Metric label="Winning sessions" value={percent(aggregate.winRate, 0)} sub={`${aggregate.combinedZ === null ? "n/a" : `z = ${aggregate.combinedZ.toFixed(2)}`}`} />
-                  <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-zinc-500">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
-                </div>
-                <div className="mt-5 h-72 min-w-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={cumulative} margin={{ left: 8, right: 12 }}>
-                      <defs><linearGradient id="journalBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#a8ee72" stopOpacity={0.18} /><stop offset="1" stopColor="#a8ee72" stopOpacity={0.02} /></linearGradient></defs>
-                      <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-                      <XAxis dataKey="date" stroke="#71717a" tickFormatter={shortDate} minTickGap={40} />
-                      <YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} />
-                      <Tooltip formatter={(value, name) => [money(Number(value)), name]} labelFormatter={(value) => shortDate(String(value))} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} />
-                      <Area type="monotone" dataKey="upper" name="95% upper" stroke="none" fill="url(#journalBand)" />
-                      <Area type="monotone" dataKey="lower" name="95% lower" stroke="none" fill="#0c100d" fillOpacity={1} />
-                      <Line type="monotone" dataKey="theoretical" name="Theoretical EV" stroke="rgba(168,238,114,.55)" strokeDasharray="4 4" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="actual" name="Actual" stroke="#86efac" strokeWidth={2.5} dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </>
-            )}
+            <div className="mt-4">
+              {selectedShoeIndex === undefined ? (
+                <ShoeExplorer shoes={shoeReplay.result.shoes} onSelectShoe={setSelectedShoeIndex} />
+              ) : (
+                <HandReplayer shoe={shoeReplay.result.shoes[selectedShoeIndex]} onBack={() => setSelectedShoeIndex(undefined)} />
+              )}
+            </div>
           </Panel>
+        )}
 
-          <Panel className="overflow-x-auto">
-            <h2 className="font-semibold">Session log</h2>
-            {inRange.length === 0 ? <p className="mt-3 text-sm text-zinc-600">No sessions in this range.</p> : (
-              <table className="mt-4 w-full min-w-[46rem] text-left text-sm">
-                <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
-                <tbody>
-                  {[...inRange].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
-                    const outcome = theoreticalSessionOutcome(session);
-                    const z = sessionZScore(session, outcome);
-                    return (
-                      <tr key={session.id} className="border-t border-white/[.06]">
-                        <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}{session.location && <span className="block text-xs text-zinc-600">{session.location}</span>}</td>
-                        <td className="py-2.5 pr-3">{session.hours}h</td>
-                        <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
-                        <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
-                        <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
-                        <td className="py-2.5 text-right whitespace-nowrap">
-                          <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
-                          <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
-                            {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
-                          </button>
-                          <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </Panel>
-
-          {shoeReplay && (
-            <Panel>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">Simulated shoes for this session</h2>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">
-                    A representative simulation using this session&apos;s rules, ramp, and betting unit — not your actual historical hands. CountLab never recorded the real cards from this session, so this shows what a session like it typically looks like.
-                  </p>
-                </div>
-                <GhostButton onClick={() => { setShoeReplay(undefined); setSelectedShoeIndex(undefined); }}>Close</GhostButton>
-              </div>
-              <div className="mt-4">
-                {selectedShoeIndex === undefined ? (
-                  <ShoeExplorer shoes={shoeReplay.result.shoes} onSelectShoe={setSelectedShoeIndex} />
-                ) : (
-                  <HandReplayer shoe={shoeReplay.result.shoes[selectedShoeIndex]} onBack={() => setSelectedShoeIndex(undefined)} />
-                )}
-              </div>
-            </Panel>
-          )}
-
-          <Panel>
-            <div onChange={() => transactionForm.start("inputs")}>
-            <h2 className="font-semibold">Bankroll transactions</h2>
-            <p className="mt-1 text-xs text-zinc-500">Deposits and withdrawals independent of game results, e.g. funding or removing your action bankroll.</p>
+        <Section
+          title="Bankroll transactions"
+          summary={`${scopedTransactions.length} transaction${scopedTransactions.length === 1 ? "" : "s"}`}
+          icon="fa-money-bill-transfer"
+        >
+          <div onChange={() => transactionForm.start("inputs")}>
+            <p className="text-xs text-zinc-500">Deposits and withdrawals independent of game results, e.g. funding or removing your action bankroll.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
               <Select label="Type" value={transactionType} onChange={(event) => setTransactionType(event.target.value as "deposit" | "withdrawal")}><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option></Select>
@@ -550,25 +611,29 @@ export function SessionJournal() {
                 ))}
               </div>
             )}
-            </div>
-          </Panel>
+          </div>
+        </Section>
 
-          <Panel>
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-              <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" onClick={exportJournal} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
-                <button type="button" onClick={() => importInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
-                <input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importJournal(event.target.files?.[0])} className="hidden" />
-                <button type="button" onClick={exportSessionsCsv} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
-                <button type="button" onClick={exportTransactionsCsv} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
-                <button type="button" onClick={() => importCsvInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
-                <input ref={importCsvInputRef} type="file" accept="text/csv,.csv" onChange={(event) => void importSessionsCsv(event.target.files?.[0])} className="hidden" />
-                {notice && <span role="status" className="text-xs text-emerald-300">{notice}</span>}
-              </div>
-            </div>
-          </Panel>
-        </div>
+        <Section
+          title="Import & export"
+          summary="JSON backup and spreadsheet-friendly CSV"
+          icon="fa-file-export"
+          open={false}
+        >
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button type="button" onClick={exportJournal} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
+            <button type="button" onClick={() => importInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
+            <input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importJournal(event.target.files?.[0])} className="hidden" />
+            <button type="button" onClick={exportSessionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
+            <button type="button" onClick={exportTransactionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
+            <button type="button" onClick={() => importCsvInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
+            <input ref={importCsvInputRef} type="file" accept="text/csv,.csv" onChange={(event) => void importSessionsCsv(event.target.files?.[0])} className="hidden" />
+            {notice && <span role="status" className="text-xs text-emerald-300">{notice}</span>}
+          </div>
+        </Section>
       </div>
       <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation are computed from the audited basic-strategy true-count profile for the entered rules and ramp, using the same engine as the Game &amp; Bankroll Lab. They are not fit to your results or used to price AP Toolbox H17 Pro deviations.</p>
       <MobileActionDock label="Session journal actions">
