@@ -17,8 +17,9 @@ describe("counting training scenarios", () => {
   it("keeps complete shoes composition correct when biasing the order", () => {
     for (const bias of ["positive", "negative"] as const) {
       const cards = makeCountSequence(2, 104, bias);
-      expect(cards).toHaveLength(104);
-      expect(runningCount(cards)).toBe(0);
+      // One random card is burned so a full-shoe session doesn't always resolve to a running count of 0.
+      expect(cards).toHaveLength(103);
+      expect(Math.abs(runningCount(cards))).toBeLessThanOrEqual(1);
     }
   });
 
