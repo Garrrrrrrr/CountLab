@@ -192,6 +192,7 @@ export function Section({
   icon,
   tone = "neutral",
   open = true,
+  id,
   children,
 }: {
   title: string;
@@ -199,10 +200,11 @@ export function Section({
   icon: string;
   tone?: "neutral" | "accent";
   open?: boolean;
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <details open={open} className="surface group rounded-2xl border border-white/[.07]">
+    <details id={id} open={open} className="surface group rounded-2xl border border-white/[.07]">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-emerald-300" : "bg-sky-300/10 text-sky-300"}`}

@@ -314,6 +314,16 @@ export const journalLibrary = {
     track("journal_session_added", { netResult: record.netResult, hours: record.hours });
     return record;
   },
+  /** Replaces an existing session's editable fields, keeping its id, createdAt, and bankrollId. Returns the updated record, or undefined if no session has that id. */
+  updateSession(id: string, updates: Omit<JournalSession, "id" | "createdAt" | "bankrollId">, store?: StorageLike) {
+    const existing = this.sessions(store).find((session) => session.id === id);
+    if (!existing) return undefined;
+    const record: JournalSession = { ...updates, id: existing.id, createdAt: existing.createdAt, bankrollId: existing.bankrollId };
+    write(SESSIONS_KEY, this.sessions(store).map((session) => session.id === id ? record : session), store);
+    pushJournalSession(record);
+    track("journal_session_updated", { netResult: record.netResult, hours: record.hours });
+    return record;
+  },
   deleteSession(id: string, store?: StorageLike) {
     write(SESSIONS_KEY, this.sessions(store).filter((session) => session.id !== id), store);
     deleteRemoteJournalSession(id);

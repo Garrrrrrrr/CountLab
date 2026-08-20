@@ -86,6 +86,7 @@ export function SessionJournal() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const importCsvInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "session"; id: string; date: string } | { kind: "transaction"; id: string } | { kind: "bankroll"; id: string; name: string }>();
+  const [editingSessionId, setEditingSessionId] = useState<string>();
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
@@ -232,9 +233,39 @@ export function SessionJournal() {
     }
   };
 
+  const resetDraftOutcome = () => {
+    setNetResult(0);
+    setExpenses(0);
+    setNotes("");
+  };
+  const startEdit = (session: JournalSession) => {
+    setEditingSessionId(session.id);
+    setDate(session.date);
+    setLocation(session.location ?? "");
+    setHours(session.hours);
+    setHandsPerHour(session.handsPerHour);
+    setPlayerHands(session.playerHands);
+    setBettingUnit(session.bettingUnit);
+    setDecks(session.rules.decks === 8 ? 8 : 6);
+    setDealt(Number((session.rules.penetration * session.rules.decks).toFixed(2)));
+    applyRuleToggles(session.rules);
+    setSpread("Custom");
+    setRamp(expandRamp(session.ramp));
+    setHandsByCount(session.handsByTrueCount ? Object.fromEntries(session.handsByTrueCount.map((point) => [point.trueCount, point.hands])) : {});
+    setNetResult(session.netResult);
+    setExpenses(session.expenses);
+    setNotes(session.notes ?? "");
+    const details = document.getElementById("log-a-session-section");
+    if (details instanceof HTMLDetailsElement) details.open = true;
+    details?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const cancelEdit = () => {
+    setEditingSessionId(undefined);
+    resetDraftOutcome();
+  };
   const logSession = () => {
     sessionForm.submitted();
-    journalLibrary.addSession({
+    const payload = {
       date,
       location: location.trim() || undefined,
       hours,
@@ -247,12 +278,16 @@ export function SessionJournal() {
       netResult,
       expenses,
       notes: notes.trim() || undefined,
-      bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId,
-    });
-    setNetResult(0);
-    setExpenses(0);
-    setNotes("");
-    setNotice("Session logged.");
+    };
+    if (editingSessionId) {
+      journalLibrary.updateSession(editingSessionId, payload);
+      setEditingSessionId(undefined);
+      setNotice("Session updated.");
+    } else {
+      journalLibrary.addSession({ ...payload, bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
+      setNotice("Session logged.");
+    }
+    resetDraftOutcome();
     sessionForm.succeeded();
   };
   const logTransaction = () => {
@@ -390,13 +425,20 @@ export function SessionJournal() {
 
       <div className="space-y-3">
         <Section
-          title="Log a session"
+          id="log-a-session-section"
+          title={editingSessionId ? "Edit session" : "Log a session"}
           summary={`${decks}D ${percent(dealt / decks, 0)} · ${money(bettingUnit, 0)} unit · ${spread} spread`}
-          icon="fa-pen-to-square"
+          icon={editingSessionId ? "fa-pen" : "fa-pen-to-square"}
           tone="accent"
         >
           <div onChange={() => sessionForm.start("inputs")}>
             <p className="text-xs text-zinc-500">Record the actual outcome. CountLab computes what that session was expected to earn from your rules and ramp.</p>
+            {editingSessionId && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-sky-100/80">
+                <span><i className="fa-solid fa-pen mr-1.5 text-sky-300" aria-hidden="true" />Editing session from {shortDate(date)}.</span>
+                <button type="button" onClick={cancelEdit} className="font-semibold text-sky-300 hover:text-sky-200">Cancel</button>
+              </div>
+            )}
             {simulationLibrary.templates().length > 0 && (
               <div className="mt-4">
                 <Select label="Prefill from a saved setup" defaultValue="" onChange={(event) => event.target.value && applyTemplate(event.target.value)}>
@@ -451,7 +493,7 @@ export function SessionJournal() {
             </div>
             <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
             <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
-            <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+            <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
           </div>
         </Section>
 
@@ -524,7 +566,8 @@ export function SessionJournal() {
                         <span className={`font-semibold ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</span>
                         <span className="text-zinc-500">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
                         <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
                         <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05] disabled:opacity-40">
                           {shoeReplayLoading === session.id ? "Simulating…" : <><i className="fa-solid fa-shuffle mr-1.5" aria-hidden="true" />Shoe</>}
@@ -550,6 +593,7 @@ export function SessionJournal() {
                           <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
                           <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
                           <td className="py-2.5 text-right whitespace-nowrap">
+                            <button type="button" onClick={() => startEdit(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Edit</button>
                             <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
                             <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
                               {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
@@ -639,7 +683,7 @@ export function SessionJournal() {
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>
-          <Button onClick={logSession}><i className="fa-solid fa-plus mr-2 text-xs" />Log session</Button>
+          <Button onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
         </div>
       </MobileActionDock>
       <ConfirmModal
@@ -656,7 +700,10 @@ export function SessionJournal() {
         tone="danger"
         onCancel={() => setPendingDelete(undefined)}
         onConfirm={() => {
-          if (pendingDelete?.kind === "session") journalLibrary.deleteSession(pendingDelete.id);
+          if (pendingDelete?.kind === "session") {
+            journalLibrary.deleteSession(pendingDelete.id);
+            if (editingSessionId === pendingDelete.id) cancelEdit();
+          }
           else if (pendingDelete?.kind === "transaction") journalLibrary.deleteTransaction(pendingDelete.id);
           else if (pendingDelete?.kind === "bankroll") {
             journalLibrary.deleteBankroll(pendingDelete.id);
