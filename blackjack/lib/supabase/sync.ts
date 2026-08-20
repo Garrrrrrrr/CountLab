@@ -92,6 +92,58 @@ export async function pullRemoteData(userId: string): Promise<void> {
   }
 }
 
+/** Refreshes just the journal while an authenticated tab is open on another device. */
+export async function pullRemoteJournalData(userId: string): Promise<void> {
+  const [bankrollsRes, journalSessionsRes, transactionsRes] = await Promise.all([
+    observeApiRequest("supabase", "journal_refresh_bankrolls", supabase.from("journal_bankrolls").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "journal_refresh_sessions", supabase.from("journal_sessions").select("*").eq("user_id", userId)),
+    observeApiRequest("supabase", "journal_refresh_transactions", supabase.from("journal_transactions").select("*").eq("user_id", userId)),
+  ]);
+
+  if (bankrollsRes.data) {
+    journalLibrary.mergeRemoteBankrolls(bankrollsRes.data.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      name: row.name,
+      startingAmount: row.starting_amount ?? undefined,
+      archived: row.archived ?? undefined,
+    })));
+  }
+
+  const fallbackBankrollId = journalLibrary.defaultBankrollId();
+  if (journalSessionsRes.data) {
+    journalLibrary.mergeRemoteSessions(journalSessionsRes.data.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      bankrollId: row.bankroll_id ?? fallbackBankrollId,
+      date: row.date,
+      location: row.location ?? undefined,
+      hours: row.hours,
+      handsPerHour: row.hands_per_hour,
+      playerHands: row.player_hands,
+      handsByTrueCount: row.hands_by_true_count ?? undefined,
+      bettingUnit: row.betting_unit,
+      rules: row.rules,
+      ramp: row.ramp,
+      netResult: row.net_result,
+      expenses: row.expenses,
+      notes: row.notes ?? undefined,
+    })));
+  }
+
+  if (transactionsRes.data) {
+    journalLibrary.mergeRemoteTransactions(transactionsRes.data.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      bankrollId: row.bankroll_id ?? fallbackBankrollId,
+      date: row.date,
+      type: row.type,
+      amount: row.amount,
+      note: row.note ?? undefined,
+    })));
+  }
+}
+
 /** Clears the local cache so the next account signed in on this device doesn't see stale data. */
 export function clearLocalUserData(): void {
   storage.clearAll();

@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
-import { pullRemoteData, pushLocalDataToRemote } from "./sync";
+import { pullRemoteData, pullRemoteJournalData, pushLocalDataToRemote } from "./sync";
 import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
 import { setCurrentUser } from "./currentUser";
 import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
@@ -104,6 +104,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       removeEventListener(JOURNAL_SYNC_ERROR_EVENT, showJournalSyncError);
     };
   }, []);
+
+  // Reconcile journal edits made on another device without requiring a page
+  // reload. Poll only while this tab is visible; returning to the tab pulls
+  // immediately, so background tabs do not create needless API traffic.
+  useEffect(() => {
+    if (!user) return;
+    let refreshInFlight = false;
+    const refreshJournal = () => {
+      if (document.hidden || refreshInFlight) return;
+      refreshInFlight = true;
+      pullRemoteJournalData(user.id)
+        .catch((error) => console.error("[countlab] journal refresh failed", error))
+        .finally(() => { refreshInFlight = false; });
+    };
+    const onVisibilityChange = () => { if (!document.hidden) refreshJournal(); };
+    const interval = window.setInterval(refreshJournal, 20_000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [user]);
 
   const value: AuthState = {
     user,
