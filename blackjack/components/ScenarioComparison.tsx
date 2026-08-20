@@ -127,7 +127,7 @@ export function ScenarioComparison() {
         <GhostButton onClick={addColumn} disabled={columns.length >= 4}><i className="fa-solid fa-plus mr-2" />Add scenario</GhostButton>
       </div>
 
-      <div className="grid gap-5" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))` }}>
+      <div className={`grid gap-5 ${columns.length === 1 ? "" : "md:grid-cols-2"} ${columns.length > 2 ? "xl:grid-cols-3" : ""} ${columns.length > 3 ? "2xl:grid-cols-4" : ""}`}>
         {columns.map((column, index) => {
           const result = results[index];
           return (
@@ -139,7 +139,7 @@ export function ScenarioComparison() {
                   className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-zinc-100 outline-none"
                 />
                 {columns.length > 1 && (
-                  <button type="button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column.id)} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
+                  <button type="button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column.id)} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
                     <i className="fa-solid fa-xmark" aria-hidden="true" />
                   </button>
                 )}

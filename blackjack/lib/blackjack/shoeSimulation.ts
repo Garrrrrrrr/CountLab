@@ -55,6 +55,8 @@ export interface ShoeSimulationConfig {
   ramp: RampPoint[];
   deviationGroups: DeviationGroup[];
   rounding?: TrueCountRounding;
+  /** Bypasses `deviationGroups` with an explicit catalog, e.g. to isolate one play for ranking. */
+  catalogOverride?: Deviation[];
 }
 
 export interface ShoeSimulationResult {
@@ -118,7 +120,7 @@ function applyIndexDeviation(
   if (!deviations.length) return action;
   const hand = deviationHandLabel(playerCards);
   const dealer = rankLabel(dealerUpcard.rank);
-  return resolveDeviation(action, hand, dealer, tc, rules).action;
+  return resolveDeviation(action, hand, dealer, tc, rules, deviations).action;
 }
 
 function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
@@ -128,9 +130,8 @@ function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
 }
 
 /** Plays a single box from its post-decision state, hitting per basic strategy + deviations until stand/bust. */
-function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => number, deviations: DeviationGroup[], shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
+function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => number, active: Deviation[], shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
   const hand = [...cards];
-  const active = activeDeviations(deviations);
   while (calculateHandValue(hand) < 21) {
     const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules });
     // Resplitting isn't modeled here, so an in-progress hand that would normally split just stands.
@@ -170,7 +171,7 @@ function playBox(
   initialCards: Card[],
   dealerUpcard: Card,
   currentTrueCount: () => number,
-  deviations: DeviationGroup[],
+  active: Deviation[],
   shoe: BlackjackShoe,
   rules: AdvantageRules,
   bet: number,
@@ -198,7 +199,7 @@ function playBox(
       rules,
       canSplit: splitAllowed,
     });
-    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), activeDeviations(deviations), rules);
+    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), active, rules);
 
     // A split-only departure cannot be taken when the table's hand limit has
     // been reached, so fall back to the non-pair basic-strategy action.
@@ -231,7 +232,7 @@ function playBox(
       continue;
     }
 
-    const cards = autoPlay(pending.cards, dealerUpcard, currentTrueCount, deviations, shoe, rules, track);
+    const cards = autoPlay(pending.cards, dealerUpcard, currentTrueCount, active, shoe, rules, track);
     played.push({ cards, net: 0, surrendered: false });
   }
   return played;
@@ -242,7 +243,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
   const random = mulberry32(config.seed);
   const shoe = new BlackjackShoe(rules.decks, random);
   const cutCardAt = rules.decks * 52 * (1 - rules.penetration);
-  const active = activeDeviations(deviationGroups);
+  const active = config.catalogOverride ?? activeDeviations(deviationGroups);
 
   let bankroll = config.bankroll;
   let peak = bankroll;
@@ -338,7 +339,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
           initialCards,
           dealerUpcard,
           currentTrueCount,
-          deviationGroups,
+          active,
           shoe,
           rules,
           bet,

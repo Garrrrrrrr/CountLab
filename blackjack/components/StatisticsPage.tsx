@@ -98,7 +98,7 @@ export default function StatisticsPage() {
         </Panel>
       ) : (
         <div className="mt-7 grid gap-5 lg:grid-cols-2">
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-5">
             <Metric label="7-day accuracy" value={`${accuracySince(7)}%`} />
             <Metric label="30-day accuracy" value={`${accuracySince(30)}%`} />
             <Metric label="Best card speed" value={`${Math.max(0, ...cardSpeeds).toFixed(1)}/s`} />
@@ -111,7 +111,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chart}>
                   <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
+                  <XAxis dataKey="name" stroke="#71717a" minTickGap={24} />
                   <YAxis domain={[0, 100]} stroke="#71717a" />
                   <Tooltip
                     contentStyle={{

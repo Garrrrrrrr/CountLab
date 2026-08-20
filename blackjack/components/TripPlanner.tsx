@@ -83,7 +83,7 @@ export function TripPlanner() {
               </Select>
             </div>
           )}
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <Select label="Decks" value={decks} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
             <Select label="Penetration" value={dealt} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
             <div className="flex items-end gap-2">
@@ -97,7 +97,7 @@ export function TripPlanner() {
             <NumberField label="Hands / hour" value={handsPerHour} min={1} onValueChange={setHandsPerHour} />
             <NumberField label="Trip length (hours)" value={tripHours} min={0.5} step={0.5} onValueChange={setTripHours} />
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <Switch label="H17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
             <Switch label="DAS" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
             <Switch label="RSA" checked={resplitAces} onChange={setResplitAces} />
@@ -124,7 +124,7 @@ export function TripPlanner() {
           <Panel>
             <h2 className="font-semibold">Loss threshold</h2>
             <p className="mt-1 text-xs text-zinc-500">Probability the trip ends down at least this much.</p>
-            <div className="mt-3 flex items-end gap-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <NumberField label="Loss amount" value={lossThreshold} min={0} prefix="$" onValueChange={setLossThreshold} />
               <Metric label={`P(loss ≥ ${money(lossThreshold, 0)})`} value={percent(plan.lossProbability(lossThreshold))} />
             </div>
@@ -133,7 +133,7 @@ export function TripPlanner() {
           <Panel>
             <h2 className="font-semibold">Win goal</h2>
             <p className="mt-1 text-xs text-zinc-500">Probability the trip reaches this net win at some point.</p>
-            <div className="mt-3 flex items-end gap-3">
+            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
               <NumberField label="Goal amount" value={goalAmount} min={0} prefix="$" onValueChange={setGoalAmount} />
               <Metric label={`P(reach +${money(goalAmount, 0).replace("+", "")})`} value={percent(plan.goalProbability(goalAmount))} />
             </div>

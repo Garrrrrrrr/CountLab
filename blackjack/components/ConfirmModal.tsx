@@ -71,7 +71,7 @@ export function ConfirmModal({
         aria-labelledby="confirm-modal-title"
         aria-describedby="confirm-modal-description"
         tabIndex={-1}
-        className={`surface w-full rounded-t-[1.75rem] p-5 outline-none sm:rounded-[1.75rem] sm:p-7 ${children ? "max-w-2xl" : "max-w-md"}`}
+        className={`surface max-h-[min(90svh,48rem)] w-full overflow-y-auto rounded-t-[1.75rem] p-5 outline-none sm:rounded-[1.75rem] sm:p-7 ${children ? "max-w-2xl" : "max-w-md"}`}
       >
         <h2 id="confirm-modal-title" className="text-xl font-semibold">
           {title}

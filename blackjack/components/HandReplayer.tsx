@@ -31,9 +31,9 @@ export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: ()
               <p className="text-xs text-zinc-500">Hand {hand.roundInShoe} of {shoe.totalHands}</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <GhostButton className="min-h-8 px-3 py-1.5" disabled={selectedHandIndex === 0} onClick={() => setSelectedHandIndex((i) => Math.max(0, i - 1))}><i className="fa-solid fa-chevron-left" /></GhostButton>
+              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === 0} onClick={() => setSelectedHandIndex((i) => Math.max(0, i - 1))}><i className="fa-solid fa-chevron-left" /></GhostButton>
               <span>{selectedHandIndex + 1} / {shoe.hands.length}</span>
-              <GhostButton className="min-h-8 px-3 py-1.5" disabled={selectedHandIndex === shoe.hands.length - 1} onClick={() => setSelectedHandIndex((i) => Math.min(shoe.hands.length - 1, i + 1))}><i className="fa-solid fa-chevron-right" /></GhostButton>
+              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === shoe.hands.length - 1} onClick={() => setSelectedHandIndex((i) => Math.min(shoe.hands.length - 1, i + 1))}><i className="fa-solid fa-chevron-right" /></GhostButton>
             </div>
           </div>
 

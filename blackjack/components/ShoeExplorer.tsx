@@ -36,7 +36,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
               key={mode}
               type="button"
               onClick={() => setSortMode(mode)}
-              className={`rounded-lg border px-3 py-1.5 font-semibold ${sortMode === mode ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}
+              className={`min-h-11 rounded-lg border px-3 py-1.5 font-semibold ${sortMode === mode ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}
             >
               {mode === "profit" ? "Profit" : mode === "loss" ? "Loss" : "Max TC"}
             </button>
@@ -51,7 +51,14 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
         <Metric label="Win rate" value={percent(shoes.length ? winningShoes / shoes.length : 0)} />
       </div>
 
-      <div className="mt-5 overflow-x-auto">
+      <div className="mt-5 grid gap-3 sm:hidden">
+        {sorted.map(({ shoe, index }) => <button key={shoe.shoeNumber} type="button" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }} className="rounded-xl border border-white/[.07] bg-black/20 p-4 text-left hover:bg-white/[.05]">
+          <div className="flex items-center justify-between gap-3"><b>#{shoe.shoeNumber}</b><span className={shoe.totalProfit >= 0 ? "font-semibold text-emerald-300" : "font-semibold text-red-300"}>{shoe.totalProfit >= 0 ? "+" : ""}{money(shoe.totalProfit, 2)}</span></div>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-zinc-500"><span>{shoe.totalHands} hands</span><span>TC {shoe.tcMin.toFixed(1)}</span><span>TC {shoe.tcMax.toFixed(1)}</span></div>
+          <span className="mt-3 block text-sm font-semibold text-emerald-300">View hands <i className="fa-solid fa-arrow-right ml-1" aria-hidden="true" /></span>
+        </button>)}
+      </div>
+      <div className="mt-5 hidden overflow-x-auto sm:block">
         <table className="w-full min-w-[40rem] text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-zinc-500">
             <tr>
@@ -72,7 +79,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
                 <td>{shoe.tcMin.toFixed(1)}</td>
                 <td>{shoe.tcMax.toFixed(1)}</td>
                 <td className="py-2 text-right">
-                  <Button className="min-h-8 px-3 py-1.5 text-xs" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }}>View</Button>
+                  <Button className="px-3 py-1.5 text-xs" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }}>View</Button>
                 </td>
               </tr>
             ))}

@@ -3,7 +3,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
+import { Button, GhostButton, Metric, Panel, Select, Switch } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import {
   DEFAULT_SETTINGS,
@@ -548,15 +548,7 @@ function SettingsPage() {
               ["resplitAces", "Resplit aces"],
               ["lateSurrender", "Late surrender"],
             ] as const).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-3 rounded-lg bg-black/20 p-3">
-                <input
-                  type="checkbox"
-                  checked={s[key]}
-                  onChange={(e) => update(key, e.target.checked)}
-                  className="h-5 w-5 accent-emerald-500"
-                />
-                {label}
-              </label>
+              <Switch key={key} label={label} checked={s[key]} onChange={(value) => update(key, value)} />
             ))}
           </div>
         </Panel>
@@ -592,23 +584,7 @@ function SettingsPage() {
             ["animations", "Card animations"],
             ["shortcuts", "Keyboard shortcuts"],
           ].map(([k, l]) => (
-            <label
-              key={k}
-              className="flex items-center justify-between border-b border-white/[.06] py-3"
-            >
-              <span>{l}</span>
-              <input
-                type="checkbox"
-                checked={Boolean(s[k as keyof Settings])}
-                onChange={(e) =>
-                  update(
-                    k as "sound" | "animations" | "shortcuts",
-                    e.target.checked,
-                  )
-                }
-                className="h-5 w-5 accent-emerald-500"
-              />
-            </label>
+            <Switch key={k} label={l} checked={Boolean(s[k as keyof Settings])} onChange={(value) => update(k as "sound" | "animations" | "shortcuts", value)} className="border-b border-white/[.06] py-3" />
           ))}
           <Button
             className="mt-5"
@@ -628,7 +604,7 @@ function SettingsPage() {
           </label>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Link href="/privacy" className="text-xs text-emerald-300 hover:underline">Review the analytics and retention policy</Link>
-            <GhostButton className="min-h-8 px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={() => setConfirmingAnalyticsDelete(true)}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
+            <GhostButton className="px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={() => setConfirmingAnalyticsDelete(true)}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
           </div>
           {analyticsMessage && <p aria-live="polite" className="mt-3 text-xs text-emerald-300">{analyticsMessage}</p>}
         </Panel>

@@ -199,17 +199,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
             setError(undefined);
             setInfo(undefined);
           }}
-          className="mt-4 w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+          className="mt-4 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300"
         >
           {mode === "sign-in" ? "Need an account? Sign up" : "Already have an account? Sign in"}
         </button>}
-        {mode === "sign-in" && !passwordRecovery && <button type="button" onClick={() => { setMode("reset-request"); setError(undefined); setInfo(undefined); }} className="mt-2 w-full text-center text-xs text-zinc-500 hover:text-zinc-300">Forgot password?</button>}
-        {mode === "reset-request" && !passwordRecovery && <button type="button" onClick={() => { setMode("sign-in"); setError(undefined); setInfo(undefined); }} className="mt-3 w-full text-center text-xs text-zinc-500 hover:text-zinc-300">Back to sign in</button>}
-        {passwordRecovery && <button type="button" onClick={cancelPasswordRecovery} className="mt-3 w-full text-center text-xs text-zinc-500 hover:text-zinc-300">Cancel</button>}
+        {mode === "sign-in" && !passwordRecovery && <button type="button" onClick={() => { setMode("reset-request"); setError(undefined); setInfo(undefined); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Forgot password?</button>}
+        {mode === "reset-request" && !passwordRecovery && <button type="button" onClick={() => { setMode("sign-in"); setError(undefined); setInfo(undefined); }} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Back to sign in</button>}
+        {passwordRecovery && <button type="button" onClick={cancelPasswordRecovery} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Cancel</button>}
         {!passwordRecovery && mode !== "reset-request" && <button
           type="button"
           onClick={() => { formAnalytics.succeeded(); continueAsGuest(); }}
-          className="mt-2 w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+          className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300"
         >
           Continue as guest — data stays on this device only
         </button>}
