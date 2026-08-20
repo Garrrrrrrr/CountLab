@@ -82,6 +82,8 @@ export function SessionJournal() {
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
   const [shareSession, setShareSession] = useState<JournalSession>();
   const [range, setRange] = useState<number | "all">(30);
+  const [sessionQuery, setSessionQuery] = useState("");
+  const [sessionResultFilter, setSessionResultFilter] = useState<"all" | "win" | "loss">("all");
   const [notice, setNotice] = useState<string>();
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const importCsvInputRef = useRef<HTMLInputElement | null>(null);
@@ -158,6 +160,14 @@ export function SessionJournal() {
   const aggregate: JournalAggregate = useMemo(() => aggregateJournal(inRange), [inRange]);
   const cumulative = useMemo(() => journalCumulativeSeries(inRange), [inRange]);
   const bankroll = useMemo(() => currentBankroll(scopedSessions, scopedTransactions), [scopedSessions, scopedTransactions]);
+  const filteredSessions = useMemo(() => {
+    const query = sessionQuery.trim().toLowerCase();
+    return [...inRange].filter((session) => {
+      if (sessionResultFilter === "win" && session.netResult < 0) return false;
+      if (sessionResultFilter === "loss" && session.netResult >= 0) return false;
+      return !query || `${session.date} ${session.location ?? ""} ${session.notes ?? ""}`.toLowerCase().includes(query);
+    }).sort((a, b) => b.date.localeCompare(a.date));
+  }, [inRange, sessionQuery, sessionResultFilter]);
 
   const chooseSpread = (name: string) => {
     setSpread(name);
@@ -432,7 +442,7 @@ export function SessionJournal() {
           tone="accent"
         >
           <div onChange={() => sessionForm.start("inputs")}>
-            <p className="text-xs text-zinc-500">Record the actual outcome. CountLab computes what that session was expected to earn from your rules and ramp.</p>
+            <p className="text-xs text-zinc-500">Start with the date, time, unit, and actual result. Your most recent assumptions stay in place; open Advanced only when the table or spread changed.</p>
             {editingSessionId && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-sky-100/80">
                 <span><i className="fa-solid fa-pen mr-1.5 text-sky-300" aria-hidden="true" />Editing session from {shortDate(date)}.</span>
@@ -469,7 +479,10 @@ export function SessionJournal() {
               <NumberField label="Betting unit" value={bettingUnit} min={0.01} prefix="$" onValueChange={setBettingUnit} />
               <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <details className="group mt-4 rounded-xl border border-white/[.07] bg-black/10" open={Boolean(editingSessionId)}>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium marker:hidden"><span><i className="fa-solid fa-sliders mr-2 text-sky-300" aria-hidden="true" />Advanced assumptions</span><span className="text-xs font-normal text-zinc-500">Rules, spread, and hands <i className="fa-solid fa-chevron-down ml-1 transition-transform group-open:rotate-180" aria-hidden="true" /></span></summary>
+              <div className="border-t border-white/[.06] p-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
               <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
               <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
@@ -487,6 +500,8 @@ export function SessionJournal() {
               <p className="mb-2 text-xs text-zinc-500">Zero-dollar counts are watched but not played. Hands falls back to your default above unless overridden per count here — priced with the same engine as the Bankroll Lab.</p>
               <BetSpreadTable rows={countRows} onBetChange={updateBet} onHandsChange={updateHands} />
             </div>
+              </div>
+            </details>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />
               <NumberField label="Expenses (comps, travel)" value={expenses} min={0} prefix="$" onValueChange={setExpenses} />
@@ -498,7 +513,7 @@ export function SessionJournal() {
         </Section>
 
         <Section
-          title="Actual vs. theoretical EV"
+          title="Performance"
           summary={`${inRange.length} session${inRange.length === 1 ? "" : "s"} · ${RANGE_OPTIONS.find(([value]) => value === range)?.[1] ?? ""}`}
           icon="fa-chart-line"
         >
@@ -541,16 +556,22 @@ export function SessionJournal() {
 
         <Section
           title="Session log"
-          summary={inRange.length === 0 ? "No sessions in range" : `${inRange.length} session${inRange.length === 1 ? "" : "s"} in range`}
+          summary={inRange.length === 0 ? "No sessions in range" : `${filteredSessions.length} of ${inRange.length} sessions shown`}
           icon="fa-table-list"
         >
-          {inRange.length === 0 ? <p className="text-sm text-zinc-600">No sessions in this range.</p> : (
+          <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} placeholder="Search date, venue, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
+              {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
+            </div>
+          </div>
+          {filteredSessions.length === 0 ? <p className="text-sm text-zinc-600">No sessions match this view.</p> : (
             <>
               {/* A 6-column table needs sideways scrolling below md, and its
                   action links are too small to tap reliably, so narrow
                   viewports get one full-width card per session instead. */}
               <div className="grid gap-2.5 md:hidden">
-                {[...inRange].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
+                {filteredSessions.map((session) => {
                   const outcome = theoreticalSessionOutcome(session);
                   const z = sessionZScore(session, outcome);
                   return (
@@ -582,7 +603,7 @@ export function SessionJournal() {
                 <table className="w-full min-w-[46rem] text-left text-sm">
                   <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
                   <tbody>
-                    {[...inRange].sort((a, b) => b.date.localeCompare(a.date)).map((session) => {
+                    {filteredSessions.map((session) => {
                       const outcome = theoreticalSessionOutcome(session);
                       const z = sessionZScore(session, outcome);
                       return (
@@ -632,12 +653,12 @@ export function SessionJournal() {
         )}
 
         <Section
-          title="Bankroll transactions"
-          summary={`${scopedTransactions.length} transaction${scopedTransactions.length === 1 ? "" : "s"}`}
+          title="Cash movements"
+          summary={`${scopedTransactions.length} deposit${scopedTransactions.length === 1 ? " or withdrawal" : "s / withdrawals"}`}
           icon="fa-money-bill-transfer"
         >
           <div onChange={() => transactionForm.start("inputs")}>
-            <p className="text-xs text-zinc-500">Deposits and withdrawals independent of game results, e.g. funding or removing your action bankroll.</p>
+            <p className="text-xs text-zinc-500">Track money added to or removed from this bankroll separately from table results.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
               <Select label="Type" value={transactionType} onChange={(event) => setTransactionType(event.target.value as "deposit" | "withdrawal")}><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option></Select>
@@ -659,7 +680,7 @@ export function SessionJournal() {
         </Section>
 
         <Section
-          title="Import & export"
+          title="Data tools"
           summary="JSON backup and spreadsheet-friendly CSV"
           icon="fa-file-export"
           open={false}
