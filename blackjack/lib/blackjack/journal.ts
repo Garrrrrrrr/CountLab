@@ -57,6 +57,7 @@ const BANKROLLS_KEY = "countlab:journal-bankrolls:v1";
 const SESSIONS_KEY = "countlab:journal-sessions:v1";
 const TRANSACTIONS_KEY = "countlab:journal-transactions:v1";
 const JOURNAL_EVENT = "countlab-journal";
+export const JOURNAL_SYNC_ERROR_EVENT = "countlab-journal-sync-error";
 const MAX_BANKROLLS = 20;
 const MAX_SESSIONS = 500;
 const MAX_TRANSACTIONS = 500;
@@ -145,6 +146,12 @@ function write<T>(key: string, items: T[], store = availableStorage()) {
   if (typeof window !== "undefined") window.dispatchEvent(new Event(JOURNAL_EVENT));
 }
 
+/** Surface background-write failures to the signed-in UI instead of silently claiming that data is synced. */
+function reportJournalSyncError(operation: string, error: { message: string }) {
+  console.error(`[countlab] failed to ${operation}`, error);
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(JOURNAL_SYNC_ERROR_EVENT, { detail: error.message }));
+}
+
 const createId = () => typeof crypto !== "undefined" && "randomUUID" in crypto
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -183,9 +190,7 @@ function pushBankroll(bankroll: Bankroll) {
       starting_amount: bankroll.startingAmount ?? null,
       archived: bankroll.archived ?? false,
     }))
-    .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync bankroll", error);
-    });
+    .then(({ error }) => { if (error) reportJournalSyncError("sync bankroll", error); });
 }
 
 function deleteRemoteBankroll(id: string) {
@@ -219,9 +224,7 @@ function pushJournalSession(session: JournalSession) {
       expenses: session.expenses,
       notes: session.notes ?? null,
     }))
-    .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync journal session", error);
-    });
+    .then(({ error }) => { if (error) reportJournalSyncError("sync journal session", error); });
 }
 
 function deleteRemoteJournalSession(id: string) {
@@ -247,9 +250,7 @@ function pushTransaction(transaction: BankrollTransaction) {
       amount: transaction.amount,
       note: transaction.note ?? null,
     }))
-    .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync bankroll transaction", error);
-    });
+    .then(({ error }) => { if (error) reportJournalSyncError("sync bankroll transaction", error); });
 }
 
 function deleteRemoteTransaction(id: string) {
