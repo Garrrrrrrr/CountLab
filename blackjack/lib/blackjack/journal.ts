@@ -293,6 +293,29 @@ export const journalLibrary = {
     const renamed = next.find((bankroll) => bankroll.id === id);
     if (renamed) pushBankroll(renamed);
   },
+  /** Collapses legacy/import-created bankroll duplicates that differ only by ID or capitalization. */
+  mergeDuplicateBankrollNames(store?: StorageLike) {
+    const current = this.bankrolls(store);
+    const canonicalByName = new Map<string, Bankroll>();
+    const remap = new Map<string, string>();
+    for (const bankroll of [...current].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) {
+      const canonical = canonicalByName.get(normalizedBankrollName(bankroll.name));
+      if (canonical) remap.set(bankroll.id, canonical.id);
+      else canonicalByName.set(normalizedBankrollName(bankroll.name), bankroll);
+    }
+    if (remap.size === 0) return 0;
+    const remappedSessions = this.sessions(store).filter((session) => remap.has(session.bankrollId));
+    const remappedTransactions = this.transactions(store).filter((transaction) => remap.has(transaction.bankrollId));
+    const sessions = this.sessions(store).map((session) => remap.has(session.bankrollId) ? { ...session, bankrollId: remap.get(session.bankrollId)! } : session);
+    const transactions = this.transactions(store).map((transaction) => remap.has(transaction.bankrollId) ? { ...transaction, bankrollId: remap.get(transaction.bankrollId)! } : transaction);
+    write(SESSIONS_KEY, sessions, store);
+    write(TRANSACTIONS_KEY, transactions, store);
+    write(BANKROLLS_KEY, current.filter((bankroll) => !remap.has(bankroll.id)), store);
+    for (const session of remappedSessions) pushJournalSession({ ...session, bankrollId: remap.get(session.bankrollId)! });
+    for (const transaction of remappedTransactions) pushTransaction({ ...transaction, bankrollId: remap.get(transaction.bankrollId)! });
+    for (const duplicateId of remap.keys()) deleteRemoteBankroll(duplicateId);
+    return remap.size;
+  },
   /** Reassigns the bankroll's sessions/transactions to the default bankroll, then removes it. Refuses to delete the last remaining bankroll. */
   deleteBankroll(id: string, store?: StorageLike) {
     const remaining = this.bankrolls(store).filter((bankroll) => bankroll.id !== id);

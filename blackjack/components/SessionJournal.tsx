@@ -117,6 +117,8 @@ export function SessionJournal() {
   const transactionForm = useFormAnalytics("journal_transaction");
 
   useEffect(() => {
+    const mergedDuplicates = journalLibrary.mergeDuplicateBankrollNames();
+    if (mergedDuplicates > 0) setNotice(`Merged ${mergedDuplicates} duplicate bankroll${mergedDuplicates === 1 ? "" : "s"}.`);
     const refresh = () => {
       setSessions(journalLibrary.sessions());
       setTransactions(journalLibrary.transactions());
