@@ -8,6 +8,69 @@ Test data created while exploring the Results Tracker (one game, one bankroll,
 one $5,000 contribution) was deleted before ending the session; no session or
 transaction records were left on the account.
 
+## Starred stand indices and late surrender
+
+The supplied Pro charts print a star on five H17 cells (16 v 9, 16 v 10, 16 v A,
+15 v 10, 15 v A) and three S17 cells (16 v 9, 16 v 10, 15 v 10), marking a stand
+index that takes precedence over the cell's surrender. CountLab applies those
+indices **only where surrender is unavailable** — a no-surrender table, or a
+hand that has already split or drawn.
+
+The reason is measured, not assumed. `priceCell` in
+`lib/blackjack/deviationEv.ts` prices every legal action for a chart cell,
+bucketed by true count, from real shoe states (6 decks, 75% dealt, DAS, RSA, LS,
+3:2). Standing on 15 or 16 against a ten or an ace comes out between −0.53 and
+−0.61 per unit at *every* true count from −6 to +10, and it gets worse as the
+count rises rather than better: a ten-rich shoe deals the dealer fewer stiff
+hands to bust with, which hurts a stand far more than the extra tens help it.
+Surrender is a flat −0.50, so it wins at every count.
+
+```text
+16 v 10 (H17, 6D/75%, DAS RSA LS) — net units per one-unit base bet
+  TC       stand      hit     surrender
+  -2     -0.5461  -0.5224     -0.5000
+   0     -0.5461  -0.5399     -0.5000
+  +2     -0.5421  -0.5644     -0.5000
+  +4     -0.5577  -0.5875     -0.5000
+  +6     -0.6104  -0.6366     -0.5000
+```
+
+The stand-versus-hit crossings themselves are right where the chart puts them —
+16 v 10 near TC 0, 15 v A near +5 — so in a game without surrender these indices
+are correct and worth having. They are only wrong as a replacement for a
+surrender. Reproduce with:
+
+```powershell
+npx tsx scripts/priceDeviationCell.ts 16 10 h17 2000000
+```
+
+Honouring the star in a late-surrender game costs about 0.044 percentage points
+of flat-bet edge, and about 0.25 units per 100 rounds on a 1-12 ramp, because
+every one of those decisions happens at a count where the ramp has money out.
+
+### The shipped coefficient curves still contain it
+
+`ap_toolbox_h17.py` has been corrected, but
+`lib/blackjack/apToolboxH17ProCoefficients.ts` was generated before the fix and
+has **not** been regenerated — that is a 250M-shoe, 116-billion-round run. Until
+it is, the audited index curve understates the player's edge at non-negative
+counts, and `AP_TOOLBOX_H17_PRO_METADATA.sourceSha256` no longer matches the
+file that will produce the next run.
+
+The gap is visible end to end. On 6D/4.5-dealt with a 1-12 ramp, the shipped
+curves put index play at +0.078 units per 100 rounds over the no-index curve.
+Summing the individually measured departures for the corrected policy gives
++0.386, and the starred-override cost measures −0.255; 0.386 − 0.255 = 0.131
+against the tables' 0.078, which is as close as standalone marginal values get
+before their non-additivity matters. Both numbers agree that the override is
+eating most of the value of index play in the shipped curves.
+
+Regenerate with the command already in `blackjack-simulator/README.md`:
+
+```powershell
+python ap_toolbox_h17.py --all --shoes 250000000 --tasks 256
+```
+
 ## Observable workflow
 
 The simulator is a single form divided into three quickly switchable views:

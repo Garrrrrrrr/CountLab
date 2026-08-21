@@ -1,6 +1,7 @@
 import { GAME_OPTIONS } from "./coefficients";
 import { AP_TOOLBOX_H17_PRO_COEFFICIENTS } from "./apToolboxH17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+import { ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "./ruleAdjustments";
 export type IndexPolicy = "ap-toolbox-h17-pro";
 export interface AdvantageRules {
   decks: number;
@@ -32,10 +33,13 @@ export interface AdvantageInput {
   hours: number;
   rules: AdvantageRules;
   ramp: RampPoint[];
-  /** Flat edge-percentage shift applied to every count row, e.g. from RULE_DELTAS. Default 0. */
+  /**
+   * Extra flat edge shift for rules `AdvantageRules` cannot express: European
+   * no-hole-card and restricted doubling. The shifts for the rules it *can*
+   * express are derived from `rules` and applied automatically — do not add
+   * them here as well.
+   */
   ruleAdjustment?: number;
-  /** @deprecated Retained for saved Lab scenarios; use rules.useIndices instead. */
-  deviationSkill?: number;
 }
 export interface CountRow {
   trueCount: number;
@@ -111,9 +115,15 @@ function profileKey(rules: AdvantageRules) {
  * Per-true-count edge, frequency, and variance for a game.
  *
  * Every selectable policy is independently audited; no curve is interpolated.
+ *
+ * Known bias, pending a rerun: the index curve was generated while
+ * `ap_toolbox_h17.py` let the chart's starred stand indices displace a late
+ * surrender on 15/16 vs a ten or an ace. That play loses about 0.044 points of
+ * flat-bet edge, all of it at non-negative counts, so this curve understates the
+ * edge exactly where a ramped bettor has money out. The generator is fixed; the
+ * 250M-shoe artifact is not yet regenerated. See docs/reference-analysis.md.
  */
-export function getCountProfile(rules: AdvantageRules, _deviationSkill?: number) {
-  void _deviationSkill;
+export function getCountProfile(rules: AdvantageRules) {
   const key = profileKey(rules);
   const coefficients = rules.useIndices === false
     ? NO_INDEX_COEFFICIENTS[key]
@@ -134,6 +144,18 @@ export function getCountProfile(rules: AdvantageRules, _deviationSkill?: number)
       ],
     };
   });
+}
+/**
+ * Total flat edge shift for a game: whatever the caller supplies for rules the
+ * rules object cannot express, plus the delta for every rule it can.
+ *
+ * Deriving the second half here rather than at each call site is deliberate.
+ * Compare Scenarios and the Trip Planner both rendered H17/DAS/RSA/LS/payout
+ * switches, passed them in `rules`, and never passed a `ruleAdjustment` — so a
+ * 6:5 no-DAS no-surrender game priced identically to a liberal 3:2 one.
+ */
+export function effectiveRuleAdjustment(rules: AdvantageRules, extra = 0) {
+  return extra + sumRuleAdjustment(ruleAdjustmentFlagsFromRules(rules));
 }
 export function unitsAt(tc: number, ramp: RampPoint[]) {
   return [...ramp]
@@ -195,8 +217,8 @@ export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
 }
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
-  const ruleAdjustment = input.ruleAdjustment ?? 0;
-  return getCountProfile(input.rules, input.deviationSkill).map((row) => {
+  const ruleAdjustment = effectiveRuleAdjustment(input.rules, input.ruleAdjustment);
+  return getCountProfile(input.rules).map((row) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
       row.tc,
@@ -266,7 +288,6 @@ export function recommendUnit(
   playerHands = 1,
   handsByTrueCount?: HandCountPoint[],
   ruleAdjustment = 0,
-  deviationSkill = 1,
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
@@ -279,7 +300,6 @@ export function recommendUnit(
     rules,
     ramp,
     ruleAdjustment,
-    deviationSkill,
   });
   if (result.evPerRound <= 0) return 0;
   return Math.max(

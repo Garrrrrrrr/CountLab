@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, unitsAt } from "./advantage";
-import { calculateHandValue, isBlackjack } from "./hand";
+import { calculateHandValue, isBlackjack, isSoft } from "./hand";
 import { ShoeSimulationConfig, deviationHandLabel, simulateShoeSession } from "./shoeSimulation";
 
 const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulationConfig => ({
@@ -22,6 +22,30 @@ describe("simulateShoeSession", () => {
     expect(deviationHandLabel([{ rank: "A", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Soft 19");
     expect(deviationHandLabel([{ rank: "10", suit: "spades" }, { rank: "K", suit: "hearts" }])).toBe("10,10");
   });
+  it("never reads a surrender index as a stand on an in-progress hand", async () => {
+    // The catalog is keyed on hand labels, so a drawn-to 14 matched "14 v 10"
+    // and its surrender index came back as "not a hit" — the simulator stood on
+    // every stiff it drew against a ten. No index stands a hard 12-14 there.
+    const result = await simulateShoeSession(baseConfig({
+      handsToSimulate: 20_000,
+      deviationGroups: ["ap-toolbox-h17-pro"],
+    }));
+    const stoodOnStiff = result.shoes.flatMap((shoe) => shoe.hands).filter((hand) => {
+      const upcard = hand.dealerCards[0].rank;
+      if (!["10", "J", "Q", "K"].includes(upcard)) return false;
+      return hand.playerHands.some((played) =>
+        played.cards.length >= 3
+        && !played.surrendered
+        // A double takes exactly one card and stops, so 11 v 10 doubled into a
+        // 13 is a legitimate three-card stiff rather than a refused hit.
+        && played.bet === undefined
+        && !isSoft(played.cards)
+        && calculateHandValue(played.cards) >= 12
+        && calculateHandValue(played.cards) <= 14);
+    });
+    expect(stoodOnStiff).toHaveLength(0);
+  });
+
   it("is deterministic for a fixed seed", async () => {
     const [first, second] = await Promise.all([
       simulateShoeSession(baseConfig()),

@@ -5,6 +5,7 @@ import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, calculateAdvantage, unitsAt 
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 import { GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
+import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
 const percent = (value: number, digits = 2) => `${(value * 100).toFixed(digits)}%`;
@@ -19,6 +20,7 @@ interface ColumnState {
   resplitAces: boolean;
   lateSurrender: boolean;
   blackjackPayout: 1.5 | 1.2;
+  useIndices: boolean;
   ramp: RampPoint[];
   bankroll: number;
   bettingUnit: number;
@@ -38,6 +40,7 @@ const makeColumn = (name: string): ColumnState & { id: number } => ({
   resplitAces: true,
   lateSurrender: true,
   blackjackPayout: 1.5,
+  useIndices: true,
   ramp: expandRamp(RAMPS["1-8"]),
   bankroll: 10000,
   bettingUnit: 25,
@@ -73,6 +76,7 @@ export function ScenarioComparison() {
         resplitAces: column.resplitAces,
         lateSurrender: column.lateSurrender,
         blackjackPayout: column.blackjackPayout,
+        useIndices: column.useIndices,
       },
       ramp: column.ramp,
     })),
@@ -174,6 +178,23 @@ export function ScenarioComparison() {
                 <Switch label="RSA" checked={column.resplitAces} onChange={(value) => updateColumn(column.id, { resplitAces: value })} />
                 <Switch label="Late surrender" checked={column.lateSurrender} onChange={(value) => updateColumn(column.id, { lateSurrender: value })} />
               </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Select label="Blackjack payout" value={column.blackjackPayout} onChange={(event) => updateColumn(column.id, { blackjackPayout: Number(event.target.value) as 1.5 | 1.2 })}>
+                  <option value={1.5}>3:2</option>
+                  <option value={1.2}>6:5</option>
+                </Select>
+                <Select label="Play variation" value={column.useIndices ? "indices" : "basic"} onChange={(event) => updateColumn(column.id, { useIndices: event.target.value === "indices" })}>
+                  <option value="indices">AP Toolbox Pro indices</option>
+                  <option value="basic">Basic strategy only</option>
+                </Select>
+              </div>
+              {isEstimated(ruleAdjustmentFlagsFromRules(column)) && (
+                <p className="mt-3 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+                  <i className="fa-solid fa-triangle-exclamation mr-1.5 text-amber-300" aria-hidden="true" />
+                  {(sumRuleAdjustment(ruleAdjustmentFlagsFromRules(column)) * 100).toFixed(2)}pp literature-estimated edge delta applied for rules away from the audited baseline.
+                </p>
+              )}
 
               <div className="mt-5 space-y-2 border-t border-white/[.07] pt-4">
                 <div className={`rounded-xl p-3 ${index === bestHourlyEv ? "bg-emerald-400/10 ring-1 ring-emerald-400/30" : "bg-black/20"}`}>

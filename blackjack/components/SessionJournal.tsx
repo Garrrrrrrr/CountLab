@@ -103,6 +103,7 @@ export function SessionJournal() {
   const [resplitAces, setResplitAces] = useState(true);
   const [lateSurrender, setLateSurrender] = useState(true);
   const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
+  const [useIndices, setUseIndices] = useState(true);
   const [spread, setSpread] = useState("1-8");
   const [ramp, setRamp] = useState<RampPoint[]>(() => expandRamp(RAMPS["1-8"]));
   const [handsByCount, setHandsByCount] = useState<Record<number, number>>({});
@@ -138,8 +139,8 @@ export function SessionJournal() {
   }, []);
 
   const rules = useMemo(
-    () => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout }),
-    [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout],
+    () => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout, useIndices }),
+    [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout, useIndices],
   );
   const ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleAdjustmentFlagsFromRules(rules)), [rules]);
   const handsSchedule = useMemo<HandCountPoint[]>(
@@ -152,8 +153,9 @@ export function SessionJournal() {
   );
   const draftOutcome = useMemo(() => theoreticalSessionOutcome(draftSession), [draftSession]);
   const countRows = useMemo<CountRow[]>(
-    () => calculateCountRows({ bankroll: 0, ...draftSession, ruleAdjustment }),
-    [draftSession, ruleAdjustment],
+    // calculateCountRows derives the rule delta from draftSession.rules.
+    () => calculateCountRows({ bankroll: 0, ...draftSession }),
+    [draftSession],
   );
 
   const scopedSessions = useMemo(() => selectedBankrollId === "all" ? sessions : sessions.filter((session) => session.bankrollId === selectedBankrollId), [sessions, selectedBankrollId]);
@@ -183,12 +185,14 @@ export function SessionJournal() {
   const updateHands = (trueCount: number, hands: number) => {
     setHandsByCount((current) => ({ ...current, [trueCount]: hands }));
   };
-  const applyRuleToggles = (r: { dealerHitsSoft17: boolean; doubleAfterSplit: boolean; resplitAces: boolean; lateSurrender: boolean; blackjackPayout: 1.5 | 1.2 }) => {
+  const applyRuleToggles = (r: { dealerHitsSoft17: boolean; doubleAfterSplit: boolean; resplitAces: boolean; lateSurrender: boolean; blackjackPayout: 1.5 | 1.2; useIndices?: boolean }) => {
     setDealerHitsSoft17(r.dealerHitsSoft17);
     setDoubleAfterSplit(r.doubleAfterSplit);
     setResplitAces(r.resplitAces);
     setLateSurrender(r.lateSurrender);
     setBlackjackPayout(r.blackjackPayout);
+    // Sessions logged before the control existed were priced with indices on.
+    setUseIndices(r.useIndices !== false);
   };
   const applyTemplate = (id: string) => {
     const template = simulationLibrary.templates().find((item) => item.id === id);
@@ -490,6 +494,7 @@ export function SessionJournal() {
               <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
               <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
               <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
+              <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}><option value="indices">AP Toolbox Pro indices</option><option value="basic">Basic strategy only</option></Select>
             </div>
             {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
               <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
@@ -702,7 +707,7 @@ export function SessionJournal() {
           </div>
         </Section>
       </div>
-      <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation are computed from the audited basic-strategy true-count profile for the entered rules and ramp, using the same engine as the Game &amp; Bankroll Lab. They are not fit to your results or used to price AP Toolbox H17 Pro deviations.</p>
+      <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation come from the audited true-count profile for the entered rules, ramp and play variation, using the same engine as the Game &amp; Bankroll Lab. They are never fit to your results.</p>
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>

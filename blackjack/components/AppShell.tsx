@@ -70,6 +70,15 @@ const groups = [
     ],
   },
 ];
+/** Every destination the mobile "Analyze" tab stands in for, taken from the sidebar itself. */
+const analyzePaths = new Set([
+  ...groups
+    .filter((group) => group.label === "Analyze" || group.label === "Casino Games")
+    .flatMap((group) => group.items.map(([, href]) => href)),
+  "/analysis",
+  "/bankroll",
+]);
+
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "").replace(/\/$/, "") || "/dashboard",
     fullShoeActive = path === "/training/full-shoe",
@@ -240,12 +249,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           <Link
             href="/settings"
-            aria-label={`Current rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}. Open settings.`}
+            aria-label={`Training default rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}. Analysis pages carry their own rules. Open settings.`}
             className="pressable grid min-h-11 shrink-0 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
           >
             <span className="sm:hidden">{rules.dealerHitsSoft17 ? "H17" : "S17"}</span>
             <span className="hidden sm:inline">
-              {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
+              <span className="mr-1.5 text-zinc-500">Drills</span>{rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
             </span>
           </Link>
         </header>
@@ -266,7 +275,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ["Train", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && ["/cvcx", "/simulation", "/journal", "/analysis", "/bankroll", "/bet-spread-recommender", "/chase-flush", "/ultimate-texas-holdem"].includes(path));
+          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && analyzePaths.has(path));
           return (
             <Link
               key={href}

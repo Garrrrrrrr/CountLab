@@ -126,7 +126,7 @@ export function BankrollRecommender() {
         <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">
           Coefficient optimizer
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">Bankroll Recommender</h1>
+        <h1 className="mt-2 text-3xl font-semibold">Bet Spread Recommender</h1>
         <p className="mt-2 max-w-4xl text-zinc-400">
           Size a whole-dollar bet spread around the table minimum while
           targeting an hourly EV and maximum lifetime risk of ruin.

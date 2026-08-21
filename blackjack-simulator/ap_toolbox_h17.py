@@ -110,17 +110,27 @@ def ap_toolbox_h17_pro_action(cards: np.ndarray, count: int, dealer: int, can_sp
         if total == 19 and dealer == 5 and can_double and tc >= 1:
             return DOUBLE
         return action
-    # Higher-priority stand indices override the surrender play below.
-    if total == 16 and dealer == 9 and tc >= 5:
-        return STAND
-    if total == 16 and dealer == 10 and tc >= 0:
-        return STAND
-    if total == 16 and dealer == 1 and tc >= 3:
-        return STAND
-    if total == 15 and dealer == 10 and tc >= 4:
-        return STAND
-    if total == 15 and dealer == 1 and tc >= 5:
-        return STAND
+    # The chart's starred stand indices, applied only where this hand cannot
+    # surrender. Standing on 15 or 16 against a ten or an ace is worth about
+    # -0.53 to -0.61 per unit at every true count from -6 to +10, because a
+    # ten-rich shoe leaves the dealer fewer stiff hands to bust with, so it
+    # never overtakes the flat -0.50 of surrendering. Letting the star displace
+    # the surrender costs about 0.044 points of flat-bet edge, and about 0.25
+    # units per 100 rounds on a 1-12 ramp because the loss lands entirely at
+    # positive counts. Measured by `priceCell` in
+    # ../blackjack/lib/blackjack/deviationEv.ts; see
+    # ../blackjack/docs/reference-analysis.md.
+    if not can_surrender:
+        if total == 16 and dealer == 9 and tc >= 5:
+            return STAND
+        if total == 16 and dealer == 10 and tc >= 0:
+            return STAND
+        if total == 16 and dealer == 1 and tc >= 3:
+            return STAND
+        if total == 15 and dealer == 10 and tc >= 4:
+            return STAND
+        if total == 15 and dealer == 1 and tc >= 5:
+            return STAND
     # The chart's indexed surrender rows replace CountLab's broader static
     # late-surrender baseline for these two decisions.
     if total == 16 and dealer == 9 and tc < -1:
