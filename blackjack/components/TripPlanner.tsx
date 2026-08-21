@@ -7,6 +7,7 @@ import { planTrip } from "@/lib/blackjack/tripPlanning";
 import { journalLibrary } from "@/lib/blackjack/journal";
 import { currentBankroll } from "@/lib/blackjack/journalAnalysis";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
+import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 import { GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
@@ -20,6 +21,7 @@ export function TripPlanner() {
   const [doubleAfterSplit, setDoubleAfterSplit] = useState(true);
   const [resplitAces, setResplitAces] = useState(true);
   const [lateSurrender, setLateSurrender] = useState(true);
+  const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
   const [ramp, setRamp] = useState<RampPoint[]>(() => expandRamp(RAMPS["1-8"]));
   const [bankroll, setBankroll] = useState(5000);
   const [bettingUnit, setBettingUnit] = useState(25);
@@ -37,7 +39,8 @@ export function TripPlanner() {
     return () => removeEventListener(venuePresetLibrary.event, refresh);
   }, []);
 
-  const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender }), [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender]);
+  const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout }), [blackjackPayout, decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender]);
+  const ruleFlags = useMemo(() => ruleAdjustmentFlagsFromRules(rules), [rules]);
   const plan = useMemo(
     () => planTrip({ bankroll, bettingUnit, playerHands, handsPerHour, hours: tripHours, rules, ramp }),
     [bankroll, bettingUnit, playerHands, handsPerHour, tripHours, rules, ramp],
@@ -53,6 +56,7 @@ export function TripPlanner() {
     setDoubleAfterSplit(preset.rules.doubleAfterSplit);
     setResplitAces(preset.rules.resplitAces);
     setLateSurrender(preset.rules.lateSurrender);
+    setBlackjackPayout(preset.rules.blackjackPayout);
     setRamp(expandRamp(preset.ramp));
   };
   const useJournalBankroll = () => {
@@ -103,6 +107,15 @@ export function TripPlanner() {
             <Switch label="RSA" checked={resplitAces} onChange={setResplitAces} />
             <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
           </div>
+          <div className="mt-3">
+            <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
+          </div>
+          {isEstimated(ruleFlags) && (
+            <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
+              <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+              <span>Rules away from the audited baseline apply a flat literature-estimated {(sumRuleAdjustment(ruleFlags) * 100).toFixed(2)}pp edge delta rather than a resimulated audit, the same as the Bankroll Lab.</span>
+            </p>
+          )}
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Ramp</p><div className="w-40"><Select label="" aria-label="Ramp preset" defaultValue="1-8" onChange={(event) => RAMPS[event.target.value] && setRamp(expandRamp(RAMPS[event.target.value]))}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}</Select></div></div>
             <div className="grid grid-cols-4 gap-2">{ramp.filter((point) => point.trueCount >= -1 && point.trueCount <= 6).map((point) => <NumberField key={point.trueCount} label={`TC ${point.trueCount > 0 ? "+" : ""}${point.trueCount}`} value={point.units} min={0} step={1} onValueChange={(value) => setRamp((current) => current.map((p) => p.trueCount === point.trueCount || (point.trueCount === -1 && p.trueCount < -1) || (point.trueCount === 6 && p.trueCount > 6) ? { ...p, units: Math.max(0, value) } : p))} />)}</div>

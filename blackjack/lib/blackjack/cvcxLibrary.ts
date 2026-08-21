@@ -1,5 +1,4 @@
 import type { HandCountPoint, RampPoint } from "./advantage";
-import type { DEVIATION_SKILL } from "./ruleAdjustments";
 
 export interface CvcxTemplateConfig {
   decks: 6 | 8;
@@ -29,7 +28,14 @@ export interface CvcxTemplateConfig {
   lateSurrender: boolean;
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
-  deviationSkillLevel: keyof typeof DEVIATION_SKILL;
+  /** Which audited curve to price against. Absent on saves that predate the control. */
+  useIndices?: boolean;
+  /**
+   * @deprecated A 0-1 skill multiplier the engine stopped honouring when both
+   * the index and no-index curves became separately audited. Still accepted so
+   * older saves keep loading; `useIndices` replaced it.
+   */
+  deviationSkillLevel?: string;
   doubleRule?: "any2" | "9to11" | "10to11";
 }
 
@@ -77,8 +83,7 @@ const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && typeof config.resplitAces === "boolean"
     && typeof config.lateSurrender === "boolean"
     && typeof config.europeanNoHoleCard === "boolean"
-    && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2)
-    && typeof config.deviationSkillLevel === "string";
+    && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2);
 };
 const validTemplate = (value: unknown): value is CvcxTemplate => {
   if (!value || typeof value !== "object") return false;

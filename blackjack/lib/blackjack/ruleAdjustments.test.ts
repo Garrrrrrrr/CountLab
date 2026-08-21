@@ -14,9 +14,9 @@ const baseInput = {
 };
 
 describe("rule-adjustment defaults", () => {
-  it("leaves calculateAdvantage unchanged when ruleAdjustment/deviationSkill are omitted", () => {
+  it("leaves calculateAdvantage unchanged when ruleAdjustment is omitted", () => {
     const withoutFields = calculateAdvantage(baseInput);
-    const withDefaults = calculateAdvantage({ ...baseInput, ruleAdjustment: 0, deviationSkill: 1 });
+    const withDefaults = calculateAdvantage({ ...baseInput, ruleAdjustment: 0 });
     expect(withDefaults.evPerRound).toBeCloseTo(withoutFields.evPerRound, 12);
     expect(withDefaults.rows).toEqual(withoutFields.rows);
   });
@@ -31,28 +31,43 @@ describe("rule-adjustment defaults", () => {
 
   it("uses separately audited H17 Pro and basic-strategy curves", () => {
     const measured = H17_PRO_COEFFICIENTS["6-4.5"];
-    for (const skill of [undefined, 0, 0.5, 1]) {
-      const result = calculateAdvantage({ ...baseInput, deviationSkill: skill });
-      result.rows.forEach((row, index) => {
-        expect(row.advantage).toBeCloseTo(measured[index][1], 12);
-        expect(row.frequency).toBeCloseTo(measured[index][0], 12);
-        expect(row.sdUnits).toBeCloseTo(measured[index][2], 12);
-      });
-    }
+    calculateAdvantage(baseInput).rows.forEach((row, index) => {
+      expect(row.advantage).toBeCloseTo(measured[index][1], 12);
+      expect(row.frequency).toBeCloseTo(measured[index][0], 12);
+      expect(row.sdUnits).toBeCloseTo(measured[index][2], 12);
+    });
     const basic = calculateAdvantage({ ...baseInput, rules: { ...DEFAULT_ADVANTAGE_RULES, useIndices: false } });
     basic.rows.forEach((row, index) => expect(row.advantage).toBeCloseTo(NO_INDEX_COEFFICIENTS["6-4.5"][index][1], 12));
     expect(calculateAdvantage(baseInput).rows.at(-1)!.advantage).toBeGreaterThan(0.03);
+  });
+
+  it("prices rules carried on the rules object without being asked to", () => {
+    // Compare Scenarios and the Trip Planner render these switches and never
+    // passed a ruleAdjustment, so a 6:5 no-DAS game used to price identically
+    // to a liberal 3:2 one.
+    const liberal = calculateAdvantage(baseInput);
+    const stingy = calculateAdvantage({
+      ...baseInput,
+      rules: { ...DEFAULT_ADVANTAGE_RULES, doubleAfterSplit: false, resplitAces: false, lateSurrender: false, blackjackPayout: 1.2 },
+    });
+    const expected = RULE_DELTAS.noDoubleAfterSplit + RULE_DELTAS.noResplitAces + RULE_DELTAS.noLateSurrender + RULE_DELTAS.blackjackPays6to5;
+    expect(stingy.rows[0].advantage).toBeCloseTo(liberal.rows[0].advantage + expected, 12);
+    expect(stingy.hourlyEv).toBeLessThan(liberal.hourlyEv);
+    // An explicit ruleAdjustment stacks on top rather than replacing it.
+    const enhc = calculateAdvantage({ ...baseInput, ruleAdjustment: RULE_DELTAS.europeanNoHoleCard });
+    expect(enhc.rows[0].advantage).toBeCloseTo(liberal.rows[0].advantage + RULE_DELTAS.europeanNoHoleCard, 12);
   });
 
   it("keeps the count distribution normalized", () => {
     expect(getCountProfile(DEFAULT_ADVANTAGE_RULES).reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
   });
 
-  it("does not change hourly EV when a legacy deviation skill is supplied", () => {
-    const baseline = calculateAdvantage(baseInput).hourlyEv;
-    for (const skill of [0, 0.7, 0.92, 1]) {
-      expect(calculateAdvantage({ ...baseInput, deviationSkill: skill }).hourlyEv).toBeCloseTo(baseline, 12);
-    }
+  it("switches curves on rules.useIndices rather than shrinking one toward the other", () => {
+    const withIndices = calculateAdvantage(baseInput);
+    const basicOnly = calculateAdvantage({ ...baseInput, rules: { ...DEFAULT_ADVANTAGE_RULES, useIndices: false } });
+    expect(basicOnly.hourlyEv).toBeLessThan(withIndices.hourlyEv);
+    // A +8 shoe is worth over 4% to a pure basic-strategy player, not near zero.
+    expect(basicOnly.rows.at(-1)!.advantage).toBeGreaterThan(0.03);
   });
 
 });

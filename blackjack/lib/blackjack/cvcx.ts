@@ -4,6 +4,7 @@ import {
   HandCountPoint,
   RampPoint,
   calculateAdvantage,
+  effectiveRuleAdjustment,
   getCountProfile,
   recommendUnit,
 } from "./advantage";
@@ -19,14 +20,18 @@ export interface CvcxScenario {
   maxSpread: number;
   wongInAt: number | null;
   rules: AdvantageRules;
-  /** Flat edge-percentage shift from rule toggles that depart from the audited baseline. Default 0. */
+  /** Extra shift for rules AdvantageRules cannot express; the rest come from `rules`. Default 0. */
   ruleAdjustment?: number;
-  /** 0-1 multiplier on the count-dependent portion of edge. Default 1 (perfect play). */
-  deviationSkill?: number;
 }
 
 export interface CvcxPerformance extends AdvantageResult {
   playedFrequency: number;
+  /**
+   * SCORE: expected win in dollars per 100 rounds with a $10,000 bankroll sized
+   * for a 13.5% lifetime risk of ruin. Scale-invariant in the betting unit, so
+   * it compares games rather than stakes. This is plain SCORE, not c-SCORE —
+   * nothing here models comps or the cost of playing.
+   */
   cScore: number;
   requiredBankroll: number;
   tripRiskOfRuin: number;
@@ -88,11 +93,11 @@ export function createOptimalRamp(
   wongInAt: number | null,
   chipIncrement = 0.5,
   ruleAdjustment = 0,
-  deviationSkill = 1,
 ): RampPoint[] {
-  const rows = getCountProfile(rules, deviationSkill).map((row) => ({
+  const shift = effectiveRuleAdjustment(rules, ruleAdjustment);
+  const rows = getCountProfile(rules).map((row) => ({
     tc: row.tc,
-    adv: row.adv + ruleAdjustment,
+    adv: row.adv + shift,
     sd: row.sd,
   }));
   const eligible = rows.filter(
@@ -135,7 +140,6 @@ export function analyzeCvcx(
     rules: scenario.rules,
     ramp,
     ruleAdjustment: scenario.ruleAdjustment,
-    deviationSkill: scenario.deviationSkill,
   });
   const variance = result.sdPerRound ** 2;
   const playedFrequency = result.rows.reduce(
@@ -181,7 +185,6 @@ export function riskSizedUnit(
     scenario.playerHands,
     scenario.handsByTrueCount,
     scenario.ruleAdjustment,
-    scenario.deviationSkill,
   );
 }
 

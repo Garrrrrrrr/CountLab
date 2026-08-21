@@ -286,7 +286,7 @@ export function SessionSimulator() {
             <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
             <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it samples audited basic-strategy true-count frequencies and conditional payoff moments independently. It does not reproduce card order, count clustering, H17 Pro deviations, or card-level drawdowns. Use Real shoes for those results.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it draws from the audited true-count frequencies and conditional payoff moments for the Pro index policy, sampling each round independently. The index EV is priced into those coefficients, but card order, count clustering inside a shoe, and card-level drawdowns are not reproduced. Use Real shoes for those.</p>
         </details>
       ) : (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">

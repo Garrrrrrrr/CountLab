@@ -134,6 +134,22 @@ The strategy has a concrete definition: the supplied H17 Pro chart,
 including its exact thresholds and boundary conventions. The production policy
 is encoded directly in `h17_pro.py`.
 
+## Pending regeneration
+
+`h17_pro.py` was corrected on 2026-08-21: the chart's starred stand
+indices for 15 and 16 against a ten or an ace no longer displace a late
+surrender, because standing those hands measures between -0.53 and -0.61 per
+unit at every true count while surrendering is a flat -0.50. The full
+per-count evidence is in `../blackjack/docs/reference-analysis.md`.
+
+`results/h17-pro-coefficients.json` and the TypeScript artifact
+exported from it predate that fix, so they still price the losing policy --
+about 0.044 points of flat-bet edge, concentrated entirely at non-negative
+counts. The recorded `source_sha256` therefore no longer matches this file, by
+design: it marks the artifact as due for a rerun. Until that rerun lands, the
+app's analytical index curve understates the edge at positive counts, while its
+shoe-by-shoe simulator and its trainers use the corrected policy.
+
 ## Commands
 
 ```powershell

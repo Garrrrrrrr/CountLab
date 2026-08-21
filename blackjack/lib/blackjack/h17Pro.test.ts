@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyH17Deviation,
-  H17_PRO_DEVIATIONS,
-} from "./h17Pro";
+import { H17_PRO_DEVIATIONS } from "./h17Pro";
 import { resolveDeviation } from "./deviations";
 
 const h17LateSurrender = { dealerHitsSoft17: true, lateSurrender: true };
+const h17NoSurrender = { dealerHitsSoft17: true, lateSurrender: false };
 
 describe("H17 Pro table", () => {
   it("contains all 34 supplied decisions and key boundaries", () => {
@@ -15,19 +13,27 @@ describe("H17 Pro table", () => {
     expect(H17_PRO_DEVIATIONS.filter((row) => row.always)).toHaveLength(5);
   });
 
-  it("lets starred stand indices replace a late-surrender basic play", () => {
-    const sixteenVsTen = H17_PRO_DEVIATIONS.find((row) => row.hand === "16" && row.dealer === "10" && row.deviationAction === "S")!;
-    const fifteenVsTen = H17_PRO_DEVIATIONS.find((row) => row.hand === "15" && row.dealer === "10" && row.deviationAction === "S")!;
-    expect(applyH17Deviation(sixteenVsTen, "R", 0, h17LateSurrender)).toBe("S");
-    expect(applyH17Deviation(fifteenVsTen, "R", 3, h17LateSurrender)).toBe("R");
-    expect(applyH17Deviation(fifteenVsTen, "R", 4, h17LateSurrender)).toBe("S");
+  it("applies starred stand indices only where surrender is unavailable", () => {
+    // Standing on 15/16 versus a ten is worth about -0.53 to -0.58 at every
+    // true count, so it never beats surrender's flat -0.50. The star is honoured
+    // where the table (or the split hand) offers no surrender, and ignored where
+    // it does. See the note on `overridesSurrender` and priceCell in deviationEv.
+    expect(resolveDeviation("R", "16", "10", 0, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("R", "16", "10", 4, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("H", "16", "10", -1, h17NoSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "16", "10", 0, h17NoSurrender).action).toBe("S");
+    expect(resolveDeviation("H", "15", "10", 3, h17NoSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "15", "10", 4, h17NoSurrender).action).toBe("S");
   });
 
   it("uses threshold surrender only for an H17 game offering late surrender", () => {
-    const fourteenVsTen = H17_PRO_DEVIATIONS.find((row) => row.hand === "14" && row.dealer === "10")!;
-    expect(applyH17Deviation(fourteenVsTen, "H", 3, h17LateSurrender)).toBe("R");
-    expect(applyH17Deviation(fourteenVsTen, "H", 3, { dealerHitsSoft17: true, lateSurrender: false })).toBe("H");
-    expect(applyH17Deviation(fourteenVsTen, "H", 3, { dealerHitsSoft17: false, lateSurrender: true })).toBe("H");
+    expect(resolveDeviation("H", "14", "10", 2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "14", "10", 3, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("H", "14", "10", 3, h17NoSurrender).action).toBe("H");
+    // The S17 chart carries the same 14 v 10 surrender index, and resolveDeviation
+    // picks the chart matching the dealer rule when no catalog is supplied.
+    expect(resolveDeviation("H", "14", "10", 2, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("H");
+    expect(resolveDeviation("H", "14", "10", 3, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("R");
   });
 
   it("plays two-sided cells on both sides of their index, inclusive at the index", () => {
@@ -49,27 +55,26 @@ describe("H17 Pro table", () => {
     expect(resolveDeviation("S", "13", "2", -2, h17LateSurrender).belowIndex).toBe(true);
   });
 
-  it("keeps the legacy single-row helper aligned with two-sided boundaries", () => {
-    const twelveVsFour = H17_PRO_DEVIATIONS.find((row) => row.hand === "12" && row.dealer === "4")!;
-    expect(applyH17Deviation(twelveVsFour, "S", -1, h17LateSurrender)).toBe("H");
-    expect(applyH17Deviation(twelveVsFour, "S", 0, h17LateSurrender)).toBe("H");
-    expect(applyH17Deviation(twelveVsFour, "S", 1, h17LateSurrender)).toBe("S");
-  });
-
   it("leaves one-sided cells and S17 tables untouched", () => {
     expect(resolveDeviation("H", "12", "2", 0, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("H", "12", "2", 3, h17LateSurrender).action).toBe("S");
     expect(resolveDeviation("R", "16", "A", 2, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("R", "16", "A", 3, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("R", "16", "A", 3, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("H", "16", "A", 3, h17NoSurrender).action).toBe("S");
     expect(resolveDeviation("S", "13", "2", -4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("S");
   });
 
-  it("resolves overlapping surrender and stand cells by chart precedence", () => {
+  it("resolves overlapping surrender and stand cells", () => {
+    // Below its surrender index the chart hits, which beats surrendering by
+    // about a point of EV; at and above it, surrender holds at every count.
     expect(resolveDeviation("R", "16", "9", -2, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("H", "16", "9", -1, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("H", "16", "9", 5, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("R", "16", "9", 5, h17LateSurrender).action).toBe("R");
     expect(resolveDeviation("R", "15", "10", -1, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("R", "15", "10", 0, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("R", "15", "10", 4, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("R", "15", "10", 4, h17LateSurrender).action).toBe("R");
+    // With no surrender the same two cells fall back to the hit/stand indices.
+    expect(resolveDeviation("H", "16", "9", 4, h17NoSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "16", "9", 5, h17NoSurrender).action).toBe("S");
   });
 });

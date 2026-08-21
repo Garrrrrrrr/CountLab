@@ -14,6 +14,7 @@ import {
   deviationDecision,
   DeviationAction,
   resolveDeviation,
+  deviationHandRanks,
 } from "@/lib/blackjack/deviations";
 import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/h17Pro";
 import { S17_PRO_DEVIATIONS } from "@/lib/blackjack/s17Pro";
@@ -457,25 +458,16 @@ export function DeviationDrill() {
     deviationPresented.current = key;
     track("question_presented", { drill: "Deviations", category: d.hand, scenario, attempt: q + 1 });
   }, [d.dealer, d.hand, q, tc]);
-  const playerCards = useMemo(() => {
-      const hands: Record<string, [Card["rank"], Card["rank"]]> = {
-        "16": ["10", "6"],
-        "15": ["10", "5"],
-        "13": ["10", "3"],
-        "12": ["10", "2"],
-        "11": ["6", "5"],
-        "10": ["6", "4"],
-        "9": ["5", "4"],
-        "Soft 19": ["A", "8"],
-        "Soft 18": ["A", "7"],
-        "10,10": ["10", "10"],
-      };
-      const ranks = hands[d.hand] ?? ["10", "6"];
-      return [
-        { rank: ranks[0], suit: "spades" },
-        { rank: ranks[1], suit: "hearts" },
-      ] satisfies Card[];
-    }, [d]),
+  const playerCards = useMemo(
+      () => {
+        const ranks = deviationHandRanks(d.hand);
+        return [
+          { rank: ranks[0], suit: "spades" },
+          { rank: ranks[1], suit: "hearts" },
+        ] satisfies Card[];
+      },
+      [d],
+    ),
     dealerCard = useMemo(
       () => ({ rank: d.dealer as Card["rank"], suit: "diamonds" }) satisfies Card,
       [d],

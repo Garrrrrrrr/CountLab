@@ -2,7 +2,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button, GhostButton, Metric, Panel, Select, Switch } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import {
@@ -16,6 +16,7 @@ import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackja
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { analytics } from "@/lib/analytics";
+import { LEGACY_REDIRECTS } from "@/lib/routes";
 
 function PageLoading() {
   return (
@@ -89,7 +90,6 @@ function Dashboard() {
     Deviations: "/training/deviations",
     "Full Shoe": "/training/full-shoe",
     "Deck Estimation": "/training/deck-estimation",
-    "Counting Benchmark": "/training/benchmark",
   };
   const practiced = Object.keys(drillLinks)
     .map((name) => ({
@@ -611,7 +611,9 @@ function SettingsPage() {
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Training data</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Download a portable JSON backup or restore one on this device.
+            Download a portable JSON backup or restore one on this device. It
+            covers settings, drill history and progress, the session journal,
+            saved scenarios and simulation runs, and venue presets.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <GhostButton
@@ -641,9 +643,9 @@ function SettingsPage() {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 try {
-                  storage.importData(await file.text());
+                  const { namespaces } = storage.importData(await file.text());
                   setS(storage.settings());
-                  setDataMessage(`Imported ${storage.sessions().length} sessions.`);
+                  setDataMessage(`Imported ${storage.sessions().length} sessions${namespaces ? ` and ${namespaces} saved collection${namespaces === 1 ? "" : "s"}` : ""}. Reload to pick up restored journal and scenario data.`);
                 } catch (error) {
                   setDataMessage(error instanceof Error ? error.message : "Import failed");
                 }
@@ -664,7 +666,7 @@ function SettingsPage() {
               Export CSV
             </GhostButton>
           </div>
-          <p className="mt-3 text-xs leading-5 text-zinc-500">CSV export is a spreadsheet-friendly summary (no mistakes/category detail) and is export-only; JSON stays the format to restore from.</p>
+          <p className="mt-3 text-xs leading-5 text-zinc-500">CSV export covers drill sessions only — a spreadsheet-friendly summary with no mistake or category detail — and is export-only. JSON stays the format to restore from.</p>
           {dataMessage && (
             <p aria-live="polite" className="mt-3 text-sm text-emerald-300">
               {dataMessage}
@@ -722,6 +724,21 @@ function SettingsPage() {
     </>
   );
 }
+/** Keeps an old bookmark working without publishing the same page at three URLs. */
+function LegacyRedirect({ to }: { to: string }) {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace(to);
+  }, [router, to]);
+  return (
+    <Panel className="py-20 text-center">
+      <p className="text-zinc-400">This page moved to the Game &amp; Bankroll Lab.</p>
+      <Link href={to}>
+        <Button className="mt-5">Continue</Button>
+      </Link>
+    </Panel>
+  );
+}
 function NotFound() {
   useEffect(() => {
     analytics.track("client_error", { error_type: "RouteNotFound", message_normalized: "route not found", route: analytics.route, source: "dynamic_page" });
@@ -745,8 +762,6 @@ export default function DynamicPage() {
     journal: <SessionJournal />,
     compare: <ScenarioComparison />,
     "trip-planner": <TripPlanner />,
-    analysis: <CvcxLab />,
-    bankroll: <CvcxLab />,
     "bet-spread-recommender": <BankrollRecommender />,
     "chase-flush": <ChaseFlushLab />,
     "ultimate-texas-holdem": <UTHLab />,
@@ -767,5 +782,7 @@ export default function DynamicPage() {
     privacy: <PrivacyPage />,
     admin: <AdminPage />,
   };
+  const redirect = LEGACY_REDIRECTS[path];
+  if (redirect) return <LegacyRedirect to={redirect} />;
   return pages[path] || <NotFound />;
 }

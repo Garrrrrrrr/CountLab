@@ -6,7 +6,6 @@ import { toCsv } from "../blackjack/csv";
 
 export type DrillType =
   | "Running Count"
-  | "Missing Card"
   | "Basic Strategy"
   | "Deviations"
   | "True Count"
@@ -93,6 +92,50 @@ const SYNCED_SESSION_IDS_PREFIX = "countlab:drill-synced-session-ids:";
 // turning a sign-in into dozens of rejected writes.
 const DRILL_SESSION_REPLAY_INTERVAL_MS = 1_100;
 let replayRetryScheduled = false;
+
+/**
+ * Local namespaces a full backup has to carry beyond settings and drill
+ * sessions. Without these the "portable JSON backup" quietly left the session
+ * journal, saved scenarios, simulation runs, venue presets, in-progress drills
+ * and spaced-repetition schedules behind on the old device.
+ *
+ * Copied verbatim rather than schema-mapped: each library validates its own
+ * shape when it reads, so a stale or malformed blob degrades to that library's
+ * empty state instead of corrupting anything. Device- and account-scoped keys
+ * (analytics identity, per-account sync bookkeeping) are deliberately excluded.
+ */
+const BACKUP_KEY_PREFIXES = [
+  PROGRESS_PREFIX,
+  "hilo:leitner:",
+  "countlab:journal-",
+  "countlab:cvcx-templates:",
+  "countlab:simulation-runs:",
+  "countlab:simulation-templates:",
+  "countlab:venue-presets:",
+];
+
+function backupNamespaces(): Record<string, string> {
+  const collected: Record<string, string> = {};
+  if (typeof window === "undefined") return collected;
+  for (const key of Object.keys(localStorage)) {
+    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
+    const value = localStorage.getItem(key);
+    if (value !== null) collected[key] = value;
+  }
+  return collected;
+}
+
+function restoreNamespaces(entries: unknown): number {
+  if (!entries || typeof entries !== "object") return 0;
+  let restored = 0;
+  for (const [key, value] of Object.entries(entries as Record<string, unknown>)) {
+    if (typeof value !== "string") continue;
+    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
+    localStorage.setItem(key, value);
+    restored += 1;
+  }
+  return restored;
+}
 
 function progressKey(drill: DrillType) {
   return `${PROGRESS_PREFIX}${drill}`;
@@ -298,15 +341,22 @@ export const storage = {
     window.dispatchEvent(new Event("hilo-storage"));
   },
   exportData() {
-    track("data_exported", { scope: "sessions" });
+    track("data_exported", { scope: "full" });
     return JSON.stringify(
-      { version: 1, exportedAt: new Date().toISOString(), settings: this.settings(), sessions: this.sessions() },
+      {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        settings: this.settings(),
+        sessions: this.sessions(),
+        local: backupNamespaces(),
+      },
       null,
       2,
     );
   },
+  /** Accepts both the version 1 (settings + sessions) and version 2 (full) shapes. */
   importData(raw: string) {
-    const parsed = JSON.parse(raw) as { settings?: Partial<Settings>; sessions?: Session[] };
+    const parsed = JSON.parse(raw) as { settings?: Partial<Settings>; sessions?: Session[]; local?: unknown };
     if (!Array.isArray(parsed.sessions)) throw new Error("The backup does not contain a session list");
     const valid = parsed.sessions.every(
       (session) => session && typeof session.id === "string" && typeof session.drill === "string" && Number.isFinite(session.questions),
@@ -314,8 +364,10 @@ export const storage = {
     if (!valid) throw new Error("The backup contains invalid sessions");
     localStorage.setItem(SESSION_KEY, JSON.stringify(parsed.sessions.slice(0, 500)));
     if (parsed.settings) this.saveSettings({ ...DEFAULT_SETTINGS, ...parsed.settings });
+    const restored = restoreNamespaces(parsed.local);
     window.dispatchEvent(new Event("hilo-storage"));
-    track("data_imported", { sessions: parsed.sessions.length });
+    track("data_imported", { sessions: parsed.sessions.length, namespaces: restored });
+    return { sessions: parsed.sessions.length, namespaces: restored };
   },
   /** Spreadsheet-friendly, export-only summary. Mistakes/categories are nested and don't fit a flat row; JSON stays the only import path. */
   exportCsv() {

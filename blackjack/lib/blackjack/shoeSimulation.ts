@@ -1,5 +1,5 @@
 import { AdvantageRules, RampPoint, unitsAt } from "./advantage";
-import { DEVIATIONS, Deviation, DeviationAction, resolveDeviation } from "./deviations";
+import { Deviation, DeviationAction, getDeviationCatalog, resolveDeviation } from "./deviations";
 import { calculateHandValue, canSplit, isBlackjack, isSoft } from "./hand";
 import { hiLoValue, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
@@ -105,8 +105,9 @@ export const deviationHandLabel = (cards: Card[]) =>
       ? `Soft ${calculateHandValue(cards)}`
     : String(calculateHandValue(cards));
 
-function activeDeviations(groups: DeviationGroup[]): Deviation[] {
-  return groups.includes("h17-pro") ? DEVIATIONS : [];
+/** The group id predates the S17 chart; it now selects whichever chart matches the dealer rule. */
+function activeDeviations(groups: DeviationGroup[], rules: AdvantageRules): Deviation[] {
+  return groups.includes("h17-pro") ? getDeviationCatalog(rules) : [];
 }
 
 function applyIndexDeviation(
@@ -116,11 +117,14 @@ function applyIndexDeviation(
   tc: number,
   deviations: Deviation[],
   rules: AdvantageRules,
+  /** False once the box has passed its surrender decision, or on a split hand. */
+  canSurrender: boolean,
 ): DeviationAction {
   if (!deviations.length) return action;
   const hand = deviationHandLabel(playerCards);
   const dealer = rankLabel(dealerUpcard.rank);
-  return resolveDeviation(action, hand, dealer, tc, rules, deviations).action;
+  const deviationRules = { dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.lateSurrender && canSurrender };
+  return resolveDeviation(action, hand, dealer, tc, deviationRules, deviations).action;
 }
 
 function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
@@ -129,14 +133,23 @@ function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
   return (match.direction === "atOrBelow" ? tc <= match.index : tc >= match.index) === (match.deviationAction === "I");
 }
 
-/** Plays a single box from its post-decision state, hitting per basic strategy + deviations until stand/bust. */
+/**
+ * Plays a single box from its post-decision state, hitting per basic strategy +
+ * deviations until stand/bust.
+ *
+ * Only hitting and standing are still on the table here: doubling, splitting
+ * and surrendering all need a decision this box has already passed. A departure
+ * that resolves to one of those is therefore discarded rather than treated as
+ * "not a hit" — reading a surrender index as a stand made the simulator stand
+ * on every drawn-to 14, 15 and 16 against a ten.
+ */
 function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => number, active: Deviation[], shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
   const hand = [...cards];
   while (calculateHandValue(hand) < 21) {
-    const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules });
-    // Resplitting isn't modeled here, so an in-progress hand that would normally split just stands.
-    const base = decision.action === "D" ? decision.fallback ?? "H" : decision.action === "P" ? "S" : decision.action;
-    const action = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active, rules);
+    const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules, canSplit: false });
+    const base = decision.action === "S" ? "S" : decision.action === "D" ? decision.fallback ?? "H" : "H";
+    const resolved = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active, rules, false);
+    const action = resolved === "S" || resolved === "H" ? resolved : base;
     if (action !== "H") break;
     const card = shoe.deal();
     if (!card) break;
@@ -199,7 +212,8 @@ function playBox(
       rules,
       canSplit: splitAllowed,
     });
-    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), active, rules);
+    const canSurrender = !pending.fromSplit && pending.cards.length === 2 && rules.lateSurrender;
+    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), active, rules, canSurrender);
 
     // A split-only departure cannot be taken when the table's hand limit has
     // been reached, so fall back to the non-pair basic-strategy action.
@@ -243,7 +257,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
   const random = mulberry32(config.seed);
   const shoe = new BlackjackShoe(rules.decks, random);
   const cutCardAt = rules.decks * 52 * (1 - rules.penetration);
-  const active = config.catalogOverride ?? activeDeviations(deviationGroups);
+  const active = config.catalogOverride ?? activeDeviations(deviationGroups, rules);
 
   let bankroll = config.bankroll;
   let peak = bankroll;

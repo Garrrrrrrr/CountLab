@@ -244,6 +244,9 @@ export function CvcxLab() {
     [doubleAfterSplit, setDoubleAfterSplit] = useState(true),
     [resplitAces, setResplitAces] = useState(true),
     [lateSurrender, setLateSurrender] = useState(true),
+    // Both curves are separately audited, so this switches between them rather
+    // than shrinking one toward the other.
+    [useIndices, setUseIndices] = useState(true),
     [europeanNoHoleCard, setEuropeanNoHoleCard] = useState(false),
     [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5),
     [doubleRule, setDoubleRule] = useState<"any2" | "9to11" | "10to11">("any2"),
@@ -280,6 +283,12 @@ export function CvcxLab() {
       }),
       [dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, doubleRule],
     ),
+    // The engine derives the deltas for every rule AdvantageRules carries, so
+    // only the two it cannot express are passed in; the full total is display.
+    extraRuleAdjustment = useMemo(
+      () => sumRuleAdjustment({ europeanNoHoleCard, doubleOnly9to11: doubleRule === "9to11", doubleOnly10to11: doubleRule === "10to11" }),
+      [europeanNoHoleCard, doubleRule],
+    ),
     ruleAdjustment = useMemo(() => sumRuleAdjustment(ruleFlags), [ruleFlags]),
     estimated = isEstimated(ruleFlags);
 
@@ -304,8 +313,9 @@ export function CvcxLab() {
         resplitAces,
         lateSurrender,
         blackjackPayout,
+        useIndices,
       }),
-      [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout],
+      [decks, dealt, dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, blackjackPayout, useIndices],
     ),
     // Wonging is a property of the game actually being played, so it applies to
     // the live ramp: skipped counts drop out of EV, variance, and "rounds
@@ -326,17 +336,17 @@ export function CvcxLab() {
         maxSpread,
         wongInAt,
         rules,
-        ruleAdjustment,
+        ruleAdjustment: extraRuleAdjustment,
       }),
-      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, ruleAdjustment],
+      [bankroll, baseBet, handsSchedule, handsPerHour, hours, targetRisk, maxSpread, wongInAt, rules, extraRuleAdjustment],
     ),
     result = useMemo(
       () => analyzeCvcx(scenario, activeRamp, baseBet),
       [scenario, activeRamp, baseBet],
     ),
     optimalRamp = useMemo(
-      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment),
-      [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment],
+      () => createOptimalRamp(rules, maxSpread, wongInAt, chipIncrement, extraRuleAdjustment),
+      [rules, maxSpread, wongInAt, chipIncrement, extraRuleAdjustment],
     ),
     optimalUnit = useMemo(
       () => riskSizedUnit(scenario, optimalRamp),
@@ -382,7 +392,7 @@ export function CvcxLab() {
   const currentCvcxConfig = (): CvcxTemplateConfig => ({
     decks, dealt, bankroll, baseBet, handsPerHour, hours, targetRisk, maxSpread, wongInAt,
     rampName, ramp, chipIncrement, hands: handsSchedule,
-    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, deviationSkillLevel: "beginner", doubleRule,
+    dealerHitsSoft17, doubleAfterSplit, resplitAces, lateSurrender, europeanNoHoleCard, blackjackPayout, useIndices, doubleRule,
   });
   const saveCvcxTemplate = () => {
     const saved = cvcxLibrary.saveTemplate(currentCvcxConfig(), cvcxTemplateName);
@@ -417,6 +427,8 @@ export function CvcxLab() {
     setEuropeanNoHoleCard(config.europeanNoHoleCard);
     setBlackjackPayout(config.blackjackPayout);
     setDoubleRule(config.doubleRule ?? "any2");
+    // Scenarios saved before the control existed were priced with indices on.
+    setUseIndices(config.useIndices !== false);
     setCvcxTemplateName(template.name);
     setCvcxNotice(`Loaded “${template.name}”.`);
   };
@@ -474,7 +486,7 @@ export function CvcxLab() {
             maxSpread,
             wongInAt,
             chipIncrement,
-            ruleAdjustment,
+            extraRuleAdjustment,
           );
           return {
             name: `${comparisonDecks}D · ${option.dealt} dealt`,
@@ -484,7 +496,7 @@ export function CvcxLab() {
           };
         }),
       ),
-    [rules, maxSpread, wongInAt, chipIncrement, ruleAdjustment, scenario, baseBet],
+    [rules, maxSpread, wongInAt, chipIncrement, extraRuleAdjustment, scenario, baseBet],
   );
 
   const estimateSuffix = estimated ? " · est." : "";
@@ -590,7 +602,7 @@ export function CvcxLab() {
 
         <Section
           title="Table rules"
-          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · H17 Pro · ${estimated ? "estimated" : "audited"}`}
+          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${useIndices ? "Pro indices" : "basic strategy only"} · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -619,6 +631,10 @@ export function CvcxLab() {
             <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
             <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
             <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
+            <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}>
+              <option value="indices">Pro indices</option>
+              <option value="basic">Basic strategy only</option>
+            </Select>
             <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>
               <option value="peek">American hole card</option>
               <option value="enhc">European no hole card</option>
@@ -694,7 +710,7 @@ export function CvcxLab() {
           <dl className="mt-5 grid gap-4 border-t border-white/[.06] pt-4 sm:grid-cols-3">
             <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Average action / round</dt><dd className="mt-1 text-xl font-semibold">{money(result.averageBet, 2)}</dd></div>
             <div><dt className="text-xs uppercase tracking-wide text-zinc-500">Rounds for EV to match one σ (N₀)</dt><dd className="mt-1 text-xl font-semibold">{compact(result.nZeroRounds)}</dd></div>
-            <div><dt className="text-xs uppercase tracking-wide text-zinc-500">c-SCORE</dt><dd className="mt-1 text-xl font-semibold">{result.cScore.toFixed(1)}</dd></div>
+            <div><dt className="text-xs uppercase tracking-wide text-zinc-500">SCORE</dt><dd className="mt-1 text-xl font-semibold">{money(result.cScore, 0)}</dd><dd className="text-xs text-zinc-500">per 100 rounds on a $10,000 bankroll at 13.5% ruin</dd></div>
           </dl>
         </Section>
 
@@ -715,7 +731,7 @@ export function CvcxLab() {
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-right text-sm">
-              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">c-SCORE</th></tr></thead>
+              <thead className="text-zinc-500"><tr><th className="pb-3 text-left">Game</th><th className="pb-3">$/hour</th><th className="pb-3">RoR</th><th className="pb-3">N₀</th><th className="pb-3">SCORE</th></tr></thead>
               <tbody>
                 {[...comparisons].sort((a, b) => b.cScore - a.cScore).map((row, index) => {
                   const active = row.decks === decks && Math.abs(row.penetration - dealt / decks) < 0.001;
@@ -725,7 +741,7 @@ export function CvcxLab() {
                       <td>{money(row.hourlyEv, 2)}</td>
                       <td>{percent(row.riskOfRuin)}</td>
                       <td>{compact(row.nZeroRounds)}</td>
-                      <td className="font-semibold">{row.cScore.toFixed(2)}</td>
+                      <td className="font-semibold">{money(row.cScore, 0)}</td>
                     </tr>
                   );
                 })}

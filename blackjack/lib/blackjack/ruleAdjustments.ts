@@ -16,13 +16,6 @@ export const RULE_DELTAS = {
   doubleOnly10to11: -0.0018,
 } as const;
 
-export const DEVIATION_SKILL = {
-  beginner: 0.7,
-  intermediate: 0.82,
-  pro: 0.92,
-  perfect: 1,
-} as const;
-
 export interface RuleAdjustmentFlags {
   dealerStandsSoft17?: boolean;
   noDoubleAfterSplit?: boolean;

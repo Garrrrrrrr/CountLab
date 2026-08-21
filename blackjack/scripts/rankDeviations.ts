@@ -1,90 +1,103 @@
 /**
- * Ranks each Pro departure by its standalone marginal EV: paired
- * shoe sessions (same shuffle seed for both policies, so hands neither policy
- * treats differently contribute zero noise up to the point they first
- * diverge) comparing "catalog = [this row only]" against a no-index
- * baseline, on a 1-12 spread ramp so a play's value is weighted the way it's
- * actually realized (disproportionately at high counts). Each session runs
- * HANDS_PER_SHOE hands so true counts actually reach the depths most indexed
- * plays trigger at — a single fresh-shoe hand starts at TC 0 and almost never
- * reaches them, which under-samples every play to near zero.
+ * Prices every Pro departure and regenerates
+ * `lib/blackjack/deviationRanking.ts`.
  *
- * These are standalone marginal contributions, not a greedy/interactive
- * ranking — two plays that overlap (e.g. 16 v 9 stand vs surrender) each get
- * measured independently, which is fine for sorting a reference sheet but
- * would double-count if summed. Run: npx tsx scripts/rankDeviations.ts
+ * The measurement is the conditional EV difference at the decision point; see
+ * `lib/blackjack/deviationEv.ts` for why session-differencing cannot resolve
+ * numbers this small and what the estimator does instead.
+ *
+ * Four profiles are produced, because whether the table offers late surrender
+ * changes which rows do anything at all: the chart's starred stand indices are
+ * live only where surrender is unavailable, and its surrender rows only where
+ * it is.
+ *
+ * Run: npx tsx scripts/rankDeviations.ts [rounds] [replications]
  */
 import { writeFileSync } from "node:fs";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "../lib/blackjack/advantage";
-import { Deviation } from "../lib/blackjack/deviations";
 import { H17_PRO_DEVIATIONS } from "../lib/blackjack/h17Pro";
 import { S17_PRO_DEVIATIONS } from "../lib/blackjack/s17Pro";
-import { DeviationGroup, simulateShoeSession } from "../lib/blackjack/shoeSimulation";
+import { DeviationEvRow, measureDeviationEv } from "../lib/blackjack/deviationEv";
 
-const TRIALS_PER_ROW = 50_000;
-const HANDS_PER_SHOE = 60;
+const ROUNDS = Number(process.argv[2] ?? 40_000_000);
+const REPLICATIONS = Number(process.argv[3] ?? 300);
+const RAMP = "1-12" as const;
 
-async function pairedMarginalEv(catalogRow: Deviation, rules: typeof DEFAULT_ADVANTAGE_RULES): Promise<number> {
-  let diffSum = 0;
-  let hands = 0;
-  for (let i = 0; i < TRIALS_PER_ROW; i++) {
-    const seed = i + 1;
-    const config = {
-      bankroll: 1e9, bettingUnit: 1, playerHands: 1, roundsPerHour: 100,
-      handsToSimulate: HANDS_PER_SHOE, highSpeed: true, rules, ramp: RAMPS["1-12"], deviationGroups: [] as DeviationGroup[],
-    };
-    const [base, treatment] = await Promise.all([
-      simulateShoeSession({ ...config, seed, catalogOverride: [] }),
-      simulateShoeSession({ ...config, seed, catalogOverride: [catalogRow] }),
-    ]);
-    diffSum += treatment.totalProfit - base.totalProfit;
-    hands += base.totalHands;
-  }
-  return diffSum / hands;
-}
+const PROFILES = [
+  { key: "h17-ls", label: "H17, late surrender", dealerHitsSoft17: true, lateSurrender: true },
+  { key: "h17-no-ls", label: "H17, no surrender", dealerHitsSoft17: true, lateSurrender: false },
+  { key: "s17-ls", label: "S17, late surrender", dealerHitsSoft17: false, lateSurrender: true },
+  { key: "s17-no-ls", label: "S17, no surrender", dealerHitsSoft17: false, lateSurrender: false },
+] as const;
 
-async function rankCatalog(label: string, catalog: readonly Deviation[], dealerHitsSoft17: boolean) {
-  const rules = { ...DEFAULT_ADVANTAGE_RULES, dealerHitsSoft17 };
-  const results: { id: string; hand: string; dealer: string; marginalEvPer100: number }[] = [];
-  for (const row of catalog) {
-    const started = Date.now();
-    const evPerHand = await pairedMarginalEv(row, rules);
-    const id = (row as { id?: string }).id ?? `${row.hand}-${row.dealer}-${row.index}`;
-    results.push({ id, hand: row.hand, dealer: row.dealer, marginalEvPer100: evPerHand * 100 });
-    console.log(`[${label}] ${row.hand} v ${row.dealer} (${id}): ${(evPerHand * 100).toFixed(4)}% per 100 hands (${Date.now() - started}ms)`);
-  }
-  return results;
-}
-
-async function main() {
+function run(profile: (typeof PROFILES)[number]): DeviationEvRow[] {
   const started = Date.now();
-  const h17 = await rankCatalog("H17", H17_PRO_DEVIATIONS, true);
-  const s17 = await rankCatalog("S17", S17_PRO_DEVIATIONS, false);
-  const payload = {
-    metadata: {
-      generatedUtc: new Date().toISOString(),
-      trialsPerRow: TRIALS_PER_ROW,
-      handsPerShoe: HANDS_PER_SHOE,
-      method: "paired shoe sessions (shared shuffle seed per policy pair, 60 hands/shoe), 1-12 ramp, 6D/4.5 dealt, standalone marginal EV vs a no-index baseline",
-      limit: "standalone marginal EVs; overlapping plays are not additive and interactions between plays are not modeled",
+  const rows = measureDeviationEv({
+    rules: {
+      ...DEFAULT_ADVANTAGE_RULES,
+      dealerHitsSoft17: profile.dealerHitsSoft17,
+      lateSurrender: profile.lateSurrender,
     },
-    h17,
-    s17,
-  };
-  writeFileSync(
-    new URL("../lib/blackjack/deviationRanking.generated.json", import.meta.url),
-    JSON.stringify(payload, null, 2) + "\n",
+    ramp: RAMPS[RAMP],
+    rounds: ROUNDS,
+    replications: REPLICATIONS,
+    seed: 20260821,
+    catalog: profile.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS,
+  });
+  const live = rows.filter((row) => row.triggersPer100 > 0);
+  const worstError = Math.max(0, ...live.map((row) => 1.96 * row.standardError));
+  console.log(
+    `[${profile.key}] ${live.length}/${rows.length} rows live · ` +
+    `total ${rows.reduce((sum, row) => sum + row.evPer100, 0).toFixed(4)} units/100 · ` +
+    `widest 95% interval ±${worstError.toFixed(4)} · ${((Date.now() - started) / 1000).toFixed(0)}s`,
   );
-  const lines = [
-    "// Generated by ../scripts/rankDeviations.ts. Do not edit by hand; regenerate the artifact.",
-    "export const DEVIATION_RANKING_METADATA = " + JSON.stringify(payload.metadata, null, 2) + " as const;",
-    "export const DEVIATION_RANKING: Record<string, number> = {",
-    ...[...h17, ...s17].map((row) => `  "${row.id}": ${row.marginalEvPer100.toFixed(6)},`),
-    "};",
-    "",
-  ];
-  writeFileSync(new URL("../lib/blackjack/deviationRanking.ts", import.meta.url), lines.join("\n"));
-  console.log(`Done in ${((Date.now() - started) / 1000).toFixed(0)}s`);
+  return rows;
 }
 
-main();
+const results = Object.fromEntries(PROFILES.map((profile) => [profile.key, run(profile)]));
+
+const metadata = {
+  generatedUtc: new Date().toISOString(),
+  rounds: ROUNDS,
+  replications: REPLICATIONS,
+  ramp: RAMP,
+  game: "6 decks, 75% dealt, DAS, RSA, 3:2, one spot",
+  method:
+    "conditional EV at the decision point: every round where the departure changes the play is replayed under both actions against an identical dealer hand and identical player draws from the true remaining shoe, and the difference is weighted by the wager the ramp had out",
+  limit:
+    "standalone marginal values against a basic-strategy baseline. Overlapping cells are measured independently, and a departure's effect on later rounds in the same shoe is not modelled",
+};
+
+const payload = { metadata, profiles: PROFILES, results };
+writeFileSync(
+  new URL("../lib/blackjack/deviationRanking.generated.json", import.meta.url),
+  JSON.stringify(payload, null, 2) + "\n",
+);
+
+const lines = [
+  "// Generated by ../scripts/rankDeviations.ts. Do not edit by hand; regenerate the artifact.",
+  "export const DEVIATION_RANKING_METADATA = " + JSON.stringify(metadata, null, 2) + " as const;",
+  "",
+  "/** Dealer rule and surrender availability both change which departures do anything. */",
+  "export type DeviationRankingProfile = " + PROFILES.map((profile) => `"${profile.key}"`).join(" | ") + ";",
+  "",
+  "export const DEVIATION_RANKING_PROFILE_LABELS: Record<DeviationRankingProfile, string> = {",
+  ...PROFILES.map((profile) => `  "${profile.key}": ${JSON.stringify(profile.label)},`),
+  "};",
+  "",
+  "/** [units per 100 rounds, standard error, rounds per 100 in which the play changes]. */",
+  "export type DeviationRankingEntry = readonly [evPer100: number, standardError: number, triggersPer100: number];",
+  "",
+  "export const DEVIATION_RANKING: Record<DeviationRankingProfile, Record<string, DeviationRankingEntry>> = {",
+  ...PROFILES.flatMap((profile) => [
+    `  "${profile.key}": {`,
+    ...results[profile.key].map(
+      (row) => `    "${row.id}": [${row.evPer100.toFixed(6)}, ${row.standardError.toFixed(6)}, ${row.triggersPer100.toFixed(4)}],`,
+    ),
+    "  },",
+  ]),
+  "};",
+  "",
+];
+writeFileSync(new URL("../lib/blackjack/deviationRanking.ts", import.meta.url), lines.join("\n"));
+console.log("Wrote lib/blackjack/deviationRanking.ts");

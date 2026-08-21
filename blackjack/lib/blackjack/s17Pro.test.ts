@@ -40,10 +40,15 @@ describe("S17 Pro table", () => {
     expect(resolveDeviation("H", "16", "A", -8, { dealerHitsSoft17: false, lateSurrender: false }).action).toBe("H");
   });
 
-  it("resolves the overlapping 16 v 9 stand-vs-surrender cells by chart precedence, same mechanism as H17", () => {
+  it("resolves the overlapping 16 v 9 stand-vs-surrender cells, same mechanism as H17", () => {
     expect(resolveDeviation("R", "16", "9", -2, s17LateSurrender).action).toBe("H");
     expect(resolveDeviation("H", "16", "9", -1, s17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("H", "16", "9", 5, s17LateSurrender).action).toBe("S");
+    // Surrender holds above the stand index too: standing on 16 v 9 is worth
+    // about -0.51 to -0.57 at every count, never the -0.50 of surrendering.
+    expect(resolveDeviation("R", "16", "9", 5, s17LateSurrender).action).toBe("R");
+    // Without surrender the starred stand index is the right play again.
+    expect(resolveDeviation("H", "16", "9", 4, { dealerHitsSoft17: false, lateSurrender: false }).action).toBe("H");
+    expect(resolveDeviation("H", "16", "9", 5, { dealerHitsSoft17: false, lateSurrender: false }).action).toBe("S");
   });
 
   it("is selected automatically for S17 tables and H17 Pro for H17 tables", () => {

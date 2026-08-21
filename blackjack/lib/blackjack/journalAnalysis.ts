@@ -1,6 +1,5 @@
 import { calculateAdvantage } from "./advantage";
 import type { JournalSession } from "./journal";
-import { ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "./ruleAdjustments";
 
 const Z95 = 1.95996398454;
 
@@ -18,10 +17,9 @@ export interface TheoreticalOutcome {
  * session's trip EV and SD do not depend on bankroll size.
  */
 export function theoreticalSessionOutcome(session: Pick<JournalSession, "rules" | "ramp" | "bettingUnit" | "playerHands" | "handsByTrueCount" | "handsPerHour" | "hours">): TheoreticalOutcome {
-  // Mirrors the Bankroll Lab: the audited coefficients are simulated for exactly
-  // H17/DAS/RSA/LS/3:2, so any session logged with other rules needs the same
-  // flat literature-estimated delta the Lab applies, or its edge is overstated.
-  const ruleAdjustment = sumRuleAdjustment(ruleAdjustmentFlagsFromRules(session.rules));
+  // The audited coefficients are simulated for exactly H17/DAS/RSA/LS/3:2, so a
+  // session logged with other rules needs a flat literature-estimated delta or
+  // its edge is overstated. calculateAdvantage derives that from session.rules.
   const result = calculateAdvantage({
     bankroll: 0,
     bettingUnit: session.bettingUnit,
@@ -31,7 +29,6 @@ export function theoreticalSessionOutcome(session: Pick<JournalSession, "rules" 
     hours: session.hours,
     rules: session.rules,
     ramp: session.ramp,
-    ruleAdjustment,
   });
   return {
     tripEv: result.tripEv,

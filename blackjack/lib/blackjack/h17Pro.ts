@@ -15,7 +15,19 @@ export interface H17Deviation {
   always?: true;
   /** Higher-priority actions resolve overlapping surrender/stand entries. */
   priority?: number;
-  /** A starred stand index can replace a late-surrender basic decision. */
+  /**
+   * A starred stand index: the chart prints it as taking precedence over the
+   * cell's surrender, but it is applied only where surrender is unavailable.
+   *
+   * Standing on 15 or 16 against a ten or an ace is worth about -0.53 to -0.61
+   * per unit at *every* true count from -6 to +10, because a ten-rich shoe
+   * gives the dealer fewer stiff hands to bust with — so it never overtakes the
+   * flat -0.50 of late surrender. Measured with `priceCell` in deviationEv.ts;
+   * the per-count table is in docs/reference-analysis.md. Honouring the star in
+   * a late-surrender game costs about 0.2 units per 100 rounds on 16 vs 10
+   * alone. Where the table offers no surrender these indices are correct and
+   * valuable, and they are applied there.
+   */
   overridesSurrender?: true;
 }
 
@@ -46,36 +58,4 @@ export const H17_PRO_DEVIATIONS = make("h17Pro", H17_PRO_ROWS);
 export interface H17DeviationRules {
   dealerHitsSoft17: boolean;
   lateSurrender: boolean;
-}
-
-/** Whether this H17 table is active and its count threshold changes the play. */
-export function h17DeviationApplies(
-  deviation: H17Deviation,
-  basicAction: DeviationAction,
-  trueCount: number,
-  rules: H17DeviationRules,
-) {
-  if (deviation.hand === "Insurance") return trueCount >= deviation.index;
-  if (!rules.dealerHitsSoft17) return false;
-  if (deviation.always) return rules.lateSurrender;
-  if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
-  const crossed = deviation.direction === "atOrBelow" ? trueCount <= deviation.index : trueCount >= deviation.index;
-  return crossed && (basicAction === deviation.normalAction || deviation.overridesSurrender === true || deviation.deviationAction === "R");
-}
-
-/** Keep rule-specific basic strategy unless an applicable supplied H17 departure is crossed. */
-export function applyH17Deviation(
-  deviation: H17Deviation,
-  basicAction: DeviationAction,
-  trueCount: number,
-  rules: H17DeviationRules,
-): DeviationAction {
-  if (h17DeviationApplies(deviation, basicAction, trueCount, rules)) return deviation.deviationAction;
-  // A two-sided cell whose departure already is basic strategy (13 v 2, 12 v 4,
-  // 12 v 5, 11 v A) reverts to the chart's baseline at or below its index.
-  return deviation.hand !== "Insurance" && rules.dealerHitsSoft17 && !deviation.always
-    && basicAction === deviation.deviationAction && deviation.normalAction !== basicAction
-    && (deviation.direction === "atOrBelow" ? trueCount >= deviation.index : trueCount <= deviation.index)
-    ? deviation.normalAction
-    : basicAction;
 }
