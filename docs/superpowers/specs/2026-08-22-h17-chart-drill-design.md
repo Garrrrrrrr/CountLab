@@ -198,8 +198,9 @@ Controls above the grid, using the existing `Select` from `components/ui.tsx`:
   totals · Late surrender.
 - **Feedback** — Check as I go (default) · Grade at the end.
 
-Plus a **Submit** button, always enabled, and **End drill** matching the other
-drills' affordance.
+Plus **Submit**, always enabled, and **Start over**. There is no separate "end
+drill" control: submitting early *is* ending the run, and it records what was
+filled in.
 
 ## Feedback and grading
 
@@ -211,11 +212,17 @@ shows the chart's token beneath the user's entry.
 Grading compares the parsed token to the chart token — value and, for indices,
 direction. `Y/N` must be entered as `y`+`n`; `Ds` as `d`+`s`.
 
-Submitting early is allowed; unanswered cells count as wrong and are listed
-separately as skipped rather than as mistakes. Results show overall accuracy,
-per-section accuracy, elapsed time, and every miss as
-`Hard 16 vs 9 — you: S · chart: 4+`, reusing the `Mistake` shape and
-`SessionSummary` component the other drills already use.
+Submitting early is allowed; unanswered cells count as wrong and are reported
+separately from wrong answers.
+
+On submit the grid stays on screen fully coloured, with a results panel above it
+showing overall accuracy, per-section accuracy, elapsed time, and the counts of
+wrong and skipped cells. The coloured chart *is* the mistake review, and it is
+more useful here than a list, so this drill does not hand off to the
+`SessionSummary` component the flashcard drills use. Misses are still recorded
+into the session's `Mistake[]` in the usual shape — `Hard 16 vs 9 · you: S ·
+chart: 4+`, skipped cells as `(skipped)` — so the statistics page and CSV export
+show them like any other drill.
 
 ## Persistence, statistics, routing
 
@@ -231,13 +238,15 @@ per-section accuracy, elapsed time, and every miss as
   `entries` is `Record<cellKey, string>` of raw buffers. A reload resumes exactly
   where the user left off.
 - New route `training/h17-chart` added to `ROUTES` in `lib/routes.ts` and to the
-  component map in `components/DynamicPage.tsx`, with a card on the training
-  index and a `drillLinks` entry.
-- Nav item in `components/AppShell.tsx` under Training.
-- `h17_chart` added to `FeatureId` / `FEATURES` in `lib/analytics/config.ts`.
-  Analytics stays coarse: `drill_started` on mount and one submit event carrying
-  overall and per-section accuracy. No per-cell events — 320 of them per run
-  would swamp the queue.
+  component map in `components/DynamicPage.tsx`. The app has no `/training`
+  index page, so discoverability is the sidebar item in
+  `components/AppShell.tsx` plus a `drillLinks` entry, which lets the dashboard
+  offer the drill as "Recommended next" once there are weak sessions in it.
+- `"h17_chart"` added to the `DrillId` union in `lib/analytics/types.ts`, which
+  also widens `FeatureId` and so forces a `FEATURES` entry in
+  `lib/analytics/config.ts`, plus a `DRILLS` mapping in `lib/analytics/track.ts`.
+  Analytics stays coarse: `practice_started` on mount and `practice_completed` on
+  submit. No per-cell events — 320 of them per run would swamp the queue.
 
 ## Attribution
 
@@ -291,5 +300,7 @@ Edited:
 - `blackjack/lib/routes.ts` — `ROUTES`
 - `blackjack/components/DynamicPage.tsx` — route map, training card, `drillLinks`
 - `blackjack/components/AppShell.tsx` — nav item
-- `blackjack/lib/analytics/config.ts` — `FeatureId`, `FEATURES`
+- `blackjack/lib/analytics/types.ts` — `DrillId`
+- `blackjack/lib/analytics/config.ts` — `FEATURES`
+- `blackjack/lib/analytics/track.ts` — `DRILLS`
 - `THIRD_PARTY_NOTICES.md` — source attribution
