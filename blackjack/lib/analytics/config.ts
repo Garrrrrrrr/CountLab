@@ -81,6 +81,7 @@ export const FEATURES: Record<FeatureId, FeatureDefinition> = {
   deck_estimation: { category: "training", label: "Deck Estimation", route: "/training/deck-estimation" },
   basic_strategy: { category: "training", label: "Basic Strategy", route: "/training/basic-strategy" },
   deviations: { category: "training", label: "Deviations", route: "/training/deviations" },
+  h17_chart: { category: "training", label: "H17 Chart", route: "/training/h17-chart" },
   full_shoe: { category: "training", label: "Full Shoe", route: "/training/full-shoe" },
   counting_benchmark: { category: "training", label: "Counting Benchmark", route: "/training/benchmark" },
   blackjack: { category: "game", label: "Blackjack table", route: "/training/full-shoe" },

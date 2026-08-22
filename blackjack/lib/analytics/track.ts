@@ -31,6 +31,7 @@ const DRILLS: Record<string, DrillId> = {
   "Deck Estimation": "deck_estimation",
   "Basic Strategy": "basic_strategy",
   Deviations: "deviations",
+  "H17 Chart": "h17_chart",
   "Full Shoe": "full_shoe",
 };
 
