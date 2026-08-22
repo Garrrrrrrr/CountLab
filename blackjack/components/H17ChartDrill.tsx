@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BJA_H17_SECTIONS,
   CHART_DEALERS,
@@ -8,9 +8,20 @@ import {
   ChartSectionId,
   cellKey,
 } from "@/lib/blackjack/bjaH17Chart";
+import { displayBuffer, feedKey } from "@/lib/blackjack/chartEntry";
 import { Panel, Select } from "@/components/ui";
 
 type SectionChoice = "all" | ChartSectionId;
+
+interface CellRef {
+  key: string;
+  section: ChartSectionId;
+  row: string;
+  dealer: string;
+  sectionIndex: number;
+  rowIndex: number;
+  columnIndex: number;
+}
 
 export function H17ChartDrill() {
   const [choice, setChoice] = useState<SectionChoice>("all");
@@ -18,6 +29,84 @@ export function H17ChartDrill() {
     () => (choice === "all" ? BJA_H17_SECTIONS : BJA_H17_SECTIONS.filter((section) => section.id === choice)),
     [choice],
   );
+
+  const cells = useMemo<CellRef[]>(() => {
+    const list: CellRef[] = [];
+    sections.forEach((section, sectionIndex) => {
+      section.rows.forEach((row, rowIndex) => {
+        CHART_DEALERS.forEach((dealer, columnIndex) => {
+          list.push({ key: cellKey(section.id, row, dealer), section: section.id, row, dealer, sectionIndex, rowIndex, columnIndex });
+        });
+      });
+    });
+    return list;
+  }, [sections]);
+
+  const positions = useMemo(() => {
+    const map = new Map<string, number>();
+    cells.forEach((cell, index) => map.set(`${cell.sectionIndex}:${cell.rowIndex}:${cell.columnIndex}`, index));
+    return map;
+  }, [cells]);
+
+  const [entries, setEntries] = useState<Record<string, string>>({});
+  const [focus, setFocus] = useState(0);
+  const inputs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useEffect(() => { setFocus(0); }, [choice]);
+
+  const focusAt = useCallback((index: number) => {
+    const clamped = Math.max(0, Math.min(cells.length - 1, index));
+    setFocus(clamped);
+    inputs.current[clamped]?.focus();
+    inputs.current[clamped]?.select();
+  }, [cells.length]);
+
+  const focusRelative = useCallback((index: number, rowDelta: number, columnDelta: number) => {
+    const cell = cells[index];
+    if (!cell) return;
+    const section = sections[cell.sectionIndex];
+    const rowIndex = Math.max(0, Math.min(section.rows.length - 1, cell.rowIndex + rowDelta));
+    const columnIndex = Math.max(0, Math.min(CHART_DEALERS.length - 1, cell.columnIndex + columnDelta));
+    const target = positions.get(`${cell.sectionIndex}:${rowIndex}:${columnIndex}`);
+    if (target !== undefined) focusAt(target);
+  }, [cells, focusAt, positions, sections]);
+
+  const handleKey = useCallback((event: ReactKeyboardEvent<HTMLInputElement>, index: number) => {
+    const cell = cells[index];
+    if (event.key === "Tab") {
+      event.preventDefault();
+      focusAt(index + (event.shiftKey ? -1 : 1));
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      focusAt(index + 1);
+      return;
+    }
+    const arrows: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+    };
+    if (arrows[event.key]) {
+      event.preventDefault();
+      focusRelative(index, arrows[event.key][0], arrows[event.key][1]);
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const result = feedKey(cell.section, entries[cell.key] ?? "", event.key);
+    if (result.disposition === "ignore") {
+      // Swallow stray letters so the browser never types into the field itself.
+      if (event.key.length === 1) event.preventDefault();
+      return;
+    }
+    event.preventDefault();
+    setEntries((current) => ({ ...current, [cell.key]: result.buffer }));
+    if (result.disposition === "commit") focusAt(index + 1);
+    if (result.disposition === "back") focusAt(index - 1);
+  }, [cells, entries, focusAt, focusRelative]);
+
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
   return (
@@ -44,7 +133,7 @@ export function H17ChartDrill() {
       </div>
 
       <div className="space-y-5">
-        {sections.map((section) => (
+        {sections.map((section, sectionIndex) => (
           <Panel key={section.id}>
             <h2 className="mb-4 text-lg font-semibold">{section.label}</h2>
             <div className="-mx-1 overflow-x-auto px-1">
@@ -60,19 +149,33 @@ export function H17ChartDrill() {
                   </tr>
                 </thead>
                 <tbody>
-                  {section.rows.map((row) => (
+                  {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
                       <th scope="row" className="sticky left-0 z-10 bg-[#0c100d] px-2 text-left font-medium text-zinc-300">
                         {row}
                       </th>
-                      {CHART_DEALERS.map((dealer) => (
-                        <td key={dealer}>
-                          <div
-                            data-cell={cellKey(section.id, row, dealer)}
-                            className="flex h-9 w-full min-w-[2.4rem] items-center justify-center rounded-md border border-white/[.08] bg-black/25 font-mono text-zinc-100"
-                          />
-                        </td>
-                      ))}
+                      {CHART_DEALERS.map((dealer, columnIndex) => {
+                        const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
+                        const cell = cells[index];
+                        return (
+                          <td key={dealer}>
+                            <input
+                              ref={(element) => { inputs.current[index] = element; }}
+                              value={displayBuffer(cell.section, entries[cell.key] ?? "")}
+                              onChange={() => undefined}
+                              onKeyDown={(event) => handleKey(event, index)}
+                              onFocus={() => setFocus(index)}
+                              aria-label={`${section.label} ${row} versus ${dealer}`}
+                              autoComplete="off"
+                              autoCorrect="off"
+                              spellCheck={false}
+                              className={`h-9 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${
+                                focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]"
+                              }`}
+                            />
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
