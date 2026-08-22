@@ -203,3 +203,23 @@ export function explainToken(section: ChartSectionId, token: ChartToken): string
   const direction = token.when === "atOrAbove" ? "and above" : "and below";
   return `The chart prints ${printed}: the deviation applies at true count ${signed(token.value)} ${direction}.`;
 }
+
+export interface LegendEntry {
+  /** The keys to press, in order, uppercased for display. */
+  keys: string[];
+  /** What the cell reads once those keys are committed. */
+  shows: string;
+}
+
+/**
+ * The keys a section accepts, derived from the grammar itself so the on-screen
+ * legend cannot drift from what `feedKey` actually does. Index entry is legal in
+ * every section and is described separately, since it is a shape rather than a
+ * fixed key.
+ */
+export function sectionLegend(section: ChartSectionId): LegendEntry[] {
+  return SECTION_LETTERS[section].map((buffer) => ({
+    keys: [...buffer].map((key) => key.toUpperCase()),
+    shows: formatToken(parseEntry(section, buffer)!),
+  }));
+}

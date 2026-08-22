@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BJA_H17_SECTIONS, CHART_DEALERS, cellKey, formatToken } from "./bjaH17Chart";
-import { displayBuffer, explainToken, feedKey, gradeChart, parseEntry, SECTION_LETTERS, tokensEqual } from "./chartEntry";
+import { displayBuffer, explainToken, feedKey, gradeChart, parseEntry, SECTION_LETTERS, sectionLegend, tokensEqual } from "./chartEntry";
 
 /** Types a whole string into one cell and returns the final buffer + disposition. */
 const type = (section: Parameters<typeof feedKey>[0], keys: string) =>
@@ -231,5 +231,41 @@ describe("explainToken", () => {
       .toBe("The chart prints 0-: the deviation applies at any negative running count.");
     expect(explainToken("hard", { kind: "index", value: 0, when: "atOrAbove" }))
       .toBe("The chart prints 0+: the deviation applies at any positive running count.");
+  });
+});
+
+describe("sectionLegend", () => {
+  it("lists each section's keys with what they produce", () => {
+    expect(sectionLegend("pairs")).toEqual([
+      { keys: ["Y"], shows: "Y" },
+      { keys: ["N"], shows: "N" },
+      { keys: ["Y", "N"], shows: "Y/N" },
+    ]);
+    expect(sectionLegend("soft")).toEqual([
+      { keys: ["H"], shows: "H" },
+      { keys: ["S"], shows: "S" },
+      { keys: ["D"], shows: "D" },
+      { keys: ["D", "S"], shows: "Ds" },
+    ]);
+    expect(sectionLegend("hard")).toEqual([
+      { keys: ["H"], shows: "H" },
+      { keys: ["S"], shows: "S" },
+      { keys: ["D"], shows: "D" },
+    ]);
+    expect(sectionLegend("surrender")).toEqual([
+      { keys: ["R"], shows: "SUR" },
+      { keys: ["N"], shows: "N" },
+    ]);
+  });
+
+  it("stays in step with the grammar", () => {
+    // Every legend entry must be typable: pressing its keys in order has to
+    // leave a buffer that parses back to what the legend promises.
+    for (const section of ["pairs", "soft", "hard", "surrender"] as const) {
+      for (const entry of sectionLegend(section)) {
+        const buffer = entry.keys.reduce((state, key) => feedKey(section, state, key).buffer, "");
+        expect(formatToken(parseEntry(section, buffer)!), `${section} ${entry.keys.join("+")}`).toBe(entry.shows);
+      }
+    }
   });
 });

@@ -9,7 +9,7 @@ import {
   cellKey,
   chartToken,
 } from "@/lib/blackjack/bjaH17Chart";
-import { SECTION_LETTERS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry } from "@/lib/blackjack/chartEntry";
+import { SECTION_LETTERS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry, sectionLegend } from "@/lib/blackjack/chartEntry";
 import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { Mistake, makeSession, storage } from "@/lib/statistics/storage";
@@ -251,7 +251,30 @@ export function H17ChartDrill() {
       <div className="space-y-5">
         {sections.map((section, sectionIndex) => (
           <Panel key={section.id}>
-            <h2 className="mb-4 text-lg font-semibold">{section.label}</h2>
+            <h2 className="text-lg font-semibold">{section.label}</h2>
+            <p className="mb-4 mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
+              {sectionLegend(section.id).map((entry) => (
+                <span key={entry.keys.join("")} className="inline-flex items-center gap-1.5">
+                  {entry.keys.map((key, position) => (
+                    <span key={key} className="inline-flex items-center gap-1.5">
+                      {position > 0 && <span aria-hidden="true">then</span>}
+                      <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{key}</kbd>
+                    </span>
+                  ))}
+                  <span className="text-zinc-600" aria-hidden="true">→</span>
+                  <span className="font-mono text-zinc-400">{entry.shows}</span>
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1.5">
+                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">0–9</kbd>
+                <span aria-hidden="true">then</span>
+                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">+</kbd>
+                <span aria-hidden="true">or</span>
+                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">−</kbd>
+                <span className="text-zinc-600" aria-hidden="true">→</span>
+                <span className="font-mono text-zinc-400">an index, e.g. 4+</span>
+              </span>
+            </p>
             <div className="-mx-1 overflow-x-auto px-1">
               <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-center text-sm">
                 <thead>
