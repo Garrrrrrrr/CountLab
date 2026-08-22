@@ -26,6 +26,7 @@ export const ROUTES: string[][] = [
   ["training", "true-count"],
   ["training", "basic-strategy"],
   ["training", "deviations"],
+  ["training", "h17-chart"],
   ["training", "full-shoe"],
   ["training", "deck-estimation"],
   ["training", "benchmark"],

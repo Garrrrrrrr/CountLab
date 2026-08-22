@@ -46,6 +46,7 @@ const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills"
 const ProficiencyTest = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.ProficiencyTest })));
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
+const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
@@ -769,6 +770,7 @@ export default function DynamicPage() {
     "training/true-count": <TrueCountDrill />,
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
+    "training/h17-chart": <H17ChartDrill />,
     "training/full-shoe": null,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
