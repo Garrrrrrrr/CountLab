@@ -17,6 +17,7 @@ export type DrillId =
   | "deck_estimation"
   | "basic_strategy"
   | "deviations"
+  | "h17_chart"
   | "full_shoe";
 
 export type GameId = "blackjack" | "ultimate_texas_holdem" | "chase_the_flush";

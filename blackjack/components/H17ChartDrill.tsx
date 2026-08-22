@@ -7,9 +7,13 @@ import {
   ChartSection,
   ChartSectionId,
   cellKey,
+  chartToken,
 } from "@/lib/blackjack/bjaH17Chart";
-import { SECTION_LETTERS, displayBuffer, feedKey, gradeChart, parseEntry } from "@/lib/blackjack/chartEntry";
+import { SECTION_LETTERS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry } from "@/lib/blackjack/chartEntry";
 import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
+import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
+import { Mistake, makeSession, storage } from "@/lib/statistics/storage";
+import { analytics } from "@/lib/analytics";
 
 type SectionChoice = "all" | ChartSectionId;
 type Feedback = "live" | "end";
@@ -24,8 +28,22 @@ interface CellRef {
   columnIndex: number;
 }
 
+type H17Saved = {
+  entries: Record<string, string>;
+  choice: SectionChoice;
+  feedback: Feedback;
+  startedAt: number;
+};
+
 export function H17ChartDrill() {
-  const [choice, setChoice] = useState<SectionChoice>("all");
+  const [saved] = useState(() => loadDrillProgress<H17Saved>("H17 Chart"));
+
+  useEffect(() => {
+    analytics.track("practice_started", { drill: "h17_chart", mode: "all", question_target: 320 });
+    // A restored run is still a new attempt in this browser session.
+  }, []);
+
+  const [choice, setChoice] = useState<SectionChoice>(saved?.choice ?? "all");
   const sections = useMemo<readonly ChartSection[]>(
     () => (choice === "all" ? BJA_H17_SECTIONS : BJA_H17_SECTIONS.filter((section) => section.id === choice)),
     [choice],
@@ -49,13 +67,18 @@ export function H17ChartDrill() {
     return map;
   }, [cells]);
 
-  const [entries, setEntries] = useState<Record<string, string>>({});
+  const [entries, setEntries] = useState<Record<string, string>>(saved?.entries ?? {});
   const [focus, setFocus] = useState(0);
-  const [feedback, setFeedback] = useState<Feedback>("live");
+  const [feedback, setFeedback] = useState<Feedback>(saved?.feedback ?? "live");
   const [graded, setGraded] = useState(false);
+  const [startedAt, setStartedAt] = useState(() => saved?.startedAt ?? Date.now());
   const grade = useMemo(() => gradeChart(sections, entries), [sections, entries]);
   const gradeByKey = useMemo(() => new Map(grade.cells.map((cell) => [cell.key, cell])), [grade]);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+
+  useDrillProgress("H17 Chart", !graded, {
+    entries, choice, feedback, startedAt,
+  } satisfies H17Saved);
 
   useEffect(() => { setFocus(0); }, [choice]);
 
@@ -134,6 +157,35 @@ export function H17ChartDrill() {
       : "border-red-500/50 bg-red-500/15 text-red-200";
   }, [entries, feedback, focus, gradeByKey, graded]);
 
+  const submit = useCallback(() => {
+    if (graded) return;
+    const duration = Date.now() - startedAt;
+    const mistakes: Mistake[] = grade.cells
+      .filter((cell) => !cell.correct)
+      .map((cell) => ({
+        question: `${cell.sectionLabel} · ${cell.row} vs ${cell.dealer}`,
+        userAnswer: cell.answered ? cell.typed : "(skipped)",
+        correctAnswer: cell.expected,
+        explanation: explainToken(cell.section, chartToken(
+          BJA_H17_SECTIONS.find((section) => section.id === cell.section)!, cell.row, cell.dealer)),
+      }));
+    const session = makeSession(
+      "H17 Chart", grade.total, grade.correct, duration, grade.bestStreak, mistakes, grade.bySection,
+    );
+    storage.addSession(session);
+    storage.clearProgress("H17 Chart");
+    analytics.track("practice_completed", {
+      drill: "h17_chart",
+      questions: grade.total,
+      correct: grade.correct,
+      accuracy: session.accuracy,
+      best_streak: grade.bestStreak,
+      duration_ms: duration,
+      mode: choice,
+    });
+    setGraded(true);
+  }, [choice, grade, graded, startedAt]);
+
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
   return (
@@ -168,8 +220,8 @@ export function H17ChartDrill() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button onClick={() => setGraded(true)} disabled={graded}>Submit</Button>
-        <GhostButton onClick={() => { setEntries({}); setGraded(false); focusAt(0); }}>Start over</GhostButton>
+        <Button onClick={submit} disabled={graded}>Submit</Button>
+        <GhostButton onClick={() => { setEntries({}); setGraded(false); setStartedAt(Date.now()); focusAt(0); }}>Start over</GhostButton>
         {!graded && <span className="text-sm text-zinc-500">{grade.answered} / {grade.total} filled</span>}
       </div>
 
