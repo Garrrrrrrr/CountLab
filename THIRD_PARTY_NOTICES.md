@@ -25,3 +25,11 @@ Licensed under the MIT License:
 > LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 > OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 > SOFTWARE.
+
+## Blackjack Apprenticeship H17 deviation chart
+
+`blackjack/lib/blackjack/bjaH17Chart.ts` encodes the playing decisions and count
+indices printed on the H17 Deviation Chart published by Blackjack Apprenticeship
+(© Blackjack Apprenticeship 2018, <https://www.blackjackapprenticeship.com>).
+The indices and actions are facts about the game; the chart's own layout,
+styling, and artwork are not reproduced.

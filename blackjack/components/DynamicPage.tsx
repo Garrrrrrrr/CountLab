@@ -89,6 +89,7 @@ function Dashboard() {
     "True Count": "/training/true-count",
     "Basic Strategy": "/training/basic-strategy",
     Deviations: "/training/deviations",
+    "H17 Chart": "/training/h17-chart",
     "Full Shoe": "/training/full-shoe",
     "Deck Estimation": "/training/deck-estimation",
   };
