@@ -159,3 +159,25 @@ export function deviationTransition(row: Deviation, rules: DeviationRules, decks
   if (at(outside) !== onIndex) return { baseline: at(outside), departure: onIndex, atOrBelow: true, changesPlay: true };
   return { baseline: basic, departure: onIndex, atOrBelow: false, changesPlay: onIndex !== basic };
 }
+
+export interface DeviationTrainingRow {
+  row: Deviation;
+  transition: DeviationTransition;
+}
+
+/**
+ * The live rows shown by the reference chart for a particular ruleset.
+ *
+ * The drill consumes these resolved transitions instead of reinterpreting the
+ * raw catalog. This keeps reverse-side indices (such as 13 vs 2) pointed in the
+ * same direction as the chart and excludes rows the chart marks as no effect.
+ */
+export function deviationTrainingRows(
+  rules: DeviationRules,
+  decks = 6,
+  catalog: Deviation[] = getDeviationCatalog(rules),
+): DeviationTrainingRow[] {
+  return catalog
+    .map((row) => ({ row, transition: deviationTransition(row, rules, decks) }))
+    .filter(({ transition }) => transition.changesPlay);
+}
