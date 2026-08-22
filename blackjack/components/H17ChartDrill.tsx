@@ -8,10 +8,11 @@ import {
   ChartSectionId,
   cellKey,
 } from "@/lib/blackjack/bjaH17Chart";
-import { SECTION_LETTERS, displayBuffer, feedKey } from "@/lib/blackjack/chartEntry";
-import { GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
+import { SECTION_LETTERS, displayBuffer, feedKey, gradeChart, parseEntry } from "@/lib/blackjack/chartEntry";
+import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
 
 type SectionChoice = "all" | ChartSectionId;
+type Feedback = "live" | "end";
 
 interface CellRef {
   key: string;
@@ -50,6 +51,9 @@ export function H17ChartDrill() {
 
   const [entries, setEntries] = useState<Record<string, string>>({});
   const [focus, setFocus] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback>("live");
+  const [graded, setGraded] = useState(false);
+  const grade = useMemo(() => gradeChart(sections, entries), [sections, entries]);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => { setFocus(0); }, [choice]);
@@ -119,6 +123,16 @@ export function H17ChartDrill() {
     applyResult(index, result);
   }, [applyResult, cells, entries, focusAt, focusRelative]);
 
+  const cellTone = useCallback((cell: CellRef, index: number) => {
+    const buffer = entries[cell.key] ?? "";
+    const settled = graded || (feedback === "live" && parseEntry(cell.section, buffer) !== null);
+    if (!settled) return focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]";
+    const result = grade.cells.find((entry) => entry.key === cell.key);
+    return result?.correct
+      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+      : "border-red-500/50 bg-red-500/15 text-red-200";
+  }, [entries, feedback, focus, grade, graded]);
+
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
   return (
@@ -133,16 +147,53 @@ export function H17ChartDrill() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-xs">
-          <Select label="Section" value={choice} onChange={(event) => setChoice(event.target.value as SectionChoice)}>
-            <option value="all">Whole chart</option>
-            {BJA_H17_SECTIONS.map((section) => (
-              <option key={section.id} value={section.id}>{section.label}</option>
-            ))}
-          </Select>
+        <div className="flex flex-wrap gap-4">
+          <div className="max-w-xs">
+            <Select label="Section" value={choice} onChange={(event) => setChoice(event.target.value as SectionChoice)}>
+              <option value="all">Whole chart</option>
+              {BJA_H17_SECTIONS.map((section) => (
+                <option key={section.id} value={section.id}>{section.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="max-w-xs">
+            <Select label="Feedback" value={feedback} onChange={(event) => setFeedback(event.target.value as Feedback)}>
+              <option value="live">Check as I go</option>
+              <option value="end">Grade at the end</option>
+            </Select>
+          </div>
         </div>
         <p className="text-sm text-zinc-500">{total} cells</p>
       </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Button onClick={() => setGraded(true)} disabled={graded}>Submit</Button>
+        <GhostButton onClick={() => { setEntries({}); setGraded(false); focusAt(0); }}>Start over</GhostButton>
+        {!graded && <span className="text-sm text-zinc-500">{grade.answered} / {grade.total} filled</span>}
+      </div>
+
+      {graded && (
+        <Panel className="mb-5">
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+            <b className="text-3xl">{grade.correct} / {grade.total}</b>
+            <span className="text-zinc-400">{Math.round((grade.correct / grade.total) * 100)}% correct</span>
+            <span className="text-zinc-500">{grade.wrong} wrong · {grade.skipped} skipped</span>
+            <span className="text-zinc-500">Best run {grade.bestStreak}</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(grade.bySection).map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-black/20 p-3">
+                <p className="text-xs text-zinc-500">{label}</p>
+                <b className="text-lg">{Math.round((value.correct / value.total) * 100)}%</b>
+                <span className="ml-2 text-xs text-zinc-500">{value.correct}/{value.total}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-zinc-500">
+            Every wrong cell is marked in red with the chart&rsquo;s answer beneath it.
+          </p>
+        </Panel>
+      )}
 
       <div className="space-y-5">
         {sections.map((section, sectionIndex) => (
@@ -181,10 +232,14 @@ export function H17ChartDrill() {
                               autoComplete="off"
                               autoCorrect="off"
                               spellCheck={false}
-                              className={`h-9 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${
-                                focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]"
-                              }`}
+                              className={`h-9 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${cellTone(cell, index)}`}
                             />
+                            {(graded || feedback === "live") && (() => {
+                              const result = grade.cells.find((entry) => entry.key === cell.key);
+                              const settled = graded || parseEntry(cell.section, entries[cell.key] ?? "") !== null;
+                              if (!settled || !result || result.correct) return null;
+                              return <p className="mt-0.5 font-mono text-[.6rem] leading-none text-emerald-300/80">{result.expected}</p>;
+                            })()}
                           </td>
                         );
                       })}
