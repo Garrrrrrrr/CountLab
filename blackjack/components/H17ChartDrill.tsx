@@ -54,6 +54,7 @@ export function H17ChartDrill() {
   const [feedback, setFeedback] = useState<Feedback>("live");
   const [graded, setGraded] = useState(false);
   const grade = useMemo(() => gradeChart(sections, entries), [sections, entries]);
+  const gradeByKey = useMemo(() => new Map(grade.cells.map((cell) => [cell.key, cell])), [grade]);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => { setFocus(0); }, [choice]);
@@ -127,11 +128,11 @@ export function H17ChartDrill() {
     const buffer = entries[cell.key] ?? "";
     const settled = graded || (feedback === "live" && parseEntry(cell.section, buffer) !== null);
     if (!settled) return focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]";
-    const result = grade.cells.find((entry) => entry.key === cell.key);
+    const result = gradeByKey.get(cell.key);
     return result?.correct
       ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
       : "border-red-500/50 bg-red-500/15 text-red-200";
-  }, [entries, feedback, focus, grade, graded]);
+  }, [entries, feedback, focus, gradeByKey, graded]);
 
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
@@ -235,7 +236,7 @@ export function H17ChartDrill() {
                               className={`h-9 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${cellTone(cell, index)}`}
                             />
                             {(graded || feedback === "live") && (() => {
-                              const result = grade.cells.find((entry) => entry.key === cell.key);
+                              const result = gradeByKey.get(cell.key);
                               const settled = graded || parseEntry(cell.section, entries[cell.key] ?? "") !== null;
                               if (!settled || !result || result.correct) return null;
                               return <p className="mt-0.5 font-mono text-[.6rem] leading-none text-emerald-300/80">{result.expected}</p>;
