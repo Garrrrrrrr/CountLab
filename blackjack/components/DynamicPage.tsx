@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -12,8 +13,6 @@ import {
   storage,
 } from "@/lib/statistics/storage";
 import { computeStreak, practiceHeatmap, unlockedMilestones } from "@/lib/statistics/streaks";
-import { Action, BlackjackRules, Card, DEFAULT_RULES, Rank } from "@/lib/blackjack/types";
-import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { analytics } from "@/lib/analytics";
 import { LEGACY_REDIRECTS } from "@/lib/routes";
@@ -46,18 +45,12 @@ const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills"
 const ProficiencyTest = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.ProficiencyTest })));
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
+const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
-const actionNames: Record<Action, string> = {
-  H: "Hit",
-  S: "Stand",
-  D: "Double",
-  P: "Split",
-  R: "Surrender",
-};
 function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   useEffect(() => {
@@ -88,6 +81,7 @@ function Dashboard() {
     "True Count": "/training/true-count",
     "Basic Strategy": "/training/basic-strategy",
     Deviations: "/training/deviations",
+    "H17 Chart": "/training/h17-chart",
     "Full Shoe": "/training/full-shoe",
     "Deck Estimation": "/training/deck-estimation",
   };
@@ -299,151 +293,24 @@ function HiLoReference() {
     </>
   );
 }
-const strategyDealers: Rank[] = [
-  "2",
-  "3",
-  "4",
-  "5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "A",
-];
-const strategyCard = (rank: Rank, suit: Card["suit"] = "spades"): Card => ({
-  rank,
-  suit,
-});
-const hardStrategyHands: Array<{ label: string; cards: Card[] }> = [
-  { label: "5", cards: [strategyCard("2"), strategyCard("3", "hearts")] },
-  { label: "6", cards: [strategyCard("2"), strategyCard("4")] },
-  { label: "7", cards: [strategyCard("3"), strategyCard("4")] },
-  { label: "8", cards: [strategyCard("3"), strategyCard("5")] },
-  { label: "9", cards: [strategyCard("4"), strategyCard("5")] },
-  { label: "10", cards: [strategyCard("4"), strategyCard("6")] },
-  { label: "11", cards: [strategyCard("5"), strategyCard("6")] },
-  { label: "12", cards: [strategyCard("5"), strategyCard("7")] },
-  { label: "13", cards: [strategyCard("6"), strategyCard("7")] },
-  { label: "14", cards: [strategyCard("6"), strategyCard("8")] },
-  { label: "15", cards: [strategyCard("7"), strategyCard("8")] },
-  { label: "16", cards: [strategyCard("6"), strategyCard("10")] },
-  { label: "17", cards: [strategyCard("7"), strategyCard("10")] },
-  { label: "18", cards: [strategyCard("8"), strategyCard("10")] },
-  { label: "19", cards: [strategyCard("9"), strategyCard("10")] },
-  { label: "20", cards: [strategyCard("10"), strategyCard("K")] },
-];
-const softStrategyHands = (
-  ["2", "3", "4", "5", "6", "7", "8", "9"] as Rank[]
-).map((rank) => ({
-  label: `A,${rank}`,
-  cards: [strategyCard("A"), strategyCard(rank, "hearts")],
-}));
-const pairStrategyHands = (
-  ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"] as Rank[]
-).map((rank) => ({
-  label: `${rank},${rank}`,
-  cards: [strategyCard(rank), strategyCard(rank, "hearts")],
-}));
-const actionStyle: Record<Action, string> = {
-  H: "bg-sky-500/20 text-sky-300",
-  S: "bg-emerald-500/20 text-emerald-300",
-  D: "bg-amber-500/20 text-amber-300",
-  P: "bg-violet-500/20 text-violet-300",
-  R: "bg-red-500/20 text-red-300",
-};
-function StrategyTable({
-  title,
-  hands,
-  rules,
-}: {
-  title: string;
-  hands: Array<{ label: string; cards: Card[] }>;
-  rules: BlackjackRules;
-}) {
-  return (
-    <Panel className="overflow-x-auto">
-      <h2 className="mb-4 text-lg font-semibold">{title}</h2>
-      <p className="mb-3 text-xs text-zinc-500 md:hidden">Swipe horizontally to compare every dealer upcard.</p>
-      <table className="w-full min-w-[700px] text-center text-sm">
-        <thead>
-          <tr>
-            <th className="sticky left-0 z-10 bg-[#171c18] p-2 text-left text-zinc-500">Player</th>
-            {strategyDealers.map((dealer) => (
-              <th className="p-2" key={dealer}>
-                {dealer}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {hands.map((hand) => (
-            <tr className="border-t border-white/[.05]" key={hand.label}>
-              <th className="sticky left-0 z-10 bg-[#171c18] p-3 text-left">{hand.label}</th>
-              {strategyDealers.map((dealer) => {
-                const action = getBasicStrategyDecision({
-                  playerCards: hand.cards,
-                  dealerUpcard: strategyCard(dealer),
-                  rules,
-                }).action;
-                return (
-                  <td className="p-1" key={dealer}>
-                    <span
-                      title={actionNames[action]}
-                      className={`inline-grid h-8 w-8 place-items-center rounded font-semibold ${actionStyle[action]}`}
-                    >
-                      {action}
-                    </span>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Panel>
-  );
-}
 function StrategyReference() {
-  const [rules, setRules] = useState<BlackjackRules>(DEFAULT_RULES);
-  useEffect(() => {
-    const load = () => {
-      const settings = storage.settings();
-      setRules({
-        decks: settings.decks,
-        dealerHitsSoft17: settings.dealerHitsSoft17,
-        doubleAfterSplit: settings.doubleAfterSplit,
-        resplitAces: settings.resplitAces,
-        lateSurrender: settings.lateSurrender,
-        doubleRule: "any",
-      });
-    };
-    load();
-    addEventListener("hilo-storage", load);
-    return () => removeEventListener("hilo-storage", load);
-  }, []);
   return (
     <>
       <h1 className="text-3xl font-semibold">Basic Strategy Reference</h1>
       <p className="mt-2 text-zinc-400">
-        {rules.decks}-deck · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "Late surrender" : "No surrender"}. Every cell uses the same
-        decision engine as the trainer.
+        4–8 decks · Dealer hits soft 17
       </p>
-      <div className="mt-5 flex flex-wrap gap-3 text-xs">
-        {(["H", "S", "D", "P", "R"] as Action[]).map((action) => (
-          <span
-            key={action}
-            className={`rounded px-2 py-1 ${actionStyle[action]}`}
-          >
-            <b>{action}</b> = {actionNames[action]}
-          </span>
-        ))}
-      </div>
-      <div className="mt-7 space-y-5">
-        <StrategyTable title="Hard totals" hands={hardStrategyHands} rules={rules} />
-        <StrategyTable title="Soft totals" hands={softStrategyHands} rules={rules} />
-        <StrategyTable title="Pairs & splits" hands={pairStrategyHands} rules={rules} />
-      </div>
+      <Panel className="mt-7 flex justify-center overflow-x-auto bg-white p-3 sm:p-5">
+        <Image
+          src="/basic-strategy-h17.gif"
+          alt="Basic strategy chart for four to eight deck blackjack where the dealer hits soft 17"
+          width={321}
+          height={791}
+          className="h-auto w-full max-w-[321px]"
+          unoptimized
+          priority
+        />
+      </Panel>
     </>
   );
 }
@@ -769,6 +636,7 @@ export default function DynamicPage() {
     "training/true-count": <TrueCountDrill />,
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
+    "training/h17-chart": <H17ChartDrill />,
     "training/full-shoe": null,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,

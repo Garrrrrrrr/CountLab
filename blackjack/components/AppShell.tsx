@@ -43,6 +43,7 @@ const groups = [
       ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
       ["Deviations", "/training/deviations", "fa-code-branch"],
+      ["H17 Chart", "/training/h17-chart", "fa-table-cells"],
       ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
       ["Counting Benchmark", "/training/benchmark", "fa-medal"],
     ],
