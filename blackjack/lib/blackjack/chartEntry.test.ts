@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BJA_H17_SECTIONS, CHART_DEALERS, cellKey, formatToken } from "./bjaH17Chart";
-import { displayBuffer, feedKey, parseEntry, SECTION_LETTERS, tokensEqual } from "./chartEntry";
+import { displayBuffer, explainToken, feedKey, gradeChart, parseEntry, SECTION_LETTERS, tokensEqual } from "./chartEntry";
 
 /** Types a whole string into one cell and returns the final buffer + disposition. */
 const type = (section: Parameters<typeof feedKey>[0], keys: string) =>
@@ -146,5 +146,90 @@ describe("the grammar covers the chart", () => {
         }
       }
     }
+  });
+});
+
+const surrenderSection = BJA_H17_SECTIONS.filter((s) => s.id === "surrender");
+
+describe("gradeChart", () => {
+  it("counts an empty run as all skipped", () => {
+    const grade = gradeChart(surrenderSection, {});
+    expect(grade.total).toBe(40);
+    expect(grade.answered).toBe(0);
+    expect(grade.correct).toBe(0);
+    expect(grade.skipped).toBe(40);
+    expect(grade.wrong).toBe(0);
+    expect(grade.bestStreak).toBe(0);
+  });
+
+  it("marks a cell correct only when value and direction match", () => {
+    const grade = gradeChart(surrenderSection, {
+      "surrender:16v9": "-1-",
+      "surrender:16v10": "r",
+      "surrender:15v9": "2-",
+      "surrender:14v2": "n",
+    });
+    const at = (key: string) => grade.cells.find((cell) => cell.key === key)!;
+    expect(at("surrender:16v9").correct).toBe(true);
+    expect(at("surrender:16v10").correct).toBe(true);
+    expect(at("surrender:15v9").correct).toBe(false);
+    expect(at("surrender:15v9").expected).toBe("2+");
+    expect(at("surrender:15v9").typed).toBe("2-");
+    expect(at("surrender:14v2").correct).toBe(true);
+    expect(grade.correct).toBe(3);
+    expect(grade.wrong).toBe(1);
+    expect(grade.skipped).toBe(36);
+  });
+
+  it("treats an unfinished buffer as a wrong answer, not a skip", () => {
+    const grade = gradeChart(surrenderSection, { "surrender:16v8": "4" });
+    const cell = grade.cells.find((entry) => entry.key === "surrender:16v8")!;
+    expect(cell.answered).toBe(true);
+    expect(cell.correct).toBe(false);
+    expect(cell.typed).toBe("4");
+    expect(grade.skipped).toBe(39);
+  });
+
+  it("measures the longest correct run in chart order", () => {
+    const entries: Record<string, string> = {};
+    for (const dealer of ["2", "3", "4", "5", "6", "7", "8"]) entries[`surrender:17v${dealer}`] = "n";
+    // Breaks the run at 17 v 9, then resumes.
+    entries["surrender:17v9"] = "r";
+    entries["surrender:17vA"] = "r";
+    const grade = gradeChart(surrenderSection, entries);
+    expect(grade.bestStreak).toBe(7);
+  });
+
+  it("reports accuracy per section label", () => {
+    const grade = gradeChart(surrenderSection, { "surrender:14v2": "n" });
+    expect(grade.bySection).toEqual({ "Late surrender": { correct: 1, total: 40 } });
+  });
+});
+
+describe("explainToken", () => {
+  it("reads N differently in the split and surrender tables", () => {
+    expect(explainToken("pairs", { kind: "action", value: "N" })).toBe("Do not split the pair.");
+    expect(explainToken("surrender", { kind: "action", value: "N" })).toBe("Do not surrender.");
+  });
+
+  it("spells out the conditional actions", () => {
+    expect(explainToken("pairs", { kind: "action", value: "Y/N" }))
+      .toBe("Split only if double after split is offered.");
+    expect(explainToken("soft", { kind: "action", value: "Ds" }))
+      .toBe("Double if allowed, otherwise stand.");
+  });
+
+  it("states an index with its direction", () => {
+    expect(explainToken("hard", { kind: "index", value: 4, when: "atOrAbove" }))
+      .toBe("The chart prints 4+: the deviation applies at true count +4 and above.");
+    expect(explainToken("hard", { kind: "index", value: -1, when: "atOrBelow" }))
+      .toBe("The chart prints -1-: the deviation applies at true count -1 and below.");
+  });
+
+  it("uses the chart's running-count wording for the zero indexes", () => {
+    expect(explainToken("hard", { kind: "index", value: 0, when: "atOrBelow" }))
+      .toBe("The chart prints 0-: the deviation applies at any negative running count.");
+    expect(explainToken("hard", { kind: "index", value: 0, when: "atOrAbove" }))
+      .toBe("The chart prints 0+: the deviation applies at any positive running count.");
   });
 });
