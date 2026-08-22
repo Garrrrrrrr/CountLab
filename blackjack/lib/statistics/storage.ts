@@ -12,6 +12,7 @@ export type DrillType =
   | "Deck Estimation"
   | "Full Shoe"
   | "Counting Benchmark"
+  | "H17 Chart"
   | "Chase the Flush";
 export type CountingErrorCategory =
   | "missed cancellation"
