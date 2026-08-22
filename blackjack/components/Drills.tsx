@@ -11,10 +11,9 @@ import { signed } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import {
   DEVIATION_ACTION_NAMES,
-  deviationDecision,
   DeviationAction,
-  resolveDeviation,
   deviationHandRanks,
+  deviationTrainingRows,
 } from "@/lib/blackjack/deviations";
 import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/apToolboxH17Pro";
 import { S17_PRO_DEVIATIONS } from "@/lib/blackjack/apToolboxS17Pro";
@@ -438,17 +437,26 @@ export function DeviationDrill() {
       tc: number;
       direction?: "atOrAbove" | "atOrBelow";
       always?: true;
-      belowIndex?: boolean;
+      departureTriggered: boolean;
     }>();
   useEffect(() => {
     track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
   }, []);
   const catalog = settings.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
-  const d = useMemo(
-    () => catalog[Math.floor(Math.random() * catalog.length)],
-    [q, catalog],
+  const trainingRows = useMemo(
+    () => deviationTrainingRows(settings, settings.decks, catalog),
+    [catalog, settings.dealerHitsSoft17, settings.decks, settings.lateSurrender],
   );
-  const tc = useMemo(() => Math.floor(Math.random() * 12) - 4, [q]),
+  const question = useMemo(
+    () => trainingRows[Math.floor(Math.random() * trainingRows.length)],
+    [q, trainingRows],
+  );
+  const d = question.row;
+  const transition = question.transition;
+  const tc = useMemo(() => {
+      if (d.always) return Math.floor(Math.random() * 12) - 4;
+      return d.index + Math.floor(Math.random() * 5) - 2;
+    }, [d, q]),
     rc = tc * 3;
   const deviationPresented = useRef("");
   useEffect(() => {
@@ -476,20 +484,9 @@ export function DeviationDrill() {
       () => d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"],
       [d.hand],
     );
-  const basic = useMemo(
-      () => getBasicStrategyDecision({ playerCards, dealerUpcard: dealerCard, rules: { decks: settings.decks, dealerHitsSoft17: settings.dealerHitsSoft17, doubleAfterSplit: settings.doubleAfterSplit, resplitAces: settings.resplitAces, lateSurrender: settings.lateSurrender, doubleRule: "any" } }).action,
-      [dealerCard, playerCards, settings.dealerHitsSoft17, settings.decks, settings.doubleAfterSplit, settings.lateSurrender, settings.resplitAces],
-    ),
-    resolved = useMemo(() => {
-      if (d.hand === "Insurance") {
-        return { action: deviationDecision(d, tc), deviation: d };
-      }
-      return resolveDeviation(basic, d.hand, d.dealer, tc, settings);
-    }, [basic, d, settings, tc]),
-    correct = resolved.action,
-    activeDeviation = resolved.deviation,
-    belowIndex = "belowIndex" in resolved && resolved.belowIndex === true,
-    departureApplies = Boolean(activeDeviation);
+  const departureApplies = d.always === true
+      || (transition.atOrBelow ? tc <= d.index : tc >= d.index),
+    correct = departureApplies ? transition.departure : transition.baseline;
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories,
   } satisfies DeviationSaved);
@@ -520,11 +517,9 @@ export function DeviationDrill() {
             question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
             userAnswer: DEVIATION_ACTION_NAMES[chosen],
             correctAnswer: DEVIATION_ACTION_NAMES[correct],
-            explanation: departureApplies
-              ? belowIndex
-                ? `${DEVIATION_ACTION_NAMES[activeDeviation!.normalAction]} below ${signed(activeDeviation!.index)}; ${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction].toLowerCase()} at ${signed(activeDeviation!.index)} or higher.`
-                : `${DEVIATION_ACTION_NAMES[activeDeviation!.deviationAction]} ${activeDeviation!.always ? "is the chart's standing late-surrender play" : `at ${signed(activeDeviation!.index)} ${activeDeviation!.direction === "atOrBelow" ? "or lower" : "or higher"}`}.`
-              : "This departure is not active under the current count or table rules; keep basic strategy.",
+            explanation: d.always
+              ? `${DEVIATION_ACTION_NAMES[transition.departure]} is the chart's standing play.`
+              : `${DEVIATION_ACTION_NAMES[transition.departure]} at TC ${signed(d.index)} ${transition.atOrBelow ? "or lower" : "or higher"}; at this count the chart calls for ${DEVIATION_ACTION_NAMES[correct].toLowerCase()}.`,
           }];
       const nextCategories = {
         ...categories,
@@ -537,13 +532,13 @@ export function DeviationDrill() {
         hand: `${playerCards.map((card) => card.rank).join(", ")} vs ${dealerCard.rank}`,
         chosen,
         correct,
-        normalAction: d.hand === "Insurance" ? d.normalAction : basic,
-        deviationAction: activeDeviation?.deviationAction ?? d.deviationAction,
-        index: activeDeviation?.index ?? d.index,
+        normalAction: transition.baseline,
+        deviationAction: transition.departure,
+        index: d.index,
         tc,
-        direction: activeDeviation?.direction ?? d.direction,
-        always: activeDeviation?.always,
-        belowIndex,
+        direction: transition.atOrBelow ? "atOrBelow" : "atOrAbove",
+        always: d.always,
+        departureTriggered: departureApplies,
       });
       setCorrectCount(nextCorrect);
       setStreak(nextStreak);
@@ -552,7 +547,7 @@ export function DeviationDrill() {
       setMistakes(nextMistakes);
       setCategories(nextCategories);
       feedbackTone(ok, settings.sound);
-      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies && correct === activeDeviation?.deviationAction });
+      track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies });
       if (q === 9) {
         finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
       } else {
@@ -560,7 +555,7 @@ export function DeviationDrill() {
         setStarted(Date.now());
       }
     },
-    [activeDeviation, basic, best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs],
+    [best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs, transition],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -623,10 +618,8 @@ export function DeviationDrill() {
           </div>
           <p className="mt-2 text-sm text-zinc-400">
             {feedback.always
-              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing late-surrender play.`
-              : feedback.belowIndex
-                ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} or higher; the previous count was below the index, so the chart reverts to ${DEVIATION_ACTION_NAMES[feedback.correct].toLowerCase()}.`
-                : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.correct === feedback.deviationAction ? "triggered" : "did not trigger"} the deviation.`}
+              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing play.`
+              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.departureTriggered ? "triggered the departure" : `used the chart baseline of ${DEVIATION_ACTION_NAMES[feedback.normalAction].toLowerCase()}`}.`}
           </p>
         </div>
       )}
