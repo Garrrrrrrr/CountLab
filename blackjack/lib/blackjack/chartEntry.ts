@@ -1,4 +1,13 @@
-import { ChartSectionId, ChartToken, formatToken } from "./bjaH17Chart";
+import {
+  CHART_DEALERS,
+  ChartActionValue,
+  ChartSection,
+  ChartSectionId,
+  ChartToken,
+  cellKey,
+  chartToken,
+  formatToken,
+} from "./bjaH17Chart";
 
 export type Disposition = "pending" | "commit" | "ignore" | "back";
 
@@ -83,4 +92,114 @@ export function tokensEqual(a: ChartToken | null, b: ChartToken | null): boolean
   if (!a || !b || a.kind !== b.kind) return false;
   if (a.kind === "action" && b.kind === "action") return a.value === b.value;
   return a.kind === "index" && b.kind === "index" && a.value === b.value && a.when === b.when;
+}
+
+export interface CellGrade {
+  key: string;
+  section: ChartSectionId;
+  sectionLabel: string;
+  row: string;
+  dealer: string;
+  /** Exactly what the user typed, uppercased for display; "" when untouched. */
+  typed: string;
+  /** The chart's printed token. */
+  expected: string;
+  answered: boolean;
+  correct: boolean;
+}
+
+export interface ChartGrade {
+  cells: CellGrade[];
+  total: number;
+  answered: number;
+  correct: number;
+  wrong: number;
+  skipped: number;
+  /** Longest run of consecutive correct cells in printed chart order. */
+  bestStreak: number;
+  bySection: Record<string, { correct: number; total: number }>;
+}
+
+export function gradeChart(
+  sections: readonly ChartSection[],
+  entries: Record<string, string>,
+): ChartGrade {
+  const cells: CellGrade[] = [];
+  const bySection: Record<string, { correct: number; total: number }> = {};
+  let streak = 0;
+  let bestStreak = 0;
+
+  for (const section of sections) {
+    bySection[section.label] ??= { correct: 0, total: 0 };
+    for (const row of section.rows) {
+      for (const dealer of CHART_DEALERS) {
+        const key = cellKey(section.id, row, dealer);
+        const buffer = entries[key] ?? "";
+        const expected = chartToken(section, row, dealer);
+        const correct = tokensEqual(parseEntry(section.id, buffer), expected);
+        cells.push({
+          key,
+          section: section.id,
+          sectionLabel: section.label,
+          row,
+          dealer,
+          typed: displayBuffer(section.id, buffer),
+          expected: formatToken(expected),
+          answered: buffer.length > 0,
+          correct,
+        });
+        bySection[section.label].total += 1;
+        if (correct) {
+          bySection[section.label].correct += 1;
+          streak += 1;
+          bestStreak = Math.max(bestStreak, streak);
+        } else {
+          streak = 0;
+        }
+      }
+    }
+  }
+
+  const answered = cells.filter((cell) => cell.answered).length;
+  const correct = cells.filter((cell) => cell.correct).length;
+  return {
+    cells,
+    total: cells.length,
+    answered,
+    correct,
+    wrong: answered - correct,
+    skipped: cells.length - answered,
+    bestStreak,
+    bySection,
+  };
+}
+
+const ACTION_MEANINGS: Record<ChartActionValue, string> = {
+  Y: "Split the pair.",
+  N: "Do not split the pair.",
+  "Y/N": "Split only if double after split is offered.",
+  H: "Hit.",
+  S: "Stand.",
+  D: "Double if allowed, otherwise hit.",
+  Ds: "Double if allowed, otherwise stand.",
+  SUR: "Surrender.",
+};
+
+const signed = (value: number) => (value > 0 ? `+${value}` : `${value}`);
+
+/** Plain-language reading of a printed cell, for the recorded mistake list. */
+export function explainToken(section: ChartSectionId, token: ChartToken): string {
+  if (token.kind === "action") {
+    if (section === "surrender" && token.value === "N") return "Do not surrender.";
+    return ACTION_MEANINGS[token.value];
+  }
+  const printed = formatToken(token);
+  // The chart's own legend: 0+ and 0- are running-count conditions, unlike
+  // every other index, which is a true count.
+  if (token.value === 0) {
+    const sign = token.when === "atOrAbove" ? "positive" : "negative";
+    return `The chart prints ${printed}: the deviation applies at any ${sign} running count.`;
+  }
+  const direction = token.when === "atOrAbove" ? "and above" : "and below";
+  return `The chart prints ${printed}: the deviation applies at true count ${signed(token.value)} ${direction}.`;
 }
