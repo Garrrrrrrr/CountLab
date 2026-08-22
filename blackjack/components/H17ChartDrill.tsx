@@ -8,8 +8,8 @@ import {
   ChartSectionId,
   cellKey,
 } from "@/lib/blackjack/bjaH17Chart";
-import { displayBuffer, feedKey } from "@/lib/blackjack/chartEntry";
-import { Panel, Select } from "@/components/ui";
+import { SECTION_LETTERS, displayBuffer, feedKey } from "@/lib/blackjack/chartEntry";
+import { GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
 
 type SectionChoice = "all" | ChartSectionId;
 
@@ -71,6 +71,20 @@ export function H17ChartDrill() {
     if (target !== undefined) focusAt(target);
   }, [cells, focusAt, positions, sections]);
 
+  const applyResult = useCallback((index: number, result: ReturnType<typeof feedKey>) => {
+    const cell = cells[index];
+    if (!cell || result.disposition === "ignore") return;
+    setEntries((current) => ({ ...current, [cell.key]: result.buffer }));
+    if (result.disposition === "commit") focusAt(index + 1);
+    if (result.disposition === "back") focusAt(index - 1);
+  }, [cells, focusAt]);
+
+  const pressKey = useCallback((index: number, key: string) => {
+    const cell = cells[index];
+    if (!cell) return;
+    applyResult(index, feedKey(cell.section, entries[cell.key] ?? "", key));
+  }, [applyResult, cells, entries]);
+
   const handleKey = useCallback((event: ReactKeyboardEvent<HTMLInputElement>, index: number) => {
     const cell = cells[index];
     if (event.key === "Tab") {
@@ -102,10 +116,8 @@ export function H17ChartDrill() {
       return;
     }
     event.preventDefault();
-    setEntries((current) => ({ ...current, [cell.key]: result.buffer }));
-    if (result.disposition === "commit") focusAt(index + 1);
-    if (result.disposition === "back") focusAt(index - 1);
-  }, [cells, entries, focusAt, focusRelative]);
+    applyResult(index, result);
+  }, [applyResult, cells, entries, focusAt, focusRelative]);
 
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
@@ -189,6 +201,45 @@ export function H17ChartDrill() {
         Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018). Insurance or even money:
         take at true count +3 or above.
       </p>
+
+      <MobileActionDock label="Chart entry keys">
+        <div className="flex flex-wrap gap-1.5">
+          {[...new Set(SECTION_LETTERS[cells[focus]?.section ?? "hard"].flatMap((token) => [...token]))].map((key) => (
+            <GhostButton
+              key={key}
+              className="min-w-11 px-2 py-1.5 text-sm uppercase"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => pressKey(focus, key)}
+            >
+              {key}
+            </GhostButton>
+          ))}
+          {["-", "0", "1", "2", "3", "4", "5", "6", "+"].map((key) => (
+            <GhostButton
+              key={key}
+              className="min-w-11 px-2 py-1.5 text-sm"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => pressKey(focus, key)}
+            >
+              {key}
+            </GhostButton>
+          ))}
+          <GhostButton
+            className="px-2 py-1.5 text-sm"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => pressKey(focus, "Backspace")}
+          >
+            ⌫
+          </GhostButton>
+          <GhostButton
+            className="px-2 py-1.5 text-sm"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => focusAt(focus + 1)}
+          >
+            Next
+          </GhostButton>
+        </div>
+      </MobileActionDock>
     </>
   );
 }
