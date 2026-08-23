@@ -316,6 +316,7 @@ export function H17ChartDrill() {
               <div
                 ref={(node) => measureRail(section.id, node)}
                 onScroll={(event) => measureRail(section.id, event.currentTarget)}
+                data-testid={`h17-rail-${section.id}`}
                 className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-11 px-1"
               >
               <table className="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-center text-sm">
@@ -332,14 +333,14 @@ export function H17ChartDrill() {
                 <tbody>
                   {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
-                      <th scope="row" className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
+                      <th data-testid={`h17-hand-${section.id}-${row}`} scope="row" className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
                         {row}
                       </th>
                       {CHART_DEALERS.map((dealer, columnIndex) => {
                         const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
                         const cell = cells[index];
                         return (
-                          <td key={dealer} className="snap-start">
+                          <td key={dealer} className="snap-start scroll-ml-11">
                             <input
                               ref={(element) => { inputs.current[index] = element; }}
                               value={displayBuffer(cell.section, entries[cell.key] ?? "")}

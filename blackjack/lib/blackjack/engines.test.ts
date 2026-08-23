@@ -235,6 +235,22 @@ describe("advantage model", () => {
       Infinity,
     );
   });
+  it("uses the corrected H17 Pro artifact for materially more index EV than the stale curve", () => {
+    const input = {
+      bankroll: 10_000,
+      bettingUnit: 1,
+      playerHands: 1,
+      handsPerHour: 100,
+      hours: 1,
+      ramp: RAMPS["1-12"],
+    };
+    const indexed = calculateAdvantage({ ...input, rules: DEFAULT_ADVANTAGE_RULES });
+    const basic = calculateAdvantage({ ...input, rules: { ...DEFAULT_ADVANTAGE_RULES, useIndices: false } });
+
+    // The corrected policy recovers the late-surrender value that the previous
+    // artifact lost by standing on starred 15/16 hands at positive counts.
+    expect(indexed.evPer100 - basic.evPer100).toBeGreaterThan(0.1);
+  });
   it("aggregates simultaneous player hands as total action", () => {
     const base = {
       bankroll: 10_000,

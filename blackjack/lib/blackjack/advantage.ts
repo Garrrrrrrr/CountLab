@@ -116,12 +116,8 @@ function profileKey(rules: AdvantageRules) {
  *
  * Every selectable policy is independently audited; no curve is interpolated.
  *
- * Known bias, pending a rerun: the index curve was generated while
- * `ap_toolbox_h17.py` let the chart's starred stand indices displace a late
- * surrender on 15/16 vs a ten or an ace. That play loses about 0.044 points of
- * flat-bet edge, all of it at non-negative counts, so this curve understates the
- * edge exactly where a ramped bettor has money out. The generator is fixed; the
- * 250M-shoe artifact is not yet regenerated. See docs/reference-analysis.md.
+ * The H17 Pro artifact applies late surrender before the chart's starred stand
+ * indices, matching the policy used by the card-level simulator and trainers.
  */
 export function getCountProfile(rules: AdvantageRules) {
   const key = profileKey(rules);

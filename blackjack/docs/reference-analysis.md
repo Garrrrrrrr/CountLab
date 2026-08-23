@@ -48,27 +48,24 @@ Honouring the star in a late-surrender game costs about 0.044 percentage points
 of flat-bet edge, and about 0.25 units per 100 rounds on a 1-12 ramp, because
 every one of those decisions happens at a count where the ramp has money out.
 
-### The shipped coefficient curves still contain it
+### The shipped coefficient curves use the corrected policy
 
-`ap_toolbox_h17.py` has been corrected, but
-`lib/blackjack/apToolboxH17ProCoefficients.ts` was generated before the fix and
-has **not** been regenerated — that is a 250M-shoe, 116-billion-round run. Until
-it is, the audited index curve understates the player's edge at non-negative
-counts, and `AP_TOOLBOX_H17_PRO_METADATA.sourceSha256` no longer matches the
-file that will produce the next run.
+The production artifact was regenerated on 2026-08-23 from the corrected
+`ap_toolbox_h17.py` policy. It sampled 250 million shoes for each of nine
+profiles (116,818,680,110 resolved rounds in total), with seed `20260821`.
+Its source checksum is
+`3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62` and is
+embedded in both the JSON evidence and TypeScript artifact.
 
-The gap is visible end to end. On 6D/4.5-dealt with a 1-12 ramp, the shipped
-curves put index play at +0.078 units per 100 rounds over the no-index curve.
-Summing the individually measured departures for the corrected policy gives
-+0.386, and the starred-override cost measures −0.255; 0.386 − 0.255 = 0.131
-against the tables' 0.078, which is as close as standalone marginal values get
-before their non-additivity matters. Both numbers agree that the override is
-eating most of the value of index play in the shipped curves.
+The regenerated curve applies late surrender before the chart's starred stand
+indices, so it no longer prices the losing 15/16-versus-ten-or-ace stand. This
+restores the missing non-negative-count index value to the analytical model and
+keeps it aligned with the shoe simulator and trainers.
 
-Regenerate with the command already in `blackjack-simulator/README.md`:
+To reproduce the artifact:
 
 ```powershell
-python ap_toolbox_h17.py --all --shoes 250000000 --tasks 256
+python ap_toolbox_h17.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/ap-toolbox-h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/apToolboxH17ProCoefficients.ts
 ```
 
 ## Observable workflow
