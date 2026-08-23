@@ -5,7 +5,11 @@ const hand = "A,A";
 const dealers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("countlab:guest", "1"));
+  await page.addInitScript(() => {
+    localStorage.setItem("countlab:guest", "1");
+    localStorage.setItem("countlab:analytics:consent_seen", "1");
+    localStorage.setItem("countlab:analytics:consent", "denied");
+  });
   await page.goto("/training/h17-chart/");
   await expect(page.getByRole("heading", { name: "H17 Chart" })).toBeVisible();
   await page.getByLabel("Section").selectOption("pairs");
