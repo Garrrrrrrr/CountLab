@@ -9,7 +9,7 @@ import {
   cellKey,
   chartToken,
 } from "@/lib/blackjack/bjaH17Chart";
-import { SECTION_LETTERS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry, sectionLegend } from "@/lib/blackjack/chartEntry";
+import { BASE_LETTERS, SHIFT_COMPOUNDS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry, sectionLegend } from "@/lib/blackjack/chartEntry";
 import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { Mistake, makeSession, storage } from "@/lib/statistics/storage";
@@ -107,10 +107,10 @@ export function H17ChartDrill() {
     if (result.disposition === "back") focusAt(index - 1);
   }, [cells, focusAt]);
 
-  const pressKey = useCallback((index: number, key: string) => {
+  const pressKey = useCallback((index: number, key: string, shiftKey = false) => {
     const cell = cells[index];
     if (!cell) return;
-    applyResult(index, feedKey(cell.section, entries[cell.key] ?? "", key));
+    applyResult(index, feedKey(cell.section, entries[cell.key] ?? "", key, shiftKey));
   }, [applyResult, cells, entries]);
 
   const handleKey = useCallback((event: ReactKeyboardEvent<HTMLInputElement>, index: number) => {
@@ -137,7 +137,7 @@ export function H17ChartDrill() {
       return;
     }
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const result = feedKey(cell.section, entries[cell.key] ?? "", event.key);
+    const result = feedKey(cell.section, entries[cell.key] ?? "", event.key, event.shiftKey);
     if (result.disposition === "ignore") {
       // Swallow stray letters so the browser never types into the field itself.
       if (event.key.length === 1) event.preventDefault();
@@ -194,8 +194,12 @@ export function H17ChartDrill() {
         <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Chart recall</p>
         <h1 className="mt-2 text-3xl font-semibold">H17 Chart</h1>
         <p className="mt-2 max-w-2xl text-zinc-400">
-          Fill in the whole H17 deviation chart from memory. One keystroke per cell; Tab or Enter
-          moves on. Deviation cells want the index and its sign, like <code>4+</code> or <code>-1-</code>.
+          Fill in the whole H17 deviation chart from memory. One keystroke per cell — Tab, Enter,
+          or an arrow key moves on. Each table&rsquo;s keys are listed above it; hold{" "}
+          <kbd className="rounded border border-white/15 bg-black/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}
+          for the two-part answers (Y/N, Ds) instead of typing two keys. Deviation cells want the
+          true count and the direction it applies, like <code>4+</code> (true count 4 or higher) or{" "}
+          <code>-1-</code> (true count -1 or lower).
         </p>
       </div>
 
@@ -252,29 +256,31 @@ export function H17ChartDrill() {
         {sections.map((section, sectionIndex) => (
           <Panel key={section.id}>
             <h2 className="text-lg font-semibold">{section.label}</h2>
-            <p className="mb-4 mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
+            <ul className="mb-4 mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
               {sectionLegend(section.id).map((entry) => (
-                <span key={entry.keys.join("")} className="inline-flex items-center gap-1.5">
+                <li key={entry.keys.join("+")} className="inline-flex items-center gap-1.5">
                   {entry.keys.map((key, position) => (
                     <span key={key} className="inline-flex items-center gap-1.5">
-                      {position > 0 && <span aria-hidden="true">then</span>}
+                      {position > 0 && <span aria-hidden="true">{entry.combo ? "+" : "then"}</span>}
                       <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{key}</kbd>
                     </span>
                   ))}
                   <span className="text-zinc-600" aria-hidden="true">→</span>
-                  <span className="font-mono text-zinc-400">{entry.shows}</span>
-                </span>
+                  <span className="font-mono text-zinc-300">{entry.shows}</span>
+                  <span>({entry.meaning})</span>
+                </li>
               ))}
-              <span className="inline-flex items-center gap-1.5">
+              <li className="inline-flex items-center gap-1.5">
                 <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">0–9</kbd>
                 <span aria-hidden="true">then</span>
                 <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">+</kbd>
                 <span aria-hidden="true">or</span>
                 <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">−</kbd>
                 <span className="text-zinc-600" aria-hidden="true">→</span>
-                <span className="font-mono text-zinc-400">an index, e.g. 4+</span>
-              </span>
-            </p>
+                <span className="font-mono text-zinc-300">a true count, e.g. 4+</span>
+                <span>(deviate at this count or beyond, in the direction the sign points)</span>
+              </li>
+            </ul>
             <div className="-mx-1 overflow-x-auto px-1">
               <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-center text-sm">
                 <thead>
@@ -335,7 +341,7 @@ export function H17ChartDrill() {
 
       <MobileActionDock label="Chart entry keys">
         <div className="flex flex-wrap gap-1.5">
-          {[...new Set(SECTION_LETTERS[cells[focus]?.section ?? "hard"].flatMap((token) => [...token]))].map((key) => (
+          {BASE_LETTERS[cells[focus]?.section ?? "hard"].map((key) => (
             <GhostButton
               key={key}
               className="min-w-11 px-2 py-1.5 text-sm uppercase"
@@ -343,6 +349,16 @@ export function H17ChartDrill() {
               onClick={() => pressKey(focus, key)}
             >
               {key}
+            </GhostButton>
+          ))}
+          {Object.entries(SHIFT_COMPOUNDS[cells[focus]?.section ?? "hard"] ?? {}).map(([trigger, buffer]) => (
+            <GhostButton
+              key={buffer}
+              className="min-w-11 px-2 py-1.5 text-sm"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => pressKey(focus, trigger, true)}
+            >
+              {displayBuffer(cells[focus]?.section ?? "hard", buffer)}
             </GhostButton>
           ))}
           {["-", "0", "1", "2", "3", "4", "5", "6", "+"].map((key) => (

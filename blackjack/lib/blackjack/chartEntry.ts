@@ -17,10 +17,29 @@ export interface FeedResult {
 }
 
 /**
- * The letter buffers each section accepts, lowercase. A buffer that another
- * entry extends — "y" before "yn", "d" before "ds" — holds instead of
- * committing, so the user can add the second key or resolve it with Tab.
+ * The single-key letters each section accepts, lowercase. Every one of these
+ * commits immediately and advances focus — there is no held/ambiguous state.
  */
+export const BASE_LETTERS: Record<ChartSectionId, readonly string[]> = {
+  pairs: ["y", "n"],
+  soft: ["h", "s", "d"],
+  hard: ["h", "s", "d"],
+  surrender: ["r", "n"],
+};
+
+/**
+ * Two-part answers, entered as Shift+<trigger letter> in one keystroke rather
+ * than by typing the trigger letter then the second letter — that sequential
+ * shape used to make the trigger letter's own single-letter answer (`Y`, `D`)
+ * hold and wait for a key that might never come. Keyed by section, then by
+ * the lowercase trigger letter.
+ */
+export const SHIFT_COMPOUNDS: Partial<Record<ChartSectionId, Record<string, string>>> = {
+  pairs: { y: "yn" },
+  soft: { d: "ds" },
+};
+
+/** Every buffer a section's grammar can produce, letters only (no indices). */
 export const SECTION_LETTERS: Record<ChartSectionId, readonly string[]> = {
   pairs: ["y", "n", "yn"],
   soft: ["h", "s", "d", "ds"],
@@ -50,20 +69,25 @@ const INDEX_TOKEN = /^(-?\d{1,2})([+-])$/;
  * prefix and focus stays; `ignore` means the key is not in this section's
  * alphabet and nothing changes; `back` means Backspace on an empty cell, so
  * focus should step to the previous cell.
+ *
+ * `shiftKey` only matters on an empty buffer: Shift plus a compound's trigger
+ * letter (`Shift+Y` in pairs, `Shift+D` in soft) commits the two-part answer
+ * directly, in one keystroke.
  */
-export function feedKey(section: ChartSectionId, buffer: string, key: string): FeedResult {
+export function feedKey(section: ChartSectionId, buffer: string, key: string, shiftKey = false): FeedResult {
   if (key === "Backspace") {
     return buffer
       ? { buffer: buffer.slice(0, -1), disposition: "pending" }
       : { buffer: "", disposition: "back" };
   }
   if (key.length !== 1) return { buffer, disposition: "ignore" };
-  const next = buffer + key.toLowerCase();
-  const letters = SECTION_LETTERS[section];
-  if (letters.includes(next)) {
-    const extendable = letters.some((token) => token.length > next.length && token.startsWith(next));
-    return { buffer: next, disposition: extendable ? "pending" : "commit" };
+  const lower = key.toLowerCase();
+  if (buffer === "" && shiftKey) {
+    const compound = SHIFT_COMPOUNDS[section]?.[lower];
+    if (compound) return { buffer: compound, disposition: "commit" };
   }
+  const next = buffer + lower;
+  if (BASE_LETTERS[section].includes(next)) return { buffer: next, disposition: "commit" };
   if (INDEX_COMPLETE.test(next)) return { buffer: next, disposition: "commit" };
   if (INDEX_PARTIAL.test(next)) return { buffer: next, disposition: "pending" };
   return { buffer, disposition: "ignore" };
@@ -205,11 +229,20 @@ export function explainToken(section: ChartSectionId, token: ChartToken): string
 }
 
 export interface LegendEntry {
-  /** The keys to press, in order, uppercased for display. */
+  /** The keys to press, uppercased for display: one letter, or ["Shift", letter]. */
   keys: string[];
-  /** What the cell reads once those keys are committed. */
+  /** True when `keys` are pressed together (a chord); false for a single key. */
+  combo: boolean;
+  /** What the cell reads once the keys are committed. */
   shows: string;
+  /** Plain-language reading of `shows`, for a newcomer who doesn't know the shorthand yet. */
+  meaning: string;
 }
+
+const legendMeaning = (section: ChartSectionId, value: ChartActionValue): string => {
+  if (value === "N" && section === "surrender") return "don't surrender";
+  return ACTION_MEANINGS[value].replace(/\.$/, "").toLowerCase();
+};
 
 /**
  * The keys a section accepts, derived from the grammar itself so the on-screen
@@ -218,8 +251,23 @@ export interface LegendEntry {
  * fixed key.
  */
 export function sectionLegend(section: ChartSectionId): LegendEntry[] {
-  return SECTION_LETTERS[section].map((buffer) => ({
-    keys: [...buffer].map((key) => key.toUpperCase()),
-    shows: formatToken(parseEntry(section, buffer)!),
-  }));
+  const base: LegendEntry[] = BASE_LETTERS[section].map((letter) => {
+    const token = parseEntry(section, letter) as { kind: "action"; value: ChartActionValue };
+    return {
+      keys: [letter.toUpperCase()],
+      combo: false,
+      shows: formatToken(token),
+      meaning: legendMeaning(section, token.value),
+    };
+  });
+  const compounds = Object.entries(SHIFT_COMPOUNDS[section] ?? {}).map(([trigger, buffer]) => {
+    const token = parseEntry(section, buffer) as { kind: "action"; value: ChartActionValue };
+    return {
+      keys: ["Shift", trigger.toUpperCase()],
+      combo: true,
+      shows: formatToken(token),
+      meaning: legendMeaning(section, token.value),
+    };
+  });
+  return [...base, ...compounds];
 }

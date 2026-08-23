@@ -19,11 +19,22 @@ describe("feedKey", () => {
     expect(feedKey("pairs", "", "n")).toEqual({ buffer: "n", disposition: "commit" });
   });
 
-  it("holds the two keys that can start a longer token", () => {
-    expect(feedKey("pairs", "", "y")).toEqual({ buffer: "y", disposition: "pending" });
-    expect(feedKey("pairs", "y", "n")).toEqual({ buffer: "yn", disposition: "commit" });
-    expect(feedKey("soft", "", "d")).toEqual({ buffer: "d", disposition: "pending" });
-    expect(feedKey("soft", "d", "s")).toEqual({ buffer: "ds", disposition: "commit" });
+  it("commits pairs' Y and soft's D immediately, same as every other single key", () => {
+    expect(feedKey("pairs", "", "y")).toEqual({ buffer: "y", disposition: "commit" });
+    expect(feedKey("soft", "", "d")).toEqual({ buffer: "d", disposition: "commit" });
+  });
+
+  it("enters a two-part answer with Shift on the trigger letter, in one keystroke", () => {
+    expect(feedKey("pairs", "", "y", true)).toEqual({ buffer: "yn", disposition: "commit" });
+    expect(feedKey("soft", "", "d", true)).toEqual({ buffer: "ds", disposition: "commit" });
+    // Shift only means something on an empty buffer, for a section that has a compound.
+    expect(feedKey("pairs", "", "n", true)).toEqual({ buffer: "n", disposition: "commit" });
+    expect(feedKey("hard", "", "d", true)).toEqual({ buffer: "d", disposition: "commit" });
+  });
+
+  it("no longer builds a two-part answer by typing its letters one after another", () => {
+    expect(feedKey("pairs", "y", "n")).toEqual({ buffer: "y", disposition: "ignore" });
+    expect(feedKey("soft", "d", "s")).toEqual({ buffer: "d", disposition: "ignore" });
   });
 
   it("ignores keys outside the section's alphabet", () => {
@@ -37,7 +48,7 @@ describe("feedKey", () => {
 
   it("is case-insensitive", () => {
     expect(feedKey("hard", "", "S")).toEqual({ buffer: "s", disposition: "commit" });
-    expect(feedKey("pairs", "y", "N")).toEqual({ buffer: "yn", disposition: "commit" });
+    expect(feedKey("pairs", "", "Y", true)).toEqual({ buffer: "yn", disposition: "commit" });
   });
 
   it("builds an index and commits on the sign", () => {
@@ -235,36 +246,39 @@ describe("explainToken", () => {
 });
 
 describe("sectionLegend", () => {
-  it("lists each section's keys with what they produce", () => {
+  it("lists each section's keys with what they produce and what it means", () => {
     expect(sectionLegend("pairs")).toEqual([
-      { keys: ["Y"], shows: "Y" },
-      { keys: ["N"], shows: "N" },
-      { keys: ["Y", "N"], shows: "Y/N" },
+      { keys: ["Y"], combo: false, shows: "Y", meaning: "split the pair" },
+      { keys: ["N"], combo: false, shows: "N", meaning: "do not split the pair" },
+      { keys: ["Shift", "Y"], combo: true, shows: "Y/N", meaning: "split only if double after split is offered" },
     ]);
     expect(sectionLegend("soft")).toEqual([
-      { keys: ["H"], shows: "H" },
-      { keys: ["S"], shows: "S" },
-      { keys: ["D"], shows: "D" },
-      { keys: ["D", "S"], shows: "Ds" },
+      { keys: ["H"], combo: false, shows: "H", meaning: "hit" },
+      { keys: ["S"], combo: false, shows: "S", meaning: "stand" },
+      { keys: ["D"], combo: false, shows: "D", meaning: "double if allowed, otherwise hit" },
+      { keys: ["Shift", "D"], combo: true, shows: "Ds", meaning: "double if allowed, otherwise stand" },
     ]);
     expect(sectionLegend("hard")).toEqual([
-      { keys: ["H"], shows: "H" },
-      { keys: ["S"], shows: "S" },
-      { keys: ["D"], shows: "D" },
+      { keys: ["H"], combo: false, shows: "H", meaning: "hit" },
+      { keys: ["S"], combo: false, shows: "S", meaning: "stand" },
+      { keys: ["D"], combo: false, shows: "D", meaning: "double if allowed, otherwise hit" },
     ]);
     expect(sectionLegend("surrender")).toEqual([
-      { keys: ["R"], shows: "SUR" },
-      { keys: ["N"], shows: "N" },
+      { keys: ["R"], combo: false, shows: "SUR", meaning: "surrender" },
+      { keys: ["N"], combo: false, shows: "N", meaning: "don't surrender" },
     ]);
   });
 
   it("stays in step with the grammar", () => {
-    // Every legend entry must be typable: pressing its keys in order has to
-    // leave a buffer that parses back to what the legend promises.
+    // Every legend entry must be typable: feeding its key (with Shift for a
+    // combo entry) into an empty buffer has to commit and parse back to what
+    // the legend promises.
     for (const section of ["pairs", "soft", "hard", "surrender"] as const) {
       for (const entry of sectionLegend(section)) {
-        const buffer = entry.keys.reduce((state, key) => feedKey(section, state, key).buffer, "");
-        expect(formatToken(parseEntry(section, buffer)!), `${section} ${entry.keys.join("+")}`).toBe(entry.shows);
+        const trigger = (entry.combo ? entry.keys[1] : entry.keys[0]).toLowerCase();
+        const result = feedKey(section, "", trigger, entry.combo);
+        expect(result.disposition, `${section} ${entry.keys.join("+")}`).toBe("commit");
+        expect(formatToken(parseEntry(section, result.buffer)!), `${section} ${entry.keys.join("+")}`).toBe(entry.shows);
       }
     }
   });
