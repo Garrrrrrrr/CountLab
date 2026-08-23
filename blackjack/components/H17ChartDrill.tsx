@@ -316,7 +316,7 @@ export function H17ChartDrill() {
               <div
                 ref={(node) => measureRail(section.id, node)}
                 onScroll={(event) => measureRail(section.id, event.currentTarget)}
-                className="-mx-1 snap-x snap-mandatory overflow-x-auto px-1"
+                className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-11 px-1"
               >
               <table className="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-center text-sm">
                 <thead>
@@ -324,8 +324,8 @@ export function H17ChartDrill() {
                     <th className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
                       Hand
                     </th>
-                    {CHART_DEALERS.map((dealer, columnIndex) => (
-                      <th key={dealer} className={`px-1 pb-1 text-xs font-semibold text-zinc-500 ${columnIndex === 0 ? "sticky left-11 z-10 bg-[#0c100d] sm:static sm:z-auto" : ""}`}>{dealer}</th>
+                    {CHART_DEALERS.map((dealer) => (
+                      <th key={dealer} className="px-1 pb-1 text-xs font-semibold text-zinc-500">{dealer}</th>
                     ))}
                   </tr>
                 </thead>
@@ -339,7 +339,7 @@ export function H17ChartDrill() {
                         const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
                         const cell = cells[index];
                         return (
-                          <td key={dealer} className={`snap-start ${columnIndex === 0 ? "sticky left-11 z-10 bg-[#0c100d] sm:static sm:z-auto" : ""}`}>
+                          <td key={dealer} className="snap-start">
                             <input
                               ref={(element) => { inputs.current[index] = element; }}
                               value={displayBuffer(cell.section, entries[cell.key] ?? "")}
