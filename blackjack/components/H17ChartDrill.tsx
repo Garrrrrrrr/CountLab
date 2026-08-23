@@ -82,12 +82,19 @@ export function H17ChartDrill() {
 
   useEffect(() => { setFocus(0); }, [choice]);
 
-  const focusAt = useCallback((index: number) => {
+  /** Move the chart cursor without making an input active (touch-safe). */
+  const selectAt = useCallback((index: number) => {
     const clamped = Math.max(0, Math.min(cells.length - 1, index));
     setFocus(clamped);
+    return clamped;
+  }, [cells.length]);
+
+  /** Keyboard navigation deliberately focuses the destination input. */
+  const focusAt = useCallback((index: number) => {
+    const clamped = selectAt(index);
     inputs.current[clamped]?.focus();
     inputs.current[clamped]?.select();
-  }, [cells.length]);
+  }, [selectAt]);
 
   const focusRelative = useCallback((index: number, rowDelta: number, columnDelta: number) => {
     const cell = cells[index];
@@ -99,18 +106,21 @@ export function H17ChartDrill() {
     if (target !== undefined) focusAt(target);
   }, [cells, focusAt, positions, sections]);
 
-  const applyResult = useCallback((index: number, result: ReturnType<typeof feedKey>) => {
+  const applyResult = useCallback((index: number, result: ReturnType<typeof feedKey>, focusInput = true) => {
     const cell = cells[index];
     if (!cell || result.disposition === "ignore") return;
     setEntries((current) => ({ ...current, [cell.key]: result.buffer }));
-    if (result.disposition === "commit") focusAt(index + 1);
-    if (result.disposition === "back") focusAt(index - 1);
-  }, [cells, focusAt]);
+    const move = focusInput ? focusAt : selectAt;
+    if (result.disposition === "commit") move(index + 1);
+    if (result.disposition === "back") move(index - 1);
+  }, [cells, focusAt, selectAt]);
 
   const pressKey = useCallback((index: number, key: string, shiftKey = false) => {
     const cell = cells[index];
     if (!cell) return;
-    applyResult(index, feedKey(cell.section, entries[cell.key] ?? "", key, shiftKey));
+    // These are the touch dock's controls. Advancing the selected cell must
+    // not programmatically focus an input, or iOS opens its keyboard again.
+    applyResult(index, feedKey(cell.section, entries[cell.key] ?? "", key, shiftKey), false);
   }, [applyResult, cells, entries]);
 
   const handleKey = useCallback((event: ReactKeyboardEvent<HTMLInputElement>, index: number) => {
@@ -225,7 +235,7 @@ export function H17ChartDrill() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button onClick={submit} disabled={graded}>Submit</Button>
-        <GhostButton onClick={() => { setEntries({}); setGraded(false); setStartedAt(Date.now()); focusAt(0); }}>Start over</GhostButton>
+        <GhostButton onClick={() => { setEntries({}); setGraded(false); setStartedAt(Date.now()); selectAt(0); }}>Start over</GhostButton>
         {!graded && <span className="text-sm text-zinc-500">{grade.answered} / {grade.total} filled</span>}
       </div>
 
@@ -381,7 +391,7 @@ export function H17ChartDrill() {
           <GhostButton
             className="px-2 py-1.5 text-sm"
             onMouseDown={(event) => event.preventDefault()}
-            onClick={() => focusAt(focus + 1)}
+            onClick={() => selectAt(focus + 1)}
           >
             Next
           </GhostButton>
