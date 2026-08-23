@@ -1,5 +1,5 @@
 "use client";
-import { ButtonHTMLAttributes, ReactNode, useEffect, useState } from "react";
+import { ButtonHTMLAttributes, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 export const Panel = ({
   children,
   className = "",
@@ -186,12 +186,15 @@ export const Switch = ({
  * renders, so React leaves the attribute alone afterwards and the reader's own
  * expand/collapse choices survive every recalculation.
  */
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export function Section({
   title,
   summary,
   icon,
   tone = "neutral",
   open = true,
+  collapseOnMobile = false,
   id,
   children,
 }: {
@@ -200,11 +203,19 @@ export function Section({
   icon: string;
   tone?: "neutral" | "accent";
   open?: boolean;
+  /** Starts closed on phones once, without later overriding reader choices. */
+  collapseOnMobile?: boolean;
   id?: string;
   children: ReactNode;
 }) {
+  const details = useRef<HTMLDetailsElement>(null);
+  useIsomorphicLayoutEffect(() => {
+    if (collapseOnMobile && window.matchMedia("(max-width: 639px)").matches && details.current) {
+      details.current.open = false;
+    }
+  }, [collapseOnMobile]);
   return (
-    <details id={id} open={open} className="surface group rounded-2xl border border-white/[.07]">
+    <details ref={details} id={id} open={open} className="surface group rounded-2xl border border-white/[.07]">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-emerald-300" : "bg-sky-300/10 text-sky-300"}`}
@@ -236,13 +247,13 @@ export function PinnedStat({
 }) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-[.6rem] font-medium uppercase tracking-[.08em] text-zinc-500">
+      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-500">
         {label}
       </p>
       <p className="mt-0.5 truncate text-base font-semibold leading-tight tracking-[-.025em] text-white sm:text-lg">
         {value}
       </p>
-      <p className="truncate text-[.65rem] font-medium text-emerald-400">{sub}</p>
+      <p className="truncate text-[.7rem] font-medium text-emerald-400">{sub}</p>
     </div>
   );
 }

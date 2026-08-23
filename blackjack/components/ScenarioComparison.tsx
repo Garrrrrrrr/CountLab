@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, calculateAdvantage, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
-import { GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
+import { GhostButton, Metric, NumberField, Panel, PinnedStat, Section, Select, Switch } from "./ui";
 import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
@@ -126,6 +126,14 @@ export function ScenarioComparison() {
           Set up to four table rules, ramps, and bet sizes side by side and compare their audited hourly EV, trip EV, and risk of ruin on an apples-to-apples basis.
         </p>
       </div>
+      {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="Best scenario" value={columns[bestHourlyEv].name} sub="hourly EV" />
+          <PinnedStat label="Hourly EV" value={money(results[bestHourlyEv].hourlyEv, 2)} sub="best of these" />
+          <PinnedStat label="Trip EV" value={money(results[bestHourlyEv].tripEv)} sub={`${columns[bestHourlyEv].hours} hours`} />
+          <PinnedStat label="Risk of ruin" value={percent(results[bestHourlyEv].riskOfRuin, 1)} sub="best EV scenario" />
+        </div>
+      </div>}
 
       <div className="mb-5 flex justify-end">
         <GhostButton onClick={addColumn} disabled={columns.length >= 4}><i className="fa-solid fa-plus mr-2" />Add scenario</GhostButton>
@@ -149,6 +157,7 @@ export function ScenarioComparison() {
                 )}
               </div>
 
+              <Section title="Scenario settings" summary={`${column.decks}D · ${money(column.bankroll)} bankroll · ${column.hours} hours`} icon="fa-sliders" collapseOnMobile>
               {venuePresets.length > 0 && (
                 <div className="mt-3">
                   <Select label="Load a venue" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(column.id, event.target.value)}>
@@ -195,6 +204,7 @@ export function ScenarioComparison() {
                   {(sumRuleAdjustment(ruleAdjustmentFlagsFromRules(column)) * 100).toFixed(2)}pp literature-estimated edge delta applied for rules away from the audited baseline.
                 </p>
               )}
+              </Section>
 
               <div className="mt-5 space-y-2 border-t border-white/[.07] pt-4">
                 <div className={`rounded-xl p-3 ${index === bestHourlyEv ? "bg-emerald-400/10 ring-1 ring-emerald-400/30" : "bg-black/20"}`}>

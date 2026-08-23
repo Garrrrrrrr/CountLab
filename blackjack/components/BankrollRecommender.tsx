@@ -8,7 +8,7 @@ import {
   unitsAt,
 } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { Metric, NumberField, Panel, Select } from "./ui";
+import { Metric, NumberField, Panel, PinnedStat, Section, Select } from "./ui";
 const money = (value: number, digits = 2) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -132,9 +132,16 @@ export function BankrollRecommender() {
           targeting an hourly EV and maximum lifetime risk of ruin.
         </p>
       </div>
+      {recommendation && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="Spread" value={recommendation.name} sub="recommended" />
+          <PinnedStat label="Minimum" value={money(recommendation.baseBet, 0)} sub="per hand" />
+          <PinnedStat label="Maximum" value={money(recommendation.maxBet, 0)} sub="per hand" />
+          <PinnedStat label="Hourly EV" value={money(recommendation.hourlyEv)} sub={`RoR ${(recommendation.risk * 100).toFixed(2)}%`} />
+        </div>
+      </div>}
       <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <Panel>
-          <h2 className="mb-5 font-semibold">Targets</h2>
+        <Section title="Targets" summary={`${money(bankroll, 0)} bankroll · ${money(minimumBet, 0)} minimum · ${(targetRisk * 100).toFixed(1)}% RoR`} icon="fa-bullseye" collapseOnMobile>
           <div className="grid gap-4">
             <NumberField
               label="Bankroll"
@@ -210,7 +217,7 @@ export function BankrollRecommender() {
           <div className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-200">
             {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · audited H17 Pro policy
           </div>
-        </Panel>
+        </Section>
         <div className="space-y-5">
           <Panel className="md:overflow-x-auto">
             <h2 className="mb-4 font-semibold">Candidate spreads</h2>
