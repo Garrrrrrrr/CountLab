@@ -34,7 +34,7 @@ import { consumePracticeFocus, dueItemKeys, recordAnswer, setPracticeFocus } fro
 import { track } from "@/lib/analytics/track";
 import rawDeckEstimationPhotos from "@/public/deck-estimation/manifest.json";
 
-type DeckPhoto = { file: string; decks: number; numDecks: number; sourceUrl: string };
+type DeckPhoto = { file: string; decks: number; numDecks: number };
 const DECK_ESTIMATION_PHOTOS = rawDeckEstimationPhotos as DeckPhoto[];
 const PHOTO_DECK_OPTIONS = Array.from(new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.numDecks))).sort((a, b) => a - b);
 const PHOTO_UNIQUE_COUNT = new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.file)).size;

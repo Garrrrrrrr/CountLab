@@ -3,7 +3,7 @@ import type { H17Deviation, H17DeviationSet } from "./h17Pro";
 
 type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number];
 
-// the reference product supplied S17 Pro chart: 32 entries including the two
+// The supplied S17 Pro chart: 32 entries including the two
 // unconditional late-surrender plays and insurance (4-8 decks).
 const S17_PRO_ROWS: readonly Row[] = [
   ["Insurance", "A", 3, "N", "I"],

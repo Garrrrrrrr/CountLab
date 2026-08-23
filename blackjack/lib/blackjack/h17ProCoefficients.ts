@@ -3,7 +3,7 @@
 import type { RawCoefficient } from "./coefficients";
 export const H17_PRO_METADATA = {
   generatedUtc: "2026-08-23T05:05:26.990790+00:00",
-  sourceSha256: "3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62",
+  sourceSha256: "101b81bcae4df274788780b69fca60de41fbffa76eca3d30980e73f7fec3a7a1",
   seed: 20260821,
   shoesPerProfile: 250000000,
   totalRounds: 116818680110,

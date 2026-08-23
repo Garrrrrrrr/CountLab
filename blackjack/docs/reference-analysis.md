@@ -1,8 +1,7 @@
-# Reference analysis: the reference product
+# Reference workflow analysis
 
-Observed on 2026-08-13 and 2026-08-14 through the normal authenticated UI at
-`external simulator`, `/dashboard/results` (Results
-Tracker), and `/dashboard/game-directory`. This document records product
+Observed on 2026-08-13 and 2026-08-14 through an external product's normal
+authenticated simulator, results tracker, and game-directory UI. This document records product
 behavior only. It does not reproduce source code, branding, copy, or assets.
 Test data created while exploring the Results Tracker (one game, one bankroll,
 one $5,000 contribution) was deleted before ending the session; no session or
@@ -10,7 +9,7 @@ transaction records were left on the account.
 
 ## Starred stand indices and late surrender
 
-The supplied Pro charts print a star on five H17 cells (16 v 9, 16 v 10, 16 v A,
+The supplied H17/S17 Pro charts print a star on five H17 cells (16 v 9, 16 v 10, 16 v A,
 15 v 10, 15 v A) and three S17 cells (16 v 9, 16 v 10, 15 v 10), marking a stand
 index that takes precedence over the cell's surrender. CountLab applies those
 indices **only where surrender is unavailable** — a no-surrender table, or a
@@ -54,7 +53,7 @@ The production artifact was regenerated on 2026-08-23 from the corrected
 `h17_pro.py` policy. It sampled 250 million shoes for each of nine
 profiles (116,818,680,110 resolved rounds in total), with seed `20260821`.
 Its source checksum is
-`3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62` and is
+`101b81bcae4df274788780b69fca60de41fbffa76eca3d30980e73f7fec3a7a1` and is
 embedded in both the JSON evidence and TypeScript artifact.
 
 The regenerated curve applies late surrender before the chart's starred stand
@@ -163,7 +162,7 @@ over 24H/7D/30D/90D/1Y/All windows: total profit, session count, hours,
 average $/hour, and — critically — **"EV Generated"** alongside actual
 profit. This confirms actual-vs-theoretical-EV comparison is a validated,
 already-shipped concept in this product category, not a speculative idea.
-However the reference product computes nothing: "Hourly EV" is a bare optional number
+However the observed product computes nothing: "Hourly EV" is a bare optional number
 the user types in per session, with no link back to the Simulator's rules,
 ramp, or audited profiles. A user must already know their own EV from
 elsewhere (their own math, or a separate simulator run) and re-enter it by
@@ -173,8 +172,8 @@ Other notable details:
 
 - **CSV import and export** per bankroll, both directions, described as
   additive ("adds sessions... without removing any current data").
-- **Share with Friends**: read-only bankroll invites to other the reference product
-  accounts; a **Shared Bankrolls** / **Friend Bankrolls** section on the
+- **Share with Friends**: read-only bankroll invites to accounts on the same
+  service; a **Shared Bankrolls** / **Friend Bankrolls** section on the
   tracker home lists bankrolls shared with or by the user. Backend-dependent
   social feature.
 - Deleting a bankroll or a game is gated by a "type the exact name to
@@ -280,7 +279,8 @@ no crowdsourcing or backend required.
   `theoreticalSessionOutcome` in `lib/blackjack/journalAnalysis.ts`.)
 - Support more than one tracked bankroll (e.g. per trip, per casino, or a
   training vs. real-money split) without forcing everything into one flat
-  ledger, while keeping a single local-first data store rather than the reference product separate Game/Bankroll backend entities.
+  ledger, while keeping a single local-first data store rather than separate
+  Game/Bankroll backend entities.
 - Reuse a single "type the exact name to confirm" inline destructive-delete
   pattern across the site instead of `confirm()` for any action that deletes
   more than one record (clear journal, delete a saved run, clear statistics).

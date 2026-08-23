@@ -145,13 +145,19 @@ describe("strategy", () => {
   });
 });
 describe("deviations", () => {
-  it("uses the H17 Pro thresholds", () => {
+  it("uses the H17 chart's thresholds", () => {
     const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10" && x.deviationAction === "S")!;
-    expect(deviationDecision(d, 3)).toBe("R");
+    expect(deviationDecision(d, 3)).toBe("H");
     expect(deviationDecision(d, 4)).toBe("S");
+    // The chart's 10 v 10 double, the cell that first showed the two teaching
+    // surfaces disagreeing: the reference said +7 where the chart prints 4+.
+    const ten = DEVIATIONS.find((x) => x.hand === "10" && x.dealer === "10")!;
+    expect(ten.index).toBe(4);
+    expect(deviationDecision(ten, 3)).toBe("H");
+    expect(deviationDecision(ten, 4)).toBe("D");
   });
-  it("uses the complete supplied H17 Pro catalog", () => {
-    expect(DEVIATIONS).toHaveLength(34);
+  it("uses the complete H17 chart catalog", () => {
+    expect(DEVIATIONS).toHaveLength(30);
   });
 });
 describe("advantage model", () => {

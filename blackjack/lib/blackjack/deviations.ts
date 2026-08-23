@@ -14,6 +14,7 @@ export interface Deviation {
   always?: true;
   priority?: number;
   overridesSurrender?: true;
+  outsideSurrenderWindow?: true;
 }
 /** The supplied H17 Pro catalog; kept as the default/legacy export. */
 export const DEVIATIONS:Deviation[] = [...H17_PRO_DEVIATIONS];
@@ -24,19 +25,18 @@ export interface DeviationRules {
   lateSurrender: boolean;
 }
 
-/** The supplied Pro catalog matching a table's dealer rule. */
+/** The supplied H17/S17 Pro catalog matching a table's dealer rule. */
 export function getDeviationCatalog(rules: { dealerHitsSoft17: boolean }): Deviation[] {
   return rules.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
 }
 
 /**
- * Resolves every matching the reference product entry, rather than trusting catalog order.
- * Some Pro-chart cells overlap by design: the indexed stand takes precedence
- * over a surrender threshold once both have been reached (16 vs 9 and 15 vs
- * 10) — an indexed surrender's own deviationAction ("R") always qualifies as a
- * candidate, so it competes on its own threshold even where the catalog's
- * "normalAction" field doesn't match a table that already surrenders that cell
- * at basic strategy.
+ * Resolves every matching catalog entry, rather than trusting catalog order.
+ * Some chart cells overlap by design: the indexed stand takes precedence over a
+ * surrender threshold once both have been reached — an indexed surrender's own
+ * deviationAction ("R") always qualifies as a candidate, so it competes on its
+ * own threshold even where the catalog's "normalAction" field doesn't match a
+ * table that already surrenders that cell at basic strategy.
  *
  * A starred stand index is the one case where the chart's own precedence is not
  * followed. Those rows only apply where surrender is unavailable — see the note
@@ -61,11 +61,15 @@ export function resolveDeviation(
     const crossed = deviation.direction === "atOrBelow" ? tc <= deviation.index : tc >= deviation.index;
     if (!crossed) return false;
     return basicAction === deviation.normalAction
+      // Where the chart's surrender is a count window rather than every count,
+      // its other indices are written against the play made outside that
+      // window, so they still apply in a game that offers surrender.
+      || (deviation.outsideSurrenderWindow === true && basicAction === "R")
       || deviation.overridesSurrender === true
       || deviation.deviationAction === "R";
   });
   if (!candidates.length) {
-    // Two-sided cells (e.g. 13 v 2, 12 v 4, 12 v 5, 11 v A in the H17 catalog)
+    // Two-sided cells (13 v 2, 12 v 4 and Soft 19 v 6 in the H17 catalog)
     // already match basic strategy at TC 0, so the catalog's normalAction field
     // never matches real basic strategy and this entry never appears in
     // `candidates` above at any count. Its index instead marks where the play
@@ -125,11 +129,12 @@ export interface DeviationTransition {
  * on both sides of its printed index against real basic strategy rather than
  * trusting the row's `normalAction` field.
  *
- * Both directions have to be checked. Two-sided cells (13 v 2, 12 v 4, 12 v 5,
- * 11 v A) print the index where the play *reverts*, so reading it as "departs
- * at or above" inverts them — 13 v 2 hits at TC -1 and below. And where basic
- * strategy already surrenders (16 v 9, 15 v 10 in an H17 late-surrender game)
- * the row's own threshold is a no-op while its revert side is the real play.
+ * Both directions have to be checked. Two-sided cells (13 v 2 and 12 v 4 in the
+ * H17 catalog) print the index where the play *reverts*, so reading it as
+ * "departs at or above" inverts them — 13 v 2 hits at TC -1 and below. The same
+ * holds where basic strategy already surrenders: the H17 chart's 16 v 9 and
+ * 15 v 10 surrenders are windows at the bottom of the count, and above them the
+ * revert side is the real play.
  *
  * Resolved against this row alone, matching how each row's EV is measured. Two
  * chart rows can cover one cell — 16 v 10 carries both a starred stand and an
@@ -152,11 +157,14 @@ export function deviationTransition(row: Deviation, rules: DeviationRules, decks
     rules: { decks, doubleAfterSplit: true, resplitAces: true, doubleRule: "any", ...rules },
   }).action;
   const at = (trueCount: number) => resolveDeviation(basic, row.hand, row.dealer, trueCount, rules, [row]).action;
-  const inside = row.direction === "atOrBelow" ? row.index + 1 : row.index - 1;
-  const outside = row.direction === "atOrBelow" ? row.index - 1 : row.index + 1;
+  // A step in the direction that leaves the row's own window, checked first, so
+  // a two-sided cell is reported on the side its printed index belongs to.
+  const away = row.direction === "atOrBelow" ? 1 : -1;
   const onIndex = at(row.index);
-  if (at(inside) !== onIndex) return { baseline: at(inside), departure: onIndex, atOrBelow: false, changesPlay: true };
-  if (at(outside) !== onIndex) return { baseline: at(outside), departure: onIndex, atOrBelow: true, changesPlay: true };
+  const leaving = at(row.index + away);
+  if (leaving !== onIndex) return { baseline: leaving, departure: onIndex, atOrBelow: row.direction === "atOrBelow", changesPlay: true };
+  const returning = at(row.index - away);
+  if (returning !== onIndex) return { baseline: returning, departure: onIndex, atOrBelow: row.direction !== "atOrBelow", changesPlay: true };
   return { baseline: basic, departure: onIndex, atOrBelow: false, changesPlay: onIndex !== basic };
 }
 

@@ -26,7 +26,7 @@ Out of scope:
   fact, not a table cell, and the requested key grammar has no insurance keys. It
   renders as static text below the grid.
 - Any change to the existing Deviations drill, the deviation reference page, or
-  `deviationRanking`. The Pro catalogs stay the source of truth for
+  `deviationRanking`. The H17/S17 Pro catalogs stay the source of truth for
   those; this chart is a separate artifact used only by this drill.
 - Rules settings. The drill ignores `decks` / `dealerHitsSoft17` /
   `doubleAfterSplit` / `lateSurrender` from `Settings`: it is a fixed printed

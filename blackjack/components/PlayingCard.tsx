@@ -40,7 +40,7 @@ export function PlayingCard({
       <div
         aria-label="Hidden card"
         style={animated ? { animationDelay: `${dealIndex * (fast ? 110 : 320)}ms` } : undefined}
-        className={`${scale} ${animated ? fast ? "casino-deal-fast" : "casino-deal" : ""} shrink-0 rounded-xl border border-emerald-500/40 bg-[repeating-linear-gradient(45deg,#163d31,#163d31_5px,#0e2c24_5px,#0e2c24_10px)] shadow-xl ring-4 ring-white`}
+        className={`${scale} ${animated ? fast ? "casino-deal-fast" : "casino-deal" : ""} casino-card-back shrink-0 rounded-lg shadow-xl`}
       />
     );
 
@@ -49,7 +49,7 @@ export function PlayingCard({
     <div
       aria-label={`${card.rank} of ${card.suit}`}
       style={animated && !flip ? { animationDelay: `${dealIndex * (fast ? 110 : 320)}ms` } : undefined}
-      className={`${scale} ${flip ? fast ? "casino-card-flip-fast" : "casino-card-flip" : animated ? fast ? "casino-deal-fast" : "casino-deal" : ""} relative shrink-0 select-none overflow-hidden rounded-xl bg-[#f7f3e9] font-semibold ${red ? "text-red-600" : "text-zinc-950"} shadow-[0_12px_30px_#0008] ring-1 ring-black/20`}
+      className={`${scale} ${flip ? fast ? "casino-card-flip-fast" : "casino-card-flip" : animated ? fast ? "casino-deal-fast" : "casino-deal" : ""} casino-playing-card relative shrink-0 select-none overflow-hidden rounded-lg bg-[#fbfaf5] font-semibold ${red ? "text-[#c51f2f]" : "text-zinc-950"} shadow-[0_12px_30px_#0008]`}
     >
       <span className={`absolute left-0 top-0 ${cornerOffset} leading-[.8]`}>
         {card.rank}

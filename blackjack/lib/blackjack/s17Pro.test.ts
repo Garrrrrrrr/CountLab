@@ -52,10 +52,13 @@ describe("S17 Pro table", () => {
   });
 
   it("is selected automatically for S17 tables and H17 Pro for H17 tables", () => {
-    const h17 = resolveDeviation("H", "11", "A", 1, { dealerHitsSoft17: true, lateSurrender: true });
-    const s17 = resolveDeviation("H", "11", "A", 1, { dealerHitsSoft17: false, lateSurrender: true });
-    expect(h17.deviation?.index).toBe(-1);
-    expect(s17.deviation?.index).toBe(1);
-    expect(s17.action).toBe("D");
+    // 10 v A doubles a count earlier on the H17 chart than on the S17 chart.
+    const h17 = resolveDeviation("H", "10", "A", 3, { dealerHitsSoft17: true, lateSurrender: true });
+    const s17 = resolveDeviation("H", "10", "A", 3, { dealerHitsSoft17: false, lateSurrender: true });
+    expect(h17.deviation?.index).toBe(3);
+    expect(h17.action).toBe("D");
+    expect(s17.deviation?.index).toBeUndefined();
+    expect(s17.action).toBe("H");
+    expect(resolveDeviation("H", "10", "A", 4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("D");
   });
 });

@@ -60,12 +60,15 @@ export default function DeviationReferencePage() {
 
   return <>
     <h1 className="text-3xl font-semibold">Index Deviations</h1>
-    <p className="mt-2 text-zinc-400">Pro deviations for 4–8 deck games: 34 H17 plays, 32 S17 plays.</p>
+    <p className="mt-2 text-zinc-400">Index deviations for 4–8 deck games: 30 H17 plays, 32 S17 plays.</p>
     <Panel className="mt-7">
       <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-sm text-zinc-300">
-        <p>Based on the supplied Pro charts for each dealer rule. Each catalog includes insurance, split, soft-total, hard-total, and late-surrender decisions. “Always” means the chart marks the surrender as a standing late-surrender play rather than a count threshold.</p>
+        <p>The H17 rows are every index the H17 chart prints, so this page, the play drill and the chart drill all teach one set of numbers; the S17 rows come from the supplied S17 Pro chart. Each catalog includes insurance, split, soft-total, hard-total, and late-surrender decisions. “Always” means the chart marks the surrender as a standing late-surrender play rather than a count threshold.</p>
         <p className="mt-2 text-xs leading-5 text-zinc-500">
           Insurance is TC +3 for 4–8 deck games. Whether the table offers surrender changes which plays do anything at all, so pick both settings below. The chart’s starred stand indices for 15 and 16 are applied only where surrender is unavailable: standing on those hands is worth about −0.53 to −0.61 per unit at <em>every</em> true count, because a ten-rich shoe leaves the dealer fewer stiff hands to bust with, so it never overtakes the flat −0.50 of surrendering.
+        </p>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">
+          Two H17 cells are printed against the measurement and are shown here as printed: the chart surrenders 15 v 10 at 0 and below and 16 v 9 at −1 and below, playing the hand above those counts, where basic strategy surrenders at every count. Their measured EV below is negative — the chart is what the drill grades, and the cost of following it is on the table rather than quietly corrected.
         </p>
       </div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

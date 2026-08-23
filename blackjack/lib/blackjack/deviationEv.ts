@@ -317,7 +317,7 @@ export interface DeviationEvRow {
   triggersPer100: number;
 }
 
-/** Labels a two-card hand the way the the reference product charts do. */
+/** Labels a two-card hand using the deviation catalog's chart notation. */
 function chartLabel(a: number, b: number) {
   if (VALUE[a] === VALUE[b]) return `${CODE_RANK[a]},${CODE_RANK[b]}`;
   const { total, soft } = handTotal([a, b]);

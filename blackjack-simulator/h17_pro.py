@@ -454,7 +454,7 @@ def main() -> None:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     args.typescript.parent.mkdir(parents=True, exist_ok=True)
-    write_typescript(payload, args.typescript, "H17_PRO_POLICY", Path(__file__).name)
+    write_typescript(payload, args.typescript, "H17_PRO", Path(__file__).name)
 
 
 if __name__ == "__main__":

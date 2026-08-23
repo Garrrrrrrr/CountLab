@@ -145,7 +145,7 @@ stand from replacing a legal surrender; the full per-count evidence is in
 artifact were regenerated from that policy on 2026-08-23. The run sampled 250
 million shoes for each of nine profiles (116,818,680,110 resolved rounds),
 using seed `20260821`; both artifacts record source checksum
-`3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62`.
+`101b81bcae4df274788780b69fca60de41fbffa76eca3d30980e73f7fec3a7a1`.
 
 Reproduce the production artifact with:
 
