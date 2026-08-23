@@ -45,6 +45,15 @@ select {
 button {
   touch-action: manipulation;
 }
+/* iOS Safari zooms focused controls whose computed font size is below 16px.
+   Use a floor instead of disabling pinch zoom, which would harm accessibility. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
 ::selection {
   background: rgba(168, 238, 114, 0.28);
   color: white;

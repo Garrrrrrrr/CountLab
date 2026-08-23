@@ -108,6 +108,7 @@ let replayRetryScheduled = false;
 const BACKUP_KEY_PREFIXES = [
   PROGRESS_PREFIX,
   "hilo:leitner:",
+  "hilo:checklist-ticks:",
   "countlab:journal-",
   "countlab:cvcx-templates:",
   "countlab:simulation-runs:",

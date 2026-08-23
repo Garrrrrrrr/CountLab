@@ -6,6 +6,8 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 import { computeStreak } from "@/lib/statistics/streaks";
 import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
+import { isStandalone, readPwaEnv } from "@/lib/pwa/standalone";
+import { setStreakBadge } from "@/lib/pwa/appBadge";
 import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
@@ -39,6 +41,7 @@ const groups = [
   {
     label: "Training",
     items: [
+      ["Daily Checklist", "/training/checklist", "fa-list-check"],
       ["Running Count", "/training/running-count", "fa-bolt"],
       ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
@@ -86,6 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     [open, setOpen] = useState(false),
     [rules, setRules] = useState(DEFAULT_SETTINGS),
     [streakDays, setStreakDays] = useState(0),
+    [standalone, setStandalone] = useState(false),
     toggle = useRef<HTMLButtonElement>(null),
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
@@ -129,6 +133,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => removeEventListener("hilo-storage", load);
   }, []);
   useEffect(() => { registerServiceWorker(); }, []);
+  // This static export is shared by every visitor, so only inspect the
+  // environment after mount rather than baking one client's state into HTML.
+  useEffect(() => { setStandalone(isStandalone(readPwaEnv())); }, []);
+  useEffect(() => { setStreakBadge(streakDays); }, [streakDays]);
   useEffect(() => {
     const activateVisiblePrimaryAction = (event: KeyboardEvent) => {
       if (event.key !== "Enter" || event.repeat || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -230,16 +238,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="min-h-dvh min-w-0 lg:pl-[17rem]">
         <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center justify-end gap-2 bg-[#0c100d]/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-2xl [mask-image:linear-gradient(to_bottom,black_82%,transparent)] sm:gap-3 sm:px-5 md:px-8">
-          {/* This deliberately leaves the Next.js base path to return to the portfolio. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a
-            href="/"
-            aria-label="Go to CountLab home"
-            className="pressable grid min-h-11 min-w-11 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
-          >
-            <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
-            <span className="hidden sm:inline">Home</span>
-          </a>
+          {!standalone && (
+            <>
+              {/* This deliberately leaves the Next.js base path to return to the portfolio. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              <a
+                href="/"
+                aria-label="Go to CountLab home"
+                className="pressable grid min-h-11 min-w-11 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
+              >
+                <i className="fa-solid fa-arrow-up-right-from-square sm:hidden" aria-hidden="true" />
+                <span className="hidden sm:inline">Home</span>
+              </a>
+            </>
+          )}
           {streakDays > 0 && (
             <span
               aria-label={`${streakDays}-day practice streak`}
