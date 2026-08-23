@@ -17,9 +17,10 @@ test("every dealer column clears the sticky hand label", async ({ page }) => {
 
   for (const dealer of dealers) {
     const cell = rail.getByLabel(`${section} ${hand} versus ${dealer}`);
-    await cell.evaluate((element) => element.scrollIntoView({ block: "nearest", inline: "start" }));
+    const snapCell = cell.locator("xpath=..");
+    await snapCell.evaluate((element) => element.scrollIntoView({ block: "nearest", inline: "start" }));
     await expect.poll(async () => {
-      const [cellBox, labelBox] = await Promise.all([cell.boundingBox(), label.boundingBox()]);
+      const [cellBox, labelBox] = await Promise.all([snapCell.boundingBox(), label.boundingBox()]);
       return Boolean(cellBox && labelBox && cellBox.x >= labelBox.x + labelBox.width - 1);
     }).toBe(true);
   }
@@ -29,7 +30,7 @@ test("touch dock advances the selected cell without focusing an input", async ({
   const first = page.getByLabel(`${section} ${hand} versus 2`);
   const second = page.getByLabel(`${section} ${hand} versus 3`);
 
-  await page.getByRole("group", { name: "Chart entry keys" }).getByRole("button", { name: "Y" }).click();
+  await page.getByRole("group", { name: "Chart entry keys" }).getByRole("button", { name: "y", exact: true }).click();
 
   await expect(second).toHaveClass(/border-emerald-400/);
   await expect(first).toHaveValue("Y");
