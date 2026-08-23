@@ -14,6 +14,7 @@ import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/componen
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { Mistake, makeSession, storage } from "@/lib/statistics/storage";
 import { analytics } from "@/lib/analytics";
+import { railState, type RailState } from "@/lib/blackjack/railScroll";
 
 type SectionChoice = "all" | ChartSectionId;
 type Feedback = "live" | "end";
@@ -71,10 +72,27 @@ export function H17ChartDrill() {
   const [focus, setFocus] = useState(0);
   const [feedback, setFeedback] = useState<Feedback>(saved?.feedback ?? "live");
   const [graded, setGraded] = useState(false);
+  const [rails, setRails] = useState<Record<string, RailState>>({});
   const [startedAt, setStartedAt] = useState(() => saved?.startedAt ?? Date.now());
   const grade = useMemo(() => gradeChart(sections, entries), [sections, entries]);
   const gradeByKey = useMemo(() => new Map(grade.cells.map((cell) => [cell.key, cell])), [grade]);
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
+  const measureRail = useCallback((id: string, node: HTMLDivElement | null) => {
+    if (!node) return;
+    const firstCell = node.querySelector("tbody td");
+    const next = railState({
+      scrollLeft: node.scrollLeft,
+      scrollWidth: node.scrollWidth,
+      clientWidth: node.clientWidth,
+      columnWidth: firstCell ? firstCell.getBoundingClientRect().width : 0,
+    });
+    setRails((current) => {
+      const previous = current[id];
+      return previous && previous.scrollable === next.scrollable && previous.atStart === next.atStart && previous.atEnd === next.atEnd && previous.hiddenRight === next.hiddenRight
+        ? current
+        : { ...current, [id]: next };
+    });
+  }, []);
 
   useDrillProgress("H17 Chart", !graded, {
     entries, choice, feedback, startedAt,
@@ -205,9 +223,9 @@ export function H17ChartDrill() {
         <h1 className="mt-2 text-3xl font-semibold">H17 Chart</h1>
         <p className="mt-2 max-w-2xl text-zinc-400">
           Fill in the whole H17 deviation chart from memory. One keystroke per cell — Tab, Enter,
-          or an arrow key moves on. Each table&rsquo;s keys are listed above it; hold{" "}
-          <kbd className="rounded border border-white/15 bg-black/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}
-          for the two-part answers (Y/N, Ds) instead of typing two keys. Deviation cells want the
+          or an arrow key moves on. Each table&rsquo;s keys are listed above it.
+          <span className="hidden sm:inline"> {" "}Hold{" "}<kbd className="rounded border border-white/15 bg-black/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}for the two-part answers (Y/N, Ds) instead of typing two keys.</span>
+          <span className="sm:hidden"> Use the keypad below the chart for two-part answers.</span> Deviation cells want the
           true count and the direction it applies, like <code>4+</code> (true count 4 or higher) or{" "}
           <code>-1-</code> (true count -1 or lower).
         </p>
@@ -266,36 +284,44 @@ export function H17ChartDrill() {
         {sections.map((section, sectionIndex) => (
           <Panel key={section.id}>
             <h2 className="text-lg font-semibold">{section.label}</h2>
-            <ul className="mb-4 mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-500">
+            <ul className="mb-4 mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-zinc-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
               {sectionLegend(section.id).map((entry) => (
-                <li key={entry.keys.join("+")} className="inline-flex items-center gap-1.5">
-                  {entry.keys.map((key, position) => (
-                    <span key={key} className="inline-flex items-center gap-1.5">
-                      {position > 0 && <span aria-hidden="true">{entry.combo ? "+" : "then"}</span>}
-                      <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{key}</kbd>
+                <li key={entry.keys.join("+")} className="inline-flex min-w-0 items-center gap-1.5">
+                  {entry.combo ? <>
+                    <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400 sm:hidden">{entry.shows}</kbd>
+                    <span className="hidden shrink-0 items-center gap-1.5 sm:inline-flex">
+                      {entry.keys.map((key, position) => <span key={key} className="inline-flex items-center gap-1.5">
+                        {position > 0 && <span aria-hidden="true">+</span>}
+                        <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{key}</kbd>
+                      </span>)}
                     </span>
-                  ))}
+                  </> : <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{entry.keys[0]}</kbd>}
                   <span className="text-zinc-600" aria-hidden="true">→</span>
-                  <span className="font-mono text-zinc-300">{entry.shows}</span>
-                  <span>({entry.meaning})</span>
+                  <span className="truncate font-mono text-zinc-300">{entry.shows}</span>
+                  <span className="hidden truncate sm:inline">({entry.meaning})</span>
                 </li>
               ))}
-              <li className="inline-flex items-center gap-1.5">
-                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">0–9</kbd>
+              <li className="col-span-2 inline-flex min-w-0 items-center gap-1.5">
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">0–9</kbd>
                 <span aria-hidden="true">then</span>
-                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">+</kbd>
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">+</kbd>
                 <span aria-hidden="true">or</span>
-                <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">−</kbd>
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">−</kbd>
                 <span className="text-zinc-600" aria-hidden="true">→</span>
-                <span className="font-mono text-zinc-300">a true count, e.g. 4+</span>
-                <span>(deviate at this count or beyond, in the direction the sign points)</span>
+                <span className="truncate font-mono text-zinc-300">a true count, e.g. 4+</span>
+                <span className="hidden sm:inline">(deviate at this count or beyond)</span>
               </li>
             </ul>
-            <div className="-mx-1 overflow-x-auto px-1">
+            <div className="relative">
+              <div
+                ref={(node) => measureRail(section.id, node)}
+                onScroll={(event) => measureRail(section.id, event.currentTarget)}
+                className="-mx-1 snap-x snap-mandatory overflow-x-auto px-1"
+              >
               <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 bg-[#0c100d] px-2 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                    <th className="sticky left-0 z-10 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
                       Hand
                     </th>
                     {CHART_DEALERS.map((dealer) => (
@@ -306,14 +332,14 @@ export function H17ChartDrill() {
                 <tbody>
                   {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
-                      <th scope="row" className="sticky left-0 z-10 bg-[#0c100d] px-2 text-left font-medium text-zinc-300">
+                      <th scope="row" className="sticky left-0 z-10 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
                         {row}
                       </th>
                       {CHART_DEALERS.map((dealer, columnIndex) => {
                         const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
                         const cell = cells[index];
                         return (
-                          <td key={dealer}>
+                          <td key={dealer} className="snap-start">
                             <input
                               ref={(element) => { inputs.current[index] = element; }}
                               value={displayBuffer(cell.section, entries[cell.key] ?? "")}
@@ -324,7 +350,7 @@ export function H17ChartDrill() {
                               autoComplete="off"
                               autoCorrect="off"
                               spellCheck={false}
-                              className={`h-9 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${cellTone(cell, index)}`}
+                              className={`h-11 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${cellTone(cell, index)}`}
                             />
                             {(graded || feedback === "live") && (() => {
                               const result = gradeByKey.get(cell.key);
@@ -339,6 +365,13 @@ export function H17ChartDrill() {
                   ))}
                 </tbody>
               </table>
+              </div>
+              {rails[section.id]?.scrollable && !rails[section.id]?.atEnd && (
+                <>
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#0c100d] to-transparent" />
+                  <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[.65rem] font-medium text-zinc-300">{rails[section.id].hiddenRight} more →</p>
+                </>
+              )}
             </div>
           </Panel>
         ))}

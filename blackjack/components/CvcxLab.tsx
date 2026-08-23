@@ -109,9 +109,9 @@ function BetSpreadBody({
           are watched but not played.
         </p>
         <div className="flex flex-wrap gap-2 text-xs">
-          <button type="button" onClick={() => onScale(0.5)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">½X</button>
-          <button type="button" onClick={() => onScale(2)} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">2X</button>
-          <button type="button" onClick={onReset} className="rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset</button>
+          <button type="button" onClick={() => onScale(0.5)} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">½X</button>
+          <button type="button" onClick={() => onScale(2)} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">2X</button>
+          <button type="button" onClick={onReset} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-zinc-300 hover:bg-white/[.05]">Reset</button>
         </div>
       </div>
 
@@ -577,6 +577,7 @@ export function CvcxLab() {
 
         <Section
           title="Bankroll and pace"
+          collapseOnMobile
           summary={`${money(bankroll, 0)} bankroll · ${money(baseBet, 0)} unit · ${compact(handsPerHour)} rounds/hr · ${compact(hours)} hours`}
           icon="fa-wallet"
         >
@@ -602,6 +603,7 @@ export function CvcxLab() {
 
         <Section
           title="Table rules"
+          collapseOnMobile
           summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${useIndices ? "AP Toolbox Pro indices" : "basic strategy only"} · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
@@ -661,6 +663,7 @@ export function CvcxLab() {
 
         <Section
           title="Bet spread"
+          collapseOnMobile
           // A preset's name is its spread, so naming it here would just repeat
           // the range; only a Custom/Optimized ramp needs saying out loud.
           summary={`${Object.hasOwn(RAMPS, rampName) ? "" : `${rampName} · `}${playedSpreadLabel(activeRamp)} spread · ${wongInAt === null ? "play every count" : `enter at TC +${wongInAt}`} · ${percent(result.playedFrequency, 0)} of rounds played`}
@@ -690,6 +693,7 @@ export function CvcxLab() {
 
         <Section
           title={`Where this lands over ${compact(hours)} hours`}
+          collapseOnMobile
           summary={`${money(result.tripEv, 0)} expected · ${percent(result.chanceOfProfit)} chance of finishing ahead`}
           icon="fa-chart-simple"
           tone="accent"

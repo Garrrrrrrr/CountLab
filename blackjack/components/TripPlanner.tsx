@@ -8,7 +8,7 @@ import { journalLibrary } from "@/lib/blackjack/journal";
 import { currentBankroll } from "@/lib/blackjack/journalAnalysis";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
 import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
-import { GhostButton, Metric, NumberField, Panel, Select, Switch } from "./ui";
+import { GhostButton, Metric, NumberField, Panel, PinnedStat, Section, Select, Switch } from "./ui";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
@@ -76,9 +76,17 @@ export function TripPlanner() {
         </p>
       </div>
 
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="Trip EV" value={money(plan.tripEv)} sub={`${tripHours} hours`} />
+          <PinnedStat label="Finish ahead" value={percent(plan.chanceOfProfit)} sub="chance" />
+          <PinnedStat label="Trip bust" value={percent(plan.bustProbability)} sub="crosses zero" />
+          <PinnedStat label="95% range" value={money(plan.ci95Low)} sub={`to ${money(plan.ci95High)}`} />
+        </div>
+      </div>
+
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <Panel>
-          <h2 className="font-semibold">Trip setup</h2>
+        <Section title="Trip setup" summary={`${decks}D · ${money(bankroll)} bankroll · ${tripHours} hours`} icon="fa-suitcase" collapseOnMobile>
           {venuePresets.length > 0 && (
             <div className="mt-4">
               <Select label="Load a venue" defaultValue="" onChange={(event) => event.target.value && loadVenuePreset(event.target.value)}>
@@ -120,7 +128,7 @@ export function TripPlanner() {
             <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Ramp</p><div className="w-40"><Select label="" aria-label="Ramp preset" defaultValue="1-8" onChange={(event) => RAMPS[event.target.value] && setRamp(expandRamp(RAMPS[event.target.value]))}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}</Select></div></div>
             <div className="grid grid-cols-4 gap-2">{ramp.filter((point) => point.trueCount >= -1 && point.trueCount <= 6).map((point) => <NumberField key={point.trueCount} label={`TC ${point.trueCount > 0 ? "+" : ""}${point.trueCount}`} value={point.units} min={0} step={1} onValueChange={(value) => setRamp((current) => current.map((p) => p.trueCount === point.trueCount || (point.trueCount === -1 && p.trueCount < -1) || (point.trueCount === 6 && p.trueCount > 6) ? { ...p, units: Math.max(0, value) } : p))} />)}</div>
           </div>
-        </Panel>
+        </Section>
 
         <div className="space-y-5">
           <Panel>

@@ -8,7 +8,7 @@ import { NO_INDEX_METADATA } from "@/lib/blackjack/noIndexCoefficients";
 import { SavedSimulationRun, simulationLibrary, SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig, SessionSimulationResult } from "@/lib/blackjack/sessionSimulation";
 import type { DeviationGroup, ShoeSimulationConfig, ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
-import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
+import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, PinnedStat, Section, Select } from "./ui";
 import { ShoeExplorer } from "./ShoeExplorer";
 import { HandReplayer } from "./HandReplayer";
 import { track } from "@/lib/analytics/track";
@@ -273,6 +273,23 @@ export function SessionSimulator() {
         </div>
       </div>
 
+      {mode === "profile" && result && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="Hourly EV" value={money(result.expectedHourlyEv, 2)} sub="expected" />
+          <PinnedStat label="Median bankroll" value={money(result.medianEndingBankroll)} sub="ending" />
+          <PinnedStat label="Profit chance" value={percent(result.chanceOfProfit, 1)} sub={`${result.paths} paths`} />
+          <PinnedStat label="Crossed zero" value={percent(result.ruinCrossingRate, 2)} sub="at any point" />
+        </div>
+      </div>}
+      {mode === "shoes" && shoeResult && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+          <PinnedStat label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} rounds`} />
+          <PinnedStat label="Total profit" value={money(shoeResult.totalProfit, 2)} sub={`${shoeResult.totalShoes} shoes`} />
+          <PinnedStat label="Ending bankroll" value={money(shoeResult.endingBankroll)} sub={`start ${money(shoeResult.startingBankroll)}`} />
+          <PinnedStat label="Low bankroll" value={money(shoeResult.lowBankroll)} sub={`peak ${money(shoeResult.peakBankroll)}`} />
+        </div>
+      </div>}
+
       <div className="mb-5 flex gap-2 text-sm">
         <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Fast approximation</button>
         <button type="button" disabled={running} onClick={() => setMode("shoes")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "shoes" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Real shoes</button>
@@ -300,6 +317,7 @@ export function SessionSimulator() {
         </details>
       )}
 
+      <Section title="Simulation setup" summary={`${money(bankroll)} bankroll · ${money(unit)} unit · ${mode === "profile" ? `${compact(modeledOutcomes)} rounds` : `${compact(handsToSimulate)} hands`}`} icon="fa-sliders" collapseOnMobile>
       <Panel className="overflow-hidden p-0">
         <div className="p-4 sm:p-5 md:p-6">
           <div className="mb-4 flex items-center gap-3">
@@ -394,6 +412,7 @@ export function SessionSimulator() {
           {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
         </div>
       </Panel>
+      </Section>
 
       <details className="surface group mt-5 rounded-2xl border border-white/[.07]">
         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 marker:hidden sm:px-5">
