@@ -1,6 +1,7 @@
 "use client";
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import { DEVIATION_ACTION_NAMES, deviationDecision, getDeviationCatalog, resolveDeviation } from "@/lib/blackjack/deviations";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
@@ -80,6 +81,7 @@ function handLabel(cards: Card[]) {
 }
 
 export function FullShoeGame({ active = true }: { active?: boolean }) {
+  useWakeLock(active);
   const [phase, setPhase] = useState<Phase>("setup");
   const [rules, setRules] = useState<BlackjackRules>({
     decks: 6,

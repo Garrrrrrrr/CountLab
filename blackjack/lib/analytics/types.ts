@@ -61,6 +61,7 @@ export type AcquisitionChannel =
   | "unknown";
 
 export type DeviceType = "desktop" | "tablet" | "mobile";
+export type DisplayMode = "browser" | "standalone";
 
 export type WebVitalMetric = "LCP" | "INP" | "CLS" | "TTFB" | "FCP";
 
@@ -71,6 +72,7 @@ export type WebVitalMetric = "LCP" | "INP" | "CLS" | "TTFB" | "FCP";
 export type AuthFailureReason = "invalid_credentials" | "rate_limited" | "unconfirmed" | "validation" | "network" | "other";
 
 export interface EventPropertyMap {
+  install_prompt: { outcome: "shown" | "accepted" | "dismissed"; surface: "native" | "ios_instructions" };
   // --- Session lifecycle -------------------------------------------------
   session_started: {
     is_first_session: boolean;
@@ -324,6 +326,7 @@ export type TrackArgs<E extends EventName> = EventPropertyMap[E] extends NoPrope
 
 export interface EventContext {
   device_type?: DeviceType;
+  display_mode?: DisplayMode;
   browser?: string;
   browser_version?: string;
   os?: string;

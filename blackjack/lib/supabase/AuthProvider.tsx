@@ -7,6 +7,7 @@ import { pullRemoteData, pullRemoteJournalData, pushLocalDataToRemote } from "./
 import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
 import { setCurrentUser } from "./currentUser";
 import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
+import { settleWithTimeout } from "@/lib/pwa/settleWithTimeout";
 
 const GUEST_KEY = "countlab:guest";
 const OAUTH_INTENT_KEY = "countlab:auth-intent";
@@ -62,7 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled) setSyncStatus("error");
         });
     };
-    supabase.auth.getSession().then(({ data }) => {
+    // AuthGate returns nothing while loading. A rejected or stalled session
+    // request (notably an offline expired-token cold start) must not blank it.
+    settleWithTimeout(
+      supabase.auth.getSession(),
+      8000,
+      { data: { session: null } } as Awaited<ReturnType<typeof supabase.auth.getSession>>,
+    ).then(({ data }) => {
       if (cancelled) return;
       setCurrentUser(data.session?.user ?? null);
       setUser(data.session?.user ?? null);
