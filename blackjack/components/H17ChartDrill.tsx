@@ -321,25 +321,25 @@ export function H17ChartDrill() {
               <table className="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500 sm:sticky sm:left-0 sm:z-10">
+                    <th className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
                       Hand
                     </th>
-                    {CHART_DEALERS.map((dealer) => (
-                      <th key={dealer} className="px-1 pb-1 text-xs font-semibold text-zinc-500">{dealer}</th>
+                    {CHART_DEALERS.map((dealer, columnIndex) => (
+                      <th key={dealer} className={`px-1 pb-1 text-xs font-semibold text-zinc-500 ${columnIndex === 0 ? "sticky left-11 z-10 bg-[#0c100d] sm:static sm:z-auto" : ""}`}>{dealer}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
-                      <th scope="row" className="w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300 sm:sticky sm:left-0 sm:z-10">
+                      <th scope="row" className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
                         {row}
                       </th>
                       {CHART_DEALERS.map((dealer, columnIndex) => {
                         const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
                         const cell = cells[index];
                         return (
-                          <td key={dealer} className="snap-start">
+                          <td key={dealer} className={`snap-start ${columnIndex === 0 ? "sticky left-11 z-10 bg-[#0c100d] sm:static sm:z-auto" : ""}`}>
                             <input
                               ref={(element) => { inputs.current[index] = element; }}
                               value={displayBuffer(cell.section, entries[cell.key] ?? "")}
