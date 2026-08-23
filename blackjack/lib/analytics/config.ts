@@ -84,6 +84,7 @@ export const FEATURES: Record<FeatureId, FeatureDefinition> = {
   h17_chart: { category: "training", label: "H17 Chart", route: "/training/h17-chart" },
   full_shoe: { category: "training", label: "Full Shoe", route: "/training/full-shoe" },
   counting_benchmark: { category: "training", label: "Counting Benchmark", route: "/training/benchmark" },
+  practice_checklist: { category: "training", label: "Daily Checklist", route: "/training/checklist" },
   blackjack: { category: "game", label: "Blackjack table", route: "/training/full-shoe" },
   ultimate_texas_holdem: { category: "game", label: "Ultimate Texas Hold'em", route: "/ultimate-texas-holdem" },
   chase_the_flush: { category: "game", label: "Chase the Flush", route: "/chase-flush" },

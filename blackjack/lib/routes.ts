@@ -22,6 +22,7 @@ export const ROUTES: string[][] = [
   ["bet-spread-recommender"],
   ["chase-flush"],
   ["ultimate-texas-holdem"],
+  ["training", "checklist"],
   ["training", "running-count"],
   ["training", "true-count"],
   ["training", "basic-strategy"],

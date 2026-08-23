@@ -13,6 +13,8 @@ import {
   storage,
 } from "@/lib/statistics/storage";
 import { computeStreak, practiceHeatmap, unlockedMilestones } from "@/lib/statistics/streaks";
+import { evaluateChecklist } from "@/lib/blackjack/practiceChecklist";
+import { checklistStore } from "@/lib/blackjack/practiceChecklistStore";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { analytics } from "@/lib/analytics";
 import { LEGACY_REDIRECTS } from "@/lib/routes";
@@ -46,6 +48,7 @@ const ProficiencyTest = dynamicPage(() => import("@/components/CountingDrills").
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
 const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
+const PracticeChecklist = dynamicPage(() => import("@/components/PracticeChecklist").then((m) => ({ default: m.PracticeChecklist })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
@@ -53,12 +56,17 @@ const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
 function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [checklistTicks, setChecklistTicks] = useState<string[]>([]);
   useEffect(() => {
-    const load = () => setSessions(storage.sessions());
+    const load = () => {
+      setSessions(storage.sessions());
+      setChecklistTicks(checklistStore.ticks());
+    };
     load();
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
+  const checklist = useMemo(() => evaluateChecklist(sessions, checklistTicks), [sessions, checklistTicks]);
   const streak = useMemo(() => computeStreak(sessions), [sessions]);
   const heatmap = useMemo(() => practiceHeatmap(streak.practiceDays), [streak.practiceDays]);
   const milestones = useMemo(() => unlockedMilestones(sessions, streak), [sessions, streak]);
@@ -122,6 +130,37 @@ function Dashboard() {
         <Metric label="Overall accuracy" value={`${totals.avg}%`} />
         <Metric label="Best streak" value={totals.best} />
       </div>
+      <Panel className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="font-semibold">
+              <i className="fa-solid fa-list-check mr-2 text-emerald-300" aria-hidden="true" />
+              Today&rsquo;s checklist
+            </h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              {checklist.completed === checklist.total
+                ? "Every item done. Anything more today is a bonus."
+                : `${checklist.completed} of ${checklist.total} done — ${checklist.items.find((entry) => !entry.done)!.item.label.toLowerCase()} next.`}
+            </p>
+          </div>
+          <Link href="/training/checklist">
+            <GhostButton className="px-3 py-1.5 text-sm">Open checklist</GhostButton>
+          </Link>
+        </div>
+        <div
+          className="mt-3 h-2 overflow-hidden rounded-full bg-white/[.07]"
+          role="progressbar"
+          aria-valuenow={checklist.completed}
+          aria-valuemin={0}
+          aria-valuemax={checklist.total}
+          aria-label="Today's checklist completion"
+        >
+          <div
+            className="h-full rounded-full bg-emerald-400 transition-[width] duration-500"
+            style={{ width: `${Math.round((checklist.completed / checklist.total) * 100)}%` }}
+          />
+        </div>
+      </Panel>
       {sessions.length > 0 && (
         <Panel className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -637,6 +676,7 @@ export default function DynamicPage() {
     "training/basic-strategy": <StrategyDrill />,
     "training/deviations": <DeviationDrill />,
     "training/h17-chart": <H17ChartDrill />,
+    "training/checklist": <PracticeChecklist />,
     "training/full-shoe": null,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,

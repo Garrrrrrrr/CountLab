@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { PlayingCard } from "./PlayingCard";
 import { SessionSummary } from "./SessionSummary";
 import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
@@ -115,6 +116,7 @@ export function RunningCountDrill() {
   const randomCheckpointGap = () => 10 + Math.floor(Math.random() * 16);
   const handsSinceCheckpoint = useRef(0), nextRandomCheckpoint = useRef(randomCheckpointGap());
   const active = phase !== "setup" && phase !== "done";
+  useWakeLock(phase !== "setup" && phase !== "paused" && phase !== "done");
   useDrillProgress("Running Count", active, {
     preset, decks, amount, speed, group, checkpoint, bias, feedbackMode,
     phase: phase === "answer" ? "answer" : "paused",
@@ -219,6 +221,7 @@ export function TrueCountDrill() {
   const [tcAnswer, setTcAnswer] = useState(saved?.tcAnswer ?? ""), [deckAnswer, setDeckAnswer] = useState(saved?.deckAnswer ?? ""), [index, setIndex] = useState(saved?.index ?? 0), [correct, setCorrect] = useState(saved?.correct ?? 0), [streak, setStreak] = useState(saved?.streak ?? 0), [best, setBest] = useState(saved?.best ?? 0), [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}), [message, setMessage] = useState(saved?.message ?? ""), [result, setResult] = useState<Session>();
   const started = useRef(0), answerStarted = useRef(Date.now()), totalMs = useRef(saved?.totalMs ?? 0), target = settings.countingSessionQuestions;
   const active = phase === "question" || phase === "feedback";
+  useWakeLock(active);
   useDrillProgress("True Count", active && Boolean(question), {
     decks, resolution, mode, focus, feedbackMode, phase: phase as "question" | "feedback", question: question as TrueCountScenario,
     tcAnswer, deckAnswer, index, correct, streak, best, mistakes, categories, message, totalMs: totalMs.current,
@@ -272,6 +275,7 @@ const PROFICIENCY_TEST_SECONDS = 300;
 export function ProficiencyTest() {
   const settings = storage.settings();
   const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
+  useWakeLock(phase === "running");
   const [question, setQuestion] = useState<TrueCountScenario>();
   const [answer, setAnswer] = useState("");
   const [index, setIndex] = useState(0);
@@ -344,6 +348,7 @@ export function DeckEstimationDrill() {
   const [phase, setPhase] = useState<"setup" | "question" | "feedback" | "done">(saved?.phase ?? "setup"), [feedbackMode, setFeedbackMode] = useState(saved?.feedbackMode ?? settings.countingFeedback), [question, setQuestion] = useState(saved?.question ?? 0), [remaining, setRemaining] = useState(saved?.remaining ?? 0), [photo, setPhoto] = useState<DeckPhoto | null>(saved?.photo ?? null), [answer, setAnswer] = useState(saved?.answer ?? ""), [correct, setCorrect] = useState(saved?.correct ?? 0), [errors, setErrors] = useState<number[]>(saved?.errors ?? []), [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}), [message, setMessage] = useState(saved?.message ?? ""), [result, setResult] = useState<Session>();
   const started = useRef(0), answerStarted = useRef(Date.now()), totalMs = useRef(saved?.totalMs ?? 0), target = settings.countingSessionQuestions;
   const active = phase === "question" || phase === "feedback";
+  useWakeLock(active);
   const isLastQuestion = useRef(false), lastDeckAccuracyRef = useRef(0);
   useDrillProgress("Deck Estimation", active && Boolean(photo), {
     decks, resolution, feedbackMode, phase: phase as "question" | "feedback", question, remaining, photo, answer,
