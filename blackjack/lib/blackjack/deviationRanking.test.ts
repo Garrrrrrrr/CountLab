@@ -12,9 +12,13 @@ const PROFILES: Array<[DeviationRankingProfile, typeof H17_PRO_DEVIATIONS, boole
 ];
 
 describe("deviation ranking artifact", () => {
-  it("covers every row of both catalogs in every profile", () => {
+  it("covers every row of both catalogs in every profile, and nothing else", () => {
+    // Both directions matter. A missing key is an unmeasured row; a leftover key
+    // is an artifact generated against a different catalog, which is how a stale
+    // regeneration slips through — under the old positional ids it did, and every
+    // row quietly read its neighbour's numbers instead of failing here.
     for (const [profile, catalog] of PROFILES) {
-      for (const row of catalog) expect(DEVIATION_RANKING[profile][row.id], `${profile} ${row.id}`).toBeDefined();
+      expect(Object.keys(DEVIATION_RANKING[profile]).sort(), profile).toEqual(catalog.map((row) => row.id).sort());
     }
   });
 

@@ -79,13 +79,30 @@ const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["17", "A", 0, "S", "R", "atOrAbove", undefined, true], ["16", "10", 0, "H", "R", "atOrAbove", undefined, true], ["16", "A", 0, "H", "R", "atOrAbove", undefined, true],
 ] as const;
 
-const make = (set: H17DeviationSet, rows: readonly Row[]) => rows.map(
-  ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, outsideSurrenderWindow], position): H17Deviation => ({
-    id: `${set}-${position}`, set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, outsideSurrenderWindow,
-  }),
-);
+/**
+ * A row's id names the cell it plays, not its position in the table. The EV
+ * ranking artifact is keyed by these, and it used to key them by position: an
+ * artifact generated before a row was added or removed still resolved for every
+ * lookup, silently handing each row its neighbour's measured value. Named ids
+ * turn that into a miss, and `deviationRanking.test.ts` fails on it.
+ */
+export const deviationId = (set: H17DeviationSet, hand: string, dealer: string, deviationAction: DeviationAction) =>
+  `${set}-${hand.replace(/\s+/g, "")}v${dealer}-${deviationAction}`;
 
-export const H17_PRO_DEVIATIONS = make("h17Pro", BJA_H17_CHART_ROWS);
+export const makeDeviations = (set: H17DeviationSet, rows: readonly Row[]): H17Deviation[] => {
+  const made = rows.map(
+    ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, outsideSurrenderWindow]): H17Deviation => ({
+      id: deviationId(set, hand, dealer, deviationAction), set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, outsideSurrenderWindow,
+    }),
+  );
+  // Two rows can share a cell (a stand index and a surrender), but never a cell
+  // *and* an action — that would collapse them to one entry in the artifact.
+  const ids = new Set(made.map((row) => row.id));
+  if (ids.size !== made.length) throw new Error(`${set}: two rows share an id`);
+  return made;
+};
+
+export const H17_PRO_DEVIATIONS = makeDeviations("h17Pro", BJA_H17_CHART_ROWS);
 
 export interface H17DeviationRules {
   dealerHitsSoft17: boolean;
