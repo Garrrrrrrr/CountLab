@@ -9,6 +9,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem("countlab:guest", "1");
     localStorage.setItem("countlab:analytics:consent_seen", "1");
     localStorage.setItem("countlab:analytics:consent", "denied");
+    localStorage.setItem("countlab-install-dismissed", "1");
   });
   await page.goto("/training/h17-chart/");
   await expect(page.getByRole("heading", { name: "H17 Chart" })).toBeVisible();
