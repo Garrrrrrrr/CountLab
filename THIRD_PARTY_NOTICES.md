@@ -33,3 +33,17 @@ indices printed on the H17 Deviation Chart published by Blackjack Apprenticeship
 (© Blackjack Apprenticeship 2018, <https://www.blackjackapprenticeship.com>).
 The indices and actions are facts about the game; the chart's own layout,
 styling, and artwork are not reproduced.
+
+## Blackjack Apprenticeship Card-Counting Motivator Checklist
+
+`blackjack/lib/blackjack/practiceChecklist.ts` models a daily practice routine
+on the training progression published in the Card-Counting Motivator Checklist
+by Blackjack Apprenticeship (© Blackjack Apprenticeship 2019,
+<https://www.blackjackapprenticeship.com>).
+
+Only the routine's practice volumes are used — how much of which drill makes up
+a day's work, which is a training method rather than creative expression. The
+document's wording, layout, and artwork are not reproduced, and its one-off
+steps and closing commentary are not included. Daily targets for the full-shoe
+and true-count items are CountLab's own; the source prescribes no number for
+those.

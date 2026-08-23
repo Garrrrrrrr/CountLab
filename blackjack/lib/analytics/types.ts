@@ -34,6 +34,7 @@ export type FeatureId =
   | GameId
   | CalculatorId
   | "counting_benchmark"
+  | "practice_checklist"
   | "statistics"
   | "settings"
   | "strategy_reference"

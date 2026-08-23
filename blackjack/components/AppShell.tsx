@@ -41,6 +41,7 @@ const groups = [
   {
     label: "Training",
     items: [
+      ["Daily Checklist", "/training/checklist", "fa-list-check"],
       ["Running Count", "/training/running-count", "fa-bolt"],
       ["True Count", "/training/true-count", "fa-divide"],
       ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
