@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedUtc": "2026-08-23T06:43:34.266Z",
+    "generatedUtc": "2026-08-23T20:32:53.195Z",
     "rounds": 250000000,
     "replications": 1000,
     "ramp": "1-12",
@@ -37,63 +37,79 @@
   "results": {
     "h17-ls": [
       {
-        "id": "h17Pro-0",
+        "id": "h17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
-        "evPer100": 0.1383888429036049,
-        "standardError": 0.00024096303746682282,
-        "triggersPer100": 0.60536
+        "evPer100": 0.13889579104313482,
+        "standardError": 0.0002405464491558997,
+        "triggersPer100": 0.6052084
       },
       {
-        "id": "h17Pro-1",
+        "id": "h17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
-        "evPer100": 0.004486641599999987,
-        "standardError": 0.0001775206734548647,
-        "triggersPer100": 0.0052724
+        "evPer100": 0.0044718912000000065,
+        "standardError": 0.00023796872345439865,
+        "triggersPer100": 0.0098756
       },
       {
-        "id": "h17Pro-2",
+        "id": "h17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
-        "evPer100": 0.01338124319999998,
-        "standardError": 0.00034635439392120316,
-        "triggersPer100": 0.018173599999999998
+        "evPer100": 0.012589065599999808,
+        "standardError": 0.00034292007065476733,
+        "triggersPer100": 0.0177144
       },
       {
-        "id": "h17Pro-3",
+        "id": "h17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
-        "evPer100": 0.01916648160000008,
-        "standardError": 0.0004934501033890406,
-        "triggersPer100": 0.032056
+        "evPer100": 0.01975431360000008,
+        "standardError": 0.0004930805251664864,
+        "triggersPer100": 0.0319872
       },
       {
-        "id": "h17Pro-4",
+        "id": "h17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
-        "evPer100": 0.0032200144000000086,
-        "standardError": 0.00017072407441983447,
-        "triggersPer100": 0.007846
+        "evPer100": 0.002993179199999988,
+        "standardError": 0.00017080041484818863,
+        "triggersPer100": 0.0081336
       },
       {
-        "id": "h17Pro-5",
+        "id": "h17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
-        "evPer100": 0.007736140400000021,
-        "standardError": 0.00019826703655112824,
-        "triggersPer100": 0.024758400000000003
+        "evPer100": 0.008028352399999984,
+        "standardError": 0.0001983117824695009,
+        "triggersPer100": 0.0246032
       },
       {
-        "id": "h17Pro-6",
+        "id": "h17Pro-Soft19v6-D",
+        "hand": "Soft 19",
+        "dealer": "6",
+        "evPer100": 0.0009158499999999955,
+        "standardError": 0.000051748138398931855,
+        "triggersPer100": 0.0679324
+      },
+      {
+        "id": "h17Pro-Soft17v2-D",
+        "hand": "Soft 17",
+        "dealer": "2",
+        "evPer100": 0.0011801895999999986,
+        "standardError": 0.00013587527909067967,
+        "triggersPer100": 0.0269692
+      },
+      {
+        "id": "h17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
+        "evPer100": -0.019028448000000028,
+        "standardError": 0.0006279976828841546,
+        "triggersPer100": 0.0223392
       },
       {
-        "id": "h17Pro-7",
+        "id": "h17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -101,7 +117,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-8",
+        "id": "h17Pro-16vA-S",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0,
@@ -109,15 +125,15 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-9",
+        "id": "h17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
+        "evPer100": -0.06906116799999917,
+        "standardError": 0.0013269441473501866,
+        "triggersPer100": 0.0902076
       },
       {
-        "id": "h17Pro-10",
+        "id": "h17Pro-15vA-S",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0,
@@ -125,159 +141,127 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-11",
+        "id": "h17Pro-13v2-S",
         "hand": "13",
         "dealer": "2",
-        "evPer100": 0.0022142075999999826,
-        "standardError": 0.000043094731912130035,
-        "triggersPer100": 0.2623944
+        "evPer100": 0.002365200400000064,
+        "standardError": 0.000043138452858069416,
+        "triggersPer100": 0.2624056
       },
       {
-        "id": "h17Pro-12",
+        "id": "h17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
-        "evPer100": 0.016064038399999973,
-        "standardError": 0.0002286378979451245,
-        "triggersPer100": 0.0620448
+        "evPer100": 0.016157434399999726,
+        "standardError": 0.0002305885657324279,
+        "triggersPer100": 0.0625076
       },
       {
-        "id": "h17Pro-13",
+        "id": "h17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
-        "evPer100": 0.03217506800000025,
-        "standardError": 0.00027170025345265897,
-        "triggersPer100": 0.11104839999999999
+        "evPer100": 0.032399872799999986,
+        "standardError": 0.00027196375556109086,
+        "triggersPer100": 0.1109572
       },
       {
-        "id": "h17Pro-14",
+        "id": "h17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
-        "evPer100": 0.004196960799999755,
-        "standardError": 0.00006344658017574652,
-        "triggersPer100": 0.4436536
+        "evPer100": 0.004380477999999464,
+        "standardError": 0.00006337063688529184,
+        "triggersPer100": 0.44315
       },
       {
-        "id": "h17Pro-15",
-        "hand": "12",
-        "dealer": "5",
-        "evPer100": 0.002585024400000015,
-        "standardError": 0.00003891611081127788,
-        "triggersPer100": 0.15650799999999998
-      },
-      {
-        "id": "h17Pro-16",
-        "hand": "11",
-        "dealer": "A",
-        "evPer100": 0.0035748436000000777,
-        "standardError": 0.00005648137650919056,
-        "triggersPer100": 0.119714
-      },
-      {
-        "id": "h17Pro-17",
+        "id": "h17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
-        "evPer100": 0.003785155200000001,
-        "standardError": 0.00038205974480795454,
-        "triggersPer100": 0.008186
+        "evPer100": 0.008906222400000037,
+        "standardError": 0.0009189911621679618,
+        "triggersPer100": 0.0509004
       },
       {
-        "id": "h17Pro-18",
+        "id": "h17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
-        "evPer100": 0.0072918032000000325,
-        "standardError": 0.00024589572041112343,
-        "triggersPer100": 0.0159224
+        "evPer100": 0.008996959999999984,
+        "standardError": 0.00024563596482983383,
+        "triggersPer100": 0.015868800000000002
       },
       {
-        "id": "h17Pro-19",
+        "id": "h17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
-        "evPer100": 0.015614491199999943,
-        "standardError": 0.00022897093235661853,
-        "triggersPer100": 0.0953588
+        "evPer100": 0.01519490799999966,
+        "standardError": 0.0002273297604110046,
+        "triggersPer100": 0.0949968
       },
       {
-        "id": "h17Pro-20",
+        "id": "h17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
-        "evPer100": 0.009164453600000073,
-        "standardError": 0.00040368590788141055,
-        "triggersPer100": 0.0278036
+        "evPer100": 0.008171819200000003,
+        "standardError": 0.00039971874248862004,
+        "triggersPer100": 0.027733599999999997
       },
       {
-        "id": "h17Pro-21",
-        "hand": "8",
-        "dealer": "5",
-        "evPer100": 0.005822603999999941,
-        "standardError": 0.00022319960733874683,
-        "triggersPer100": 0.011719199999999999
-      },
-      {
-        "id": "h17Pro-22",
+        "id": "h17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
-        "evPer100": 0.009418320399999907,
-        "standardError": 0.00026192676114548334,
-        "triggersPer100": 0.0363184
+        "evPer100": 0.009862031600000017,
+        "standardError": 0.0002621557173404581,
+        "triggersPer100": 0.036654
       },
       {
-        "id": "h17Pro-23",
+        "id": "h17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
-        "evPer100": 0.003956033599999954,
-        "standardError": 0.00012173081163482581,
-        "triggersPer100": 0.0227588
+        "evPer100": 0.0037381743999999827,
+        "standardError": 0.00012120063975231156,
+        "triggersPer100": 0.0229252
       },
       {
-        "id": "h17Pro-24",
+        "id": "h17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0.0033534632000000735,
-        "standardError": 0.000032249213872255676,
-        "triggersPer100": 0.128496
+        "evPer100": -0.030952095200000626,
+        "standardError": 0.00021403844568264124,
+        "triggersPer100": 0.2425932
       },
       {
-        "id": "h17Pro-25",
+        "id": "h17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
-        "evPer100": 0.01785390080000034,
-        "standardError": 0.0002167532567482805,
-        "triggersPer100": 0.0843632
+        "evPer100": 0.017880957600000143,
+        "standardError": 0.0002163223743552726,
+        "triggersPer100": 0.08461640000000001
       },
       {
-        "id": "h17Pro-26",
+        "id": "h17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0.02044657919999937,
-        "standardError": 0.0001288470792646499,
-        "triggersPer100": 1.0585584000000001
+        "evPer100": -0.15794641680000426,
+        "standardError": 0.0005888177284770311,
+        "triggersPer100": 0.4958556
       },
       {
-        "id": "h17Pro-27",
-        "hand": "14",
-        "dealer": "10",
-        "evPer100": 0.03617089279999818,
-        "standardError": 0.0005229824795803731,
-        "triggersPer100": 0.161092
+        "id": "h17Pro-15vA-R",
+        "hand": "15",
+        "dealer": "A",
+        "evPer100": 0.0018039115999999252,
+        "standardError": 0.00002404224152802217,
+        "triggersPer100": 0.11942000000000001
       },
       {
-        "id": "h17Pro-28",
-        "hand": "8,8",
-        "dealer": "10",
-        "evPer100": 0.00725362559999996,
-        "standardError": 0.0009548247116874806,
-        "triggersPer100": 0.0221148
-      },
-      {
-        "id": "h17Pro-29",
+        "id": "h17Pro-17vA-R",
         "hand": "17",
         "dealer": "A",
-        "evPer100": -0.0013215223999999822,
-        "standardError": 0.0005000810544449321,
-        "triggersPer100": 0.3174588
+        "evPer100": -0.001969517200000007,
+        "standardError": 0.0004974225314882023,
+        "triggersPer100": 0.3196928
       },
       {
-        "id": "h17Pro-30",
+        "id": "h17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -285,24 +269,8 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-31",
+        "id": "h17Pro-16vA-R",
         "hand": "16",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "h17Pro-32",
-        "hand": "15",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "h17Pro-33",
-        "hand": "8,8",
         "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
@@ -311,191 +279,183 @@
     ],
     "h17-no-ls": [
       {
-        "id": "h17Pro-0",
+        "id": "h17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
-        "evPer100": 0.13868003553616107,
-        "standardError": 0.00024069472361383303,
-        "triggersPer100": 0.6068048
+        "evPer100": 0.13822238190900987,
+        "standardError": 0.00024035007622412964,
+        "triggersPer100": 0.6053736
       },
       {
-        "id": "h17Pro-1",
+        "id": "h17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
-        "evPer100": 0.0038180448000000138,
-        "standardError": 0.00018030963826633244,
-        "triggersPer100": 0.0053852
+        "evPer100": 0.004238539200000006,
+        "standardError": 0.0002426072754686913,
+        "triggersPer100": 0.010072
       },
       {
-        "id": "h17Pro-2",
+        "id": "h17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
-        "evPer100": 0.012351297600000019,
-        "standardError": 0.00034826730103326226,
-        "triggersPer100": 0.0180576
+        "evPer100": 0.013362240000000048,
+        "standardError": 0.00034742647034757005,
+        "triggersPer100": 0.018032
       },
       {
-        "id": "h17Pro-3",
+        "id": "h17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
-        "evPer100": 0.018437025600000094,
-        "standardError": 0.0004984971245073619,
-        "triggersPer100": 0.032311200000000005
+        "evPer100": 0.018884913600000136,
+        "standardError": 0.0004955409632790394,
+        "triggersPer100": 0.0323716
       },
       {
-        "id": "h17Pro-4",
+        "id": "h17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
-        "evPer100": 0.003791966400000003,
-        "standardError": 0.00016604031309860697,
-        "triggersPer100": 0.0077952
+        "evPer100": 0.0028270207999999976,
+        "standardError": 0.00016887650541852706,
+        "triggersPer100": 0.00787
       },
       {
-        "id": "h17Pro-5",
+        "id": "h17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
-        "evPer100": 0.007540158799999938,
-        "standardError": 0.00019956282765330123,
-        "triggersPer100": 0.024657200000000004
+        "evPer100": 0.0075470680000000396,
+        "standardError": 0.00019837638938224956,
+        "triggersPer100": 0.024424800000000003
       },
       {
-        "id": "h17Pro-6",
+        "id": "h17Pro-Soft19v6-D",
+        "hand": "Soft 19",
+        "dealer": "6",
+        "evPer100": 0.0008818000000000179,
+        "standardError": 0.00005142441207787269,
+        "triggersPer100": 0.066872
+      },
+      {
+        "id": "h17Pro-Soft17v2-D",
+        "hand": "Soft 17",
+        "dealer": "2",
+        "evPer100": 0.0016632640000000267,
+        "standardError": 0.00013815055025403098,
+        "triggersPer100": 0.026951999999999997
+      },
+      {
+        "id": "h17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0.001788244800000011,
-        "standardError": 0.0004170882543267818,
-        "triggersPer100": 0.012466399999999999
+        "evPer100": 0.0012754368000000194,
+        "standardError": 0.0005478205324536912,
+        "triggersPer100": 0.0225024
       },
       {
-        "id": "h17Pro-7",
+        "id": "h17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
-        "evPer100": 0.04919742279999807,
-        "standardError": 0.0013448477732207387,
-        "triggersPer100": 0.7779996
+        "evPer100": 0.05462336599999862,
+        "standardError": 0.001346903687766998,
+        "triggersPer100": 0.7797772
       },
       {
-        "id": "h17Pro-8",
+        "id": "h17Pro-16vA-S",
         "hand": "16",
         "dealer": "A",
-        "evPer100": 0.005122711999999937,
-        "standardError": 0.0003243342376572745,
-        "triggersPer100": 0.0236648
+        "evPer100": 0.006005703999999991,
+        "standardError": 0.0003220886363789893,
+        "triggersPer100": 0.0233252
       },
       {
-        "id": "h17Pro-9",
+        "id": "h17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0.016674400000000384,
-        "standardError": 0.0011014504832428176,
-        "triggersPer100": 0.0905808
+        "evPer100": 0.020098622400001473,
+        "standardError": 0.001100599662211753,
+        "triggersPer100": 0.089998
       },
       {
-        "id": "h17Pro-10",
+        "id": "h17Pro-15vA-S",
         "hand": "15",
         "dealer": "A",
-        "evPer100": 0.002451268800000009,
-        "standardError": 0.0002290934699186438,
-        "triggersPer100": 0.0087712
+        "evPer100": 0.002400302400000024,
+        "standardError": 0.00023254767267627752,
+        "triggersPer100": 0.0088316
       },
       {
-        "id": "h17Pro-11",
+        "id": "h17Pro-13v2-S",
         "hand": "13",
         "dealer": "2",
-        "evPer100": 0.002297409599999954,
-        "standardError": 0.00004320254309500928,
-        "triggersPer100": 0.2622968
+        "evPer100": 0.002332826799999951,
+        "standardError": 0.000043128793301878,
+        "triggersPer100": 0.2624252
       },
       {
-        "id": "h17Pro-12",
+        "id": "h17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
-        "evPer100": 0.015830027999999795,
-        "standardError": 0.00023060215116546033,
-        "triggersPer100": 0.062162
+        "evPer100": 0.015433668000000138,
+        "standardError": 0.00023193647691566895,
+        "triggersPer100": 0.0623284
       },
       {
-        "id": "h17Pro-13",
+        "id": "h17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
-        "evPer100": 0.03225897039999947,
-        "standardError": 0.0002736318574379058,
-        "triggersPer100": 0.1113384
+        "evPer100": 0.032213675200000944,
+        "standardError": 0.0002716755980933902,
+        "triggersPer100": 0.1110372
       },
       {
-        "id": "h17Pro-14",
+        "id": "h17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
-        "evPer100": 0.004308229599999505,
-        "standardError": 0.00006345256931589136,
-        "triggersPer100": 0.4434904
+        "evPer100": 0.0041610275999998,
+        "standardError": 0.00006344908625121827,
+        "triggersPer100": 0.4432784
       },
       {
-        "id": "h17Pro-15",
-        "hand": "12",
-        "dealer": "5",
-        "evPer100": 0.002474829200000052,
-        "standardError": 0.000038959351504894904,
-        "triggersPer100": 0.15719760000000002
-      },
-      {
-        "id": "h17Pro-16",
-        "hand": "11",
-        "dealer": "A",
-        "evPer100": 0.003447644799999941,
-        "standardError": 0.00005617314427038287,
-        "triggersPer100": 0.117916
-      },
-      {
-        "id": "h17Pro-17",
+        "id": "h17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
-        "evPer100": 0.0044968992,
-        "standardError": 0.00038751095185791837,
-        "triggersPer100": 0.0084476
+        "evPer100": 0.015227908800000124,
+        "standardError": 0.0009236191422849846,
+        "triggersPer100": 0.0513496
       },
       {
-        "id": "h17Pro-18",
+        "id": "h17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
-        "evPer100": 0.008407702400000041,
-        "standardError": 0.0002458191413512015,
-        "triggersPer100": 0.016110000000000003
+        "evPer100": 0.009362801600000008,
+        "standardError": 0.0002466140208337429,
+        "triggersPer100": 0.0158804
       },
       {
-        "id": "h17Pro-19",
+        "id": "h17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
-        "evPer100": 0.015348889999999954,
-        "standardError": 0.0002275771659738811,
-        "triggersPer100": 0.0956776
+        "evPer100": 0.015543381599999741,
+        "standardError": 0.0002287715197205177,
+        "triggersPer100": 0.0953988
       },
       {
-        "id": "h17Pro-20",
+        "id": "h17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
-        "evPer100": 0.007541252800000031,
-        "standardError": 0.0003959677139932778,
-        "triggersPer100": 0.0276084
+        "evPer100": 0.008439789599999999,
+        "standardError": 0.0003972853576144545,
+        "triggersPer100": 0.0275688
       },
       {
-        "id": "h17Pro-21",
-        "hand": "8",
-        "dealer": "5",
-        "evPer100": 0.004799976000000013,
-        "standardError": 0.00022416023626174503,
-        "triggersPer100": 0.011691199999999999
-      },
-      {
-        "id": "h17Pro-22",
+        "id": "h17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
-        "evPer100": 0.009668584799999946,
-        "standardError": 0.00026306567223313487,
-        "triggersPer100": 0.0363688
+        "evPer100": 0.009672368799999973,
+        "standardError": 0.0002631309830581076,
+        "triggersPer100": 0.037058799999999996
       },
       {
-        "id": "h17Pro-23",
+        "id": "h17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0,
@@ -503,7 +463,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-24",
+        "id": "h17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -511,7 +471,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-25",
+        "id": "h17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0,
@@ -519,7 +479,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-26",
+        "id": "h17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -527,23 +487,15 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-27",
-        "hand": "14",
-        "dealer": "10",
+        "id": "h17Pro-15vA-R",
+        "hand": "15",
+        "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-28",
-        "hand": "8,8",
-        "dealer": "10",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "h17Pro-29",
+        "id": "h17Pro-17vA-R",
         "hand": "17",
         "dealer": "A",
         "evPer100": 0,
@@ -551,7 +503,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-30",
+        "id": "h17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -559,24 +511,8 @@
         "triggersPer100": 0
       },
       {
-        "id": "h17Pro-31",
+        "id": "h17Pro-16vA-R",
         "hand": "16",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "h17Pro-32",
-        "hand": "15",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "h17Pro-33",
-        "hand": "8,8",
         "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
@@ -585,7 +521,7 @@
     ],
     "s17-ls": [
       {
-        "id": "s17Pro-0",
+        "id": "s17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
         "evPer100": 0.13871039461369966,
@@ -593,7 +529,7 @@
         "triggersPer100": 0.6056772
       },
       {
-        "id": "s17Pro-1",
+        "id": "s17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
         "evPer100": 0.004654027200000012,
@@ -601,7 +537,7 @@
         "triggersPer100": 0.005315599999999999
       },
       {
-        "id": "s17Pro-2",
+        "id": "s17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
         "evPer100": 0.01291205279999992,
@@ -609,7 +545,7 @@
         "triggersPer100": 0.017852
       },
       {
-        "id": "s17Pro-3",
+        "id": "s17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
         "evPer100": 0.013209527999999984,
@@ -617,7 +553,7 @@
         "triggersPer100": 0.0179888
       },
       {
-        "id": "s17Pro-4",
+        "id": "s17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
         "evPer100": 0.002889377600000001,
@@ -625,7 +561,7 @@
         "triggersPer100": 0.0078896
       },
       {
-        "id": "s17Pro-5",
+        "id": "s17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
         "evPer100": 0.008063375999999985,
@@ -633,7 +569,7 @@
         "triggersPer100": 0.0248452
       },
       {
-        "id": "s17Pro-6",
+        "id": "s17Pro-Soft19v6-D",
         "hand": "Soft 19",
         "dealer": "6",
         "evPer100": 0.009005999199999918,
@@ -641,7 +577,7 @@
         "triggersPer100": 0.024776799999999998
       },
       {
-        "id": "s17Pro-7",
+        "id": "s17Pro-Soft18vA-S",
         "hand": "Soft 18",
         "dealer": "A",
         "evPer100": 0.0012563696000000076,
@@ -649,7 +585,7 @@
         "triggersPer100": 0.0130508
       },
       {
-        "id": "s17Pro-8",
+        "id": "s17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -657,7 +593,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-9",
+        "id": "s17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -665,7 +601,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-10",
+        "id": "s17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -673,7 +609,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-11",
+        "id": "s17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
         "evPer100": 0.012242148800000057,
@@ -681,7 +617,7 @@
         "triggersPer100": 0.0353436
       },
       {
-        "id": "s17Pro-12",
+        "id": "s17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
         "evPer100": 0.0282109480000004,
@@ -689,7 +625,7 @@
         "triggersPer100": 0.1114148
       },
       {
-        "id": "s17Pro-13",
+        "id": "s17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
         "evPer100": 0.006847771599999436,
@@ -697,7 +633,7 @@
         "triggersPer100": 0.4435508
       },
       {
-        "id": "s17Pro-14",
+        "id": "s17Pro-12v5-S",
         "hand": "12",
         "dealer": "5",
         "evPer100": 0.0013312408000000877,
@@ -705,7 +641,7 @@
         "triggersPer100": 0.26226679999999997
       },
       {
-        "id": "s17Pro-15",
+        "id": "s17Pro-12v6-S",
         "hand": "12",
         "dealer": "6",
         "evPer100": 0.003035038000000092,
@@ -713,7 +649,7 @@
         "triggersPer100": 0.2627464
       },
       {
-        "id": "s17Pro-16",
+        "id": "s17Pro-11vA-D",
         "hand": "11",
         "dealer": "A",
         "evPer100": 0.022270210000000238,
@@ -721,7 +657,7 @@
         "triggersPer100": 0.0678044
       },
       {
-        "id": "s17Pro-17",
+        "id": "s17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
         "evPer100": 0.0044813183999999695,
@@ -729,7 +665,7 @@
         "triggersPer100": 0.0085596
       },
       {
-        "id": "s17Pro-18",
+        "id": "s17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
         "evPer100": 0.006384150399999977,
@@ -737,7 +673,7 @@
         "triggersPer100": 0.0092772
       },
       {
-        "id": "s17Pro-19",
+        "id": "s17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
         "evPer100": 0.016053266800000257,
@@ -745,7 +681,7 @@
         "triggersPer100": 0.0951312
       },
       {
-        "id": "s17Pro-20",
+        "id": "s17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
         "evPer100": 0.007830151199999929,
@@ -753,7 +689,7 @@
         "triggersPer100": 0.0271228
       },
       {
-        "id": "s17Pro-21",
+        "id": "s17Pro-8v5-D",
         "hand": "8",
         "dealer": "5",
         "evPer100": 0.005911837600000008,
@@ -761,7 +697,7 @@
         "triggersPer100": 0.0117456
       },
       {
-        "id": "s17Pro-22",
+        "id": "s17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
         "evPer100": 0.009478367999999909,
@@ -769,7 +705,7 @@
         "triggersPer100": 0.0366952
       },
       {
-        "id": "s17Pro-23",
+        "id": "s17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0.004113953600000033,
@@ -777,7 +713,7 @@
         "triggersPer100": 0.0230276
       },
       {
-        "id": "s17Pro-24",
+        "id": "s17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0.0033046904000000694,
@@ -785,7 +721,7 @@
         "triggersPer100": 0.1288732
       },
       {
-        "id": "s17Pro-25",
+        "id": "s17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0.01731600000000008,
@@ -793,7 +729,7 @@
         "triggersPer100": 0.0839528
       },
       {
-        "id": "s17Pro-26",
+        "id": "s17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0.020292391599997323,
@@ -801,7 +737,7 @@
         "triggersPer100": 1.0608632
       },
       {
-        "id": "s17Pro-27",
+        "id": "s17Pro-15vA-R",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0.013190774400000048,
@@ -809,7 +745,7 @@
         "triggersPer100": 0.0510444
       },
       {
-        "id": "s17Pro-28",
+        "id": "s17Pro-14v10-R",
         "hand": "14",
         "dealer": "10",
         "evPer100": 0.03768855519999839,
@@ -817,7 +753,7 @@
         "triggersPer100": 0.1598356
       },
       {
-        "id": "s17Pro-29",
+        "id": "s17Pro-8,8v10-R",
         "hand": "8,8",
         "dealer": "10",
         "evPer100": 0.009230393599999933,
@@ -825,7 +761,7 @@
         "triggersPer100": 0.0222368
       },
       {
-        "id": "s17Pro-30",
+        "id": "s17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -833,7 +769,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-31",
+        "id": "s17Pro-16vA-R",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0.024518428400000854,
@@ -843,7 +779,7 @@
     ],
     "s17-no-ls": [
       {
-        "id": "s17Pro-0",
+        "id": "s17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
         "evPer100": 0.13852045803902374,
@@ -851,7 +787,7 @@
         "triggersPer100": 0.60644
       },
       {
-        "id": "s17Pro-1",
+        "id": "s17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
         "evPer100": 0.004057665599999989,
@@ -859,7 +795,7 @@
         "triggersPer100": 0.0053644
       },
       {
-        "id": "s17Pro-2",
+        "id": "s17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
         "evPer100": 0.013585967999999988,
@@ -867,7 +803,7 @@
         "triggersPer100": 0.0179116
       },
       {
-        "id": "s17Pro-3",
+        "id": "s17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
         "evPer100": 0.013101504000000022,
@@ -875,7 +811,7 @@
         "triggersPer100": 0.0178888
       },
       {
-        "id": "s17Pro-4",
+        "id": "s17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
         "evPer100": 0.003248470400000033,
@@ -883,7 +819,7 @@
         "triggersPer100": 0.0079248
       },
       {
-        "id": "s17Pro-5",
+        "id": "s17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
         "evPer100": 0.007669245200000118,
@@ -891,7 +827,7 @@
         "triggersPer100": 0.024469599999999998
       },
       {
-        "id": "s17Pro-6",
+        "id": "s17Pro-Soft19v6-D",
         "hand": "Soft 19",
         "dealer": "6",
         "evPer100": 0.008525404800000082,
@@ -899,7 +835,7 @@
         "triggersPer100": 0.0248844
       },
       {
-        "id": "s17Pro-7",
+        "id": "s17Pro-Soft18vA-S",
         "hand": "Soft 18",
         "dealer": "A",
         "evPer100": 0.0013050295999999994,
@@ -907,7 +843,7 @@
         "triggersPer100": 0.0130992
       },
       {
-        "id": "s17Pro-8",
+        "id": "s17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0.0020721648000000133,
@@ -915,7 +851,7 @@
         "triggersPer100": 0.0124304
       },
       {
-        "id": "s17Pro-9",
+        "id": "s17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0.055903111999996646,
@@ -923,7 +859,7 @@
         "triggersPer100": 0.7780119999999999
       },
       {
-        "id": "s17Pro-10",
+        "id": "s17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0.01914787360000055,
@@ -931,7 +867,7 @@
         "triggersPer100": 0.09106360000000001
       },
       {
-        "id": "s17Pro-11",
+        "id": "s17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
         "evPer100": 0.01266134240000005,
@@ -939,7 +875,7 @@
         "triggersPer100": 0.035758399999999996
       },
       {
-        "id": "s17Pro-12",
+        "id": "s17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
         "evPer100": 0.029338552399999916,
@@ -947,7 +883,7 @@
         "triggersPer100": 0.11168319999999998
       },
       {
-        "id": "s17Pro-13",
+        "id": "s17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
         "evPer100": 0.0066615159999992325,
@@ -955,7 +891,7 @@
         "triggersPer100": 0.4426204
       },
       {
-        "id": "s17Pro-14",
+        "id": "s17Pro-12v5-S",
         "hand": "12",
         "dealer": "5",
         "evPer100": 0.0014917240000000172,
@@ -963,7 +899,7 @@
         "triggersPer100": 0.2619808
       },
       {
-        "id": "s17Pro-15",
+        "id": "s17Pro-12v6-S",
         "hand": "12",
         "dealer": "6",
         "evPer100": 0.003066198400000078,
@@ -971,7 +907,7 @@
         "triggersPer100": 0.2628024
       },
       {
-        "id": "s17Pro-16",
+        "id": "s17Pro-11vA-D",
         "hand": "11",
         "dealer": "A",
         "evPer100": 0.021750799199999768,
@@ -979,7 +915,7 @@
         "triggersPer100": 0.0676368
       },
       {
-        "id": "s17Pro-17",
+        "id": "s17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
         "evPer100": 0.0041005968000000035,
@@ -987,7 +923,7 @@
         "triggersPer100": 0.008386399999999999
       },
       {
-        "id": "s17Pro-18",
+        "id": "s17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
         "evPer100": 0.0054748784000000165,
@@ -995,7 +931,7 @@
         "triggersPer100": 0.0089852
       },
       {
-        "id": "s17Pro-19",
+        "id": "s17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
         "evPer100": 0.015971569199999806,
@@ -1003,7 +939,7 @@
         "triggersPer100": 0.0955284
       },
       {
-        "id": "s17Pro-20",
+        "id": "s17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
         "evPer100": 0.007907541600000003,
@@ -1011,7 +947,7 @@
         "triggersPer100": 0.0278008
       },
       {
-        "id": "s17Pro-21",
+        "id": "s17Pro-8v5-D",
         "hand": "8",
         "dealer": "5",
         "evPer100": 0.004444123200000011,
@@ -1019,7 +955,7 @@
         "triggersPer100": 0.0120276
       },
       {
-        "id": "s17Pro-22",
+        "id": "s17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
         "evPer100": 0.010148070000000096,
@@ -1027,7 +963,7 @@
         "triggersPer100": 0.03664
       },
       {
-        "id": "s17Pro-23",
+        "id": "s17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0,
@@ -1035,7 +971,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-24",
+        "id": "s17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -1043,7 +979,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-25",
+        "id": "s17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0,
@@ -1051,7 +987,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-26",
+        "id": "s17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -1059,7 +995,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-27",
+        "id": "s17Pro-15vA-R",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0,
@@ -1067,7 +1003,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-28",
+        "id": "s17Pro-14v10-R",
         "hand": "14",
         "dealer": "10",
         "evPer100": 0,
@@ -1075,7 +1011,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-29",
+        "id": "s17Pro-8,8v10-R",
         "hand": "8,8",
         "dealer": "10",
         "evPer100": 0,
@@ -1083,7 +1019,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-30",
+        "id": "s17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -1091,7 +1027,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "s17Pro-31",
+        "id": "s17Pro-16vA-R",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0,

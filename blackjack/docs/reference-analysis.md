@@ -47,6 +47,40 @@ Honouring the star in a late-surrender game costs about 0.044 percentage points
 of flat-bet edge, and about 0.25 units per 100 rounds on a 1-12 ramp, because
 every one of those decisions happens at a count where the ramp has money out.
 
+## The H17 chart's surrender windows, taught as printed
+
+On 2026-08-23 the H17 catalog behind the reference page and the play drill was
+rebuilt from the H17 chart itself, so all three teaching surfaces carry one set
+of numbers (`h17Pro.test.ts` asserts the catalog's indices *are* the chart's 26
+printed index cells). Two of those cells read backwards from the familiar Fab 4
+indices, verified against the PDF's text layer rather than by eye:
+
+| Cell | Printed | Reading |
+| --- | --- | --- |
+| Surrender 15 v 10 | `0-` | surrender at 0 and below, play the hand above |
+| Surrender 16 v 9 | `-1-` | surrender at -1 and below, play the hand above |
+
+Basic strategy surrenders both at every count, so as printed they *stop*
+surrendering as the count climbs — hitting a 15 versus a ten at +1 to +3 with a
+raised bet out. Priced over 250M rounds on a 1-12 ramp:
+
+```text
+h17-ls, units per 100 rounds
+  15 v 10 surrender   -0.158 ± 0.001   fires 0.50/100
+  16 v 9  surrender   -0.031 ± 0.000   fires 0.24/100
+  15 v 10 stand +4    -0.069 ± 0.003   (standalone, versus a surrender the chart has closed)
+  16 v 9  stand +4    -0.019 ± 0.002   (same)
+  17 v A  surrender   -0.002 ± 0.001   marginal, and negative before this rebuild too
+```
+
+The whole H17 catalog is worth 0.04 units per 100 in a late-surrender game
+against 0.38 without surrender, and that gap is these cells. They are shipped as
+printed because the chart is what the drill grades and a silently different
+reference teaches a third set of numbers; the cost is shown on the reference
+page rather than hidden. Reversing them to the Fab 4 direction is a one-line
+change to the two rows in `h17Pro.ts` plus the exemption in
+`deviationRanking.test.ts`.
+
 ### The shipped coefficient curves use the corrected policy
 
 The production artifact was regenerated on 2026-08-23 from the corrected
@@ -66,6 +100,13 @@ To reproduce the artifact:
 ```powershell
 python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
 ```
+
+**Open gap.** `h17_pro.py::h17_pro_pro_action` still encodes the pre-rebuild
+indices — 10 v 10 at +7 where the chart prints `4+`, 16 v 9 stand at +5, the
+14 v 10 and 8,8 surrenders the chart does not print — so the advantage curves
+are priced on a policy the trainers no longer teach. The differences are small
+and mostly rare cells, but closing it means another 250M-shoe run across all
+nine profiles.
 
 ## Observable workflow
 

@@ -36,17 +36,23 @@ describe("deviation ranking artifact", () => {
   });
 
   /**
-   * The H17 chart's own surrender cells for 15 v 10 and 16 v 9, which the app
-   * teaches as printed: it surrenders them at the *bottom* of the count and
-   * plays the hand above, where basic strategy surrenders at every count. As
-   * printed, both lose money in a game that offers surrender — 15 v 10 by about
-   * 0.17 units per 100 rounds, because it hits a 15 versus a ten at +1 to +3
-   * with a raised bet out. Their stand cells price negative for a second
-   * reason: each row is measured standalone against basic strategy, so the
-   * stand is scored against a surrender the chart has already closed off.
+   * The H17 chart cells that cost money in a game offering surrender, taught as
+   * printed rather than quietly corrected.
+   *
+   * 15 v 10 and 16 v 9: the chart surrenders them at the *bottom* of the count
+   * and plays the hand above, where basic strategy surrenders at every count.
+   * 15 v 10 costs about 0.16 units per 100 rounds that way, because it hits a
+   * 15 versus a ten at +1 to +3 with a raised bet out. Their stand cells price
+   * negative for a second reason: each row is measured standalone against basic
+   * strategy, so the stand is scored against a surrender the chart has closed.
+   *
+   * 17 v A: the chart's unconditional surrender, and a genuinely marginal play
+   * — worth -0.002 ± 0.001 per 100 rounds against standing. It measured
+   * negative before this catalog was rebuilt too, and only cleared the interval
+   * check by a hair; the tighter run resolves it as a small real loss.
    */
   const CHART_COSTS_MONEY = (row: (typeof H17_PRO_DEVIATIONS)[number], profile: DeviationRankingProfile) =>
-    profile === "h17-ls" && ((row.hand === "15" && row.dealer === "10") || (row.hand === "16" && row.dealer === "9"));
+    profile === "h17-ls" && [["15", "10"], ["16", "9"], ["17", "A"]].some(([hand, dealer]) => row.hand === hand && row.dealer === dealer);
 
   it("prices every live departure as a gain, within its own interval", () => {
     // A correct index catalog cannot contain a play that loses money against
@@ -65,14 +71,19 @@ describe("deviation ranking artifact", () => {
     }
   });
 
-  it("still prices the chart's two loss-making cells as losses", () => {
-    // The exemption above is for two named cells and must not quietly widen: if
-    // one of them turns positive, or a rewrite makes another row negative, this
-    // fails and the exemption gets re-examined rather than inherited.
-    const negative = H17_PRO_DEVIATIONS.filter((row) => DEVIATION_RANKING["h17-ls"][row.id][0] < 0);
-    expect(negative.map((row) => `${row.hand} v ${row.dealer} ${row.deviationAction}`).sort()).toEqual([
-      "15 v 10 R", "15 v 10 S", "16 v 9 R", "16 v 9 S",
-    ]);
+  it("keeps the loss-making cells to the ones the exemption names", () => {
+    // The exemption must not quietly widen: if one of these turns positive, or
+    // a rewrite makes another row negative, this fails and the exemption gets
+    // re-examined rather than inherited.
+    for (const [profile, catalog] of PROFILES) {
+      const negative = catalog
+        .filter((row) => DEVIATION_RANKING[profile][row.id][0] < 0)
+        .map((row) => `${row.hand} v ${row.dealer} ${row.deviationAction}`)
+        .sort();
+      expect(negative, profile).toEqual(profile === "h17-ls"
+        ? ["15 v 10 R", "15 v 10 S", "16 v 9 R", "16 v 9 S", "17 v A R"]
+        : []);
+    }
   });
 
   it("resolves each play far more precisely than the spread it is ranking", () => {
