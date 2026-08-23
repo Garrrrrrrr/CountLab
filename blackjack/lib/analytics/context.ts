@@ -1,6 +1,7 @@
 import { STORAGE_KEYS } from "./config";
 import { clampString, normalizeRoute, safeQuery } from "./redact";
 import type { AcquisitionChannel, DeviceType, EventContext } from "./types";
+import { isStandalone, readPwaEnv } from "../pwa/standalone";
 
 const SEARCH_ENGINES = /(google|bing|duckduckgo|yahoo|ecosia|brave|yandex|baidu|startpage|qwant)\./i;
 const SOCIAL = /(facebook|instagram|twitter|x\.com|t\.co|linkedin|reddit|youtube|tiktok|pinterest|discord|threads)\./i;
@@ -173,6 +174,7 @@ export function buildContext(): EventContext {
 
   cached = {
     device_type: detectDeviceType(),
+    display_mode: isStandalone(readPwaEnv()) ? "standalone" : "browser",
     browser,
     browser_version,
     os: detectOs(),
