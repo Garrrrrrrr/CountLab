@@ -134,21 +134,24 @@ The strategy has a concrete definition: the supplied H17 Pro chart,
 including its exact thresholds and boundary conventions. The production policy
 is encoded directly in `h17_pro.py`.
 
-## Pending regeneration
+## Current calibrated artifact
 
-`h17_pro.py` was corrected on 2026-08-21: the chart's starred stand
-indices for 15 and 16 against a ten or an ace no longer displace a late
-surrender, because standing those hands measures between -0.53 and -0.61 per
-unit at every true count while surrendering is a flat -0.50. The full
-per-count evidence is in `../blackjack/docs/reference-analysis.md`.
+`h17_pro.py` applies late surrender before the chart's starred stand
+indices for 15 and 16 against a ten or an ace. This prevents the known losing
+stand from replacing a legal surrender; the full per-count evidence is in
+`../blackjack/docs/reference-analysis.md`.
 
-`results/h17-pro-coefficients.json` and the TypeScript artifact
-exported from it predate that fix, so they still price the losing policy --
-about 0.044 points of flat-bet edge, concentrated entirely at non-negative
-counts. The recorded `source_sha256` therefore no longer matches this file, by
-design: it marks the artifact as due for a rerun. Until that rerun lands, the
-app's analytical index curve understates the edge at positive counts, while its
-shoe-by-shoe simulator and its trainers use the corrected policy.
+`results/h17-pro-coefficients.json` and its exported TypeScript
+artifact were regenerated from that policy on 2026-08-23. The run sampled 250
+million shoes for each of nine profiles (116,818,680,110 resolved rounds),
+using seed `20260821`; both artifacts record source checksum
+`3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62`.
+
+Reproduce the production artifact with:
+
+```powershell
+python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
+```
 
 ## Commands
 

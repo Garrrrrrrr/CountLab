@@ -1,7 +1,17 @@
-import { FlatCompat } from "@eslint/eslintrc";
-const compat = new FlatCompat({ baseDirectory: import.meta.dirname });
-const config = [
-  { ignores: [".next/**", "out/**", "node_modules/**", "next-env.d.ts", "supabase/functions/**"] },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-];
-export default config;
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
+
+export default defineConfig([
+  ...tseslint.configs.recommended,
+  {
+    plugins: { "react-hooks": reactHooks },
+    rules: {
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
+  nextPlugin.configs["core-web-vitals"],
+  globalIgnores([".next/**", "out/**", "node_modules/**", "next-env.d.ts", "supabase/functions/**"]),
+]);

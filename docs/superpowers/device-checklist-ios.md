@@ -4,6 +4,7 @@ Do this once on a real iPhone against the deployed site, after adding CountLab
 to the home screen through Share → Add to Home Screen.
 
 - [ ] **Safe areas.** The header clears the clock and battery; the bottom tab bar clears the home indicator.
+- [ ] **H17 chart rail and keyboard.** Open H17 Chart, choose Pair splitting, then swipe from dealer 2 through A. Each selected dealer cell must settle immediately to the right of the persistent Hand/pair label; no dealer header or answer cell may sit underneath it. Tap an action in the bottom dock repeatedly: the highlighted cell advances, but the iOS keyboard never reopens. Hardware Tab/Enter must still focus and select the next input.
 - [ ] **No input zoom.** Open the H17 Chart drill and tab through several cells. The viewport must not zoom or lurch.
 - [ ] **App icon.** The home-screen icon has the dark brand background with no black corners or halo.
 - [ ] **Offline cold start.** Enable Airplane Mode, force-quit the app, and reopen it. A drill—including an unvisited route—must work.

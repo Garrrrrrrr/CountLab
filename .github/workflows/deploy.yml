@@ -42,6 +42,10 @@ jobs:
           NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE: ${{ vars.NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE }}
         run: |
           npm ci
+          npx playwright install --with-deps chromium
+          npm test
+          npm run lint
+          npm run test:e2e
           npm run build
       - name: Assemble site
         run: |
