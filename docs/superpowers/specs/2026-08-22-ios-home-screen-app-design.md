@@ -217,9 +217,13 @@ Bug fixes. Nothing later matters until these land.
 
     Opt-in is one line per drill, in exactly two files: `CountingDrills.tsx`
     (`RunningCountDrill`, `TrueCountDrill`, `DeckEstimationDrill`,
-    `CountingBenchmark`, `ProficiencyTest`) and `FullShoeGame.tsx`. These are the
-    drills the user watches rather than taps, which is why iOS dims and locks
-    mid-run today. Tap-driven drills do not need it.
+    `ProficiencyTest`) and `FullShoeGame.tsx`. These are the drills the user
+    watches rather than taps, which is why iOS dims and locks mid-run today.
+    Tap-driven drills do not need it.
+
+    Corrected during planning: an earlier draft also listed `CountingBenchmark`.
+    It sits in the same file but is a mastery and weak-spots dashboard over past
+    sessions (`CountingDrills.tsx:446-450`), not a timed run, so it is excluded.
 
 15. **Streak badge — best effort, never prompting.** `navigator.setAppBadge()`
     with the current streak from `lib/statistics/streaks.ts`, cleared when the
