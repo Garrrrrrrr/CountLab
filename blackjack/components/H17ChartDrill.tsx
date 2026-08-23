@@ -321,7 +321,7 @@ export function H17ChartDrill() {
               <table className="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-10 w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                    <th className="w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500 sm:sticky sm:left-0 sm:z-10">
                       Hand
                     </th>
                     {CHART_DEALERS.map((dealer) => (
@@ -332,7 +332,7 @@ export function H17ChartDrill() {
                 <tbody>
                   {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
-                      <th scope="row" className="sticky left-0 z-10 w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
+                      <th scope="row" className="w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300 sm:sticky sm:left-0 sm:z-10">
                         {row}
                       </th>
                       {CHART_DEALERS.map((dealer, columnIndex) => {
