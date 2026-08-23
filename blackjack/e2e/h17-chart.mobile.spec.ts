@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("countlab:guest", "1"));
   await page.goto("/training/h17-chart/");
   await expect(page.getByRole("heading", { name: "H17 Chart" })).toBeVisible();
-  await page.getByLabel("Chart section").selectOption("pairs");
+  await page.getByLabel("Section").selectOption("pairs");
 });
 
 test("every dealer column clears the sticky hand label", async ({ page }) => {
