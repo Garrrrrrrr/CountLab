@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toPrecacheUrls } from "./precacheManifest";
+import { toMediaUrls, toPrecacheUrls } from "./precacheManifest";
 
 describe("toPrecacheUrls", () => {
   it("maps index documents to trailing-slash routes", () => {
@@ -16,5 +16,20 @@ describe("toPrecacheUrls", () => {
   });
   it("sorts, deduplicates, and normalizes Windows separators", () => {
     expect(toPrecacheUrls(["b.css", "training\\h17-chart\\index.html", "a.css", "b.css"])).toEqual(["/a.css", "/b.css", "/training/h17-chart/"]);
+  });
+});
+
+describe("toMediaUrls", () => {
+  it("collects the drill photos the shell precache leaves out", () => {
+    const files = ["index.html", "deck-estimation/images/tray-2.jpg", "deck-estimation/images/tray-1.jpg"];
+    expect(toMediaUrls(files)).toEqual(["/deck-estimation/images/tray-1.jpg", "/deck-estimation/images/tray-2.jpg"]);
+  });
+  it("splits the export cleanly, so nothing is cached twice or dropped", () => {
+    const files = ["index.html", "deck-estimation/manifest.json", "deck-estimation/images/tray-1.jpg"];
+    expect(toPrecacheUrls(files)).toEqual(["/", "/deck-estimation/manifest.json"]);
+    expect(toMediaUrls(files)).toEqual(["/deck-estimation/images/tray-1.jpg"]);
+  });
+  it("still honors the global exclusions", () => {
+    expect(toMediaUrls(["sw.js", "opengraph-image.png", "index.html"])).toEqual([]);
   });
 });

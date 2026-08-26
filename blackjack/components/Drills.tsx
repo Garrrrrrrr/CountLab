@@ -27,7 +27,7 @@ import {
   DrillType,
 } from "@/lib/statistics/storage";
 import { PlayingCard } from "./PlayingCard";
-import { GhostButton, MobileActionDock, Panel, Select } from "./ui";
+import { Button, GhostButton, MobileActionDock, Panel, Select } from "./ui";
 import { SessionSummary } from "./SessionSummary";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { consumePracticeFocus, dueItemKeys, forceDue, recordAnswer } from "@/lib/statistics/spacedRepetition";
@@ -186,6 +186,7 @@ export function StrategyDrill() {
     [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
+    [awaitingFinal, setAwaitingFinal] = useState(false),
     [feedback, setFeedback] = useState<{
       hand: string;
       chosen: Action;
@@ -193,6 +194,7 @@ export function StrategyDrill() {
       explanation: string;
       category: StrategyCategory;
     }>();
+  const finalArgs = useRef<Parameters<typeof finish> | null>(null);
   useEffect(() => {
     track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
     // A restored drill is still a new analytics attempt in this browser session.
@@ -258,7 +260,7 @@ export function StrategyDrill() {
   const endDrill = () => { track("answer_skipped", { drill: "Basic Strategy", category, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, attempt: q + 1, elapsedMs: Date.now() - started }); finish(); };
   const choose = useCallback(
     (a: Action) => {
-      if (session) return;
+      if (session || awaitingFinal) return;
       const ok = a === decision.action;
       const duration = Date.now() - started;
       const nextCorrect = correctCount + (ok ? 1 : 0);
@@ -296,17 +298,18 @@ export function StrategyDrill() {
       feedbackTone(ok, settings.sound);
       track("basic_strategy_answered", { ok, chosen: a, correct: decision.action, category, mode, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, responseTimeMs: duration, attempt: q + 1, streak: nextStreak });
       if (q === 9) {
-        finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
+        finalArgs.current = [10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories];
+        setAwaitingFinal(true);
       } else {
         setQ((current) => current + 1);
         setStarted(Date.now());
       }
     },
-    [best, categories, category, correctCount, data, decision, mistakes, q, session, settings.sound, started, streak, totalMs],
+    [awaitingFinal, best, categories, category, correctCount, data, decision, mistakes, q, session, settings.sound, started, streak, totalMs],
   );
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
-      if (e.repeat || !settings.shortcuts || session) return;
+      if (e.repeat || !settings.shortcuts || session || awaitingFinal) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, Action> = {
         h: "H",
@@ -319,7 +322,7 @@ export function StrategyDrill() {
     };
     addEventListener("keydown", fn);
     return () => removeEventListener("keydown", fn);
-  }, [choose, session, settings.shortcuts]);
+  }, [awaitingFinal, choose, session, settings.shortcuts]);
   if (session) {
     return (
       <SessionSummary
@@ -334,6 +337,7 @@ export function StrategyDrill() {
           setCategories({});
           setFeedback(undefined);
           setSession(undefined);
+          setAwaitingFinal(false);
           setStarted(Date.now());
           track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
         }}
@@ -366,47 +370,56 @@ export function StrategyDrill() {
           <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
         </div>
       )}
-      <Panel className="pb-24 lg:pb-6">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 py-3 md:grid-cols-2 md:gap-10 md:py-6">
-          <div>
-            <p className="mb-4 text-sm text-zinc-500">Player hand</p>
-            <div className="flex gap-3">
-              {data.player.map((c, i) => (
-              <PlayingCard key={i} card={c} animated={settings.animations} size="sm" />
+      {awaitingFinal ? (
+        <Panel className="pb-24 lg:pb-6">
+          <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
+          <Button className="mt-4" onClick={() => finalArgs.current && finish(...finalArgs.current)}>View results</Button>
+        </Panel>
+      ) : (
+        <>
+          <Panel className="pb-24 lg:pb-6">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 py-3 md:grid-cols-2 md:gap-10 md:py-6">
+              <div>
+                <p className="mb-4 text-sm text-zinc-500">Player hand</p>
+                <div className="flex gap-3">
+                  {data.player.map((c, i) => (
+                  <PlayingCard key={i} card={c} animated={settings.animations} size="sm" />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-4 text-sm text-zinc-500">Dealer upcard</p>
+                <PlayingCard card={data.dealer} animated={settings.animations} size="sm" />
+              </div>
+            </div>
+            <div className="hidden flex-wrap gap-2 lg:flex">
+              {(Object.keys(names) as Action[]).map((a) => (
+                <GhostButton
+                  key={a}
+                  aria-keyshortcuts={a}
+                  className="flex items-center gap-2"
+                  onClick={() => choose(a)}
+                >
+                  <span>{names[a]}</span>
+                  <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">
+                    {a}
+                  </kbd>
+                </GhostButton>
               ))}
             </div>
-          </div>
-          <div>
-            <p className="mb-4 text-sm text-zinc-500">Dealer upcard</p>
-            <PlayingCard card={data.dealer} animated={settings.animations} size="sm" />
-          </div>
-        </div>
-        <div className="hidden flex-wrap gap-2 lg:flex">
-          {(Object.keys(names) as Action[]).map((a) => (
-            <GhostButton
-              key={a}
-              aria-keyshortcuts={a}
-              className="flex items-center gap-2"
-              onClick={() => choose(a)}
-            >
-              <span>{names[a]}</span>
-              <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">
-                {a}
-              </kbd>
-            </GhostButton>
-          ))}
-        </div>
-        <p className="mt-3 text-xs text-zinc-500">
-          {settings.shortcuts
-            ? "Keyboard shortcuts are shown on each action."
-            : "Keyboard shortcuts are shown above but disabled in Settings."}
-        </p>
-      </Panel>
-      <MobileActionDock label="Basic strategy actions">
-        <div className="grid grid-cols-2 gap-2">
-          {(Object.keys(names) as Action[]).map((a) => <GhostButton key={a} className="px-2 text-sm" onClick={() => choose(a)}>{names[a]}</GhostButton>)}
-        </div>
-      </MobileActionDock>
+            <p className="mt-3 text-xs text-zinc-500">
+              {settings.shortcuts
+                ? "Keyboard shortcuts are shown on each action."
+                : "Keyboard shortcuts are shown above but disabled in Settings."}
+            </p>
+          </Panel>
+          <MobileActionDock label="Basic strategy actions">
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(names) as Action[]).map((a) => <GhostButton key={a} className="px-2 text-sm" onClick={() => choose(a)}>{names[a]}</GhostButton>)}
+            </div>
+          </MobileActionDock>
+        </>
+      )}
     </>
   );
 }
@@ -427,6 +440,7 @@ export function DeviationDrill() {
     [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
+    [awaitingFinal, setAwaitingFinal] = useState(false),
     [feedback, setFeedback] = useState<{
       hand: string;
       chosen: DeviationAction;
@@ -439,6 +453,7 @@ export function DeviationDrill() {
       always?: true;
       departureTriggered: boolean;
     }>();
+  const finalArgs = useRef<Parameters<typeof finish> | null>(null);
   useEffect(() => {
     track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
   }, []);
@@ -504,7 +519,7 @@ export function DeviationDrill() {
   const endDrill = () => { track("answer_skipped", { drill: "Deviations", category: d.hand, scenario: `${d.hand}_v_${d.dealer}`, attempt: q + 1, elapsedMs: Date.now() - started }); finish(); };
   const chooseDeviation = useCallback(
     (chosen: DeviationAction) => {
-      if (session) return;
+      if (session || awaitingFinal) return;
       const ok = chosen === correct;
       const duration = Date.now() - started;
       const nextCorrect = correctCount + (ok ? 1 : 0);
@@ -549,17 +564,18 @@ export function DeviationDrill() {
       feedbackTone(ok, settings.sound);
       track("deviation_answered", { ok, chosen, correct, category, hand: d.hand, dealer: d.dealer, tc, responseTimeMs: duration, attempt: q + 1, streak: nextStreak, isDeviation: departureApplies });
       if (q === 9) {
-        finish(10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories);
+        finalArgs.current = [10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories];
+        setAwaitingFinal(true);
       } else {
         setQ((current) => current + 1);
         setStarted(Date.now());
       }
     },
-    [best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs, transition],
+    [awaitingFinal, best, categories, correct, correctCount, d, dealerCard.rank, departureApplies, mistakes, playerCards, q, session, settings.sound, started, streak, tc, totalMs, transition],
   );
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (event.repeat || !settings.shortcuts || session) return;
+      if (event.repeat || !settings.shortcuts || session || awaitingFinal) return;
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement || event.target instanceof HTMLTextAreaElement) return;
       const map: Record<string, DeviationAction> = {
         h: "H",
@@ -575,7 +591,7 @@ export function DeviationDrill() {
     };
     addEventListener("keydown", handleKey);
     return () => removeEventListener("keydown", handleKey);
-  }, [availableActions, chooseDeviation, session, settings.shortcuts]);
+  }, [availableActions, awaitingFinal, chooseDeviation, session, settings.shortcuts]);
   if (session) {
     return (
       <SessionSummary
@@ -590,6 +606,7 @@ export function DeviationDrill() {
           setCategories({});
           setFeedback(undefined);
           setSession(undefined);
+          setAwaitingFinal(false);
           setStarted(Date.now());
           track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
         }}
@@ -623,61 +640,70 @@ export function DeviationDrill() {
           </p>
         </div>
       )}
-      <Panel className="pb-24 lg:pb-6">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-          <div className="text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
-              Player
-            </p>
-            <div className="flex justify-center gap-3">
-              {playerCards.map((card, index) => (
-                <PlayingCard key={`${card.rank}-${index}`} card={card} size="sm" />
+      {awaitingFinal ? (
+        <Panel className="pb-24 lg:pb-6">
+          <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
+          <Button className="mt-4" onClick={() => finalArgs.current && finish(...finalArgs.current)}>View results</Button>
+        </Panel>
+      ) : (
+        <>
+          <Panel className="pb-24 lg:pb-6">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+              <div className="text-center">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                  Player
+                </p>
+                <div className="flex justify-center gap-3">
+                  {playerCards.map((card, index) => (
+                    <PlayingCard key={`${card.rank}-${index}`} card={card} size="sm" />
+                  ))}
+                </div>
+              </div>
+              <div className="text-center text-xs font-bold uppercase tracking-[.18em] text-zinc-600">
+                versus
+              </div>
+              <div className="text-center">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                  Dealer
+                </p>
+                <div className="flex justify-center">
+                  <PlayingCard card={dealerCard} size="sm" />
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-4">
+              {[
+                ["Running count", signed(rc)],
+                ["Decks remaining", "3"],
+                ["True count", signed(tc)],
+              ].map(([a, b]) => (
+                <div key={a} className="min-w-0 rounded-xl bg-black/20 p-2.5 sm:p-4">
+                  <p className="text-xs text-zinc-500">{a}</p>
+                  <b className="text-xl sm:text-2xl">{b}</b>
+                </div>
               ))}
             </div>
-          </div>
-          <div className="text-center text-xs font-bold uppercase tracking-[.18em] text-zinc-600">
-            versus
-          </div>
-          <div className="text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
-              Dealer
-            </p>
-            <div className="flex justify-center">
-              <PlayingCard card={dealerCard} size="sm" />
+            <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
+              {availableActions.map((a) => (
+                <GhostButton key={a} onClick={() => chooseDeviation(a)}>
+                  {a === "I" ? (
+                    <><u>I</u>nsurance</>
+                  ) : a === "N" ? (
+                    <><u>N</u>o insurance</>
+                  ) : (
+                    <><u>{DEVIATION_ACTION_NAMES[a][0]}</u>{DEVIATION_ACTION_NAMES[a].slice(1)}</>
+                  )}
+                </GhostButton>
+              ))}
             </div>
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-2 sm:mt-6 sm:gap-4">
-          {[
-            ["Running count", signed(rc)],
-            ["Decks remaining", "3"],
-            ["True count", signed(tc)],
-          ].map(([a, b]) => (
-            <div key={a} className="min-w-0 rounded-xl bg-black/20 p-2.5 sm:p-4">
-              <p className="text-xs text-zinc-500">{a}</p>
-              <b className="text-xl sm:text-2xl">{b}</b>
+          </Panel>
+          <MobileActionDock label="Deviation actions">
+            <div className="grid grid-cols-2 gap-2">
+              {availableActions.map((a) => <GhostButton key={a} onClick={() => chooseDeviation(a)}>{a === "I" ? "Insurance" : a === "N" ? "No insurance" : DEVIATION_ACTION_NAMES[a]}</GhostButton>)}
             </div>
-          ))}
-        </div>
-        <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
-          {availableActions.map((a) => (
-            <GhostButton key={a} onClick={() => chooseDeviation(a)}>
-              {a === "I" ? (
-                <><u>I</u>nsurance</>
-              ) : a === "N" ? (
-                <><u>N</u>o insurance</>
-              ) : (
-                <><u>{DEVIATION_ACTION_NAMES[a][0]}</u>{DEVIATION_ACTION_NAMES[a].slice(1)}</>
-              )}
-            </GhostButton>
-          ))}
-        </div>
-      </Panel>
-      <MobileActionDock label="Deviation actions">
-        <div className="grid grid-cols-2 gap-2">
-          {availableActions.map((a) => <GhostButton key={a} onClick={() => chooseDeviation(a)}>{a === "I" ? "Insurance" : a === "N" ? "No insurance" : DEVIATION_ACTION_NAMES[a]}</GhostButton>)}
-        </div>
-      </MobileActionDock>
+          </MobileActionDock>
+        </>
+      )}
     </>
   );
 }

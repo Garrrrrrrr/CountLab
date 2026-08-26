@@ -1,0 +1,59 @@
+DDM v1, 6 decks, H17, ace_rule=strict, dealer22=push, BJ pays 1.625x
+
+=== derived total-dependent chart ===
+First   2   3   4   5   6   7   8   9  10   A
+2       H   H   H   H   D   D   H   H   H   H
+3       H   H   H   H   D   H   H   H   H   H
+4       H   H   H   H   D   H   H   H   H   H
+5       H   H   H   H   H   H   H   H   H   H
+6       H   H   H   H   H   H   H   H   H   H
+7       H   H   H   H   H   H   H   H   H   H
+8       H   H   H   D   D   D   H   H   H   H
+9       H   D   D   D   D   D   D   H   H   H
+10      D   D   D   D   D   D   D   D   D   D
+
+Hard    2   3   4   5   6   7   8   9  10   A
+2       -   -   -   -   -   -   -   -   -   -
+3       -   -   -   -   -   -   -   -   -   -
+4       H   H   H   H   D   H   H   H   H   H
+5       H   H   H   H   H   H   H   H   H   H
+6       H   H   H   H   H   H   H   H   H   H
+7       H   H   H   H   H   H   H   H   H   H
+8       H   H   H   D   D   D   H   H   H   H
+9       H   D   D   D   D   D   D   H   H   H
+10      D   D   D   D   D   D   D   D   H   H
+11      D   D   D   D   D   D   D   D   D   D
+12      H   H   H   S   S   H   H   H   H   H
+13      H   S   S   S   S   H   H   H   H   H
+14      S   S   S   S   S   H   H   H   H   H
+15      S   S   S   S   S   H   H   H   H   H
+16      S   S   S   S   S   H   H   H   H   H
+17+     S   S   S   S   S   S   S   S   S   S
+
+Soft    2   3   4   5   6   7   8   9  10   A
+12      -   -   -   -   -   -   -   -   -   -
+13      H   H   D   D   D   D   D   H   H   H
+14      H   H   H   D   D   D   H   H   H   H
+15      H   H   H   D   D   H   H   H   H   H
+16      H   H   H   H   D   H   H   H   H   H
+17      H   H   H   D   D   D   H   H   H   H
+18      S   S   S   D   D   S   S   H   H   H
+19+     S   S   S   S   S   S   S   S   S   S
+
+Lone ace first card: 2=D 3=D 4=D 5=D 6=D 7=D 8=D 9=D 10=D A=D
+
+=== chart diff vs Wizard (4 cells differ) ===
+  first 4   vs 6  : wizard=H  ours=D
+  hard 4   vs 6  : wizard=H  ours=D
+  soft 15  vs 5  : wizard=H  ours=D
+  soft 17  vs 5  : wizard=H  ours=D
+
+=== house edge by strategy ===
+  composition-dependent optimal     0.8853%   avg wager 1.5871
+  our total-dependent chart         0.8860%   avg wager 1.5876
+  Wizard's published chart          0.8894%   avg wager 1.5756
+
+  cost of playing a chart           0.0008%
+  our chart vs Wizard's             0.0033%
+
+wrote results/strategy_v1_strict.json

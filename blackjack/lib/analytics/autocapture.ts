@@ -141,6 +141,7 @@ function handleToggle(event: Event): void {
     "/journal": "session_journal",
     "/ultimate-texas-holdem": "ultimate_texas_holdem",
     "/chase-flush": "chase_the_flush",
+    "/double-down-madness": "double_down_madness",
     "/training/full-shoe": "blackjack",
   };
   const feature = features[analytics.route];

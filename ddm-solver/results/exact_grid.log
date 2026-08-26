@@ -1,0 +1,14 @@
+ver  decks  ace_rule     dealer22         HE%        EV   avg wgr      EoR%
+---------------------------------------------------------------------------
+1    6      strict       push         0.8853% -0.008853    1.5871   0.5578%
+1    6      double_only  push         0.8853% -0.008853    1.5871   0.5578%
+2    6      strict       push         2.0183% -0.020183    1.5871   1.2717%
+2    6      double_only  push         2.0165% -0.020165    1.5832   1.2737%
+3    6      strict       push         2.0183% -0.020183    1.5871   1.2717%
+3    6      double_only  push         2.0165% -0.020165    1.5832   1.2737%
+1    8      strict       push         0.9377% -0.009377    1.5875   0.5907%
+1    8      double_only  push         0.9377% -0.009377    1.5875   0.5907%
+1    6      strict       lose       -10.1977% +0.101977    1.8551  -5.4970%
+
+9 solve(s) in 77.6s
+wrote results/exact_grid.json

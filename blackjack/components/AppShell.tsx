@@ -34,6 +34,7 @@ const groups = [
   {
     label: "Casino Games",
     items: [
+      ["Double Down Madness", "/double-down-madness", "fa-bolt"],
       ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"],
       ["Chase the Flush", "/chase-flush", "fa-diamond"],
     ],

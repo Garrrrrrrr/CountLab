@@ -12,3 +12,5 @@ Deployed at [countlab.ca](https://countlab.ca) via GitHub Pages (`.github/workfl
   per-true-count audit data the blackjack app's EV/bankroll pages are built on.
 - [`chase-flush-solver/`](chase-flush-solver/README.md) — Python research engine behind the
   in-app Chase the Flush analyzer.
+- [`ddm-solver/`](ddm-solver/README.md) — exact combinatorial solver and Monte Carlo engine for
+  Double Down Madness, researching whether the variant is countable.

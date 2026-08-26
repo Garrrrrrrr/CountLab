@@ -20,6 +20,7 @@ export const ROUTES: string[][] = [
   ["compare"],
   ["trip-planner"],
   ["bet-spread-recommender"],
+  ["double-down-madness"],
   ["chase-flush"],
   ["ultimate-texas-holdem"],
   ["training", "checklist"],

@@ -1,0 +1,17 @@
+check                                            got       target   result
+-------------------------------------------------------------------------------
+P(dealer draws to 22), 6d H17               0.073536     0.073536   PASS
+Push 22 house edge at 11:1                  0.117565     0.117600   PASS
+dealer distribution sums to 1               1.000000     1.000000   PASS
+V2 blackjack multiplier                     1.500000     1.500000   PASS
+V3 blackjack multiplier                     1.500000     1.500000   PASS  # identical to V2, which is why Wizard reports one house edge for both
+V2 and V3 exact house edge identical        0.000000     0.000000   PASS
+Wizard's own chart vs ours (fresh shoe)     0.000033     0.000000   PASS  # our derived chart should be at least as good
+MC (CSM) reproduces the exact solver        0.008799     0.008860   PASS  # cross-validates the kernel against exact combinatorics
+V1 house edge, 6 decks, cut card            0.009442     0.009500   PASS
+average final wager                         1.587672     1.570000   PASS
+element of risk V1                          0.005947     0.006100   PASS
+cut card costs the player                   0.000643     0.000300   PASS  # EXPLAIN: we measure 0.064%, Wizard states 0.03%
+
+12/12 passed in 234s
+wrote /Users/garr/Documents/Personal/CountLab/ddm-solver/results/validation.json

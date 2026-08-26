@@ -12,6 +12,21 @@ import { settleWithTimeout } from "@/lib/pwa/settleWithTimeout";
 const GUEST_KEY = "countlab:guest";
 const OAUTH_INTENT_KEY = "countlab:auth-intent";
 
+/**
+ * getSession() answers from local storage in the usual case; it only goes to the
+ * network when the stored token has expired and needs a refresh. That refresh
+ * cannot succeed while offline, and AuthGate renders nothing until it settles,
+ * so the full budget would blank the app for eight seconds on a cold offline
+ * start. Give the offline case just enough time for the local read.
+ * autoRefreshToken restores the real session through onAuthStateChange once the
+ * device is back online.
+ */
+const SESSION_TIMEOUT_MS = 8000;
+const OFFLINE_SESSION_TIMEOUT_MS = 1200;
+
+const sessionTimeoutMs = () =>
+  typeof navigator !== "undefined" && navigator.onLine === false ? OFFLINE_SESSION_TIMEOUT_MS : SESSION_TIMEOUT_MS;
+
 function authFailure(message: string | undefined): EventPropertyMap["login_failed"]["reason_category"] {
   const normalized = (message ?? "").toLowerCase();
   if (/rate|too many|limit/.test(normalized)) return "rate_limited";
@@ -67,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // request (notably an offline expired-token cold start) must not blank it.
     settleWithTimeout(
       supabase.auth.getSession(),
-      8000,
+      sessionTimeoutMs(),
       { data: { session: null } } as Awaited<ReturnType<typeof supabase.auth.getSession>>,
     ).then(({ data }) => {
       if (cancelled) return;
@@ -119,7 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     let refreshInFlight = false;
     const refreshJournal = () => {
-      if (document.hidden || refreshInFlight) return;
+      // Offline the pull can only fail, and each attempt drags the supabase
+      // client through its own retry budget. Wait for the connection instead.
+      if (document.hidden || refreshInFlight || navigator.onLine === false) return;
       refreshInFlight = true;
       pullRemoteJournalData(user.id)
         .catch((error) => console.error("[countlab] journal refresh failed", error))
@@ -128,9 +145,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const onVisibilityChange = () => { if (!document.hidden) refreshJournal(); };
     const interval = window.setInterval(refreshJournal, 20_000);
     document.addEventListener("visibilitychange", onVisibilityChange);
+    // Reconnecting should not wait out the rest of the poll interval.
+    window.addEventListener("online", refreshJournal);
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("online", refreshJournal);
     };
   }, [user]);
 

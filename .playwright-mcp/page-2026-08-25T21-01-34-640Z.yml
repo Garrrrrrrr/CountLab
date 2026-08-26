@@ -1,0 +1,903 @@
+- generic [active] [ref=f7e1]:
+  - link "Skip to main content" [ref=f7e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=f7e6]:
+    - generic:
+      - generic: "I simulated Double Down Madness Blackjack and found preliminary evidence it may be countable : r/blackjack"
+      - banner [ref=f7e10]:
+        - navigation [ref=f7e11]:
+          - link "Home" [ref=f7e15] [cursor=pointer]:
+            - /url: https://www.reddit.com/
+          - search [ref=f7e34]:
+            - generic [ref=f7e36]:
+              - textbox [ref=f7e43]:
+                - /placeholder: Search Reddit
+              - generic: Search Reddit
+          - generic [ref=f7e44]:
+            - link "Sign Up" [ref=f7e50] [cursor=pointer]:
+              - /url: https://www.reddit.com/register/
+            - link "Log In" [ref=f7e56] [cursor=pointer]:
+              - /url: https://www.reddit.com/login/
+            - button "Expand user menu" [ref=f7e63] [cursor=pointer]
+      - generic [ref=f7e69]:
+        - generic [ref=f7e70]:
+          - generic [ref=f7e71]:
+            - generic:
+              - generic:
+                - link "Skip to Sign up" [ref=f7e72] [cursor=pointer]:
+                  - /url: "#left-sidebar-container"
+                - link "Skip to Right Sidebar" [ref=f7e73] [cursor=pointer]:
+                  - /url: "#right-sidebar-container"
+          - generic [ref=f7e74]:
+            - main [ref=f7e75]:
+              - 'generic "I simulated Double Down Madness Blackjack and found preliminary evidence it may be countable : r/blackjack"'
+              - generic [ref=f7e76]:
+                - generic [ref=f7e77]:
+                  - generic [ref=f7e78]:
+                    - button "Back" [ref=f7e80] [cursor=pointer]
+                    - link "Go to blackjack" [ref=f7e88] [cursor=pointer]:
+                      - /url: https://www.reddit.com/r/blackjack/
+                    - group [ref=f7e93]:
+                      - generic [ref=f7e94]:
+                        - link "r/blackjack" [ref=f7e98] [cursor=pointer]:
+                          - /url: https://www.reddit.com/r/blackjack/
+                        - generic [ref=f7e99]: •
+                        - time [ref=f7e101]: 1mo ago
+                      - 'link "Author: Neat-Jacket-2117" [ref=f7e107] [cursor=pointer]':
+                        - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                        - generic [ref=f7e108]: Neat-Jacket-2117
+                  - button "Open user actions" [ref=f7e112] [cursor=pointer]
+                - 'heading "Post Title: I simulated Double Down Madness Blackjack and found preliminary evidence it may be countable" [level=1] [ref=f7e119]': I simulated Double Down Madness Blackjack and found preliminary evidence it may be countable
+                - generic [ref=f7e122]:
+                  - generic [ref=f7e123]:
+                    - paragraph [ref=f7e124]: I’ve been working on a Monte Carlo research project for Double Down Madness Blackjack, a blackjack variant where players can double repeatedly, but dealer 22 pushes active wagers.
+                    - paragraph [ref=f7e125]: The project is not gambling advice and the results are preliminary. I’m mainly looking for review from people who understand blackjack simulation, rule modeling, and card counting.
+                    - paragraph [ref=f7e126]: "Main assumptions:"
+                    - paragraph [ref=f7e127]: "- Version 1 rules"
+                    - paragraph [ref=f7e128]: "- 6 decks"
+                    - paragraph [ref=f7e129]: "- H17"
+                    - paragraph [ref=f7e130]: "- No split, no surrender"
+                    - paragraph [ref=f7e131]: "- Dealer 22 pushes active wagers"
+                    - paragraph [ref=f7e132]: "- No Push 22 side bet"
+                    - paragraph [ref=f7e133]: "- If the player's first card is an Ace, hit or double receives only one additional card"
+                    - paragraph [ref=f7e134]: "- Hi-Lo true count"
+                    - paragraph [ref=f7e135]: "Main findings:"
+                    - paragraph [ref=f7e136]: "- Positive counts, especially TC +2 and above, become strongly positive."
+                    - paragraph [ref=f7e137]: "- A simple one-hand 1-2-4-8-16 ramp is positive EV in my bucket-composed simulation."
+                    - paragraph [ref=f7e138]: "- The first-card Ace rule changes the A vs A decision: under the strict Ace interpretation, doubling appears better than hitting."
+                    - paragraph [ref=f7e139]: "I’m especially interested in:"
+                    - list [ref=f7e140]:
+                      - listitem [ref=f7e141]:
+                        - paragraph [ref=f7e142]: Are the rules modeled correctly?
+                      - listitem [ref=f7e143]:
+                        - paragraph [ref=f7e144]: Does the Dealer 22 push logic look right?
+                      - listitem [ref=f7e145]:
+                        - paragraph [ref=f7e146]: Are there obvious simulation mistakes?
+                      - listitem [ref=f7e147]:
+                        - paragraph [ref=f7e148]: What would you want to see before trusting the result?
+                    - paragraph [ref=f7e149]:
+                      - text: "GitHub:"
+                      - link "https://github.com/zcheng32/double-down-madness-counting" [ref=f7e150] [cursor=pointer]:
+                        - /url: https://github.com/zcheng32/double-down-madness-counting
+                  - button "Read more" [ref=f7e151] [cursor=pointer]
+                - generic "Actions available for this post" [ref=f7e158]:
+                  - generic [ref=f7e161]:
+                    - button "Upvote" [ref=f7e162] [cursor=pointer]
+                    - generic [ref=f7e167]: "13"
+                    - button "Downvote" [ref=f7e169] [cursor=pointer]
+                  - button "7 Go to comments" [ref=f7e174] [cursor=pointer]:
+                    - generic [ref=f7e175]: "7"
+                    - generic [ref=f7e181]: Go to comments
+                  - button "Share" [ref=f7e185] [cursor=pointer]
+              - generic "Add M365 backup for every client with no minimums and no setup fees." [ref=f7e192]:
+                - generic [ref=f7e193]:
+                  - 'generic "Advertisement: Add M365 backup for every client with no minimums and no setup fees." [ref=f7e194]':
+                    - 'link "Advertisement: Add M365 backup for every client with no minimums and no setup fees." [ref=f7e195] [cursor=pointer]':
+                      - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                  - generic [ref=f7e196]:
+                    - generic [ref=f7e197]:
+                      - link "VMOBackup" [ref=f7e200] [cursor=pointer]:
+                        - /url: /user/VMOBackup/
+                        - img "u/VMOBackup avatar" [ref=f7e203]
+                      - generic [ref=f7e205]: •
+                      - link "Ad" [ref=f7e207] [cursor=pointer]:
+                        - /url: /user/VMOBackup/
+                      - link [ref=f7e210] [cursor=pointer]:
+                        - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                    - button "Open user actions" [ref=f7e216] [cursor=pointer]
+                  - generic [ref=f7e222]:
+                    - generic [ref=f7e223]:
+                      - link "Add M365 backup for every client with no minimums and no setup fees." [ref=f7e225] [cursor=pointer]:
+                        - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                      - generic [ref=f7e226]:
+                        - link [ref=f7e228] [cursor=pointer]:
+                          - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                        - generic [ref=f7e229]:
+                          - link "Sign Up" [ref=f7e231] [cursor=pointer]:
+                            - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                          - link "vmobackup.com" [ref=f7e236] [cursor=pointer]:
+                            - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                    - link [ref=f7e239] [cursor=pointer]:
+                      - /url: https://alb.reddit.com/cr?za=k0_VLH42QUuoUVlgmMS8o3LhHaxeElQr0NJ9BSrYro__IgLj57zcN8YGsi6oXgpfc_TFXNExOpNkBnfbtgs8VLgc9xq2w_jMeEctUCwaLZ9NYnMpHh_tShVJIv7urTLUPdvsZonZIUwtzBTlPVQd0OFlAb3FDaqut8zZrI6bEE4y354HEQFuBs4gO65LGb43YzJVA1_hvjas0GeQRiFMSK0Ej9xkBoBcxaFHDARcIOUnYN_X9tJpniYLaeQzcveFPdx25wkje4X_ViRJ3cGxUSjARcW380H84pZZiY-OCA-S7JHOjX2_Y3D69EnvGJvI9JiS8NhmAr21nucmpJDu1EF1kGf04OS_0F42NkKs1-zC6TroippCyXFX37rdBzGsYDZkYPLTy2PKdsTUvI2HppUZF65AjII3AJ0oy--VNNd6bIYPsl298QgHusz5tNiCCrZ3aMdMG2_ypu9yttXRQ3NRaMg3TxohE4vnLfXw1PfwBfu409yCRWuQkiLtMUx_4W2cC4QMJGhvbfTckFL-Qq9ue2PQ1eVfuprpR32wEfDEEVTJ4RQjiVg3PS3A9kDG1cha8Rr7z_Wwe9OBWg-7R5EnEMvLU5bbsgxky72i0Tt9E7_HmtVRxndHcO1WBR9Fe5zy9BT0QgefF0XMF2QzucKWh0aBqbtR1bCYnqUUTTj_pQI--g81bmVbbYjipAGMu9ZpgsIKgZ6CQrpSIdy_&zp=uQntIG9z7yLJYjm6VVd3nL2G1oigH3BzjPBsCFnKccYN2le2yrWw6AiDZcLWab0nUserz6Ktq0vNc6qSbbTHD0HP48IpihIy28WPqqkNUDhvNqppPwb3YO67bv6qE2Gj4nmeLPnGEbT48wCcEQoypwMgRqVOB90LeKXf4MyTPg42uJ5KoTRcDlbQ5qGnShECJB2HIYBeqL-B8-h6p5TLgX1jS0xi0NMZcrgaSq4-NuYHNcwo1uJAEI0CYU9aS_grVxfCRbGQUz-am8Z2W6vSw8onG8YPOb_vxRUs2GNA
+                      - 'img "Thumbnail image: Add M365 backup for every client with no minimums and no setup fees." [ref=f7e240]'
+              - generic [ref=f7e242]:
+                - generic:
+                  - generic [ref=f7e243]:
+                    - button "Button to add a comment" [disabled]:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic:
+                                - textbox [disabled]:
+                                  - /placeholder: Join the conversation
+                  - generic [ref=f7e248]:
+                    - generic [ref=f7e250]:
+                      - generic [ref=f7e251]: "Sort by:"
+                      - button "Sort by Best" [ref=f7e256] [cursor=pointer]:
+                        - generic [ref=f7e257]: Best
+                    - button "Search Comments Expand comment search" [ref=f7e265] [cursor=pointer]:
+                      - generic [ref=f7e266]: Search Comments
+                      - generic [ref=f7e273]: Expand comment search
+              - region "Comments" [ref=f7e276]:
+                - heading "Comments Section" [level=1] [ref=f7e277]
+                - article "Comment from RickSanchez67 1 month ago" [ref=f7e279]:
+                  - generic [ref=f7e280] [cursor=pointer]:
+                    - link "RickSanchez67's profile --- avatar" [ref=f7e286]:
+                      - /url: https://www.reddit.com/user/RickSanchez67/
+                      - img "u/RickSanchez67 avatar" [ref=f7e289]
+                    - generic [ref=f7e293]:
+                      - link "RickSanchez67's profile" [ref=f7e297]:
+                        - /url: https://www.reddit.com/user/RickSanchez67/
+                        - text: RickSanchez67
+                      - generic [ref=f7e298]: •
+                      - link [ref=f7e300]:
+                        - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/ox8yph9/
+                        - time [ref=f7e302]: 1mo ago
+                      - generic [ref=f7e303]: •
+                      - generic [ref=f7e304]:
+                        - text: Edited
+                        - time [ref=f7e306]: 1mo ago
+                  - generic [ref=f7e308]:
+                    - generic [ref=f7e311]:
+                      - paragraph [ref=f7e312]: Hey !Have not modeled this specific game, but I have done model for many other (online) games so maybe I can help.
+                      - paragraph [ref=f7e313]:
+                        - text: to double check if the rules are modeled correctly you can check
+                        - link "https://wizardofodds.com/games/blackjack/double-down-madness/" [ref=f7e314] [cursor=pointer]:
+                          - /url: https://wizardofodds.com/games/blackjack/double-down-madness/
+                        - text: who also modeled the game, if with your simulation and a flat bet of 1 you get the same "house edge" as his simulation with the same rules. You can be pretty sure your model is correct.
+                      - paragraph [ref=f7e315]: "as for the counting card, I think you take the problem not the right way. Instead of trying to apply Hilo (which is a system that was created for standard blackjack) what you should do is :"
+                      - list [ref=f7e316]:
+                        - listitem [ref=f7e317]:
+                          - paragraph [ref=f7e318]: get the house edge correct for the basic game
+                        - listitem [ref=f7e319]:
+                          - paragraph [ref=f7e320]: compute EOR (effect of removal) for each card, you remove a certain number of cards for a given rank, then you simulate again the house edge (with monte carlo simulation or house tree / recursive computation) reshuffling each time, and you compute the difference of the "house edge without a given rank" with the "basic house edge" to get the EOR of a given rank
+                        - listitem [ref=f7e321]:
+                          - paragraph [ref=f7e322]: based on this EOR you can infer a counting system to this specific game
+                      - paragraph [ref=f7e323]: Then you test this counting system to your game
+                    - generic [ref=f7e326]:
+                      - 'article "Comment thread level 1: Reply from Neat-Jacket-2117 1 month ago" [ref=f7e328]':
+                        - generic [ref=f7e329] [cursor=pointer]:
+                          - link "Neat-Jacket-2117's profile --- avatar" [ref=f7e335]:
+                            - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                            - img "u/Neat-Jacket-2117 avatar" [ref=f7e338]
+                          - generic [ref=f7e342]:
+                            - link "Neat-Jacket-2117's profile" [ref=f7e346]:
+                              - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                              - text: Neat-Jacket-2117
+                            - generic "Comment distinguished as the original poster" [ref=f7e349]: OP
+                            - generic [ref=f7e350]: •
+                            - link [ref=f7e352]:
+                              - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oxf23n0/
+                              - time [ref=f7e354]: 1mo ago
+                        - generic [ref=f7e359]:
+                          - paragraph [ref=f7e360]: Thanks, this makes a lot of sense.
+                          - paragraph [ref=f7e361]: I did try to start by validating the base game against Wizard’s numbers. The part I’m still not fully comfortable with is the first-card Ace rule, because Wizard’s A vs A recommendation seems to depend a lot on whether an Ace hit can continue or whether any first-card Ace only gets one more card.
+                          - paragraph [ref=f7e362]: But yes, I agree with your approach. EOR by rank is probably the right next step, then build a count specifically for DDM and test that instead of forcing Hi-Lo onto it.
+                      - 'article "Comment thread level 1: Reply from zarx 1 month ago" [ref=f7e366]':
+                        - generic [ref=f7e367] [cursor=pointer]:
+                          - link "zarx's profile --- avatar" [ref=f7e373]:
+                            - /url: https://www.reddit.com/user/zarx/
+                            - img "u/zarx avatar" [ref=f7e376]
+                          - generic [ref=f7e380]:
+                            - link "zarx's profile" [ref=f7e384]:
+                              - /url: https://www.reddit.com/user/zarx/
+                              - text: zarx
+                            - generic [ref=f7e385]: •
+                            - link [ref=f7e387]:
+                              - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oxci266/
+                              - time [ref=f7e389]: 1mo ago
+                        - paragraph [ref=f7e395]: Yep, this is exactly how I would do it!
+                - article "Comment from piles_petko 1 month ago" [ref=f7e399]:
+                  - generic [ref=f7e400] [cursor=pointer]:
+                    - link "piles_petko's profile --- avatar" [ref=f7e406]:
+                      - /url: https://www.reddit.com/user/piles_petko/
+                      - img "u/piles_petko avatar" [ref=f7e409]
+                    - generic [ref=f7e413]:
+                      - link "piles_petko's profile" [ref=f7e417]:
+                        - /url: https://www.reddit.com/user/piles_petko/
+                        - text: piles_petko
+                      - generic [ref=f7e418]: •
+                      - link [ref=f7e420]:
+                        - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oxno8m5/
+                        - time [ref=f7e422]: 1mo ago
+                  - generic [ref=f7e424]:
+                    - paragraph [ref=f7e428]: Isn't the house edge closer to 2% when other blackjack tables are around 0.5%? It could still be beatable, but I think you'd need to develop a separate strategy.
+                    - 'article "Comment thread level 1: Reply from Neat-Jacket-2117 1 month ago" [ref=f7e433]':
+                      - generic [ref=f7e434] [cursor=pointer]:
+                        - link "Neat-Jacket-2117's profile --- avatar" [ref=f7e440]:
+                          - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                          - img "u/Neat-Jacket-2117 avatar" [ref=f7e443]
+                        - generic [ref=f7e447]:
+                          - link "Neat-Jacket-2117's profile" [ref=f7e451]:
+                            - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                            - text: Neat-Jacket-2117
+                          - generic "Comment distinguished as the original poster" [ref=f7e454]: OP
+                          - generic [ref=f7e455]: •
+                          - link [ref=f7e457]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oyekjuz/
+                            - time [ref=f7e459]: 1mo ago
+                      - paragraph [ref=f7e465]: The version I played has a house edge of about 0.95%, and I’m currently researching a more reliable strategy for it.
+                - article "Comment from Inside_Election9910 1 month ago" [ref=f7e469]:
+                  - generic [ref=f7e470] [cursor=pointer]:
+                    - link "Inside_Election9910's profile --- avatar" [ref=f7e476]:
+                      - /url: https://www.reddit.com/user/Inside_Election9910/
+                      - img "u/Inside_Election9910 avatar" [ref=f7e479]
+                    - generic [ref=f7e483]:
+                      - link "Inside_Election9910's profile" [ref=f7e487]:
+                        - /url: https://www.reddit.com/user/Inside_Election9910/
+                        - text: Inside_Election9910
+                      - generic [ref=f7e488]: •
+                      - link [ref=f7e490]:
+                        - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oyem78h/
+                        - time [ref=f7e492]: 1mo ago
+                  - generic [ref=f7e494]:
+                    - paragraph [ref=f7e498]: I thought a lot of the shops that have this game use a CSM?
+                    - 'article "Comment thread level 1: Reply from Neat-Jacket-2117 1 month ago" [ref=f7e503]':
+                      - generic [ref=f7e504] [cursor=pointer]:
+                        - link "Neat-Jacket-2117's profile --- avatar" [ref=f7e510]:
+                          - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                          - img "u/Neat-Jacket-2117 avatar" [ref=f7e513]
+                        - generic [ref=f7e517]:
+                          - link "Neat-Jacket-2117's profile" [ref=f7e521]:
+                            - /url: https://www.reddit.com/user/Neat-Jacket-2117/
+                            - text: Neat-Jacket-2117
+                          - generic "Comment distinguished as the original poster" [ref=f7e524]: OP
+                          - generic [ref=f7e525]: •
+                          - link [ref=f7e527]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1uv5xj5/comment/oyf2od3/
+                            - time [ref=f7e529]: 1mo ago
+                      - paragraph [ref=f7e535]: Yeah, most places that offer the game seem to use a CSM. The only 6-deck shoe version I’ve personally played was in Edmonton, Alberta.
+            - generic [ref=f7e538]:
+              - generic [ref=f7e539]:
+                - complementary "Related Posts Section" [ref=f7e540]:
+                  - heading "Related Posts Section" [level=1] [ref=f7e541]: More posts you may like
+                  - generic [ref=f7e542]: Related posts
+                  - list [ref=f7e548]:
+                    - listitem [ref=f7e549]:
+                      - generic [ref=f7e550]:
+                        - generic [ref=f7e551]:
+                          - link "Split 10’s 4 times with 2 unnatural blackjack doubles." [ref=f7e552] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1um5dfz/split_10s_4_times_with_2_unnatural_blackjack/
+                          - generic [ref=f7e554]:
+                            - generic [ref=f7e555]:
+                              - generic [ref=f7e558]:
+                                - link "r/blackjack" [ref=f7e559] [cursor=pointer]:
+                                  - /url: https://www.reddit.com/r/blackjack/
+                                - generic [ref=f7e564]: •
+                                - time [ref=f7e566]: 2mo ago
+                              - link [ref=f7e568] [cursor=pointer]:
+                                - /url: /r/blackjack/comments/1um5dfz/split_10s_4_times_with_2_unnatural_blackjack/
+                                - heading "List item post - Split 10’s 4 times with 2 unnatural blackjack doubles." [level=3] [ref=f7e571]: Split 10’s 4 times with 2 unnatural blackjack doubles.
+                            - link "r/blackjack - Split 10’s 4 times with 2 unnatural blackjack doubles." [ref=f7e574] [cursor=pointer]:
+                              - /url: https://www.reddit.com/r/blackjack/comments/1um5dfz/split_10s_4_times_with_2_unnatural_blackjack/
+                              - img "r/blackjack - Split 10’s 4 times with 2 unnatural blackjack doubles." [ref=f7e575]
+                          - generic [ref=f7e577]:
+                            - generic [ref=f7e578]: "105"
+                            - text: upvotes ·
+                            - generic [ref=f7e579]: "35"
+                            - text: comments
+                        - separator [ref=f7e580]
+                    - listitem [ref=f7e581]:
+                      - generic [ref=f7e583]:
+                        - generic:
+                          - 'generic "Advertisement: Score Higher on TOEFL Faster" [ref=f7e584]':
+                            - 'link "Advertisement: Score Higher on TOEFL Faster" [ref=f7e585] [cursor=pointer]':
+                              - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                          - generic [ref=f7e586]:
+                            - generic [ref=f7e587]:
+                              - generic [ref=f7e588]:
+                                - generic [ref=f7e589]:
+                                  - generic [ref=f7e590]:
+                                    - link "u/studycom avatar studycom" [ref=f7e593] [cursor=pointer]:
+                                      - /url: /user/studycom/
+                                      - img "u/studycom avatar" [ref=f7e596]
+                                      - generic [ref=f7e597]: studycom
+                                    - generic [ref=f7e598]: •
+                                    - link "Ad" [ref=f7e600] [cursor=pointer]:
+                                      - /url: /user/studycom/
+                                    - link [ref=f7e603] [cursor=pointer]:
+                                      - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                                  - button "Open user actions" [ref=f7e609] [cursor=pointer]
+                                - link "Score Higher on TOEFL Faster" [ref=f7e616] [cursor=pointer]:
+                                  - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                                  - generic "Score Higher on TOEFL Faster" [ref=f7e617]
+                              - link [ref=f7e620] [cursor=pointer]:
+                                - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                                - 'img "Thumbnail image: Score Higher on TOEFL Faster" [ref=f7e622]'
+                            - generic [ref=f7e623]:
+                              - link [ref=f7e625] [cursor=pointer]:
+                                - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                              - generic [ref=f7e626]:
+                                - link "study.com" [ref=f7e629] [cursor=pointer]:
+                                  - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                                - link "Learn More" [ref=f7e631] [cursor=pointer]:
+                                  - /url: https://alb.reddit.com/cr?za=2hBP47nCk3cjxjQbc77rXMR7qkL0WHuFCLbA9ZnmLKt9AJ62U4-UXB85mcOR6fq-uVBS8DGIXgo4gr4E0P1_dw9upBOEOijlC3o-imIT7oiCHjYIweyQhmKq8uprm-MBIyS6BlO2vAjhyhQMgMCspsp6sAnXoCLKEcLYvdEmacIp2Y-TWP2QSeb5w54yAZ9kPCXWE5G_vLBa6TQvPsNiZW_q6GkHigGjCvN2gTcoz2AvLUsghcy-FkzkNjPYbKmCfmQ53BjP72ZjY4sA432MAplDVRg7jQOKZpya6MZD7CqDjXVrk2fNj6F2fpKrEC4AJ8HJcGjNdCGWAWhr6V4qY98QsUiqXaaL3VW8rcj7sTJ6EkoL5J62xGcTYTAcl_D1veEj5pG8DiKdxb4utXVrDLK12bmDQQ6TBqKUFqXn4bsYq3dNZ__9MmkECPpEmCFSSbScaAT7wZub5xdRFp1tbH4RyGhXsPFlXsTCiHNNXSwCuImSZ25IphOiOCQCCdoYGmVh_eQosfAZl3Ah_ATugQzI8RnO1U5TtC4bT1Jv2jRWmhDmc33cLwTwuG5nkHz5mNHF61iA1z9BtTlWnI3nyczmH7Sf0O7T8gg_TDpHFv-0jZf0XmNOaHhHlEGa_2HudWW-cO2cUeLgqQH6toZ6gvw9clf-EPrJYA28CqPIJpeXhMR5URmBoiyEf7sqHDO3tqr_&zp=yf-sItQUc91Da0XE1TzEV-k4a-t0ihVE3gAMsL8e5FPF8mkXx1KP3e2xaSRttELcfaSxuyaO23-yfD6xXJ6uoy8CKM6t1lAFk1HRXpAO_jDuOakedmqxJHuPxOpR2eyi02DpD5uC_s7PsbDbyH0LbnrlZ5q309sfQQqBBE7BQOOQl7V8fuAhZ_d8yHh_bFeYaOX14QOu1N7KTjmm8XFsvGOwBCQFD-R0YnZjFMawWrq2eRTLe6uGxpVyc2WpLz80trIPAOBp_-sb3Dw_xtlF4IrjSE1TpSlPXiJJsRstS4YAnBdBmIJs24z1wEa2Pff89Q5Y9pN6dirwtszEgyYzZLIsF8l3g-ljz-ga1PY1hzhmyCwIaX-XcOIgTDIUUrMj8US6gw
+                      - separator [ref=f7e634]
+                    - listitem [ref=f7e635]:
+                      - generic [ref=f7e636]:
+                        - generic [ref=f7e637]:
+                          - link "Biggest blackjack win ever — hit suited trips + perfect pair and instantly cashed out" [ref=f7e638] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1t1ljol/biggest_blackjack_win_ever_hit_suited_trips/
+                          - generic [ref=f7e640]:
+                            - generic [ref=f7e641]:
+                              - generic [ref=f7e644]:
+                                - link "r/blackjack" [ref=f7e645] [cursor=pointer]:
+                                  - /url: https://www.reddit.com/r/blackjack/
+                                - generic [ref=f7e650]: •
+                                - time [ref=f7e652]: 4mo ago
+                              - link [ref=f7e654] [cursor=pointer]:
+                                - /url: /r/blackjack/comments/1t1ljol/biggest_blackjack_win_ever_hit_suited_trips/
+                                - heading "List item post - Biggest blackjack win ever — hit suited trips + perfect pai..." [level=3] [ref=f7e657]: Biggest blackjack win ever — hit suited trips + perfect pair and instantly cashed out
+                            - link "r/blackjack - Biggest blackjack win ever — hit suited trips + perfect pair and instantly cashed out" [ref=f7e660] [cursor=pointer]:
+                              - /url: https://www.reddit.com/r/blackjack/comments/1t1ljol/biggest_blackjack_win_ever_hit_suited_trips/
+                              - img "r/blackjack - Biggest blackjack win ever — hit suited trips + perfect pair and instantly cashed out" [ref=f7e661]
+                          - generic [ref=f7e663]:
+                            - generic [ref=f7e664]: "3"
+                            - text: upvotes ·
+                            - generic [ref=f7e665]: "4"
+                            - text: comments
+                        - separator [ref=f7e666]
+                    - listitem [ref=f7e667]:
+                      - generic [ref=f7e668]:
+                        - generic [ref=f7e669]:
+                          - link "What’s the Most Surprising Blackjack Session You’ve Ever Had?" [ref=f7e670] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1pnv8x1/whats_the_most_surprising_blackjack_session_youve/
+                          - generic [ref=f7e673]:
+                            - generic [ref=f7e676]:
+                              - link "r/blackjack" [ref=f7e677] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e682]: •
+                              - time [ref=f7e684]: 8mo ago
+                            - link [ref=f7e686] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1pnv8x1/whats_the_most_surprising_blackjack_session_youve/
+                              - heading "List item post - What’s the Most Surprising Blackjack Session You’ve Ever Ha..." [level=3] [ref=f7e689]: What’s the Most Surprising Blackjack Session You’ve Ever Had?
+                          - generic [ref=f7e691]:
+                            - generic [ref=f7e692]: "3"
+                            - text: upvotes ·
+                            - generic [ref=f7e693]: "52"
+                            - text: comments
+                        - separator [ref=f7e694]
+                    - listitem [ref=f7e695]:
+                      - generic [ref=f7e696]:
+                        - generic [ref=f7e697]:
+                          - link "Might be quitting blackjack after this" [ref=f7e698] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1u1egxk/might_be_quitting_blackjack_after_this/
+                          - generic [ref=f7e701]:
+                            - generic [ref=f7e704]:
+                              - link "r/blackjack" [ref=f7e705] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e710]: •
+                              - time [ref=f7e712]: 3mo ago
+                            - link [ref=f7e714] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1u1egxk/might_be_quitting_blackjack_after_this/
+                              - heading "List item post - Might be quitting blackjack after this" [level=3] [ref=f7e717]: Might be quitting blackjack after this
+                          - generic [ref=f7e719]:
+                            - generic [ref=f7e720]: "11"
+                            - text: upvotes ·
+                            - generic [ref=f7e721]: "21"
+                            - text: comments
+                        - separator [ref=f7e722]
+                    - listitem [ref=f7e723]:
+                      - generic [ref=f7e724]:
+                        - generic [ref=f7e725]:
+                          - link "I’m pretty sure im addicted to blackjack after only playing it a couple times" [ref=f7e726] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1v3wepw/im_pretty_sure_im_addicted_to_blackjack_after/
+                          - generic [ref=f7e729]:
+                            - generic [ref=f7e732]:
+                              - link "r/blackjack" [ref=f7e733] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e738]: •
+                              - time [ref=f7e740]: 1mo ago
+                            - link [ref=f7e742] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1v3wepw/im_pretty_sure_im_addicted_to_blackjack_after/
+                              - heading "List item post - I’m pretty sure im addicted to blackjack after only playing..." [level=3] [ref=f7e745]: I’m pretty sure im addicted to blackjack after only playing it a couple times
+                          - generic [ref=f7e747]:
+                            - generic [ref=f7e748]: "6"
+                            - text: upvotes ·
+                            - generic [ref=f7e749]: "29"
+                            - text: comments
+                        - separator [ref=f7e750]
+                    - listitem [ref=f7e751]:
+                      - generic [ref=f7e752]:
+                        - generic [ref=f7e753]:
+                          - link "2:1 on suited blackjack." [ref=f7e754] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1pe89z1/21_on_suited_blackjack/
+                          - generic [ref=f7e757]:
+                            - generic [ref=f7e760]:
+                              - link "r/blackjack" [ref=f7e761] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e766]: •
+                              - time [ref=f7e768]: 9mo ago
+                            - link [ref=f7e770] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1pe89z1/21_on_suited_blackjack/
+                              - heading "List item post - 2:1 on suited blackjack." [level=3] [ref=f7e773]: 2:1 on suited blackjack.
+                          - generic [ref=f7e775]:
+                            - generic [ref=f7e776]: "5"
+                            - text: upvotes ·
+                            - generic [ref=f7e777]: "10"
+                            - text: comments
+                        - separator [ref=f7e778]
+                    - listitem [ref=f7e779]:
+                      - generic [ref=f7e780]:
+                        - generic [ref=f7e781]:
+                          - link "Have you ever stuck around after a \"No more Blackjack\" backoff?" [ref=f7e782] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1qzlefj/have_you_ever_stuck_around_after_a_no_more/
+                          - generic [ref=f7e785]:
+                            - generic [ref=f7e788]:
+                              - link "r/blackjack" [ref=f7e789] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e794]: •
+                              - time [ref=f7e796]: 7mo ago
+                            - link [ref=f7e798] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1qzlefj/have_you_ever_stuck_around_after_a_no_more/
+                              - heading "List item post - Have you ever stuck around after a \"No more Blackjack\" back..." [level=3] [ref=f7e801]: Have you ever stuck around after a "No more Blackjack" backoff?
+                          - generic [ref=f7e803]:
+                            - generic [ref=f7e804]: "16"
+                            - text: upvotes ·
+                            - generic [ref=f7e805]: "19"
+                            - text: comments
+                        - separator [ref=f7e806]
+                    - listitem [ref=f7e807]:
+                      - generic [ref=f7e808]:
+                        - generic [ref=f7e809]:
+                          - link "Biggest online blackjack win I’ve personally seen" [ref=f7e810] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1tglfmu/biggest_online_blackjack_win_ive_personally_seen/
+                          - generic [ref=f7e812]:
+                            - generic [ref=f7e813]:
+                              - generic [ref=f7e816]:
+                                - link "r/blackjack" [ref=f7e817] [cursor=pointer]:
+                                  - /url: https://www.reddit.com/r/blackjack/
+                                - generic [ref=f7e822]: •
+                                - time [ref=f7e824]: 3mo ago
+                              - link [ref=f7e826] [cursor=pointer]:
+                                - /url: /r/blackjack/comments/1tglfmu/biggest_online_blackjack_win_ive_personally_seen/
+                                - heading "List item post - Biggest online blackjack win I’ve personally seen" [level=3] [ref=f7e829]: Biggest online blackjack win I’ve personally seen
+                            - link "r/blackjack - Biggest online blackjack win I’ve personally seen" [ref=f7e832] [cursor=pointer]:
+                              - /url: https://www.reddit.com/r/blackjack/comments/1tglfmu/biggest_online_blackjack_win_ive_personally_seen/
+                              - img "r/blackjack - Biggest online blackjack win I’ve personally seen" [ref=f7e833]
+                          - generic [ref=f7e835]:
+                            - generic [ref=f7e836]: "5"
+                            - text: upvotes ·
+                            - generic [ref=f7e837]: "14"
+                            - text: comments
+                        - separator [ref=f7e838]
+                    - listitem [ref=f7e839]:
+                      - generic [ref=f7e840]:
+                        - generic [ref=f7e841]:
+                          - link "I’m a high limit blackjack dealer, ask me anything (ama)" [ref=f7e842] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1v36yg4/im_a_high_limit_blackjack_dealer_ask_me_anything/
+                          - generic [ref=f7e845]:
+                            - generic [ref=f7e848]:
+                              - link "r/blackjack" [ref=f7e849] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e854]: •
+                              - time [ref=f7e856]: 1mo ago
+                            - link [ref=f7e858] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1v36yg4/im_a_high_limit_blackjack_dealer_ask_me_anything/
+                              - heading "List item post - I’m a high limit blackjack dealer, ask me anything (ama)" [level=3] [ref=f7e861]: I’m a high limit blackjack dealer, ask me anything (ama)
+                          - generic [ref=f7e863]:
+                            - generic [ref=f7e864]: "36"
+                            - text: upvotes ·
+                            - generic [ref=f7e865]: "95"
+                            - text: comments
+                        - separator [ref=f7e866]
+                    - listitem [ref=f7e867]:
+                      - generic [ref=f7e868]:
+                        - generic [ref=f7e869]:
+                          - link "What’s the biggest blackjack mistake you made early on that you’ll never repeat?" [ref=f7e870] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1qcpwvw/whats_the_biggest_blackjack_mistake_you_made/
+                          - generic [ref=f7e873]:
+                            - generic [ref=f7e876]:
+                              - link "r/blackjack" [ref=f7e877] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e882]: •
+                              - time [ref=f7e884]: 7mo ago
+                            - link [ref=f7e886] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1qcpwvw/whats_the_biggest_blackjack_mistake_you_made/
+                              - heading "List item post - What’s the biggest blackjack mistake you made early on that..." [level=3] [ref=f7e889]: What’s the biggest blackjack mistake you made early on that you’ll never repeat?
+                          - generic [ref=f7e891]:
+                            - generic [ref=f7e892]: "8"
+                            - text: upvotes ·
+                            - generic [ref=f7e893]: "38"
+                            - text: comments
+                        - separator [ref=f7e894]
+                    - listitem [ref=f7e895]:
+                      - generic [ref=f7e896]:
+                        - generic [ref=f7e897]:
+                          - link "my blackjack superpower is losing with 20" [ref=f7e898] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1n71x5c/my_blackjack_superpower_is_losing_with_20/
+                          - generic [ref=f7e901]:
+                            - generic [ref=f7e904]:
+                              - link "r/blackjack" [ref=f7e905] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e910]: •
+                              - time [ref=f7e912]: 1y ago
+                            - link [ref=f7e914] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1n71x5c/my_blackjack_superpower_is_losing_with_20/
+                              - heading "List item post - my blackjack superpower is losing with 20" [level=3] [ref=f7e917]: my blackjack superpower is losing with 20
+                          - generic [ref=f7e919]:
+                            - generic [ref=f7e920]: "36"
+                            - text: upvotes ·
+                            - generic [ref=f7e921]: "27"
+                            - text: comments
+                        - separator [ref=f7e922]
+                    - listitem [ref=f7e923]:
+                      - generic [ref=f7e924]:
+                        - generic [ref=f7e925]:
+                          - link "What’s your worst single hand blackjack lost ?" [ref=f7e926] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1tlyetk/whats_your_worst_single_hand_blackjack_lost/
+                          - generic [ref=f7e929]:
+                            - generic [ref=f7e932]:
+                              - link "r/blackjack" [ref=f7e933] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e938]: •
+                              - time [ref=f7e940]: 3mo ago
+                            - link [ref=f7e942] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1tlyetk/whats_your_worst_single_hand_blackjack_lost/
+                              - heading "List item post - What’s your worst single hand blackjack lost ?" [level=3] [ref=f7e945]: What’s your worst single hand blackjack lost ?
+                          - generic [ref=f7e947]:
+                            - generic [ref=f7e948]: "28"
+                            - text: comments
+                        - separator [ref=f7e949]
+                    - listitem [ref=f7e950]:
+                      - generic [ref=f7e951]:
+                        - generic [ref=f7e952]:
+                          - link "Became a blackjack dealer a few weeks ago. How do you guys consistently make good tips?" [ref=f7e953] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1vf39vb/became_a_blackjack_dealer_a_few_weeks_ago_how_do/
+                          - generic [ref=f7e956]:
+                            - generic [ref=f7e959]:
+                              - link "r/blackjack" [ref=f7e960] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e965]: •
+                              - time [ref=f7e967]: 22d ago
+                            - link [ref=f7e969] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1vf39vb/became_a_blackjack_dealer_a_few_weeks_ago_how_do/
+                              - heading "List item post - Became a blackjack dealer a few weeks ago. How do you guys ..." [level=3] [ref=f7e972]: Became a blackjack dealer a few weeks ago. How do you guys consistently make good tips?
+                          - generic [ref=f7e974]:
+                            - generic [ref=f7e975]: "6"
+                            - text: upvotes ·
+                            - generic [ref=f7e976]: "31"
+                            - text: comments
+                        - separator [ref=f7e977]
+                    - listitem [ref=f7e978]:
+                      - generic [ref=f7e979]:
+                        - generic [ref=f7e980]:
+                          - link "Test your blackjack knowledge! You should surrender your hand when the probability of winning is less than _____." [ref=f7e981] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1gs96rr/test_your_blackjack_knowledge_you_should/
+                          - generic [ref=f7e984]:
+                            - generic [ref=f7e987]:
+                              - link "r/blackjack" [ref=f7e988] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e993]: •
+                              - time [ref=f7e995]: 2y ago
+                            - link [ref=f7e997] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1gs96rr/test_your_blackjack_knowledge_you_should/
+                              - heading "List item post - Test your blackjack knowledge! You should surrender your ha..." [level=3] [ref=f7e1000]: Test your blackjack knowledge! You should surrender your hand when the probability of winning is less than _____.
+                          - generic [ref=f7e1002]:
+                            - generic [ref=f7e1003]: "4"
+                            - text: upvotes ·
+                            - generic [ref=f7e1004]: "19"
+                            - text: comments
+                        - separator [ref=f7e1005]
+                    - listitem [ref=f7e1006]:
+                      - generic [ref=f7e1007]:
+                        - generic [ref=f7e1008]:
+                          - link "First time playing blackjack turned $50 into $330!!" [ref=f7e1009] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1mkkd5p/first_time_playing_blackjack_turned_50_into_330/
+                          - generic [ref=f7e1012]:
+                            - generic [ref=f7e1015]:
+                              - link "r/blackjack" [ref=f7e1016] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1021]: •
+                              - time [ref=f7e1023]: 1y ago
+                            - link [ref=f7e1025] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1mkkd5p/first_time_playing_blackjack_turned_50_into_330/
+                              - heading "List item post - First time playing blackjack turned $50 into $330!!" [level=3] [ref=f7e1028]: First time playing blackjack turned $50 into $330!!
+                          - generic [ref=f7e1030]:
+                            - generic [ref=f7e1031]: "35"
+                            - text: upvotes ·
+                            - generic [ref=f7e1032]: "29"
+                            - text: comments
+                        - separator [ref=f7e1033]
+                    - listitem [ref=f7e1034]:
+                      - generic [ref=f7e1035]:
+                        - generic [ref=f7e1036]:
+                          - link "I am a blackjack dealer. Our casino got hit for $100k from counters and they are trying to make it my problem by threatening to fire me." [ref=f7e1037] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1jhl5iu/i_am_a_blackjack_dealer_our_casino_got_hit_for/
+                          - generic [ref=f7e1040]:
+                            - generic [ref=f7e1043]:
+                              - link "r/blackjack" [ref=f7e1044] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1049]: •
+                              - time [ref=f7e1051]: 1y ago
+                            - link [ref=f7e1053] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1jhl5iu/i_am_a_blackjack_dealer_our_casino_got_hit_for/
+                              - heading "List item post - I am a blackjack dealer. Our casino got hit for $100k from ..." [level=3] [ref=f7e1056]: I am a blackjack dealer. Our casino got hit for $100k from counters and they are trying to make it my problem by threatening to fire me.
+                          - generic [ref=f7e1058]:
+                            - generic [ref=f7e1059]: "147"
+                            - text: upvotes ·
+                            - generic [ref=f7e1060]: "86"
+                            - text: comments
+                        - separator [ref=f7e1061]
+                    - listitem [ref=f7e1062]:
+                      - generic [ref=f7e1063]:
+                        - generic [ref=f7e1064]:
+                          - link "Blackjack +3 Side-Bet" [ref=f7e1065] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1kkrzou/blackjack_3_sidebet/
+                          - generic [ref=f7e1068]:
+                            - generic [ref=f7e1071]:
+                              - link "r/blackjack" [ref=f7e1072] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1077]: •
+                              - time [ref=f7e1079]: 1y ago
+                            - link [ref=f7e1081] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1kkrzou/blackjack_3_sidebet/
+                              - heading "List item post - Blackjack +3 Side-Bet" [level=3] [ref=f7e1084]: Blackjack +3 Side-Bet
+                          - generic [ref=f7e1086]:
+                            - generic [ref=f7e1087]: "5"
+                            - text: upvotes ·
+                            - generic [ref=f7e1088]: "8"
+                            - text: comments
+                        - separator [ref=f7e1089]
+                    - listitem [ref=f7e1090]:
+                      - generic [ref=f7e1091]:
+                        - generic [ref=f7e1092]:
+                          - link "\"Double on a Bust Card\"" [ref=f7e1093] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1t8vqsi/double_on_a_bust_card/
+                          - generic [ref=f7e1096]:
+                            - generic [ref=f7e1099]:
+                              - link "r/blackjack" [ref=f7e1100] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1105]: •
+                              - time [ref=f7e1107]: 4mo ago
+                            - link [ref=f7e1109] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1t8vqsi/double_on_a_bust_card/
+                              - heading "List item post - \"Double on a Bust Card\"" [level=3] [ref=f7e1112]: "\"Double on a Bust Card\""
+                          - generic [ref=f7e1114]:
+                            - generic [ref=f7e1115]: "31"
+                            - text: upvotes ·
+                            - generic [ref=f7e1116]: "30"
+                            - text: comments
+                        - separator [ref=f7e1117]
+                    - listitem [ref=f7e1118]:
+                      - generic [ref=f7e1119]:
+                        - generic [ref=f7e1120]:
+                          - link "First time playing blackjack, turned $50 into $190. Is this impressive?" [ref=f7e1121] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1mceiud/first_time_playing_blackjack_turned_50_into_190/
+                          - generic [ref=f7e1124]:
+                            - generic [ref=f7e1127]:
+                              - link "r/blackjack" [ref=f7e1128] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1133]: •
+                              - time [ref=f7e1135]: 1y ago
+                            - link [ref=f7e1137] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1mceiud/first_time_playing_blackjack_turned_50_into_190/
+                              - heading "List item post - First time playing blackjack, turned $50 into $190. Is this..." [level=3] [ref=f7e1140]: First time playing blackjack, turned $50 into $190. Is this impressive?
+                          - generic [ref=f7e1142]:
+                            - generic [ref=f7e1143]: "2"
+                            - text: upvotes ·
+                            - generic [ref=f7e1144]: "48"
+                            - text: comments
+                        - separator [ref=f7e1145]
+                    - listitem [ref=f7e1146]:
+                      - generic [ref=f7e1147]:
+                        - generic [ref=f7e1148]:
+                          - link "What does double down mean in blackjack?" [ref=f7e1149] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1h142zv/what_does_double_down_mean_in_blackjack/
+                          - generic [ref=f7e1152]:
+                            - generic [ref=f7e1155]:
+                              - link "r/blackjack" [ref=f7e1156] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1161]: •
+                              - time [ref=f7e1163]: 2y ago
+                            - link [ref=f7e1165] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1h142zv/what_does_double_down_mean_in_blackjack/
+                              - heading "List item post - What does double down mean in blackjack?" [level=3] [ref=f7e1168]: What does double down mean in blackjack?
+                          - generic [ref=f7e1170]:
+                            - generic [ref=f7e1171]: "14"
+                            - text: comments
+                        - separator [ref=f7e1172]
+                    - listitem [ref=f7e1173]:
+                      - generic [ref=f7e1174]:
+                        - generic [ref=f7e1175]:
+                          - link "I don’t know how anyone comfortable with live dealer online games after watching this guys videos" [ref=f7e1176] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1uethn2/i_dont_know_how_anyone_comfortable_with_live/
+                          - generic [ref=f7e1178]:
+                            - generic [ref=f7e1179]:
+                              - generic [ref=f7e1182]:
+                                - link "r/blackjack" [ref=f7e1183] [cursor=pointer]:
+                                  - /url: https://www.reddit.com/r/blackjack/
+                                - generic [ref=f7e1188]: •
+                                - time [ref=f7e1190]: 2mo ago
+                              - link [ref=f7e1192] [cursor=pointer]:
+                                - /url: /r/blackjack/comments/1uethn2/i_dont_know_how_anyone_comfortable_with_live/
+                                - heading "List item post - I don’t know how anyone comfortable with live dealer online..." [level=3] [ref=f7e1195]: I don’t know how anyone comfortable with live dealer online games after watching this guys videos
+                            - generic [ref=f7e1197]:
+                              - link "r/blackjack - I don’t know how anyone comfortable with live dealer online games after watching this guys videos" [ref=f7e1198] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/comments/1uethn2/i_dont_know_how_anyone_comfortable_with_live/
+                                - img "r/blackjack - I don’t know how anyone comfortable with live dealer online games after watching this guys videos" [ref=f7e1199]
+                              - generic: 1:15
+                          - generic [ref=f7e1201]:
+                            - generic [ref=f7e1202]: "19"
+                            - text: upvotes ·
+                            - generic [ref=f7e1203]: "11"
+                            - text: comments
+                        - separator [ref=f7e1204]
+                    - listitem [ref=f7e1205]:
+                      - generic [ref=f7e1206]:
+                        - generic [ref=f7e1207]:
+                          - link "The 21 + 3 blackjack side-bet is beatable" [ref=f7e1208] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1rq0p4v/the_21_3_blackjack_sidebet_is_beatable/
+                          - generic [ref=f7e1211]:
+                            - generic [ref=f7e1214]:
+                              - link "r/blackjack" [ref=f7e1215] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1220]: •
+                              - time [ref=f7e1222]: 6mo ago
+                            - link [ref=f7e1224] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1rq0p4v/the_21_3_blackjack_sidebet_is_beatable/
+                              - heading "List item post - The 21 + 3 blackjack side-bet is beatable" [level=3] [ref=f7e1227]: The 21 + 3 blackjack side-bet is beatable
+                          - generic [ref=f7e1229]:
+                            - generic [ref=f7e1230]: "22"
+                            - text: upvotes ·
+                            - generic [ref=f7e1231]: "22"
+                            - text: comments
+                        - separator [ref=f7e1232]
+                    - listitem [ref=f7e1233]:
+                      - generic [ref=f7e1234]:
+                        - generic [ref=f7e1235]:
+                          - link "Worst Black Jack Player You Have Ever Experienced." [ref=f7e1236] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1lgq585/worst_black_jack_player_you_have_ever_experienced/
+                          - generic [ref=f7e1239]:
+                            - generic [ref=f7e1242]:
+                              - link "r/blackjack" [ref=f7e1243] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1248]: •
+                              - time [ref=f7e1250]: 1y ago
+                            - link [ref=f7e1252] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1lgq585/worst_black_jack_player_you_have_ever_experienced/
+                              - heading "List item post - Worst Black Jack Player You Have Ever Experienced." [level=3] [ref=f7e1255]: Worst Black Jack Player You Have Ever Experienced.
+                          - generic [ref=f7e1257]:
+                            - generic [ref=f7e1258]: "54"
+                            - text: upvotes ·
+                            - generic [ref=f7e1259]: "55"
+                            - text: comments
+                        - separator [ref=f7e1260]
+                    - listitem [ref=f7e1261]:
+                      - generic [ref=f7e1262]:
+                        - generic [ref=f7e1263]:
+                          - link "What’s the one piece of blackjack advice you wish you knew when you first started?" [ref=f7e1264] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1rs1vkz/whats_the_one_piece_of_blackjack_advice_you_wish/
+                          - generic [ref=f7e1267]:
+                            - generic [ref=f7e1270]:
+                              - link "r/blackjack" [ref=f7e1271] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1276]: •
+                              - time [ref=f7e1278]: 6mo ago
+                            - link [ref=f7e1280] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1rs1vkz/whats_the_one_piece_of_blackjack_advice_you_wish/
+                              - heading "List item post - What’s the one piece of blackjack advice you wish you knew ..." [level=3] [ref=f7e1283]: What’s the one piece of blackjack advice you wish you knew when you first started?
+                          - generic [ref=f7e1285]:
+                            - generic [ref=f7e1286]: "20"
+                            - text: upvotes ·
+                            - generic [ref=f7e1287]: "54"
+                            - text: comments
+                        - separator [ref=f7e1288]
+                    - listitem [ref=f7e1289]:
+                      - generic [ref=f7e1291]:
+                        - link "Do you play online blackjack any differently than live dealer?" [ref=f7e1292] [cursor=pointer]:
+                          - /url: https://www.reddit.com/r/blackjack/comments/1vsrhii/do_you_play_online_blackjack_any_differently_than/
+                        - generic [ref=f7e1294]:
+                          - generic [ref=f7e1295]:
+                            - generic [ref=f7e1298]:
+                              - link "r/blackjack" [ref=f7e1299] [cursor=pointer]:
+                                - /url: https://www.reddit.com/r/blackjack/
+                              - generic [ref=f7e1304]: •
+                              - time [ref=f7e1306]: 6d ago
+                            - link [ref=f7e1308] [cursor=pointer]:
+                              - /url: /r/blackjack/comments/1vsrhii/do_you_play_online_blackjack_any_differently_than/
+                              - heading "List item post - Do you play online blackjack any differently than live deal..." [level=3] [ref=f7e1311]: Do you play online blackjack any differently than live dealer?
+                          - link "r/blackjack - Do you play online blackjack any differently than live dealer?" [ref=f7e1314] [cursor=pointer]:
+                            - /url: https://www.reddit.com/r/blackjack/comments/1vsrhii/do_you_play_online_blackjack_any_differently_than/
+                            - img "r/blackjack - Do you play online blackjack any differently than live dealer?" [ref=f7e1315]
+                        - generic [ref=f7e1317]:
+                          - generic [ref=f7e1318]: "27"
+                          - text: upvotes ·
+                          - generic [ref=f7e1319]: "22"
+                          - text: comments
+                - complementary "Community information" [ref=f7e1320]:
+                  - generic [ref=f7e1322]:
+                    - heading "Community Info Section" [level=1] [ref=f7e1323]
+                    - generic [ref=f7e1324]:
+                      - link "r/blackjack" [ref=f7e1326] [cursor=pointer]:
+                        - /url: /r/blackjack/
+                      - button "Join" [ref=f7e1331] [cursor=pointer]
+                    - generic [ref=f7e1332]:
+                      - generic [ref=f7e1333]: Blackjack subreddit
+                      - generic [ref=f7e1334]: All the information about blackjack you want, both for serious advantage players and for casual players.
+                      - generic: Public
+              - list [ref=f7e1341]:
+                - listitem [ref=f7e1342]:
+                  - link "Home" [ref=f7e1344] [cursor=pointer]:
+                    - /url: /?feed=home
+                - listitem [ref=f7e1345]:
+                  - link "Popular" [ref=f7e1347] [cursor=pointer]:
+                    - /url: /r/popular/
+                - listitem [ref=f7e1348]:
+                  - link "News" [ref=f7e1350] [cursor=pointer]:
+                    - /url: /news/
+                - listitem [ref=f7e1351]:
+                  - link "Explore" [ref=f7e1353] [cursor=pointer]:
+                    - /url: /explore/
+                - listitem [ref=f7e1354]:
+                  - link "Best of Reddit" [ref=f7e1356] [cursor=pointer]:
+                    - /url: https://www.reddit.com/posts/2026/global/
+                - listitem [ref=f7e1357]:
+                  - link "Best of Reddit in Portuguese" [ref=f7e1359] [cursor=pointer]:
+                    - /url: https://www.reddit.com/posts/2026/tl-pt-BR/
+                - listitem [ref=f7e1360]:
+                  - link "Best of Reddit in German" [ref=f7e1362] [cursor=pointer]:
+                    - /url: https://www.reddit.com/posts/2026/tl-de/
+                - listitem [ref=f7e1363]:
+                  - link "Reddit Rules" [ref=f7e1365] [cursor=pointer]:
+                    - /url: https://www.redditinc.com/policies/content-policy
+                - listitem [ref=f7e1366]:
+                  - link "Privacy Policy" [ref=f7e1368] [cursor=pointer]:
+                    - /url: https://www.reddit.com/policies/privacy-policy
+                - listitem [ref=f7e1369]:
+                  - link "User Agreement" [ref=f7e1371] [cursor=pointer]:
+                    - /url: https://www.redditinc.com/policies/user-agreement
+                - listitem [ref=f7e1372]:
+                  - link "Accessibility" [ref=f7e1374] [cursor=pointer]:
+                    - /url: https://support.reddithelp.com/hc/sections/38303584022676-Accessibility
+                - listitem [ref=f7e1375]:
+                  - link "Reddit, Inc. © 2026. All rights reserved." [ref=f7e1376] [cursor=pointer]:
+                    - /url: https://redditinc.com
+        - generic [ref=f7e1379]:
+          - paragraph [ref=f7e1380]: Join the most real place on the internet
+          - generic [ref=f7e1382]:
+            - generic [ref=f7e1385]:
+              - iframe [ref=f7e1390]:
+                - button "Continue with Google. Opens in new tab" [ref=f8e3] [cursor=pointer]:
+                  - generic [ref=f8e5]: Continue with Google
+              - generic [ref=f7e1392] [cursor=pointer]:
+                - generic [ref=f7e1393]: Continue with Apple
+                - button "Sign in with Apple" [ref=f7e1399]:
+                  - generic [ref=f7e1400]:
+                    - img:
+                      - generic:
+                        - img:
+                          - generic:  Sign in with Apple
+            - link "Continue with Phone Number" [ref=f7e1405] [cursor=pointer]:
+              - /url: https://www.reddit.com/login/
+            - link "Continue with Email" [ref=f7e1414] [cursor=pointer]:
+              - /url: https://www.reddit.com/register/
+          - paragraph [ref=f7e1421]:
+            - text: By continuing, you agree to our
+            - link "User Agreement" [ref=f7e1422] [cursor=pointer]:
+              - /url: https://www.redditinc.com/policies/user-agreement
+            - text: and acknowledge that you understand the
+            - link "Privacy Policy" [ref=f7e1423] [cursor=pointer]:
+              - /url: https://www.redditinc.com/policies/privacy-policy
+            - text: .
