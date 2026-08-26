@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DDMTableGame } from "@/components/DDMTableGame";
 import { DDMEvCalculator } from "@/components/DDMEvCalculator";
+import { DDMLongRunCalculator } from "@/components/DDMLongRunCalculator";
 import { GhostButton, Metric, Panel } from "@/components/ui";
 import {
   ACTION_NAMES,
@@ -14,11 +15,12 @@ import {
   type DDMAction,
 } from "@/lib/ddm/engine";
 
-type Tab = "game" | "calculator" | "strategy" | "deviations" | "edge";
+type Tab = "game" | "calculator" | "hand" | "strategy" | "deviations" | "edge";
 
 const tabLabels: Record<Tab, string> = {
   game: "Play Game",
   calculator: "EV Calculator",
+  hand: "Hand EV Analyzer",
   strategy: "Strategy",
   deviations: "Deviations",
   edge: "Edge & Spread",
@@ -101,19 +103,19 @@ function EdgeAndSpread() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="Hi-Lo betting correlation" value="0.9779" sub="Exact fresh-shoe EOR vector" />
         <Metric label="Exact chart house edge" value="0.8860%" sub="CSM / fresh composition" />
-        <Metric label="Indexed ramp EV" value="+0.073899" sub="Units per round · one-deck cut" />
-        <Metric label="Indexed N0" value="12,923" sub="1B-round benchmark" />
+        <Metric label="Indexed ramp EV" value="+0.073979" sub="Units per round · one-deck cut" />
+        <Metric label="Indexed N0" value="12,896" sub="Independent 10B-round benchmark" />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel>
           <h2 className="text-xl font-semibold">Recommended 1–16 ramp</h2>
           <div className="mt-4 space-y-2">{BETTING_RAMP.map((row) => <div key={row.label} className="flex items-center justify-between rounded-xl bg-black/20 px-4 py-3 text-sm"><span className="text-zinc-400">{row.label}</span><b>{row.units} unit{row.units === 1 ? "" : "s"}</b></div>)}</div>
-          <p className="mt-4 text-xs leading-5 text-zinc-500">Benchmark: Version 1, six decks, H17, one deck cut off, one occupied spot, exact deck estimation, insurance +4, and the 18 departures. At 100 rounds/hour it produced 7.390 units/hour with 84.006 units/hour SD.</p>
+          <p className="mt-4 text-xs leading-5 text-zinc-500">Benchmark: Version 1, six decks, H17, one deck cut off, one occupied spot, exact deck estimation, insurance +4, and the 18 departures. The independent ten-billion-round run produced 7.398 units/hour with 84.010 units/hour SD.</p>
         </Panel>
         <Panel>
           <h2 className="text-xl font-semibold">Bankroll and penetration</h2>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">The benchmark bankroll for 5% lifetime risk of ruin is about <b className="text-white">1,430 base units</b>. A $10 unit therefore implies roughly $14,300. The spread was approximately break-even with only two decks dealt; the attractive result needs much deeper penetration.</p>
-          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073899</p><p className="text-xs text-zinc-600">EV / round</p></div><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-zinc-600">EV / round</p></div></div>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">The benchmark bankroll for 5% lifetime risk of ruin is about <b className="text-white">1,429 base units</b>. A $10 unit therefore implies roughly $14,290. The spread was approximately break-even with only two decks dealt; the attractive result needs much deeper penetration.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073979</p><p className="text-xs text-zinc-600">EV / round · 10B run</p></div><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-zinc-600">EV / round · 500M run</p></div></div>
           <p className="mt-4 text-xs leading-5 text-amber-200/80">A continuous shuffler has no usable pre-deal count variation and remains a house game. Casino conditions, limits, speed, and tolerance of this spread are not modeled.</p>
         </Panel>
       </div>
@@ -137,7 +139,7 @@ export function DDMLab() {
       <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto border-y border-white/[.06] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:mt-6 sm:flex-wrap sm:border-0 sm:bg-transparent sm:p-0" role="tablist">
         {(Object.keys(tabLabels) as Tab[]).map((item) => <GhostButton key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`shrink-0 whitespace-nowrap ${tab === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>{tabLabels[item]}</GhostButton>)}
       </div>
-      {tab === "game" ? <DDMTableGame /> : tab === "calculator" ? <DDMEvCalculator /> : tab === "strategy" ? <StrategyReference /> : tab === "deviations" ? <DeviationsReference /> : <EdgeAndSpread />}
+      {tab === "game" ? <DDMTableGame /> : tab === "calculator" ? <DDMLongRunCalculator /> : tab === "hand" ? <DDMEvCalculator /> : tab === "strategy" ? <StrategyReference /> : tab === "deviations" ? <DeviationsReference /> : <EdgeAndSpread />}
     </>
   );
 }

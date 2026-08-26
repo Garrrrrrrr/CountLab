@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -163,6 +164,7 @@ def main() -> None:
         "tag_divisor": args.tag_divisor,
         "index_source": args.indices, "index_limit": args.index_limit,
         "deviations_used": deviations, "rounds_requested_per_scenario": args.rounds,
+        "seed": args.seed, "tasks": args.tasks or (os.cpu_count() or 4),
         "hands_per_hour": args.hands_per_hour, "bankroll": args.bankroll,
         "target_risk": args.target_risk, "results": results,
         "elapsed_seconds": time.time() - started,

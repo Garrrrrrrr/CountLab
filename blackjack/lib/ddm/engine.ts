@@ -7,6 +7,8 @@ export interface DDMCard {
   id: number;
   rank: DDMRank;
   suit: DDMSuit;
+  /** 1 through 13, so a table can show J/Q/K instead of four identical tens. */
+  pip?: number;
 }
 
 export interface HandValue {
@@ -123,7 +125,7 @@ export function createShoe(decks = 6): DDMCard[] {
   for (let deck = 0; deck < decks; deck += 1) {
     for (const suit of ["c", "d", "h", "s"] as const) {
       for (let pip = 1; pip <= 13; pip += 1) {
-        cards.push({ id: id++, rank: Math.min(pip, 10) as DDMRank, suit });
+        cards.push({ id: id++, rank: Math.min(pip, 10) as DDMRank, suit, pip });
       }
     }
   }

@@ -125,6 +125,13 @@ Insurance contributes most of the index gain. Exact thresholds are still a
 model of a one-parameter count: unusual real compositions with the same TC can
 have different optimal actions.
 
+An independent fixed-ramp confirmation using seed `20260826` and
+**9,999,999,996 rounds** produced **+0.073979 ± 0.000165 units/round**, SD
+**8.4010**, and N0 **12,896**. The EV differs from the original one-billion
+result by only +0.000081 units/round, well inside its confidence interval. The
+CountLab long-run calculator uses this tighter ten-billion-round result and its
+17 true-count buckets; the artifact is `results/main_hilo_indices_10b.json`.
+
 ## Ramp, bankroll and hourly result
 
 Main benchmark: Version 1, six decks, one deck cut off, one occupied table spot,
