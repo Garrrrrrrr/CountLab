@@ -60,10 +60,10 @@ export default function DeviationReferencePage() {
 
   return <>
     <h1 className="text-3xl font-semibold">Index Deviations</h1>
-    <p className="mt-2 text-zinc-400">Index deviations for 4–8 deck games: 30 H17 plays, 32 S17 plays.</p>
+    <p className="mt-2 text-zinc-400">Index deviations for 4–8 deck games: 33 H17 plays, 32 S17 plays.</p>
     <Panel className="mt-7">
       <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-sm text-zinc-300">
-        <p>The H17 rows are every index the H17 chart prints, so this page, the play drill and the chart drill all teach one set of numbers; the S17 rows come from the supplied S17 Pro chart. Each catalog includes insurance, split, soft-total, hard-total, and late-surrender decisions. “Always” means the chart marks the surrender as a standing late-surrender play rather than a count threshold.</p>
+        <p>The H17 rows are every index the H17 chart prints plus three soft-20 doubles added here (A,9 versus 4, 5 and 6 at +6, +5 and +4), so this page, the play drill and the chart drill all teach one set of numbers; the S17 rows come from the supplied S17 Pro chart. Each catalog includes insurance, split, soft-total, hard-total, and late-surrender decisions. “Always” means the chart marks the surrender as a standing late-surrender play rather than a count threshold.</p>
         <p className="mt-2 text-xs leading-5 text-zinc-500">
           Insurance is TC +3 for 4–8 deck games. Whether the table offers surrender changes which plays do anything at all, so pick both settings below. The chart’s starred stand indices for 15 and 16 are applied only where surrender is unavailable: standing on those hands is worth about −0.53 to −0.61 per unit at <em>every</em> true count, because a ten-rich shoe leaves the dealer fewer stiff hands to bust with, so it never overtakes the flat −0.50 of surrendering.
         </p>

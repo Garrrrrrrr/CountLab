@@ -37,7 +37,7 @@ describe("BJA H17 chart", () => {
     expect(total).toBe(320);
   });
 
-  it("carries exactly the 26 printed index cells", () => {
+  it("carries exactly the 26 printed index cells plus the three soft-20 doubles", () => {
     const indices: string[] = [];
     for (const chartSection of BJA_H17_SECTIONS) {
       for (const row of chartSection.rows) {
@@ -51,6 +51,9 @@ describe("BJA H17 chart", () => {
       "pairs T,Tv4 6+",
       "pairs T,Tv5 5+",
       "pairs T,Tv6 4+",
+      "soft A,9v4 6+",
+      "soft A,9v5 5+",
+      "soft A,9v6 4+",
       "soft A,8v4 3+",
       "soft A,8v5 1+",
       "soft A,8v6 0-",
@@ -89,6 +92,9 @@ describe("BJA H17 chart", () => {
     expect(cell("pairs", "9,9", "8")).toBe("Y");
     expect(cell("pairs", "T,T", "4")).toBe("6+");
     expect(cell("pairs", "4,4", "5")).toBe("Y/N");
+    expect(cell("soft", "A,9", "3")).toBe("S");
+    expect(cell("soft", "A,9", "4")).toBe("6+");
+    expect(cell("soft", "A,9", "6")).toBe("4+");
     expect(cell("soft", "A,7", "6")).toBe("Ds");
     expect(cell("soft", "A,7", "9")).toBe("H");
     expect(cell("hard", "8", "6")).toBe("2+");
@@ -116,7 +122,7 @@ T,T N N 6+ 5+ 4+ N N N N N
 2,2 Y/N Y/N Y Y Y Y N N N N
 
 Soft totals
-A,9 S S S S S S S S S S
+A,9 S S 6+ 5+ 4+ S S S S S
 A,8 S S 3+ 1+ 0- S S S S S
 A,7 Ds Ds Ds Ds Ds S S H H H
 A,6 1+ D D D D H H H H H

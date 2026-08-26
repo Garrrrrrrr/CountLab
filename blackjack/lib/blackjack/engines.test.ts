@@ -157,7 +157,7 @@ describe("deviations", () => {
     expect(deviationDecision(ten, 4)).toBe("D");
   });
   it("uses the complete H17 chart catalog", () => {
-    expect(DEVIATIONS).toHaveLength(30);
+    expect(DEVIATIONS).toHaveLength(33);
   });
 });
 describe("advantage model", () => {

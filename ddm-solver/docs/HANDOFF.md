@@ -11,6 +11,17 @@ optimisation and sampled shoe analysis are implemented and validated. See
 [`findings.md`](findings.md) for the verdict and final numbers. The sections
 below preserve the original implementation handoff and investigation history.
 
+**CountLab integration (August 2026):** `/double-down-madness` is now a full
+Casino Games module with a persistent-shoe game/coach, exact hand analyzer,
+strategy and deviation references, and a blackjack-style long-run EV
+calculator. The EV calculator exposes unit, bankroll, pace, session length,
+risk target, audited penetration/count/policy combinations, a 17-bucket custom
+TC spread, presets, scaling, and wong-in shortcuts. It recomputes EV, variance,
+hourly SD, N0, SCORE and bankroll risk from normalized simulation buckets; no
+blackjack coefficients or penetration interpolation are used. Run
+`npm run generate:ddm-buckets` in `blackjack/` to rebuild
+`lib/ddm/profileBuckets.generated.json` from the solver artifacts.
+
 ---
 
 ## 1. Rules as implemented, with sources

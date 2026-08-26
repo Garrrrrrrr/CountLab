@@ -464,7 +464,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     const resolvedDeviation = resolveDeviation(basic.action, handLabel, rankForIndex(dealer[0]), tc, rules);
     const deviation = resolvedDeviation.deviation;
     let action = resolvedDeviation.action as Action;
-    if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? "H" : action === "R" ? "H" : basic.action;
+    // An unavailable double falls back to what basic strategy plays on this
+    // hand, not to a bare hit: where the *index* raised a stand to a double
+    // (soft 20 and soft 19 versus a small card), hitting is the one answer that
+    // is wrong under every count.
+    if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? basic.action : action === "R" ? "H" : basic.action;
     if (!legal.includes(action)) action = "H";
     const explanation = deviation
       ? `${deviation.hand} vs ${deviation.dealer} changes from ${DEVIATION_ACTION_NAMES[deviation.normalAction]} to ${DEVIATION_ACTION_NAMES[deviation.deviationAction]} ${deviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(deviation.index)}. Current TC: ${signed(tc)}.`

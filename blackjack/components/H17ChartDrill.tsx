@@ -379,8 +379,9 @@ export function H17ChartDrill() {
       </div>
 
       <p className="mt-5 text-xs leading-5 text-zinc-500">
-        Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018). Insurance or even money:
-        take at true count +3 or above.
+        Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition:
+        soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4, the counts where doubling overtakes
+        standing. Insurance or even money: take at true count +3 or above.
       </p>
 
       <MobileActionDock label="Chart entry keys">

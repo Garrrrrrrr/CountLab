@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { calculateDDMLongRun, DDM_PROFILES, reweightMainRamp } from "./longRun";
+import {
+  calculateDDMLongRun,
+  DEFAULT_DDM_RAMP,
+  DDM_PROFILES,
+  ddmRampWithWonging,
+  getDDMSourceProfile,
+  reweightDDMProfile,
+  reweightMainRamp,
+} from "./longRun";
 
 const main = DDM_PROFILES.find((profile) => profile.id === "main")!;
 
@@ -42,6 +50,43 @@ describe("DDM long-run calculator", () => {
     expect(flat.avgBet).toBeCloseTo(1, 7);
     expect(flat.variancePerRound).toBeGreaterThan(0);
     expect(flat.evPerRound).toBeLessThan(main.evPerRound);
+  });
+
+  it("reprices an independently editable wager at every TC bucket", () => {
+    const source = getDDMSourceProfile({ cutDecks: 1, tcMode: "exact", policy: "indices" })!;
+    const withoutTc2 = DEFAULT_DDM_RAMP.map((units, index) => index === 10 ? 0 : units);
+    const edited = reweightDDMProfile(source, withoutTc2);
+    const tc2 = main.buckets.find((bucket) => bucket.tc === 2)!;
+    expect(edited.buckets).toHaveLength(17);
+    expect(edited.buckets.find((bucket) => bucket.tc === 2)?.units).toBe(0);
+    expect(edited.avgBet).toBeCloseTo(main.avgBet - tc2.frequency * 7, 13);
+    expect(edited.evPerRound).toBeCloseTo(main.evPerRound - tc2.evContribution, 13);
+    expect(edited.variancePerRound).not.toBe(main.variancePerRound);
+  });
+
+  it("models wonging as zero action while preserving observed-round frequencies", () => {
+    const source = getDDMSourceProfile({ cutDecks: 1, tcMode: "exact", policy: "indices" })!;
+    const profile = reweightDDMProfile(source, ddmRampWithWonging(DEFAULT_DDM_RAMP, 1));
+    const expectedPlayed = source.buckets.filter((bucket) => bucket.tc >= 1).reduce((sum, bucket) => sum + bucket.frequency, 0);
+    expect(profile.buckets.filter((bucket) => bucket.tc < 1).every((bucket) => bucket.units === 0)).toBe(true);
+    expect(profile.playedFrequency).toBeCloseTo(expectedPlayed, 14);
+    expect(profile.buckets.reduce((sum, bucket) => sum + bucket.frequency, 0)).toBeCloseTo(1, 7);
+  });
+
+  it("selects only simulation-backed penetration, precision, and policy combinations", () => {
+    expect(getDDMSourceProfile({ cutDecks: 2, tcMode: "exact", policy: "indices" })?.rounds).toBe(499_999_992);
+    expect(getDDMSourceProfile({ cutDecks: 1, tcMode: "half", policy: "indices" })?.id).toBe("half");
+    expect(getDDMSourceProfile({ cutDecks: 1, tcMode: "exact", policy: "insurance" })?.id).toBe("insurance");
+    expect(getDDMSourceProfile({ cutDecks: 2, tcMode: "half", policy: "indices" })).toBeUndefined();
+  });
+
+  it("reproduces audited non-main aggregates after bucket normalization", () => {
+    const half = reweightDDMProfile(getDDMSourceProfile({ cutDecks: 1, tcMode: "half", policy: "indices" })!, DEFAULT_DDM_RAMP);
+    const shallow = reweightDDMProfile(getDDMSourceProfile({ cutDecks: 4.1, tcMode: "exact", policy: "indices" })!, DEFAULT_DDM_RAMP);
+    expect(half.evPerRound).toBeCloseTo(0.07053724178214897, 14);
+    expect(half.variancePerRound).toBeCloseTo(65.35089770769527, 11);
+    expect(shallow.evPerRound).toBeCloseTo(-0.0002753712511014846, 14);
+    expect(shallow.variancePerRound).toBeCloseTo(13.338073672460467, 11);
   });
 
   it("marks negative-EV profiles as having no finite N0 or bankroll solution", () => {

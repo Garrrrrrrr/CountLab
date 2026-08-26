@@ -46,9 +46,10 @@ export interface H17Deviation {
 type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number, outsideSurrenderWindow?: true];
 
 /**
- * The Blackjack Apprenticeship H17 chart's 26 printed index cells, plus the
- * chart's insurance legend ("INSURANCE OR EVEN MONEY: TAKE AT 3+") and its
- * three unconditional late-surrender plays: 30 rows for 4–8 deck games.
+ * The Blackjack Apprenticeship H17 chart's 26 printed index cells, the three
+ * soft-20 doubles this app adds to it, the chart's insurance legend
+ * ("INSURANCE OR EVEN MONEY: TAKE AT 3+") and its three unconditional
+ * late-surrender plays: 33 rows for 4–8 deck games.
  *
  * These are the same indices the H17 chart drill is graded against — the
  * transcription in `bjaH17Chart.ts` is the source, and a test in
@@ -65,7 +66,8 @@ const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["Insurance", "A", 3, "N", "I"],
   // Pair splitting: T,T
   ["10,10", "4", 6, "S", "P"], ["10,10", "5", 5, "S", "P"], ["10,10", "6", 4, "S", "P"],
-  // Soft totals: A,8 and A,6
+  // Soft totals: A,9 (this app's addition, see bjaH17Chart.ts), A,8 and A,6
+  ["Soft 20", "4", 6, "S", "D"], ["Soft 20", "5", 5, "S", "D"], ["Soft 20", "6", 4, "S", "D"],
   ["Soft 19", "4", 3, "S", "D"], ["Soft 19", "5", 1, "S", "D"], ["Soft 19", "6", 0, "S", "D"],
   ["Soft 17", "2", 1, "H", "D"],
   // Hard totals: the stand indices for 15 and 16, starred on the chart
