@@ -360,16 +360,6 @@ export function StrategyDrill() {
         </div>
         <GhostButton onClick={endDrill}>End drill</GhostButton>
       </div>
-      {feedback && (
-        <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand}</p>
-          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
-            {feedback.chosen === feedback.correct ? `Correct — ${names[feedback.correct]}` : `You chose ${names[feedback.chosen]} · Correct: ${names[feedback.correct]}`}
-          </b>
-          <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
-          <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
-        </div>
-      )}
       {awaitingFinal ? (
         <Panel className="pb-24 lg:pb-6">
           <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
@@ -419,6 +409,16 @@ export function StrategyDrill() {
             </div>
           </MobileActionDock>
         </>
+      )}
+      {feedback && (
+        <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+            {feedback.chosen === feedback.correct ? `Correct — ${names[feedback.correct]}` : `You chose ${names[feedback.chosen]} · Correct: ${names[feedback.correct]}`}
+          </b>
+          <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
+          <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
+        </div>
       )}
     </>
   );
@@ -623,23 +623,6 @@ export function DeviationDrill() {
         />
         <GhostButton onClick={endDrill}>End drill</GhostButton>
       </div>
-      {feedback && (
-        <div aria-live="polite" className={`mb-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
-          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
-            {feedback.chosen === feedback.correct ? `Correct — ${DEVIATION_ACTION_NAMES[feedback.correct]}` : `You chose ${DEVIATION_ACTION_NAMES[feedback.chosen]} · Correct: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
-          </b>
-          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
-            <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>
-            <span>Index: {feedback.always ? "Always" : signed(feedback.index)}</span>
-          </div>
-          <p className="mt-2 text-sm text-zinc-400">
-            {feedback.always
-              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing play.`
-              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.departureTriggered ? "triggered the departure" : `used the chart baseline of ${DEVIATION_ACTION_NAMES[feedback.normalAction].toLowerCase()}`}.`}
-          </p>
-        </div>
-      )}
       {awaitingFinal ? (
         <Panel className="pb-24 lg:pb-6">
           <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
@@ -703,6 +686,23 @@ export function DeviationDrill() {
             </div>
           </MobileActionDock>
         </>
+      )}
+      {feedback && (
+        <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+            {feedback.chosen === feedback.correct ? `Correct — ${DEVIATION_ACTION_NAMES[feedback.correct]}` : `You chose ${DEVIATION_ACTION_NAMES[feedback.chosen]} · Correct: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
+          </b>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
+            <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>
+            <span>Index: {feedback.always ? "Always" : signed(feedback.index)}</span>
+          </div>
+          <p className="mt-2 text-sm text-zinc-400">
+            {feedback.always
+              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing play.`
+              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.departureTriggered ? "triggered the departure" : `used the chart baseline of ${DEVIATION_ACTION_NAMES[feedback.normalAction].toLowerCase()}`}.`}
+          </p>
+        </div>
       )}
     </>
   );
