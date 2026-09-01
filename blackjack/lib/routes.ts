@@ -14,6 +14,9 @@ export const LEGACY_REDIRECTS: Record<string, string> = {
 export const ROUTES: string[][] = [
   [],
   ["dashboard"],
+  ["practice"],
+  ["analyze"],
+  ["play"],
   ["cvcx"],
   ["simulation"],
   ["journal"],

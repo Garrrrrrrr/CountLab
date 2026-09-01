@@ -13,5 +13,5 @@ export default defineConfig([
     },
   },
   nextPlugin.configs["core-web-vitals"],
-  globalIgnores([".next/**", "out/**", "node_modules/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", "out/**", "node_modules/**", "test-results/**", "playwright-report/**", "next-env.d.ts"]),
 ]);

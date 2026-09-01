@@ -135,7 +135,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chart}>
                   <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
+                  <XAxis dataKey="name" stroke="#71717a" minTickGap={28} interval="preserveStartEnd" />
                   <YAxis stroke="#71717a" />
                   <Tooltip
                     contentStyle={{
@@ -159,7 +159,7 @@ export default function StatisticsPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={byDrill}>
                   <CartesianGrid stroke="#ffffff0d" />
-                  <XAxis dataKey="name" stroke="#71717a" />
+                  <XAxis dataKey="name" stroke="#71717a" minTickGap={28} interval="preserveStartEnd" />
                   <YAxis domain={[0, 100]} stroke="#71717a" />
                   <Tooltip
                     contentStyle={{

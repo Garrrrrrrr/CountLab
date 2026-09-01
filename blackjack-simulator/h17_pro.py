@@ -104,6 +104,11 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
     total, soft = hand_value(cards, count)
     pair_tens = cards[0] == 10 and cards[1] == 10
     pair_eights = cards[0] == 8 and cards[1] == 8
+    # The supplied chart does not add a 8,8 v 10 surrender departure. The
+    # generic late-surrender baseline sees a hard 16 before it sees the pair,
+    # so restore the chart's basic split before applying indexed departures.
+    if pair_eights and dealer == 10 and can_split:
+        return SPLIT
     if soft:
         if total == 19 and dealer == 4 and can_double and tc >= 3:
             return DOUBLE
@@ -121,7 +126,7 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
     # ../blackjack/lib/blackjack/deviationEv.ts; see
     # ../blackjack/docs/reference-analysis.md.
     if not can_surrender:
-        if total == 16 and dealer == 9 and tc >= 5:
+        if total == 16 and dealer == 9 and tc >= 4:
             return STAND
         if total == 16 and dealer == 10 and tc >= 0:
             return STAND
@@ -154,10 +159,6 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
             return SURRENDER
         if total == 15 and dealer == 10 and tc >= 0:
             return SURRENDER
-        if total == 14 and dealer == 10 and tc >= 3:
-            return SURRENDER
-        if pair_eights and dealer == 10 and tc >= 2:
-            return SURRENDER
     # Two-sided cells: basic strategy already plays the departure at TC 0, so the
     # index marks where the play reverts below it.
     if total == 13 and dealer == 2:
@@ -185,7 +186,7 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
     if total == 8 and dealer == 6 and can_double and tc >= 2:
         return DOUBLE
     if pair_tens and can_split:
-        if dealer == 4 and tc >= 7:
+        if dealer == 4 and tc >= 6:
             return SPLIT
         if dealer == 5 and tc >= 5:
             return SPLIT

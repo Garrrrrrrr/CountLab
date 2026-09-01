@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
 import { computeStreak } from "@/lib/statistics/streaks";
@@ -12,84 +12,29 @@ import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
 const Onboarding = dynamic(() => import("@/components/Onboarding").then((m) => ({ default: m.Onboarding })), { loading: () => null });
-const groups = [
-  {
-    label: "",
-    items: [
-      ["Dashboard", "/dashboard", "fa-house"],
-      ["Practice", "/training/full-shoe", "fa-shoe-prints"],
-    ],
-  },
-  {
-    label: "Analyze",
-    items: [
-      ["Game & Bankroll Lab", "/cvcx", "fa-chart-area"],
-      ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"],
-      ["Session Simulator", "/simulation", "fa-wave-square"],
-      ["Session Journal", "/journal", "fa-book"],
-      ["Compare Scenarios", "/compare", "fa-code-compare"],
-      ["Trip Planner", "/trip-planner", "fa-plane-departure"],
-    ],
-  },
-  {
-    label: "Casino Games",
-    items: [
-      ["Double Down Madness", "/double-down-madness", "fa-bolt"],
-      ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"],
-      ["Chase the Flush", "/chase-flush", "fa-diamond"],
-    ],
-  },
-  {
-    label: "Training",
-    items: [
-      ["Daily Checklist", "/training/checklist", "fa-list-check"],
-      ["Running Count", "/training/running-count", "fa-bolt"],
-      ["True Count", "/training/true-count", "fa-divide"],
-      ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"],
-      ["Deviations", "/training/deviations", "fa-code-branch"],
-      ["H17 Chart", "/training/h17-chart", "fa-table-cells"],
-      ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
-      ["Counting Benchmark", "/training/benchmark", "fa-medal"],
-      ["Proficiency Test", "/training/proficiency-test", "fa-award"],
-    ],
-  },
-  {
-    label: "Reference",
-    items: [
-      ["Hi-Lo System", "/reference", "fa-book-open"],
-      ["Basic Strategy", "/reference/basic-strategy", "fa-table-cells"],
-      ["Index Deviations", "/reference/deviations", "fa-list"],
-    ],
-  },
-  {
-    label: "",
-    items: [
-      ["Statistics", "/statistics", "fa-chart-line"],
-      ["Settings", "/settings", "fa-gear"],
-    ],
-  },
-  {
-    label: "",
-    items: [
-      ["Terms", "/terms", "fa-file-contract"],
-      ["Privacy", "/privacy", "fa-shield-halved"],
-    ],
-  },
+type Destination = readonly [name: string, href: string, icon: string, area: "Practice" | "Analyze" | "Play" | "Reference" | "Utility"];
+const destinations: readonly Destination[] = [
+  ["Full Shoe", "/training/full-shoe", "fa-shoe-prints", "Practice"], ["Daily Checklist", "/training/checklist", "fa-list-check", "Practice"], ["Running Count", "/training/running-count", "fa-bolt", "Practice"], ["True Count", "/training/true-count", "fa-divide", "Practice"], ["Basic Strategy", "/training/basic-strategy", "fa-layer-group", "Practice"], ["Deviations", "/training/deviations", "fa-code-branch", "Practice"], ["H17 Chart", "/training/h17-chart", "fa-table-cells", "Practice"], ["Deck Estimation", "/training/deck-estimation", "fa-ruler", "Practice"], ["Counting Benchmark", "/training/benchmark", "fa-medal", "Practice"], ["Proficiency Test", "/training/proficiency-test", "fa-award", "Practice"],
+  ["Game & Bankroll Lab", "/cvcx", "fa-chart-area", "Analyze"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group", "Analyze"], ["Session Simulator", "/simulation", "fa-wave-square", "Analyze"], ["Session Journal", "/journal", "fa-book", "Analyze"], ["Compare Scenarios", "/compare", "fa-code-compare", "Analyze"], ["Trip Planner", "/trip-planner", "fa-plane-departure", "Analyze"],
+  ["Double Down Madness", "/double-down-madness", "fa-bolt", "Play"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover", "Play"], ["Chase the Flush", "/chase-flush", "fa-diamond", "Play"],
+  ["Hi-Lo System", "/reference", "fa-book-open", "Reference"], ["Basic Strategy Reference", "/reference/basic-strategy", "fa-table-cells", "Reference"], ["Index Deviations", "/reference/deviations", "fa-list", "Reference"],
+  ["Dashboard", "/dashboard", "fa-house", "Utility"], ["Statistics", "/statistics", "fa-chart-line", "Utility"], ["Settings", "/settings", "fa-gear", "Utility"],
 ];
-const areaPaths = {
-  Practice: new Set(groups.filter((group) => group.label === "Training").flatMap((group) => group.items.map(([, href]) => href))),
-  Analyze: new Set(groups.filter((group) => group.label === "Analyze").flatMap((group) => group.items.map(([, href]) => href))),
-  Play: new Set(groups.filter((group) => group.label === "Casino Games").flatMap((group) => group.items.map(([, href]) => href))),
-  Reference: new Set(groups.filter((group) => group.label === "Reference").flatMap((group) => group.items.map(([, href]) => href))),
-};
+const areas = [
+  ["Practice", "/practice", "fa-bolt"], ["Analyze", "/analyze", "fa-chart-area"], ["Play", "/play", "fa-dice"], ["Reference", "/reference", "fa-book-open"],
+] as const;
+const areaPaths = Object.fromEntries(areas.map(([name]) => [name, new Set(destinations.filter(([, , , area]) => area === name).map(([, href]) => href))])) as Record<(typeof areas)[number][0], Set<string>>;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "").replace(/\/$/, "") || "/dashboard",
+  const router = useRouter(),
+    path = usePathname().replace(/\/$/, "") || "/dashboard",
     fullShoeActive = path === "/training/full-shoe",
     [open, setOpen] = useState(false),
     [rules, setRules] = useState(DEFAULT_SETTINGS),
     [streakDays, setStreakDays] = useState(0),
     [standalone, setStandalone] = useState(false),
+    [paletteOpen, setPaletteOpen] = useState(false),
+    [paletteQuery, setPaletteQuery] = useState(""),
     toggle = useRef<HTMLButtonElement>(null),
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
@@ -149,6 +94,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => { setStandalone(isStandalone(readPwaEnv())); }, []);
   useEffect(() => { setStreakBadge(streakDays); }, [streakDays]);
   useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((current) => !current);
+      }
+      if (event.key === "Escape") setPaletteOpen(false);
+    };
+    addEventListener("keydown", onKeyDown);
+    return () => removeEventListener("keydown", onKeyDown);
+  }, []);
+  const paletteMatches = destinations.filter(([name, href, , area]) => `${name} ${href} ${area}`.toLowerCase().includes(paletteQuery.trim().toLowerCase()));
+  const goTo = (href: string) => {
+    setPaletteOpen(false);
+    setPaletteQuery("");
+    setOpen(false);
+    router.push(href);
+  };
+  useEffect(() => {
     const activateVisiblePrimaryAction = (event: KeyboardEvent) => {
       if (event.key !== "Enter" || event.repeat || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const target = event.target;
@@ -204,30 +167,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </Link>
         <nav className="space-y-5">
-          {groups.map((group, index) => (
-            <div key={index}>
-              {group.label && (
-                <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-zinc-600">
-                  {group.label}
-                </p>
-              )}
-              <div className="space-y-1">
-                {group.items.map(([name, href, icon]) => (
-                  <Link
-                    onClick={() => setOpen(false)}
-                    key={href}
-                    href={href}
-                    className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-white shadow-[0_1px_0_rgba(255,255,255,.05)_inset]" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}
-                  >
-                    <i
-                      className={`fa-solid ${icon} w-4 text-center text-[.78rem]`}
-                    />
-                    {name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
+          <div className="space-y-1">
+            <Link onClick={() => setOpen(false)} href="/dashboard" className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === "/dashboard" ? "bg-white/[.09] text-white" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}><i className="fa-solid fa-house w-4 text-center text-[.78rem]" />Dashboard</Link>
+            {areas.map(([name, href, icon]) => {
+              const active = path === href || areaPaths[name].has(path);
+              return <Link onClick={() => setOpen(false)} key={href} href={href} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-white/[.09] text-white" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>;
+            })}
+          </div>
+          <button type="button" onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-white/[.08] bg-white/[.04] px-3 text-sm text-zinc-300 hover:bg-white/[.08]"><span><i className="fa-solid fa-magnifying-glass mr-2" />Find a tool</span><kbd>⌘K</kbd></button>
+          <div className="border-t border-white/[.06] pt-4">
+            <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-zinc-600">Utility</p>
+            {destinations.filter(([, href, , area]) => area === "Utility" && href !== "/dashboard").map(([name, href, icon]) => <Link onClick={() => setOpen(false)} key={href} href={href} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-white" : "text-zinc-400 hover:bg-white/[.045] hover:text-zinc-100"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>)}
+          </div>
           {isAdmin && (
             <div>
               <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-zinc-600">
@@ -295,9 +246,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--rule)] bg-[var(--paper-raised)]/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.12)] backdrop-blur lg:hidden"
       >
         {[
-          ["Practice", "/training/full-shoe", "fa-bolt"],
-          ["Analyze", "/cvcx", "fa-chart-area"],
-          ["Play", "/double-down-madness", "fa-dice"],
+          ["Practice", "/practice", "fa-bolt"],
+          ["Analyze", "/analyze", "fa-chart-area"],
+          ["Play", "/play", "fa-dice"],
           ["Reference", "/reference", "fa-book-open"],
         ].map(([name, href, icon]) => {
           const active = path === href || areaPaths[name as keyof typeof areaPaths].has(path);
@@ -314,6 +265,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
+      {paletteOpen && (
+        <div role="presentation" className="fixed inset-0 z-[80] grid place-items-start bg-black/55 p-4 pt-[max(5rem,12vh)] backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && setPaletteOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="Find a tool" className="w-full max-w-xl overflow-hidden rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] shadow-2xl">
+            <label className="sr-only" htmlFor="command-palette-input">Find a tool</label>
+            <div className="flex items-center border-b border-[var(--rule)] px-4"><i className="fa-solid fa-magnifying-glass text-[var(--ink-muted)]" aria-hidden="true" /><input id="command-palette-input" autoFocus value={paletteQuery} onChange={(event) => setPaletteQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setPaletteOpen(false); if (event.key === "Enter" && paletteMatches[0]) goTo(paletteMatches[0][1]); }} placeholder="Search every tool…" className="min-h-14 w-full bg-transparent px-3 text-[var(--ink)] outline-none" /><kbd>Esc</kbd></div>
+            <div className="max-h-[min(60svh,30rem)] overflow-y-auto p-2">
+              {paletteMatches.map(([name, href, icon, area]) => <button type="button" key={href} onClick={() => goTo(href)} className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-[var(--paper)]"><i className={`fa-solid ${icon} w-4 text-center text-[var(--ink-muted)]`} /><span className="flex-1">{name}</span><span className="text-xs text-[var(--ink-muted)]">{area}</span></button>)}
+              {!paletteMatches.length && <p className="p-4 text-sm text-[var(--ink-muted)]">No matching tool.</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

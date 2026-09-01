@@ -1,11 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const section = "Pair splitting";
 const hand = "A,A";
 const dealers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
 
-test.beforeEach(async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === "desktop-chromium", "The chart keypad is a mobile-only control.");
+async function prepareChart(page: Page) {
   await page.addInitScript(() => {
     localStorage.setItem("countlab:guest", "1");
     localStorage.setItem("countlab:analytics:consent_seen", "1");
@@ -15,9 +14,11 @@ test.beforeEach(async ({ page }, testInfo) => {
   await page.goto("/training/h17-chart/");
   await expect(page.getByRole("heading", { name: "H17 Chart" })).toBeVisible();
   await page.getByLabel("Section").selectOption("pairs");
-});
+}
 
 test("every dealer column clears the sticky hand label", async ({ page }) => {
+  test.skip(test.info().project.name === "desktop-chromium", "The chart keypad is a mobile-only control.");
+  await prepareChart(page);
   const rail = page.getByTestId("h17-rail-pairs");
   const label = page.getByTestId("h17-hand-pairs-A,A");
 
@@ -33,6 +34,8 @@ test("every dealer column clears the sticky hand label", async ({ page }) => {
 });
 
 test("touch dock advances the selected cell without focusing an input", async ({ page }) => {
+  test.skip(test.info().project.name === "desktop-chromium", "The chart keypad is a mobile-only control.");
+  await prepareChart(page);
   const first = page.getByLabel(`${section} ${hand} versus 2`);
   const second = page.getByLabel(`${section} ${hand} versus 3`);
 

@@ -672,11 +672,23 @@ function NotFound() {
     </Panel>
   );
 }
+const AREA_PAGES = {
+  practice: { title: "Practice", description: "Build automatic counting, playing, and table-decision habits.", items: [["Full Shoe", "/training/full-shoe", "fa-shoe-prints"], ["Running Count", "/training/running-count", "fa-bolt"], ["True Count", "/training/true-count", "fa-divide"], ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"], ["Index Deviations", "/training/deviations", "fa-code-branch"], ["H17 Chart", "/training/h17-chart", "fa-table-cells"], ["Deck Estimation", "/training/deck-estimation", "fa-ruler"], ["Counting Benchmark", "/training/benchmark", "fa-medal"], ["Proficiency Test", "/training/proficiency-test", "fa-award"], ["Daily Checklist", "/training/checklist", "fa-list-check"]] },
+  analyze: { title: "Analyze", description: "Model an edge, a bet ramp, a session, and the bankroll behind it.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
+  play: { title: "Play", description: "Take the concepts to the felt in focused table-game practice.", items: [["Double Down Madness", "/double-down-madness", "fa-bolt"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"], ["Chase the Flush", "/chase-flush", "fa-diamond"]] },
+} as const;
+function AreaLanding({ area }: { area: keyof typeof AREA_PAGES }) {
+  const page = AREA_PAGES[area];
+  return <><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--ink-muted)]">CountLab workspace</p><h1 className="font-display mt-2 text-3xl font-semibold">{page.title}</h1><p className="mt-2 max-w-2xl text-[var(--ink-muted)]">{page.description}</p><div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{page.items.map(([name, href, icon]) => <Link key={href} href={href} className="pressable surface group flex min-h-28 items-center gap-4 rounded-xl p-5 hover:border-[var(--ink-muted)]"><i className={`fa-solid ${icon} grid h-10 w-10 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]`} /><span><b className="block">{name}</b><span className="mt-1 block text-xs text-[var(--ink-muted)]">Open tool <i className="fa-solid fa-arrow-right ml-1" /></span></span></Link>)}</div></>;
+}
 export default function DynamicPage() {
   const p = useParams<{ slug?: string[] }>(),
     path = (p.slug || ["dashboard"]).join("/");
   const pages: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
+    practice: <AreaLanding area="practice" />,
+    analyze: <AreaLanding area="analyze" />,
+    play: <AreaLanding area="play" />,
     cvcx: <CvcxLab />,
     simulation: <SessionSimulator />,
     journal: <SessionJournal />,

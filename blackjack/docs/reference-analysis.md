@@ -101,12 +101,12 @@ To reproduce the artifact:
 python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
 ```
 
-**Open gap.** `h17_pro.py::h17_pro_pro_action` still encodes the pre-rebuild
-indices — 10 v 10 at +7 where the chart prints `4+`, 16 v 9 stand at +5, the
-14 v 10 and 8,8 surrenders the chart does not print — so the advantage curves
-are priced on a policy the trainers no longer teach. The differences are small
-and mostly rare cells, but closing it means another 250M-shoe run across all
-nine profiles.
+**Regeneration status.** `h17_pro.py::h17_pro_pro_action` now uses the taught
+policy: 10 v 10 against 4 splits at +6, 16 v 9 stands at +4 where surrender is
+unavailable, and unprinted 14 v 10 / 8,8 surrender rows are absent. The
+existing coefficient artifact remains the last audited run until the required
+250M-shoe, nine-profile regeneration completes; new evidence and its source
+checksum must be committed together before the curve is called audited.
 
 ## Observable workflow
 

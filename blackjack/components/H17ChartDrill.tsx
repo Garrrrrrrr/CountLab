@@ -319,10 +319,10 @@ export function H17ChartDrill() {
                 data-testid={`h17-rail-${section.id}`}
                 className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-11 px-1"
               >
-              <table className="w-full min-w-[34rem] table-fixed border-separate border-spacing-1 text-center text-sm">
+              <table className="w-full min-w-[35.5rem] table-fixed border-separate border-spacing-1 text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                    <th className="sticky left-0 z-20 w-12 bg-[var(--paper-raised)] px-1.5 text-left text-xs font-semibold uppercase tracking-[.14em] text-[var(--ink-muted)]">
                       Hand
                     </th>
                     {CHART_DEALERS.map((dealer) => (
@@ -333,14 +333,14 @@ export function H17ChartDrill() {
                 <tbody>
                   {section.rows.map((row, rowIndex) => (
                     <tr key={row}>
-                      <th data-testid={`h17-hand-${section.id}-${row}`} scope="row" className="sticky left-0 z-20 w-11 bg-[#0c100d] px-1.5 text-left font-medium text-zinc-300">
+                      <th data-testid={`h17-hand-${section.id}-${row}`} scope="row" className="sticky left-0 z-20 w-12 bg-[var(--paper-raised)] px-1.5 text-left font-medium text-[var(--ink)]">
                         {row}
                       </th>
                       {CHART_DEALERS.map((dealer, columnIndex) => {
                         const index = positions.get(`${sectionIndex}:${rowIndex}:${columnIndex}`)!;
                         const cell = cells[index];
                         return (
-                          <td key={dealer} className="snap-start scroll-ml-11">
+                          <td key={dealer} className="snap-start scroll-ml-12">
                             <input
                               ref={(element) => { inputs.current[index] = element; }}
                               value={displayBuffer(cell.section, entries[cell.key] ?? "")}
@@ -351,7 +351,7 @@ export function H17ChartDrill() {
                               autoComplete="off"
                               autoCorrect="off"
                               spellCheck={false}
-                              className={`h-11 w-full min-w-[2.4rem] rounded-md border bg-black/25 text-center font-mono text-zinc-100 outline-none ${cellTone(cell, index)}`}
+                              className={`h-11 w-11 min-w-11 rounded-md border bg-[var(--paper)] text-center font-mono text-[var(--ink)] outline-none ${cellTone(cell, index)}`}
                             />
                             {(graded || feedback === "live") && (() => {
                               const result = gradeByKey.get(cell.key);
@@ -369,7 +369,7 @@ export function H17ChartDrill() {
               </div>
               {rails[section.id]?.scrollable && !rails[section.id]?.atEnd && (
                 <>
-                  <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#0c100d] to-transparent" />
+                  <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--paper-raised)] to-transparent" />
                   <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[.65rem] font-medium text-zinc-300">{rails[section.id].hiddenRight} more →</p>
                 </>
               )}

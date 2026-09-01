@@ -7,32 +7,25 @@ scaffold would duplicate navigation, persistence, and already-working trainers.
 New work therefore evolves the current app incrementally while preserving its
 static-export deployment.
 
-## Target layers
+## Current layers
 
 ```text
-app/                         Next.js routing and layouts
-components/                  shared visual components and legacy page adapters
-features/
-  simulator/                 table and simulation UI state
-  strategy/                  trainer UI and attempt presentation
-  counting/                  counting/deck-estimation UI
-  analysis/                  EV, risk, TC distribution, result explorer
+app/                         Next.js static-export routing, layout, metadata
+components/                  route-level client components and UI primitives
+  ui.tsx                     panels, controls, CountRule, responsive tables
 lib/
-  blackjack/
-    cards/                   card/deck/shoe primitives
-    rules/                   versioned rules and validation
-    hand/                    totals, legal actions, settlement values
-    strategy/                basic strategy and deviations
-    counting/                pluggable systems and TC conversion
-    betting/                 ramp validation and wager selection
-    simulation/              pure round/session engine and result reducers
+  blackjack/                 blackjack rules, deviations, EV, simulation
+  ddm/                       Double Down Madness engine and exact EV
+  uth/                       Ultimate Texas Hold'em evaluator
+  chaseFlush/                Chase the Flush solver bridge
   statistics/                persistence repository and analytics
 workers/                     thin worker protocols around pure simulation
 docs/                        methodology, reference analysis, specifications
 ```
 
-Existing files move toward this shape only when touched for real functionality;
-there is no high-risk all-at-once directory migration.
+The application intentionally keeps page components together rather than
+maintaining a second, speculative `features/` tree. Domain code is organized by
+game under `lib/`, while `components/` owns presentation and interaction.
 
 ## Core contracts
 
