@@ -13,7 +13,7 @@ export function AnalyticsConsent() {
       const recordedChoice = localStorage.getItem(STORAGE_KEYS.analyticsConsent);
       setVisible(localStorage.getItem(STORAGE_KEYS.consentSeen) !== "1" || (ANALYTICS_CONFIG.requireConsent && !recordedChoice));
     } catch {
-      setVisible(false);
+      setVisible(ANALYTICS_CONFIG.requireConsent);
     }
   }, []);
 
@@ -24,6 +24,7 @@ export function AnalyticsConsent() {
     } catch {
       // The preference remains in memory for this page when storage is blocked.
     }
+    window.dispatchEvent(new Event("countlab:analytics-consent"));
     setVisible(false);
   };
 

@@ -29,7 +29,7 @@ import {
 } from "@/lib/blackjack/cvcxLibrary";
 import { simulationLibrary } from "@/lib/blackjack/simulationLibrary";
 import type { SessionSimulationConfig } from "@/lib/blackjack/sessionSimulation";
-import { Button, GhostButton, NumberField, PinnedStat, Section, Select, Switch } from "./ui";
+import { Button, CountRule, GhostButton, NumberField, PinnedStat, Section, Select, Switch } from "./ui";
 import { ConfirmModal } from "./ConfirmModal";
 import { BetSpreadTable } from "./BetSpreadTable";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
@@ -604,9 +604,10 @@ export function CvcxLab() {
         <Section
           title="Table rules"
           collapseOnMobile
-          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${useIndices ? "H17/S17 Pro indices" : "basic strategy only"} · ${estimated ? "estimated" : "audited"}`}
+          summary={`${dealerHitsSoft17 ? "H17" : "S17"} · ${doubleAfterSplit ? "DAS" : "no DAS"} · ${resplitAces ? "RSA" : "no RSA"} · ${lateSurrender ? "LS" : "no LS"} · ${blackjackPayout === 1.5 ? "3:2" : "6:5"} · ${useIndices ? "H17 Pro indices" : "basic strategy only"} · ${estimated ? "estimated" : "audited"}`}
           icon="fa-table-cells"
         >
+          <CountRule label="Audited true-count range" />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Select
               label="Number of decks"
@@ -634,7 +635,7 @@ export function CvcxLab() {
             <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
             <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
             <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}>
-              <option value="indices">H17/S17 Pro indices</option>
+              <option value="indices">H17 Pro indices</option>
               <option value="basic">Basic strategy only</option>
             </Select>
             <Select label="Strategy" value={europeanNoHoleCard ? "enhc" : "peek"} onChange={(event) => setEuropeanNoHoleCard(event.target.value === "enhc")}>

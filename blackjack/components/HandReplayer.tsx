@@ -72,7 +72,7 @@ export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: ()
 
       <div className="mt-6 border-t border-white/[.06] pt-5">
         <h3 className="font-semibold">Hand History</h3>
-        <p className="mt-1 text-xs text-zinc-500">Click a row to view that hand.</p>
+        <p className="mt-1 text-xs text-zinc-500">Select a row, then press Enter or Space to view that hand.</p>
         <div className="mt-3 max-h-[28rem] overflow-auto">
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="sticky top-0 bg-[#0c0f0c] text-xs uppercase tracking-wide text-zinc-500">
@@ -90,8 +90,17 @@ export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: ()
               {shoe.hands.map((row, index) => (
                 <tr
                   key={row.handNumber}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View hand ${row.roundInShoe}`}
                   onClick={() => setSelectedHandIndex(index)}
-                  className={`cursor-pointer border-t border-white/[.06] hover:bg-white/[.03] ${index === selectedHandIndex ? "bg-emerald-300/[.05]" : ""}`}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedHandIndex(index);
+                    }
+                  }}
+                  className={`cursor-pointer border-t border-white/[.06] outline-none hover:bg-white/[.03] focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${index === selectedHandIndex ? "bg-emerald-300/[.05]" : ""}`}
                 >
                   <td className="py-2.5">{row.roundInShoe}</td>
                   <td className="py-2.5">{row.playerHands.map((box) => `${cardLabel(box.cards)}(${box.net >= 0 ? "+" : ""}${money(box.net, 0)})`).join(" ")}</td>

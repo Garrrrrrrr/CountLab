@@ -4,7 +4,8 @@ const section = "Pair splitting";
 const hand = "A,A";
 const dealers = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop-chromium", "The chart keypad is a mobile-only control.");
   await page.addInitScript(() => {
     localStorage.setItem("countlab:guest", "1");
     localStorage.setItem("countlab:analytics:consent_seen", "1");

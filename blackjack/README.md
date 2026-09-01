@@ -121,8 +121,8 @@ The EV and bankroll pages use reproducible per-true-count aggregates generated
 by [`../blackjack-simulator`](../blackjack-simulator/README.md). The deployed
 audit JSON records every bucket's sample count, payoff moments, confidence
 interval, seed, software versions, strategy manifest, and generator source hash.
-The current production artifact contains 46,734,162,152 resolved rounds from
-100,000,000 shoes for each of nine deck/penetration profiles.
+The current production artifact contains 116,818,680,110 resolved rounds from
+250,000,000 shoes for each of nine deck/penetration profiles.
 
 The Counter's Edge Lab at `/cvcx/` is a CVCX-style post-simulation workspace
 over those profiles. It includes custom and Kelly-weight bet ramps, wong-in

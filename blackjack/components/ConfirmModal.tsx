@@ -87,7 +87,7 @@ export function ConfirmModal({
           <Button
             onClick={onConfirm}
             disabled={confirmDisabled}
-            className={tone === "danger" ? "bg-red-400 text-red-950 shadow-[0_8px_24px_rgba(210,95,95,.16)] hover:bg-red-300" : ""}
+            variant={tone === "danger" ? "danger" : "primary"}
           >
             {confirmLabel}
           </Button>

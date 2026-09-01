@@ -32,7 +32,10 @@ Deno.serve(async (request) => {
   if (!alerts.length) return Response.json({ evaluated: (data as Alert[]).length, delivered: 0 });
 
   const { data: prior } = await supabase.from("analytics_alert_deliveries").select("metric,last_sent_at").in("metric", alerts.map((alert) => alert.metric));
-  const sent = new Map((prior ?? []).map((row) => [row.metric, new Date(row.last_sent_at).getTime()]));
+  const sent = new Map<string, number>((prior ?? []).map((row) => {
+    const delivery = row as { metric: string; last_sent_at: string };
+    return [delivery.metric, new Date(delivery.last_sent_at).getTime()] as const;
+  }));
   const due = alerts.filter((alert) => Date.now() - (sent.get(alert.metric) ?? 0) >= 60 * 60 * 1000);
   if (!due.length || !WEBHOOK_URL) return Response.json({ evaluated: (data as Alert[]).length, due: due.length, delivered: 0 });
   const webhook = configuredWebhook();

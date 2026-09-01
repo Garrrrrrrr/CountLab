@@ -52,11 +52,14 @@ export function clearAnonId(): void {
 
 export function isOptedOut(): boolean {
   if (typeof window === "undefined") return true;
+  const navigatorPrivacy = navigator as Navigator & { globalPrivacyControl?: boolean };
+  if (navigator.doNotTrack === "1" || navigatorPrivacy.globalPrivacyControl === true) return true;
   try {
     if (localStorage.getItem(STORAGE_KEYS.optOut) === "1") return true;
     return ANALYTICS_CONFIG.requireConsent && localStorage.getItem(STORAGE_KEYS.analyticsConsent) !== "granted";
   } catch {
-    return false;
+    // When consent is required, unavailable storage cannot establish it.
+    return ANALYTICS_CONFIG.requireConsent;
   }
 }
 

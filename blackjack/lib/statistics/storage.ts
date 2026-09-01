@@ -53,6 +53,7 @@ export interface DrillProgress<T = unknown> {
   updatedAt: string;
 }
 export interface Settings {
+  theme: "system" | "light" | "dark";
   decks: number;
   rounding: "floor" | "truncate" | "nearest";
   speed: number;
@@ -69,6 +70,7 @@ export interface Settings {
   penetration: number;
 }
 export const DEFAULT_SETTINGS: Settings = {
+  theme: "system",
   decks: 6,
   rounding: "floor",
   speed: 1000,

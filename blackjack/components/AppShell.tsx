@@ -17,7 +17,7 @@ const groups = [
     label: "",
     items: [
       ["Dashboard", "/dashboard", "fa-house"],
-      ["Full Shoe", "/training/full-shoe", "fa-shoe-prints"],
+      ["Practice", "/training/full-shoe", "fa-shoe-prints"],
     ],
   },
   {
@@ -50,6 +50,7 @@ const groups = [
       ["H17 Chart", "/training/h17-chart", "fa-table-cells"],
       ["Deck Estimation", "/training/deck-estimation", "fa-ruler"],
       ["Counting Benchmark", "/training/benchmark", "fa-medal"],
+      ["Proficiency Test", "/training/proficiency-test", "fa-award"],
     ],
   },
   {
@@ -75,14 +76,12 @@ const groups = [
     ],
   },
 ];
-/** Every destination the mobile "Analyze" tab stands in for, taken from the sidebar itself. */
-const analyzePaths = new Set([
-  ...groups
-    .filter((group) => group.label === "Analyze" || group.label === "Casino Games")
-    .flatMap((group) => group.items.map(([, href]) => href)),
-  "/analysis",
-  "/bankroll",
-]);
+const areaPaths = {
+  Practice: new Set(groups.filter((group) => group.label === "Training").flatMap((group) => group.items.map(([, href]) => href))),
+  Analyze: new Set(groups.filter((group) => group.label === "Analyze").flatMap((group) => group.items.map(([, href]) => href))),
+  Play: new Set(groups.filter((group) => group.label === "Casino Games").flatMap((group) => group.items.map(([, href]) => href))),
+  Reference: new Set(groups.filter((group) => group.label === "Reference").flatMap((group) => group.items.map(([, href]) => href))),
+};
 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname().replace(/^\/blackjack(?=\/|$)/, "").replace(/\/$/, "") || "/dashboard",
@@ -133,6 +132,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
+  useEffect(() => {
+    const applyTheme = () => {
+      const theme = storage.settings().theme;
+      const root = document.documentElement;
+      if (theme === "system") root.removeAttribute("data-theme");
+      else root.dataset.theme = theme;
+    };
+    applyTheme();
+    addEventListener("hilo-storage", applyTheme);
+    return () => removeEventListener("hilo-storage", applyTheme);
+  }, []);
   useEffect(() => { registerServiceWorker(); }, []);
   // This static export is shared by every visitor, so only inspect the
   // environment after mount rather than baking one client's state into HTML.
@@ -157,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => removeEventListener("keydown", activateVisiblePrimaryAction);
   }, []);
   return (
-    <div className="min-h-dvh overflow-x-clip text-zinc-100">
+    <div className={`min-h-dvh overflow-x-clip text-[var(--ink)] ${path === "/training/full-shoe" || path === "/double-down-madness" || path === "/ultimate-texas-holdem" || path === "/chase-flush" ? "floor" : ""}`}>
       <button
         ref={toggle}
         type="button"
@@ -238,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </aside>
       <main className="min-h-dvh min-w-0 lg:pl-[17rem]">
-        <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center justify-end gap-2 bg-[#0c100d]/80 px-3 pt-[env(safe-area-inset-top)] backdrop-blur-2xl [mask-image:linear-gradient(to_bottom,black_82%,transparent)] sm:gap-3 sm:px-5 md:px-8">
+        <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center justify-end gap-2 border-b border-[var(--rule)] bg-[var(--paper-raised)]/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:gap-3 sm:px-5 md:px-8">
           {!standalone && (
             <>
               {/* This deliberately leaves the Next.js base path to return to the portfolio. */}
@@ -282,14 +292,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-white/[.08] bg-[#0c100d]/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.3)] backdrop-blur-2xl lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-[var(--rule)] bg-[var(--paper-raised)]/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.12)] backdrop-blur lg:hidden"
       >
         {[
-          ["Dashboard", "/dashboard", "fa-house"],
-          ["Train", "/training/full-shoe", "fa-bolt"],
+          ["Practice", "/training/full-shoe", "fa-bolt"],
           ["Analyze", "/cvcx", "fa-chart-area"],
+          ["Play", "/double-down-madness", "fa-dice"],
+          ["Reference", "/reference", "fa-book-open"],
         ].map(([name, href, icon]) => {
-          const active = path === href || (name === "Train" && path.startsWith("/training/")) || (name === "Analyze" && analyzePaths.has(path));
+          const active = path === href || areaPaths[name as keyof typeof areaPaths].has(path);
           return (
             <Link
               key={href}
@@ -302,16 +313,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        <button
-          type="button"
-          aria-label="Open all navigation"
-          aria-expanded={open}
-          onClick={() => setOpen(true)}
-          className={`pressable flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.68rem] font-medium ${open ? "text-emerald-300" : "text-zinc-500"}`}
-        >
-          <i className="fa-solid fa-ellipsis text-sm" aria-hidden="true" />
-          More
-        </button>
       </nav>
     </div>
   );

@@ -3,33 +3,62 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
+  --paper: #ecefe8;
+  --paper-raised: #f6f8f3;
+  --ink: #16211c;
+  --ink-muted: #526158;
+  --rule: #c9d2c6;
+  --felt: #0f5c3e;
+  --count-cold: #3e6e8e;
+  --count-low: #6f98ae;
+  --count-flat: #69756e;
+  --count-warm: #8a6910;
+  --count-hot: #a64225;
+  --focus: #3e6e8e;
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-data: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+:root[data-theme="dark"] {
   color-scheme: dark;
-  font:
-    100%/1.5 ui-sans-serif,
-    -apple-system,
-    BlinkMacSystemFont,
-    "SF Pro Text",
-    "Segoe UI",
-    sans-serif;
+  --paper: #101915;
+  --paper-raised: #16211c;
+  --ink: #e8eee7;
+  --ink-muted: #aebbb3;
+  --rule: #2a3a32;
+  --count-flat: #a7b1ac;
+  --count-warm: #d6b13b;
+  --count-hot: #df6a47;
+  --focus: #6f98ae;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #101915;
+    --paper-raised: #16211c;
+    --ink: #e8eee7;
+    --ink-muted: #aebbb3;
+    --rule: #2a3a32;
+    --count-flat: #a7b1ac;
+    --count-warm: #d6b13b;
+    --count-hot: #df6a47;
+    --focus: #6f98ae;
+  }
 }
 * {
   box-sizing: border-box;
 }
 html {
-  background: #090c0a;
+  background: var(--paper);
   overflow-x: clip;
 }
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(
-      circle at 72% -10%,
-      rgba(42, 109, 69, 0.18),
-      transparent 38rem
-    ),
-    linear-gradient(180deg, #0c100d 0%, #090c0a 100%);
-  color: #f4f4f5;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
   font-optical-sizing: auto;
   overflow-x: clip;
 }
@@ -55,39 +84,53 @@ button {
   }
 }
 ::selection {
-  background: rgba(168, 238, 114, 0.28);
-  color: white;
+  background: color-mix(in srgb, var(--count-low) 35%, transparent);
+  color: var(--ink);
 }
 .surface {
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  background: linear-gradient(
-    145deg,
-    rgba(31, 36, 32, 0.82),
-    rgba(20, 24, 21, 0.76)
-  );
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.035) inset,
-    0 18px 55px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(22px) saturate(135%);
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .field {
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(7, 10, 8, 0.52);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+  border: 1px solid var(--rule);
+  background: var(--paper);
   transition:
     border-color 0.18s ease,
     background-color 0.18s ease,
     box-shadow 0.18s ease;
 }
 .field:hover {
-  background: rgba(12, 16, 13, 0.72);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: var(--paper-raised);
+  border-color: var(--ink-muted);
 }
 .field:focus,
 .field-active {
-  border-color: rgba(168, 238, 114, 0.65);
-  box-shadow: 0 0 0 3px rgba(168, 238, 114, 0.11);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
 }
+.font-display { font-family: var(--font-display); }
+.font-data, .font-mono, table, [data-count], .count-rule { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.floor {
+  color-scheme: dark;
+  --paper: #101915;
+  --paper-raised: #16211c;
+  --ink: #e8eee7;
+  --ink-muted: #aebbb3;
+  --rule: #2a3a32;
+}
+/* Existing dense screens use Tailwind's zinc text utilities. Keep their
+   semantic hierarchy readable while those screens migrate to the tokens. */
+:root:not([data-theme="dark"]) .text-zinc-100,
+:root:not([data-theme="dark"]) .text-white { color: var(--ink); }
+:root:not([data-theme="dark"]) .text-zinc-200,
+:root:not([data-theme="dark"]) .text-zinc-300 { color: color-mix(in srgb, var(--ink) 82%, var(--paper)); }
+:root:not([data-theme="dark"]) .text-zinc-400,
+:root:not([data-theme="dark"]) .text-zinc-500,
+:root:not([data-theme="dark"]) .text-zinc-600 { color: var(--ink-muted); }
+:root:not([data-theme="dark"]) .border-white\/\[\.06\],
+:root:not([data-theme="dark"]) .border-white\/\[\.07\],
+:root:not([data-theme="dark"]) .border-white\/10 { border-color: var(--rule); }
 .pressable {
   transition:
     transform 0.12s ease-out,

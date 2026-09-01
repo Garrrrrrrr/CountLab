@@ -390,6 +390,13 @@ function SettingsPage() {
       </p>
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         <Panel>
+          <h2 className="mb-2 font-semibold">Appearance</h2>
+          <p className="mb-5 text-sm text-zinc-500">Choose the register that is easiest on your eyes. System follows your device.</p>
+          <Select label="Theme" value={s.theme} onChange={(event) => update("theme", event.target.value as Settings["theme"])}>
+            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
+          </Select>
+        </Panel>
+        <Panel>
           <h2 className="mb-5 font-semibold">Table rules</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select

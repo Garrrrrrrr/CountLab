@@ -7,7 +7,9 @@ import type { Environment, FeatureCategory, FeatureId } from "./types";
 const RAW_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || "0.0.0";
 const RAW_SHA = process.env.NEXT_PUBLIC_COMMIT_SHA || "";
 const RAW_PERFORMANCE_SAMPLE_RATE = Number(process.env.NEXT_PUBLIC_ANALYTICS_PERFORMANCE_SAMPLE_RATE ?? "1");
-const REQUIRE_CONSENT = process.env.NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT === "true";
+// Privacy is the safe default. A deployment must explicitly opt out to begin
+// tracking before a visitor has made a choice.
+const REQUIRE_CONSENT = process.env.NEXT_PUBLIC_ANALYTICS_REQUIRE_CONSENT !== "false";
 
 export const APP_VERSION = RAW_SHA ? `${RAW_VERSION}+${RAW_SHA.slice(0, 7)}` : RAW_VERSION;
 

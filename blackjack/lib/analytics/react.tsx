@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useRef } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { resetScrollDepth, startAutocapture } from "./autocapture";
 import { analytics } from "./client";
@@ -10,6 +10,7 @@ import { startVitals } from "./vitals";
 import type { CalculatorId, DrillId, EventPropertyMap, FeatureId, GameId } from "./types";
 import { abandonActivePractice } from "./track";
 import { startContentTracking } from "./content";
+import { isOptedOut } from "./identity";
 
 /**
  * Single mount point for the whole analytics system. Everything else in the
@@ -19,15 +20,25 @@ import { startContentTracking } from "./content";
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const previousPath = useRef<string | undefined>(undefined);
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    const update = () => setEnabled(!isOptedOut());
+    update();
+    addEventListener("countlab:analytics-consent", update);
+    return () => removeEventListener("countlab:analytics-consent", update);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
     analytics.init();
     startAutocapture();
     startErrorCapture();
     startVitals();
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     analytics.page(pathname);
     resetScrollDepth();
     const route = pathname.replace(/\/$/, "") || "/";
@@ -55,7 +66,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
       stopContent?.();
       abandonActivePractice();
     };
-  }, [pathname]);
+  }, [enabled, pathname]);
 
   return <>{children}</>;
 }
