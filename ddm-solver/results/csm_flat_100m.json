@@ -1,0 +1,81 @@
+{
+  "rules": "DDM v1, 6 decks, H17, ace_rule=strict, dealer22=push, BJ pays 1.625x",
+  "rule_spec": {
+    "decks": 6,
+    "dealer_hits_soft17": true,
+    "ace_rule": "strict",
+    "bj_version": 1,
+    "dealer_22_push": true,
+    "peek": true,
+    "offer_insurance": true,
+    "max_doubles": 0,
+    "double_fraction": 1.0
+  },
+  "system": "hi-lo",
+  "tags": [
+    -1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "tag_divisor": 1.0,
+  "index_source": null,
+  "index_limit": 18,
+  "deviations_used": [],
+  "rounds_requested_per_scenario": 100000000,
+  "hands_per_hour": 100.0,
+  "bankroll": 10000.0,
+  "target_risk": 0.05,
+  "results": [
+    {
+      "cut_decks": 1.0,
+      "spots": 1,
+      "tc_mode": "exact",
+      "csm": true,
+      "rounds": 99999996,
+      "ramp": [
+        [
+          -99,
+          1.0
+        ]
+      ],
+      "metrics": {
+        "ev_per_round": -0.008754420350176813,
+        "variance_per_round": 2.790115916732035,
+        "sd_per_round": 1.6703640072547166,
+        "avg_bet": 1.0,
+        "edge_per_unit_bet": -0.008754420350176813,
+        "n0_rounds": Infinity,
+        "ev_per_hour": -0.8754420350176814,
+        "sd_per_hour": 16.703640072547167,
+        "required_bankroll": Infinity,
+        "lifetime_risk": 1.0,
+        "trip_risk": 0.0,
+        "risk_sized_unit": 0.0,
+        "ci95": 0.0003273853360768314
+      },
+      "buckets": [
+        {
+          "tc": 0,
+          "label": "+0",
+          "rounds": 99999996,
+          "frequency": 1.0,
+          "ev_per_round": -0.008754420350176813,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.008754420350176813,
+          "sd": 1.6703640072547166,
+          "se": 0.00016703640406619976,
+          "ci95": 0.0003273853360768314,
+          "ramp_bet": 1.0
+        }
+      ]
+    }
+  ],
+  "elapsed_seconds": 7.467314958572388
+}

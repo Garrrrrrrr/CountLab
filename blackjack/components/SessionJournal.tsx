@@ -241,7 +241,7 @@ export function SessionJournal() {
         seed: Math.floor(Math.random() * 2 ** 31),
         rules: session.rules,
         ramp: session.ramp,
-        deviationGroups: ["ap-toolbox-h17-pro"],
+        deviationGroups: ["h17-pro"],
       });
       setShoeReplay({ sessionId: session.id, result });
     } finally {
@@ -494,7 +494,7 @@ export function SessionJournal() {
               <Switch label="Resplitting aces" checked={resplitAces} onChange={setResplitAces} />
               <Switch label="Late surrender" checked={lateSurrender} onChange={setLateSurrender} />
               <Select label="Blackjack payout" value={blackjackPayout} onChange={(event) => setBlackjackPayout(Number(event.target.value) as 1.5 | 1.2)}><option value={1.5}>3:2</option><option value={1.2}>6:5</option></Select>
-              <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}><option value="indices">AP Toolbox Pro indices</option><option value="basic">Basic strategy only</option></Select>
+              <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}><option value="indices">H17/S17 Pro indices</option><option value="basic">Basic strategy only</option></Select>
             </div>
             {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
               <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">

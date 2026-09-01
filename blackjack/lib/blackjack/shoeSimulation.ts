@@ -5,7 +5,7 @@ import { hiLoValue, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import { Card, Rank } from "./types";
-export type DeviationGroup = "ap-toolbox-h17-pro";
+export type DeviationGroup = "h17-pro";
 
 export interface SimulatedPlayerHand {
   cards: Card[];
@@ -96,7 +96,7 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Matches the hand/dealer labels used by the AP Toolbox H17 Pro chart. */
+/** Matches the hand/dealer labels used by the H17 Pro chart. */
 const rankLabel = (rank: Rank) => (rank === "A" ? "A" : ["J", "Q", "K"].includes(rank) ? "10" : rank);
 export const deviationHandLabel = (cards: Card[]) =>
   cards.length === 2 && rankLabel(cards[0].rank) === rankLabel(cards[1].rank)
@@ -107,7 +107,7 @@ export const deviationHandLabel = (cards: Card[]) =>
 
 /** The group id predates the S17 chart; it now selects whichever chart matches the dealer rule. */
 function activeDeviations(groups: DeviationGroup[], rules: AdvantageRules): Deviation[] {
-  return groups.includes("ap-toolbox-h17-pro") ? getDeviationCatalog(rules) : [];
+  return groups.includes("h17-pro") ? getDeviationCatalog(rules) : [];
 }
 
 function applyIndexDeviation(

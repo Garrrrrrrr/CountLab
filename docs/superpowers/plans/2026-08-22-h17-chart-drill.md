@@ -18,7 +18,7 @@
 - The app is a **static export**. Everything is client-side; no server code, no data fetching.
 - Existing code style: double quotes, no semicolon-free style (semicolons are used), 2-space indent, `@/` import alias for the `blackjack/` root.
 - The drill **ignores** the user's `Settings` (decks, H17/S17, DAS, surrender). It is a fixed printed chart.
-- Never modify `lib/blackjack/apToolboxH17Pro.ts`, `apToolboxS17Pro.ts`, `deviations.ts`, `deviationRanking*`, or `components/Drills.tsx`. This feature is additive.
+- Never modify `lib/blackjack/h17Pro.ts`, `s17Pro.ts`, `deviations.ts`, `deviationRanking*`, or `components/Drills.tsx`. This feature is additive.
 - `blackjack/components/DynamicPage.tsx` has **pre-existing uncommitted changes** in the working tree (a rewrite of `StrategyReference`). Do not revert, restage, or commit those hunks. Stage only your own hunks with `git add -p` if needed.
 - Work happens on branch `h17-chart-drill`, which already exists and holds the spec commit.
 

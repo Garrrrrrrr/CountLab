@@ -18,7 +18,7 @@ const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulati
 });
 
 describe("simulateShoeSession", () => {
-  it("labels AP Toolbox soft and pair departures without collapsing them to hard totals", () => {
+  it("labels Pro-chart soft and pair departures without collapsing them to hard totals", () => {
     expect(deviationHandLabel([{ rank: "A", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Soft 19");
     expect(deviationHandLabel([{ rank: "10", suit: "spades" }, { rank: "K", suit: "hearts" }])).toBe("10,10");
   });
@@ -28,7 +28,7 @@ describe("simulateShoeSession", () => {
     // every stiff it drew against a ten. No index stands a hard 12-14 there.
     const result = await simulateShoeSession(baseConfig({
       handsToSimulate: 20_000,
-      deviationGroups: ["ap-toolbox-h17-pro"],
+      deviationGroups: ["h17-pro"],
     }));
     const stoodOnStiff = result.shoes.flatMap((shoe) => shoe.hands).filter((hand) => {
       const upcard = hand.dealerCards[0].rank;

@@ -16,7 +16,7 @@ import {
   zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
-import { AP_TOOLBOX_H17_PRO_COEFFICIENTS, AP_TOOLBOX_H17_PRO_METADATA } from "./apToolboxH17ProCoefficients";
+import { H17_PRO_COEFFICIENTS, H17_PRO_METADATA } from "./h17ProCoefficients";
 import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
@@ -145,13 +145,19 @@ describe("strategy", () => {
   });
 });
 describe("deviations", () => {
-  it("uses the AP Toolbox H17 Pro thresholds", () => {
+  it("uses the H17 chart's thresholds", () => {
     const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10" && x.deviationAction === "S")!;
-    expect(deviationDecision(d, 3)).toBe("R");
+    expect(deviationDecision(d, 3)).toBe("H");
     expect(deviationDecision(d, 4)).toBe("S");
+    // The chart's 10 v 10 double, the cell that first showed the two teaching
+    // surfaces disagreeing: the reference said +7 where the chart prints 4+.
+    const ten = DEVIATIONS.find((x) => x.hand === "10" && x.dealer === "10")!;
+    expect(ten.index).toBe(4);
+    expect(deviationDecision(ten, 3)).toBe("H");
+    expect(deviationDecision(ten, 4)).toBe("D");
   });
-  it("uses the complete supplied AP Toolbox H17 Pro catalog", () => {
-    expect(DEVIATIONS).toHaveLength(34);
+  it("uses the complete H17 chart catalog", () => {
+    expect(DEVIATIONS).toHaveLength(33);
   });
 });
 describe("advantage model", () => {
@@ -164,11 +170,11 @@ describe("advantage model", () => {
     expect(profile).toHaveLength(17);
     expect(profile.reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
     const neutral = profile.find((row) => row.tc === 0)!;
-    const measured = AP_TOOLBOX_H17_PRO_COEFFICIENTS["8-6"][8];
+    const measured = H17_PRO_COEFFICIENTS["8-6"][8];
     expect(neutral.p).toBeCloseTo(measured[0], 12);
     expect(neutral.samples).toBe(measured[3]);
     expect(neutral.standardError).toBe(measured[4]);
-    expect(AP_TOOLBOX_H17_PRO_METADATA.totalRounds).toBeGreaterThan(100_000_000_000);
+    expect(H17_PRO_METADATA.totalRounds).toBeGreaterThan(100_000_000_000);
   });
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);

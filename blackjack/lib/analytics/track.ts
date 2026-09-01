@@ -202,6 +202,18 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "chase_flush_hand_resolved":
       analytics.track("hand_completed", { game: "chase_the_flush", outcome: text(properties, "result"), net_bucket: bucketMoney(number(properties, "net")) });
       return;
+    case "ddm_hand_dealt":
+      analytics.track("hand_started", { game: "double_down_madness", wager_bucket: bucketMoney(number(properties, "totalWager")), spots: number(properties, "spots"), true_count: bucketTrueCount(number(properties, "tc")), bet_on_ramp: truth(properties, "betOk"), decks: number(properties, "decks") });
+      return;
+    case "ddm_hand_settled":
+      analytics.track("hand_completed", { game: "double_down_madness", outcome: truth(properties, "reachedCut") ? "shoe_complete" : "settled", net_bucket: bucketMoney(number(properties, "net", 0)), ended_session: truth(properties, "reachedCut") });
+      return;
+    case "ddm_insurance_decision":
+      analytics.track("hand_decision", { game: "double_down_madness", street: "insurance", action: truth(properties, "take") ? "take" : "decline", recommended_action: truth(properties, "correct") ? "take" : "decline", correct: truth(properties, "ok"), true_count: bucketTrueCount(number(properties, "tc")) });
+      return;
+    case "ddm_playing_decision":
+      analytics.track("hand_decision", { game: "double_down_madness", street: "play", action: text(properties, "action"), recommended_action: text(properties, "expected"), correct: truth(properties, "ok"), true_count: bucketTrueCount(number(properties, "tc")), hand_total: number(properties, "total"), deviation_available: truth(properties, "deviation") });
+      return;
     case "full_shoe_hand_dealt":
       analytics.track("hand_started", { game: "blackjack", wager_bucket: bucketMoney(number(properties, "totalWager")), spots: number(properties, "spots"), true_count: bucketTrueCount(number(properties, "tc")), bet_on_ramp: truth(properties, "betOk") });
       return;
@@ -332,6 +344,12 @@ export function track(event: string, properties: LegacyProperties = {}): void {
       return;
     case "chase_flush_ev_requested":
       analytics.track("solution_viewed", { feature: "chase_the_flush", kind: "ev" });
+      return;
+    case "ddm_ev_requested":
+      analytics.track("solution_viewed", { feature: "double_down_madness", kind: "ev" });
+      return;
+    case "ddm_started":
+      analytics.track("feature_opened", { feature: "double_down_madness", category: "game" });
       return;
     case "full_shoe_ev_requested":
       analytics.track("solution_viewed", { feature: "blackjack", kind: "ev" });

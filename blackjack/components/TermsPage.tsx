@@ -82,7 +82,7 @@ export default function TermsPage() {
         <Panel>
           <h2 className="font-semibold">Content and third-party references</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">
-            Basic strategy, Hi-Lo counting, and the AP Toolbox H17 Pro
+            Basic strategy, Hi-Lo counting, and the H17 Pro
             deviation table used on this site are established blackjack
             theory and chart data, not proprietary to CountLab. The Ultimate Texas Hold&rsquo;em and Chase the Flush
             tables are original implementations of publicly known casino

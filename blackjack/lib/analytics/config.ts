@@ -86,6 +86,7 @@ export const FEATURES: Record<FeatureId, FeatureDefinition> = {
   counting_benchmark: { category: "training", label: "Counting Benchmark", route: "/training/benchmark" },
   practice_checklist: { category: "training", label: "Daily Checklist", route: "/training/checklist" },
   blackjack: { category: "game", label: "Blackjack table", route: "/training/full-shoe" },
+  double_down_madness: { category: "game", label: "Double Down Madness", route: "/double-down-madness" },
   ultimate_texas_holdem: { category: "game", label: "Ultimate Texas Hold'em", route: "/ultimate-texas-holdem" },
   chase_the_flush: { category: "game", label: "Chase the Flush", route: "/chase-flush" },
   game_bankroll_lab: { category: "analysis", label: "Game & Bankroll Lab", route: "/cvcx" },

@@ -1,8 +1,7 @@
 # CountLab feature roadmap
 
-This roadmap converts the useful workflows observed in AP Toolbox into original
-CountLab features. It is ordered by user value and engine dependency, not by
-visual similarity to the reference product.
+This roadmap converts useful workflows observed in comparable products into
+original CountLab features. It is ordered by user value and engine dependency.
 
 ## Delivered foundation
 
@@ -19,7 +18,7 @@ visual similarity to the reference product.
 - Real session and bankroll journal (`lib/blackjack/journal.ts`,
   `journalAnalysis.ts`, `components/SessionJournal.tsx`, routed at
   `/journal`): local-first casino session log and bankroll-transaction
-  ledger. Unlike AP Toolbox's Results Tracker, a session's theoretical EV and
+  ledger. Unlike basic results trackers, a session's theoretical EV and
   standard deviation are computed from the same audited rules/ramp/pace
   engine as the Game & Bankroll Lab (`theoreticalSessionOutcome`), not typed
   in by hand, so realized results and theoretical EV cannot silently
@@ -29,7 +28,7 @@ visual similarity to the reference product.
 
 ## Next: journal refinements (from Results Tracker analysis)
 
-AP Toolbox's Results Tracker (`docs/reference-analysis.md`) validated the
+Comparable results trackers (`docs/reference-analysis.md`) validated the
 actual-vs-EV concept but also revealed gaps the shipped journal doesn't cover
 yet:
 

@@ -69,7 +69,7 @@ quarter-deck estimation resolution.
 Represent each play with hand, dealer card, threshold, comparison operator,
 normal action, deviating action, applicable rules, and source metadata. Drills
 sample both sides of the threshold and record accuracy per deviation. The
-supplied AP Toolbox H17 Pro 34-play catalog is the active reference set.
+supplied H17 Pro 34-play catalog is the active reference set.
 
 ### Combined practice
 

@@ -1,0 +1,98 @@
+[
+  {
+    "check": "P(dealer draws to 22), 6d H17",
+    "got": 0.0735362283604267,
+    "target": 0.073536,
+    "tolerance": 5e-07,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "Push 22 house edge at 11:1",
+    "got": 0.11756525967487963,
+    "target": 0.1176,
+    "tolerance": 5e-05,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "dealer distribution sums to 1",
+    "got": 1.0000000000000002,
+    "target": 1.0,
+    "tolerance": 1e-12,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "V2 blackjack multiplier",
+    "got": 1.5,
+    "target": 1.5,
+    "tolerance": 1e-12,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "V3 blackjack multiplier",
+    "got": 1.5,
+    "target": 1.5,
+    "tolerance": 1e-12,
+    "pass": true,
+    "note": "identical to V2, which is why Wizard reports one house edge for both"
+  },
+  {
+    "check": "V2 and V3 exact house edge identical",
+    "got": 0.0,
+    "target": 0.0,
+    "tolerance": 1e-12,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "Wizard's own chart vs ours (fresh shoe)",
+    "got": 3.327181185022732e-05,
+    "target": 0.0,
+    "tolerance": 0.001,
+    "pass": true,
+    "note": "our derived chart should be at least as good"
+  },
+  {
+    "check": "MC (CSM) reproduces the exact solver",
+    "got": 0.00879851478519406,
+    "target": 0.00886025731844322,
+    "tolerance": 0.0002070475771112773,
+    "pass": true,
+    "note": "cross-validates the kernel against exact combinatorics"
+  },
+  {
+    "check": "V1 house edge, 6 decks, cut card",
+    "got": 0.009441511787766046,
+    "target": 0.0095,
+    "tolerance": 0.0005,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "average final wager",
+    "got": 1.5876720773506883,
+    "target": 1.57,
+    "tolerance": 0.03,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "element of risk V1",
+    "got": 0.005946764399560947,
+    "target": 0.0061,
+    "tolerance": 0.0005,
+    "pass": true,
+    "note": ""
+  },
+  {
+    "check": "cut card costs the player",
+    "got": 0.0006429970025719871,
+    "target": 0.0003,
+    "tolerance": 0.0005,
+    "pass": true,
+    "note": "EXPLAIN: we measure 0.064%, Wizard states 0.03%"
+  }
+]

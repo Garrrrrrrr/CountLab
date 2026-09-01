@@ -13,6 +13,15 @@
  * The chart's legend notes that `0-` and `0+` mean any negative / any positive
  * *running* count, where every other index is a true count. That is explanatory
  * only — the printed cell is what the drill asks for.
+ *
+ * One house addition sits on top of the transcription: soft 20 doubles against
+ * 4, 5 and 6 at 6+, 5+ and 4+. The printed chart stands there at every count,
+ * but those are the counts where doubling actually overtakes standing — the
+ * same shape, and the same three indices, as the chart's own T,T splits.
+ * Measured with `priceCell` (H17, 6 decks, 75% dealt): against a 6 the double
+ * is behind by 0.013 units at +3 and ahead by 0.020 at +4; against a 5, behind
+ * 0.017 at +4 and ahead 0.021 at +5; against a 4, behind 0.018 at +5 and ahead
+ * 0.003 at +6. Everything else here is the PDF as printed.
  */
 
 export const CHART_DEALERS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"] as const;
@@ -82,7 +91,7 @@ export const BJA_H17_SECTIONS: readonly ChartSection[] = [
     2,2  Y/N  Y/N  Y   Y    Y    Y  N  N  N  N
   `),
   section("soft", "Soft totals", `
-    A,9  S   S   S   S   S   S  S  S  S  S
+    A,9  S   S   6+  5+   4+   S  S  S  S  S
     A,8  S   S   3+  1+  0-  S  S  S  S  S
     A,7  Ds  Ds  Ds  Ds  Ds  S  S  H  H  H
     A,6  1+  D   D   D   D   H  H  H  H  H

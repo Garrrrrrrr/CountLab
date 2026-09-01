@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { deviationHandRanks, deviationTrainingRows, deviationTransition } from "./deviations";
-import { H17_PRO_DEVIATIONS } from "./apToolboxH17Pro";
-import { S17_PRO_DEVIATIONS } from "./apToolboxS17Pro";
+import { H17_PRO_DEVIATIONS } from "./h17Pro";
+import { S17_PRO_DEVIATIONS } from "./s17Pro";
 import { calculateHandValue, isPair, isSoft } from "./hand";
 import type { Card } from "./types";
 

@@ -66,7 +66,7 @@ export function SessionSimulator() {
   const [mode, setMode] = useState<"profile" | "shoes">("shoes");
   const [handsToSimulate, setHandsToSimulate] = useState(10_000);
   const [highSpeed, setHighSpeed] = useState(false);
-  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["ap-toolbox-h17-pro"]);
+  const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["h17-pro"]);
   const [shoeResult, setShoeResult] = useState<ShoeSimulationResult>();
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
   const shoeWorkerRef = useRef<Worker | undefined>(undefined);
@@ -303,7 +303,7 @@ export function SessionSimulator() {
             <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
             <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it draws from the audited true-count frequencies and conditional payoff moments for the AP Toolbox Pro index policy, sampling each round independently. The index EV is priced into those coefficients, but card order, count clustering inside a shoe, and card-level drawdowns are not reproduced. Use Real shoes for those.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it draws from the audited true-count frequencies and conditional payoff moments for the H17 Pro index policy, sampling each round independently. The index EV is priced into those coefficients, but card order, count clustering inside a shoe, and card-level drawdowns are not reproduced. Use Real shoes for those.</p>
         </details>
       ) : (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
@@ -374,7 +374,7 @@ export function SessionSimulator() {
                 <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">
                   Index deviations
                   <div className="flex min-h-11 items-center gap-4 px-1">
-                    {(["ap-toolbox-h17-pro"] as DeviationGroup[]).map((group) => (
+                    {(["h17-pro"] as DeviationGroup[]).map((group) => (
                       <label key={group} className="flex items-center gap-2 text-sm text-zinc-300">
                         <input
                           type="checkbox"
@@ -383,7 +383,7 @@ export function SessionSimulator() {
                           onChange={() => setDeviationGroups((current) => current.includes(group) ? current.filter((value) => value !== group) : [...current, group])}
                           className="h-4 w-4 accent-emerald-400"
                         />
-                        AP Toolbox H17 Pro set
+                        H17/S17 Pro set
                       </label>
                     ))}
                   </div>

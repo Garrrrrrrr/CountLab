@@ -48,7 +48,7 @@ published -0.473% benchmark for the core rules.
 
 ## Training-deviation source
 
-The web app&rsquo;s drills and shoe-by-shoe simulator use the AP Toolbox H17 Pro
+The web app&rsquo;s drills and shoe-by-shoe simulator use the H17 Pro
 17-deviation default Hi-Lo set. It intentionally contains no insurance or
 surrender departures. The attribution and full MIT notice are in
 `../THIRD_PARTY_NOTICES.md`. The audited coefficient curves predate this training
@@ -130,27 +130,27 @@ reproduce the production coefficients (1.14377), which cross-validates the
 kernel reuse. The constant is consumed by `SIMULTANEOUS_HAND_CORRELATION` in
 `blackjack/lib/blackjack/advantage.ts`.
 
-The strategy has a concrete definition: the supplied AP Toolbox H17 Pro chart,
+The strategy has a concrete definition: the supplied H17 Pro chart,
 including its exact thresholds and boundary conventions. The production policy
-is encoded directly in `ap_toolbox_h17.py`.
+is encoded directly in `h17_pro.py`.
 
 ## Current calibrated artifact
 
-`ap_toolbox_h17.py` applies late surrender before the chart's starred stand
+`h17_pro.py` applies late surrender before the chart's starred stand
 indices for 15 and 16 against a ten or an ace. This prevents the known losing
 stand from replacing a legal surrender; the full per-count evidence is in
 `../blackjack/docs/reference-analysis.md`.
 
-`results/ap-toolbox-h17-pro-coefficients.json` and its exported TypeScript
+`results/h17-pro-coefficients.json` and its exported TypeScript
 artifact were regenerated from that policy on 2026-08-23. The run sampled 250
 million shoes for each of nine profiles (116,818,680,110 resolved rounds),
 using seed `20260821`; both artifacts record source checksum
-`3fd2802b03f9397397d51b472f2365cde461dfecf4f0613c1750b528ba205b62`.
+`101b81bcae4df274788780b69fca60de41fbffa76eca3d30980e73f7fec3a7a1`.
 
 Reproduce the production artifact with:
 
 ```powershell
-python ap_toolbox_h17.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/ap-toolbox-h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/apToolboxH17ProCoefficients.ts
+python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
 ```
 
 ## Commands
@@ -163,7 +163,7 @@ python simulate.py --all --shoes 2000000 --tasks 64 --output results/coefficient
 python noindex.py --shoes 100000000 --tasks 256 --output results/no-index-coefficients.json --typescript ../blackjack/lib/blackjack/noIndexCoefficients.ts
 python covariance.py --shoes 2000000 --spots 2 3 4 --output results/multi-hand-covariance.json
 python covariance.py --decks 8 --dealt 6 --shoes 1500000 --spots 2 3 --output results/multi-hand-covariance-8deck.json
-python rampvariance.py --shoes 2000000 --units 0 0 0 0 0 0 0 0 0 2 4 6 8 10 12 12 12 --bankroll-units 600 --output results/ramp-variance-aptoolbox.json
+python rampvariance.py --shoes 2000000 --units 0 0 0 0 0 0 0 0 0 2 4 6 8 10 12 12 12 --bankroll-units 600 --output results/ramp-variance-h17-pro.json
 ```
 
 `--shoes` is the total requested number of shoes per configuration, divided

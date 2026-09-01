@@ -1,0 +1,1288 @@
+{
+  "rules": "DDM v1, 6 decks, H17, ace_rule=strict, dealer22=push, BJ pays 1.625x",
+  "system": "hi-lo",
+  "tags": [
+    -1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    -1
+  ],
+  "remaining_decks": 4.0,
+  "true_counts": [
+    -8,
+    -7,
+    -6,
+    -5,
+    -4,
+    -3,
+    -2,
+    -1,
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "deviations": [
+    {
+      "plane": "first",
+      "row": 2,
+      "upcard": 4,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 2,
+      "upcard": 5,
+      "threshold": 1,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 2,
+      "upcard": 6,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 3,
+      "upcard": 4,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 3,
+      "upcard": 5,
+      "threshold": 2,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 3,
+      "upcard": 6,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 4,
+      "upcard": 4,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 4,
+      "upcard": 5,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 4,
+      "upcard": 6,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 5,
+      "upcard": 4,
+      "threshold": 8,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 5,
+      "upcard": 5,
+      "threshold": 4,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 5,
+      "upcard": 6,
+      "threshold": 1,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 6,
+      "upcard": 5,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 6,
+      "upcard": 6,
+      "threshold": 2,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 7,
+      "upcard": 4,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 7,
+      "upcard": 5,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 7,
+      "upcard": 6,
+      "threshold": 1,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 8,
+      "upcard": 3,
+      "threshold": 6,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 8,
+      "upcard": 4,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "first",
+      "row": 8,
+      "upcard": 5,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 8,
+      "upcard": 6,
+      "threshold": -4,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 3,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 4,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 5,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 6,
+      "threshold": -8,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "first",
+      "row": 10,
+      "upcard": 1,
+      "threshold": -4,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 4,
+      "upcard": 4,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 4,
+      "upcard": 5,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 4,
+      "upcard": 6,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 5,
+      "upcard": 5,
+      "threshold": 4,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 5,
+      "upcard": 6,
+      "threshold": 1,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 6,
+      "upcard": 5,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 6,
+      "upcard": 6,
+      "threshold": 2,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 7,
+      "upcard": 4,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 7,
+      "upcard": 5,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 8,
+      "upcard": 3,
+      "threshold": 6,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 8,
+      "upcard": 4,
+      "threshold": 2,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 8,
+      "upcard": 5,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 8,
+      "upcard": 6,
+      "threshold": -4,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 9,
+      "upcard": 3,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 9,
+      "upcard": 4,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 9,
+      "upcard": 5,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 10,
+      "upcard": 1,
+      "threshold": 1,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 10,
+      "upcard": 2,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 10,
+      "upcard": 10,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 11,
+      "upcard": 1,
+      "threshold": -8,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 2,
+      "threshold": 8,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 3,
+      "threshold": 4,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 4,
+      "threshold": 2,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 5,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 6,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 2,
+      "threshold": 3,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 3,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 4,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 5,
+      "threshold": -4,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 6,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 2,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 3,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 4,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 5,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 1,
+      "threshold": 8,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 2,
+      "threshold": -4,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 3,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 4,
+      "threshold": -8,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 16,
+      "upcard": 1,
+      "threshold": 7,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "hard",
+      "row": 16,
+      "upcard": 2,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S"
+    },
+    {
+      "plane": "hard",
+      "row": 16,
+      "upcard": 10,
+      "threshold": 7,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 13,
+      "upcard": 8,
+      "threshold": 2,
+      "action": "H",
+      "direction": 1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 13,
+      "upcard": 9,
+      "threshold": -7,
+      "action": "D",
+      "direction": -1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 14,
+      "upcard": 4,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 14,
+      "upcard": 7,
+      "threshold": 4,
+      "action": "H",
+      "direction": 1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 14,
+      "upcard": 8,
+      "threshold": -3,
+      "action": "D",
+      "direction": -1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 15,
+      "upcard": 4,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 15,
+      "upcard": 5,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 15,
+      "upcard": 7,
+      "threshold": -1,
+      "action": "D",
+      "direction": -1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 15,
+      "upcard": 8,
+      "threshold": -6,
+      "action": "D",
+      "direction": -1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 16,
+      "upcard": 4,
+      "threshold": 8,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 16,
+      "upcard": 5,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 16,
+      "upcard": 6,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 16,
+      "upcard": 7,
+      "threshold": -5,
+      "action": "D",
+      "direction": -1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 17,
+      "upcard": 4,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H"
+    },
+    {
+      "plane": "soft",
+      "row": 17,
+      "upcard": 5,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 17,
+      "upcard": 6,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 17,
+      "upcard": 7,
+      "threshold": 1,
+      "action": "H",
+      "direction": 1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 18,
+      "upcard": 3,
+      "threshold": 8,
+      "action": "D",
+      "direction": 1,
+      "base_action": "S"
+    },
+    {
+      "plane": "soft",
+      "row": 18,
+      "upcard": 4,
+      "threshold": 3,
+      "action": "D",
+      "direction": 1,
+      "base_action": "S"
+    },
+    {
+      "plane": "soft",
+      "row": 18,
+      "upcard": 5,
+      "threshold": -2,
+      "action": "S",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 18,
+      "upcard": 6,
+      "threshold": -5,
+      "action": "S",
+      "direction": -1,
+      "base_action": "D"
+    },
+    {
+      "plane": "soft",
+      "row": 19,
+      "upcard": 5,
+      "threshold": 8,
+      "action": "D",
+      "direction": 1,
+      "base_action": "S"
+    },
+    {
+      "plane": "soft",
+      "row": 19,
+      "upcard": 6,
+      "threshold": 7,
+      "action": "D",
+      "direction": 1,
+      "base_action": "S"
+    },
+    {
+      "plane": "insurance",
+      "row": 0,
+      "upcard": 1,
+      "threshold": 4,
+      "action": "I",
+      "direction": 1,
+      "base_action": "N",
+      "ev_gain_per_opportunity": 0.004807692307692291
+    }
+  ],
+  "ambiguous": [
+    {
+      "plane": "hard",
+      "row": 7,
+      "upcard": 6,
+      "reason": "TC 0 differs from the full-shoe chart",
+      "base_action": "H",
+      "samples": [
+        [
+          -8,
+          "H"
+        ],
+        [
+          -7,
+          "H"
+        ],
+        [
+          -6,
+          "H"
+        ],
+        [
+          -5,
+          "H"
+        ],
+        [
+          -4,
+          "H"
+        ],
+        [
+          -3,
+          "H"
+        ],
+        [
+          -2,
+          "H"
+        ],
+        [
+          -1,
+          "H"
+        ],
+        [
+          0,
+          "D"
+        ],
+        [
+          1,
+          "D"
+        ],
+        [
+          2,
+          "D"
+        ],
+        [
+          3,
+          "D"
+        ],
+        [
+          4,
+          "D"
+        ],
+        [
+          5,
+          "D"
+        ],
+        [
+          6,
+          "D"
+        ],
+        [
+          7,
+          "D"
+        ],
+        [
+          8,
+          "D"
+        ]
+      ]
+    },
+    {
+      "plane": "soft",
+      "row": 13,
+      "upcard": 3,
+      "reason": "action changes on both sides of TC 0",
+      "base_action": "H",
+      "samples": [
+        [
+          -8,
+          "D"
+        ],
+        [
+          -7,
+          "D"
+        ],
+        [
+          -6,
+          "D"
+        ],
+        [
+          -5,
+          "H"
+        ],
+        [
+          -4,
+          "H"
+        ],
+        [
+          -3,
+          "H"
+        ],
+        [
+          -2,
+          "H"
+        ],
+        [
+          -1,
+          "H"
+        ],
+        [
+          0,
+          "H"
+        ],
+        [
+          1,
+          "H"
+        ],
+        [
+          2,
+          "H"
+        ],
+        [
+          3,
+          "H"
+        ],
+        [
+          4,
+          "H"
+        ],
+        [
+          5,
+          "H"
+        ],
+        [
+          6,
+          "H"
+        ],
+        [
+          7,
+          "H"
+        ],
+        [
+          8,
+          "D"
+        ]
+      ]
+    }
+  ],
+  "samples": {
+    "-8": {
+      "actual_tc": -8.0,
+      "composition": [
+        0,
+        13,
+        20,
+        19,
+        19,
+        19,
+        19,
+        16,
+        16,
+        16,
+        51
+      ]
+    },
+    "-7": {
+      "actual_tc": -7.0,
+      "composition": [
+        0,
+        13,
+        19,
+        19,
+        19,
+        18,
+        19,
+        16,
+        16,
+        16,
+        53
+      ]
+    },
+    "-6": {
+      "actual_tc": -6.0,
+      "composition": [
+        0,
+        14,
+        19,
+        18,
+        18,
+        18,
+        19,
+        16,
+        16,
+        16,
+        54
+      ]
+    },
+    "-5": {
+      "actual_tc": -5.0,
+      "composition": [
+        0,
+        14,
+        18,
+        18,
+        18,
+        18,
+        18,
+        16,
+        16,
+        16,
+        56
+      ]
+    },
+    "-4": {
+      "actual_tc": -4.0,
+      "composition": [
+        0,
+        14,
+        18,
+        18,
+        18,
+        17,
+        17,
+        16,
+        16,
+        16,
+        58
+      ]
+    },
+    "-3": {
+      "actual_tc": -3.0,
+      "composition": [
+        0,
+        15,
+        18,
+        17,
+        17,
+        17,
+        17,
+        16,
+        16,
+        16,
+        59
+      ]
+    },
+    "-2": {
+      "actual_tc": -2.0,
+      "composition": [
+        0,
+        15,
+        17,
+        17,
+        17,
+        17,
+        16,
+        16,
+        16,
+        16,
+        61
+      ]
+    },
+    "-1": {
+      "actual_tc": -1.0,
+      "composition": [
+        0,
+        16,
+        17,
+        17,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        62
+      ]
+    },
+    "0": {
+      "actual_tc": 0.0,
+      "composition": [
+        0,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        64
+      ]
+    },
+    "1": {
+      "actual_tc": 1.0,
+      "composition": [
+        0,
+        16,
+        15,
+        15,
+        16,
+        16,
+        16,
+        16,
+        16,
+        16,
+        66
+      ]
+    },
+    "2": {
+      "actual_tc": 2.0,
+      "composition": [
+        0,
+        17,
+        15,
+        15,
+        15,
+        15,
+        16,
+        16,
+        16,
+        16,
+        67
+      ]
+    },
+    "3": {
+      "actual_tc": 3.0,
+      "composition": [
+        0,
+        17,
+        14,
+        15,
+        15,
+        15,
+        15,
+        16,
+        16,
+        16,
+        69
+      ]
+    },
+    "4": {
+      "actual_tc": 4.0,
+      "composition": [
+        0,
+        18,
+        14,
+        14,
+        14,
+        15,
+        15,
+        16,
+        16,
+        16,
+        70
+      ]
+    },
+    "5": {
+      "actual_tc": 5.0,
+      "composition": [
+        0,
+        18,
+        14,
+        14,
+        14,
+        14,
+        14,
+        16,
+        16,
+        16,
+        72
+      ]
+    },
+    "6": {
+      "actual_tc": 6.0,
+      "composition": [
+        0,
+        18,
+        13,
+        14,
+        14,
+        14,
+        13,
+        16,
+        16,
+        16,
+        74
+      ]
+    },
+    "7": {
+      "actual_tc": 7.0,
+      "composition": [
+        0,
+        19,
+        13,
+        13,
+        13,
+        14,
+        13,
+        16,
+        16,
+        16,
+        75
+      ]
+    },
+    "8": {
+      "actual_tc": 8.0,
+      "composition": [
+        0,
+        19,
+        12,
+        13,
+        13,
+        13,
+        13,
+        16,
+        16,
+        16,
+        77
+      ]
+    }
+  }
+}

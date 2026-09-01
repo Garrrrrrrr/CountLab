@@ -1,5 +1,5 @@
 /**
- * Prices every AP Toolbox Pro departure and regenerates
+ * Prices every Pro departure and regenerates
  * `lib/blackjack/deviationRanking.ts`.
  *
  * The measurement is the conditional EV difference at the decision point; see
@@ -15,8 +15,8 @@
  */
 import { writeFileSync } from "node:fs";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "../lib/blackjack/advantage";
-import { H17_PRO_DEVIATIONS } from "../lib/blackjack/apToolboxH17Pro";
-import { S17_PRO_DEVIATIONS } from "../lib/blackjack/apToolboxS17Pro";
+import { H17_PRO_DEVIATIONS } from "../lib/blackjack/h17Pro";
+import { S17_PRO_DEVIATIONS } from "../lib/blackjack/s17Pro";
 import { DeviationEvRow, measureDeviationEv } from "../lib/blackjack/deviationEv";
 
 const ROUNDS = Number(process.argv[2] ?? 40_000_000);

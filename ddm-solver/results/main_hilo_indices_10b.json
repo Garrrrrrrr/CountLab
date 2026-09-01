@@ -1,0 +1,521 @@
+{
+  "rules": "DDM v1, 6 decks, H17, ace_rule=strict, dealer22=push, BJ pays 1.625x",
+  "rule_spec": {
+    "decks": 6,
+    "dealer_hits_soft17": true,
+    "ace_rule": "strict",
+    "bj_version": 1,
+    "dealer_22_push": true,
+    "peek": true,
+    "offer_insurance": true,
+    "max_doubles": 0,
+    "double_fraction": 1.0
+  },
+  "system": "hi-lo",
+  "tags": [
+    -1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0
+  ],
+  "tag_divisor": 1.0,
+  "index_source": "results/indices_v1_hilo.json",
+  "index_limit": 18,
+  "deviations_used": [
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 3,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -5.0,
+      "ev_gain_per_round": 0.00034615996111815595
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 6,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -3.0,
+      "ev_gain_per_round": 0.0003161454557998461
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 4,
+      "threshold": -8,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -8.0,
+      "ev_gain_per_round": 0.0002609360083690171
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 4,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -6.0,
+      "ev_gain_per_round": 0.00025186091468343275
+    },
+    {
+      "plane": "hard",
+      "row": 12,
+      "upcard": 5,
+      "threshold": -1,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -1.0,
+      "ev_gain_per_round": 0.00018939951821332623
+    },
+    {
+      "plane": "hard",
+      "row": 16,
+      "upcard": 10,
+      "threshold": 7,
+      "action": "S",
+      "direction": 1,
+      "base_action": "H",
+      "actual_tc_scored": 7.0,
+      "ev_gain_per_round": 0.00018624043025157466
+    },
+    {
+      "plane": "hard",
+      "row": 14,
+      "upcard": 5,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -7.0,
+      "ev_gain_per_round": 0.00015481837270893417
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 4,
+      "threshold": -5,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -5.0,
+      "ev_gain_per_round": 0.00015271885120607398
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 6,
+      "threshold": -8,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -8.0,
+      "ev_gain_per_round": 0.00014658568092357216
+    },
+    {
+      "plane": "first",
+      "row": 2,
+      "upcard": 6,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -3.0,
+      "ev_gain_per_round": 0.00014203842390142496
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 4,
+      "threshold": -3,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -3.0,
+      "ev_gain_per_round": 0.0001415982100866492
+    },
+    {
+      "plane": "hard",
+      "row": 13,
+      "upcard": 6,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -6.0,
+      "ev_gain_per_round": 0.00013916686689188773
+    },
+    {
+      "plane": "hard",
+      "row": 16,
+      "upcard": 2,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -7.0,
+      "ev_gain_per_round": 0.00012947822427608613
+    },
+    {
+      "plane": "first",
+      "row": 9,
+      "upcard": 5,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -6.0,
+      "ev_gain_per_round": 0.0001291869474328855
+    },
+    {
+      "plane": "first",
+      "row": 8,
+      "upcard": 5,
+      "threshold": -2,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -2.0,
+      "ev_gain_per_round": 0.00011202945361657446
+    },
+    {
+      "plane": "hard",
+      "row": 15,
+      "upcard": 3,
+      "threshold": -6,
+      "action": "H",
+      "direction": -1,
+      "base_action": "S",
+      "actual_tc_scored": -6.0,
+      "ev_gain_per_round": 0.00010944775226107151
+    },
+    {
+      "plane": "hard",
+      "row": 9,
+      "upcard": 5,
+      "threshold": -7,
+      "action": "H",
+      "direction": -1,
+      "base_action": "D",
+      "actual_tc_scored": -7.0,
+      "ev_gain_per_round": 0.00010822109912714262
+    },
+    {
+      "plane": "first",
+      "row": 6,
+      "upcard": 5,
+      "threshold": 5,
+      "action": "D",
+      "direction": 1,
+      "base_action": "H",
+      "actual_tc_scored": 5.0,
+      "ev_gain_per_round": 9.161586259291699e-05
+    },
+    {
+      "plane": "insurance",
+      "row": 0,
+      "upcard": 1,
+      "threshold": 4,
+      "action": "I",
+      "direction": 1,
+      "base_action": "N",
+      "ev_gain_per_opportunity": 0.004807692307692291,
+      "ev_gain_per_round": null
+    }
+  ],
+  "rounds_requested_per_scenario": 10000000000,
+  "seed": 20260826,
+  "tasks": 12,
+  "hands_per_hour": 100.0,
+  "bankroll": 10000.0,
+  "target_risk": 0.05,
+  "results": [
+    {
+      "cut_decks": 1.0,
+      "spots": 1,
+      "tc_mode": "exact",
+      "csm": false,
+      "rounds": 9999999996,
+      "ramp": [
+        [
+          -99,
+          1.0
+        ],
+        [
+          1,
+          3.0
+        ],
+        [
+          2,
+          7.0
+        ],
+        [
+          3,
+          11.0
+        ],
+        [
+          4,
+          15.0
+        ],
+        [
+          5,
+          16.0
+        ]
+      ],
+      "metrics": {
+        "ev_per_round": 0.07397920950459168,
+        "variance_per_round": 70.577453741688,
+        "sd_per_round": 8.401038848957194,
+        "avg_bet": 2.9257262870702907,
+        "edge_per_unit_bet": 0.025285758900799843,
+        "n0_rounds": 12895.750238296843,
+        "ev_per_hour": 7.397920950459167,
+        "sd_per_hour": 84.01038848957194,
+        "required_bankroll": 1428.9903702344623,
+        "lifetime_risk": 7.860678247416123e-10,
+        "trip_risk": 0.0,
+        "risk_sized_unit": 6.997947787681204,
+        "ci95": 0.00016465733579971078
+      },
+      "buckets": [
+        {
+          "tc": -8,
+          "label": "<=-8",
+          "rounds": 150166524,
+          "frequency": 0.01501665240600666,
+          "ev_per_round": -0.10660486154690509,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.10660486154690509,
+          "sd": 1.6026492475269836,
+          "se": 0.0001307831881080394,
+          "ci95": 0.0002563303384750843,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -7,
+          "label": "-7",
+          "rounds": 94016980,
+          "frequency": 0.00940169800376068,
+          "ev_per_round": -0.08208540361538948,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.08208540361538948,
+          "sd": 1.6157321377803548,
+          "se": 0.0001666349958655754,
+          "ci95": 0.0003265985904605086,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -6,
+          "label": "-6",
+          "rounds": 153302367,
+          "frequency": 0.015330236706132094,
+          "ev_per_round": -0.07149309703743843,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.07149309703743843,
+          "sd": 1.6211654524839965,
+          "se": 0.00013093414300622275,
+          "ci95": 0.0002566262046388136,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -5,
+          "label": "-5",
+          "rounds": 243430985,
+          "frequency": 0.02434309850973724,
+          "ev_per_round": -0.06060318184227862,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.06060318184227862,
+          "sd": 1.6296633195685921,
+          "se": 0.00010445036510101625,
+          "ci95": 0.00020471895377005122,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -4,
+          "label": "-4",
+          "rounds": 411119767,
+          "frequency": 0.041111976716444794,
+          "ev_per_round": -0.04903075056957794,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.04903075056957794,
+          "sd": 1.6376583852533348,
+          "se": 8.076796375152696e-05,
+          "ci95": 0.00015830230005762944,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -3,
+          "label": "-3",
+          "rounds": 678566205,
+          "frequency": 0.06785662052714264,
+          "ev_per_round": -0.037360315122088934,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.037360315122088934,
+          "sd": 1.6535768502622448,
+          "se": 6.347873599802066e-05,
+          "ci95": 0.00012441603634024673,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -2,
+          "label": "-2",
+          "rounds": 1183119617,
+          "frequency": 0.11831196174732478,
+          "ev_per_round": -0.02573184681629702,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.02573184681629702,
+          "sd": 1.663299078122046,
+          "se": 4.835662912247918e-05,
+          "ci95": 9.477725149381991e-05,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": -1,
+          "label": "-1",
+          "rounds": 1772749232,
+          "frequency": 0.17727492327090996,
+          "ev_per_round": -0.014868587882710756,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.014868587882710756,
+          "sd": 1.669171117809392,
+          "se": 3.964397635355252e-05,
+          "ci95": 7.770076585692048e-05,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": 0,
+          "label": "+0",
+          "rounds": 2518988342,
+          "frequency": 0.25189883430075954,
+          "ev_per_round": -0.004251619815555304,
+          "avg_bet": 1.0,
+          "edge_per_unit_bet": -0.004251619815555304,
+          "sd": 1.6701505944497386,
+          "se": 3.327687640432399e-05,
+          "ci95": 6.522147927046575e-05,
+          "ramp_bet": 1.0
+        },
+        {
+          "tc": 1,
+          "label": "+1",
+          "rounds": 1120942639,
+          "frequency": 0.11209426394483771,
+          "ev_per_round": 0.026913236414053472,
+          "avg_bet": 3.0,
+          "edge_per_unit_bet": 0.008971078804684491,
+          "sd": 5.014115176956594,
+          "se": 0.00014976233787094797,
+          "ci95": 0.000293528788467577,
+          "ramp_bet": 3.0
+        },
+        {
+          "tc": 2,
+          "label": "+2",
+          "rounds": 656662439,
+          "frequency": 0.0656662439262665,
+          "ev_per_round": 0.14570040110060262,
+          "avg_bet": 7.0,
+          "edge_per_unit_bet": 0.0208143430143718,
+          "sd": 11.708984765321734,
+          "se": 0.0004569284011854849,
+          "ci95": 0.0008955632098370193,
+          "ramp_bet": 7.0
+        },
+        {
+          "tc": 3,
+          "label": "+3",
+          "rounds": 387107450,
+          "frequency": 0.0387107450154843,
+          "ev_per_round": 0.3550032917217171,
+          "avg_bet": 11.0,
+          "edge_per_unit_bet": 0.032273026520156095,
+          "sd": 18.42819343744478,
+          "se": 0.000936627700023623,
+          "ci95": 0.0018357565589688868,
+          "ramp_bet": 11.0
+        },
+        {
+          "tc": 4,
+          "label": "+4",
+          "rounds": 243083284,
+          "frequency": 0.024308328409723332,
+          "ev_per_round": 0.6686743729363143,
+          "avg_bet": 15.0,
+          "edge_per_unit_bet": 0.04457829152908762,
+          "sd": 25.235967744283602,
+          "se": 0.0016186107341048075,
+          "ci95": 0.0031724187438353603,
+          "ramp_bet": 15.0
+        },
+        {
+          "tc": 5,
+          "label": "+5",
+          "rounds": 147271274,
+          "frequency": 0.014727127405890852,
+          "ev_per_round": 0.9168181162064233,
+          "avg_bet": 16.0,
+          "edge_per_unit_bet": 0.057301132262901455,
+          "sd": 26.90963017546606,
+          "se": 0.002217423813970977,
+          "ci95": 0.00434607081384456,
+          "ramp_bet": 16.0
+        },
+        {
+          "tc": 6,
+          "label": "+6",
+          "rounds": 92642973,
+          "frequency": 0.00926429730370572,
+          "ev_per_round": 1.121563877273239,
+          "avg_bet": 16.0,
+          "edge_per_unit_bet": 0.07009774232957744,
+          "sd": 26.918645533808665,
+          "se": 0.0027967069517261032,
+          "ci95": 0.005481444900695962,
+          "ramp_bet": 16.0
+        },
+        {
+          "tc": 7,
+          "label": "+7",
+          "rounds": 56723624,
+          "frequency": 0.005672362402268945,
+          "ev_per_round": 1.3194570925158096,
+          "avg_bet": 16.0,
+          "edge_per_unit_bet": 0.0824660682822381,
+          "sd": 26.938974621131276,
+          "se": 0.003576836398592671,
+          "ci95": 0.007010470519833588,
+          "ramp_bet": 16.0
+        },
+        {
+          "tc": 8,
+          "label": ">=+8",
+          "rounds": 90106294,
+          "frequency": 0.009010629403604252,
+          "ev_per_round": 1.8053022134058694,
+          "avg_bet": 16.0,
+          "edge_per_unit_bet": 0.11283138833786684,
+          "sd": 27.006906991404698,
+          "se": 0.0028450983569416025,
+          "ci95": 0.0055762903120796245,
+          "ramp_bet": 16.0
+        }
+      ]
+    }
+  ],
+  "elapsed_seconds": 55.290040016174316
+}

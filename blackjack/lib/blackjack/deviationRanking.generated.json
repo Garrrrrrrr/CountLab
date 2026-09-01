@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedUtc": "2026-08-23T06:43:34.266Z",
+    "generatedUtc": "2026-08-26T03:32:47.542Z",
     "rounds": 250000000,
     "replications": 1000,
     "ramp": "1-12",
@@ -37,63 +37,103 @@
   "results": {
     "h17-ls": [
       {
-        "id": "apToolboxH17Pro-0",
+        "id": "h17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
-        "evPer100": 0.1383888429036049,
-        "standardError": 0.00024096303746682282,
-        "triggersPer100": 0.60536
+        "evPer100": 0.13837224587971111,
+        "standardError": 0.00024076939019798544,
+        "triggersPer100": 0.6078316
       },
       {
-        "id": "apToolboxH17Pro-1",
+        "id": "h17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
-        "evPer100": 0.004486641599999987,
-        "standardError": 0.0001775206734548647,
-        "triggersPer100": 0.0052724
+        "evPer100": 0.003060340799999998,
+        "standardError": 0.00023966215887197696,
+        "triggersPer100": 0.0097884
       },
       {
-        "id": "apToolboxH17Pro-2",
+        "id": "h17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
-        "evPer100": 0.01338124319999998,
-        "standardError": 0.00034635439392120316,
-        "triggersPer100": 0.018173599999999998
+        "evPer100": 0.012797121600000013,
+        "standardError": 0.0003457689198965086,
+        "triggersPer100": 0.017972
       },
       {
-        "id": "apToolboxH17Pro-3",
+        "id": "h17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
-        "evPer100": 0.01916648160000008,
-        "standardError": 0.0004934501033890406,
-        "triggersPer100": 0.032056
+        "evPer100": 0.02026805279999974,
+        "standardError": 0.0004969212987826416,
+        "triggersPer100": 0.0325036
       },
       {
-        "id": "apToolboxH17Pro-4",
+        "id": "h17Pro-Soft20v4-D",
+        "hand": "Soft 20",
+        "dealer": "4",
+        "evPer100": 0.0007723967999999995,
+        "standardError": 0.0000897576798533292,
+        "triggersPer100": 0.0014052000000000001
+      },
+      {
+        "id": "h17Pro-Soft20v5-D",
+        "hand": "Soft 20",
+        "dealer": "5",
+        "evPer100": 0.001687051199999996,
+        "standardError": 0.00012992260424881047,
+        "triggersPer100": 0.0025128
+      },
+      {
+        "id": "h17Pro-Soft20v6-D",
+        "hand": "Soft 20",
+        "dealer": "6",
+        "evPer100": 0.0023454320000000054,
+        "standardError": 0.00018792693829750674,
+        "triggersPer100": 0.004638799999999999
+      },
+      {
+        "id": "h17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
-        "evPer100": 0.0032200144000000086,
-        "standardError": 0.00017072407441983447,
-        "triggersPer100": 0.007846
+        "evPer100": 0.0026762239999999914,
+        "standardError": 0.00016771450880857184,
+        "triggersPer100": 0.0078468
       },
       {
-        "id": "apToolboxH17Pro-5",
+        "id": "h17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
-        "evPer100": 0.007736140400000021,
-        "standardError": 0.00019826703655112824,
-        "triggersPer100": 0.024758400000000003
+        "evPer100": 0.007691905200000154,
+        "standardError": 0.00020059459907778468,
+        "triggersPer100": 0.024568399999999997
       },
       {
-        "id": "apToolboxH17Pro-6",
+        "id": "h17Pro-Soft19v6-D",
+        "hand": "Soft 19",
+        "dealer": "6",
+        "evPer100": 0.0007452328000000052,
+        "standardError": 0.000051861414601147986,
+        "triggersPer100": 0.06801879999999999
+      },
+      {
+        "id": "h17Pro-Soft17v2-D",
+        "hand": "Soft 17",
+        "dealer": "2",
+        "evPer100": 0.0013521831999999965,
+        "standardError": 0.00013773476377909285,
+        "triggersPer100": 0.027134400000000003
+      },
+      {
+        "id": "h17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
+        "evPer100": -0.017741068799999794,
+        "standardError": 0.0006308394002175788,
+        "triggersPer100": 0.022438
       },
       {
-        "id": "apToolboxH17Pro-7",
+        "id": "h17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -101,7 +141,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-8",
+        "id": "h17Pro-16vA-S",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0,
@@ -109,15 +149,15 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-9",
+        "id": "h17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
+        "evPer100": -0.06963516159999987,
+        "standardError": 0.001332054280786488,
+        "triggersPer100": 0.09084600000000001
       },
       {
-        "id": "apToolboxH17Pro-10",
+        "id": "h17Pro-15vA-S",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0,
@@ -125,159 +165,127 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-11",
+        "id": "h17Pro-13v2-S",
         "hand": "13",
         "dealer": "2",
-        "evPer100": 0.0022142075999999826,
-        "standardError": 0.000043094731912130035,
-        "triggersPer100": 0.2623944
+        "evPer100": 0.0023662164000000235,
+        "standardError": 0.00004314957549454332,
+        "triggersPer100": 0.26325200000000004
       },
       {
-        "id": "apToolboxH17Pro-12",
+        "id": "h17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
-        "evPer100": 0.016064038399999973,
-        "standardError": 0.0002286378979451245,
-        "triggersPer100": 0.0620448
+        "evPer100": 0.01618129680000013,
+        "standardError": 0.00023200783381011227,
+        "triggersPer100": 0.0626996
       },
       {
-        "id": "apToolboxH17Pro-13",
+        "id": "h17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
-        "evPer100": 0.03217506800000025,
-        "standardError": 0.00027170025345265897,
-        "triggersPer100": 0.11104839999999999
+        "evPer100": 0.03305706560000102,
+        "standardError": 0.000272952318664591,
+        "triggersPer100": 0.1114292
       },
       {
-        "id": "apToolboxH17Pro-14",
+        "id": "h17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
-        "evPer100": 0.004196960799999755,
-        "standardError": 0.00006344658017574652,
-        "triggersPer100": 0.4436536
+        "evPer100": 0.004255171599999864,
+        "standardError": 0.00006343162337490756,
+        "triggersPer100": 0.4438796
       },
       {
-        "id": "apToolboxH17Pro-15",
-        "hand": "12",
-        "dealer": "5",
-        "evPer100": 0.002585024400000015,
-        "standardError": 0.00003891611081127788,
-        "triggersPer100": 0.15650799999999998
-      },
-      {
-        "id": "apToolboxH17Pro-16",
-        "hand": "11",
-        "dealer": "A",
-        "evPer100": 0.0035748436000000777,
-        "standardError": 0.00005648137650919056,
-        "triggersPer100": 0.119714
-      },
-      {
-        "id": "apToolboxH17Pro-17",
+        "id": "h17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
-        "evPer100": 0.003785155200000001,
-        "standardError": 0.00038205974480795454,
-        "triggersPer100": 0.008186
+        "evPer100": 0.00960938880000028,
+        "standardError": 0.000922157422573976,
+        "triggersPer100": 0.0512764
       },
       {
-        "id": "apToolboxH17Pro-18",
+        "id": "h17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
-        "evPer100": 0.0072918032000000325,
-        "standardError": 0.00024589572041112343,
-        "triggersPer100": 0.0159224
+        "evPer100": 0.009222254400000096,
+        "standardError": 0.0002450858779091444,
+        "triggersPer100": 0.0159488
       },
       {
-        "id": "apToolboxH17Pro-19",
+        "id": "h17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
-        "evPer100": 0.015614491199999943,
-        "standardError": 0.00022897093235661853,
-        "triggersPer100": 0.0953588
+        "evPer100": 0.015205935200000019,
+        "standardError": 0.0002267208005343575,
+        "triggersPer100": 0.0952456
       },
       {
-        "id": "apToolboxH17Pro-20",
+        "id": "h17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
-        "evPer100": 0.009164453600000073,
-        "standardError": 0.00040368590788141055,
-        "triggersPer100": 0.0278036
+        "evPer100": 0.007873008800000037,
+        "standardError": 0.00039760185613677603,
+        "triggersPer100": 0.027772400000000003
       },
       {
-        "id": "apToolboxH17Pro-21",
-        "hand": "8",
-        "dealer": "5",
-        "evPer100": 0.005822603999999941,
-        "standardError": 0.00022319960733874683,
-        "triggersPer100": 0.011719199999999999
-      },
-      {
-        "id": "apToolboxH17Pro-22",
+        "id": "h17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
-        "evPer100": 0.009418320399999907,
-        "standardError": 0.00026192676114548334,
-        "triggersPer100": 0.0363184
+        "evPer100": 0.00973013320000009,
+        "standardError": 0.00026305995424304103,
+        "triggersPer100": 0.036608
       },
       {
-        "id": "apToolboxH17Pro-23",
+        "id": "h17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
-        "evPer100": 0.003956033599999954,
-        "standardError": 0.00012173081163482581,
-        "triggersPer100": 0.0227588
+        "evPer100": 0.0038436016000000283,
+        "standardError": 0.00012014866104434086,
+        "triggersPer100": 0.022886
       },
       {
-        "id": "apToolboxH17Pro-24",
+        "id": "h17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0.0033534632000000735,
-        "standardError": 0.000032249213872255676,
-        "triggersPer100": 0.128496
+        "evPer100": -0.030914919600001395,
+        "standardError": 0.00021466586589230456,
+        "triggersPer100": 0.2421808
       },
       {
-        "id": "apToolboxH17Pro-25",
+        "id": "h17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
-        "evPer100": 0.01785390080000034,
-        "standardError": 0.0002167532567482805,
-        "triggersPer100": 0.0843632
+        "evPer100": 0.01861272639999995,
+        "standardError": 0.0002169705259572032,
+        "triggersPer100": 0.0846808
       },
       {
-        "id": "apToolboxH17Pro-26",
+        "id": "h17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0.02044657919999937,
-        "standardError": 0.0001288470792646499,
-        "triggersPer100": 1.0585584000000001
+        "evPer100": -0.1575930203999903,
+        "standardError": 0.0005893213524522234,
+        "triggersPer100": 0.4948732
       },
       {
-        "id": "apToolboxH17Pro-27",
-        "hand": "14",
-        "dealer": "10",
-        "evPer100": 0.03617089279999818,
-        "standardError": 0.0005229824795803731,
-        "triggersPer100": 0.161092
+        "id": "h17Pro-15vA-R",
+        "hand": "15",
+        "dealer": "A",
+        "evPer100": 0.0018596951999999814,
+        "standardError": 0.000024029919218654475,
+        "triggersPer100": 0.119534
       },
       {
-        "id": "apToolboxH17Pro-28",
-        "hand": "8,8",
-        "dealer": "10",
-        "evPer100": 0.00725362559999996,
-        "standardError": 0.0009548247116874806,
-        "triggersPer100": 0.0221148
-      },
-      {
-        "id": "apToolboxH17Pro-29",
+        "id": "h17Pro-17vA-R",
         "hand": "17",
         "dealer": "A",
-        "evPer100": -0.0013215223999999822,
-        "standardError": 0.0005000810544449321,
-        "triggersPer100": 0.3174588
+        "evPer100": -0.002594501599999996,
+        "standardError": 0.0004968326332790557,
+        "triggersPer100": 0.31703159999999997
       },
       {
-        "id": "apToolboxH17Pro-30",
+        "id": "h17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -285,24 +293,8 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-31",
+        "id": "h17Pro-16vA-R",
         "hand": "16",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "apToolboxH17Pro-32",
-        "hand": "15",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "apToolboxH17Pro-33",
-        "hand": "8,8",
         "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
@@ -311,191 +303,207 @@
     ],
     "h17-no-ls": [
       {
-        "id": "apToolboxH17Pro-0",
+        "id": "h17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
-        "evPer100": 0.13868003553616107,
-        "standardError": 0.00024069472361383303,
-        "triggersPer100": 0.6068048
+        "evPer100": 0.13826198465215264,
+        "standardError": 0.0002405326265684518,
+        "triggersPer100": 0.606312
       },
       {
-        "id": "apToolboxH17Pro-1",
+        "id": "h17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
-        "evPer100": 0.0038180448000000138,
-        "standardError": 0.00018030963826633244,
-        "triggersPer100": 0.0053852
+        "evPer100": 0.004580356800000017,
+        "standardError": 0.0002372941578096814,
+        "triggersPer100": 0.0099224
       },
       {
-        "id": "apToolboxH17Pro-2",
+        "id": "h17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
-        "evPer100": 0.012351297600000019,
-        "standardError": 0.00034826730103326226,
-        "triggersPer100": 0.0180576
+        "evPer100": 0.012992543999999967,
+        "standardError": 0.0003455586945772374,
+        "triggersPer100": 0.017938
       },
       {
-        "id": "apToolboxH17Pro-3",
+        "id": "h17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
-        "evPer100": 0.018437025600000094,
-        "standardError": 0.0004984971245073619,
-        "triggersPer100": 0.032311200000000005
+        "evPer100": 0.019800662400000012,
+        "standardError": 0.000496449014866863,
+        "triggersPer100": 0.0323452
       },
       {
-        "id": "apToolboxH17Pro-4",
+        "id": "h17Pro-Soft20v4-D",
+        "hand": "Soft 20",
+        "dealer": "4",
+        "evPer100": 0.0006648336000000009,
+        "standardError": 0.00009308628209304055,
+        "triggersPer100": 0.0014555999999999998
+      },
+      {
+        "id": "h17Pro-Soft20v5-D",
+        "hand": "Soft 20",
+        "dealer": "5",
+        "evPer100": 0.001839609599999996,
+        "standardError": 0.00013301309268965234,
+        "triggersPer100": 0.002628
+      },
+      {
+        "id": "h17Pro-Soft20v6-D",
+        "hand": "Soft 20",
+        "dealer": "6",
+        "evPer100": 0.00232491199999999,
+        "standardError": 0.00018456535676907688,
+        "triggersPer100": 0.0045156
+      },
+      {
+        "id": "h17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
-        "evPer100": 0.003791966400000003,
-        "standardError": 0.00016604031309860697,
-        "triggersPer100": 0.0077952
+        "evPer100": 0.0035197775999999945,
+        "standardError": 0.00016891076509501312,
+        "triggersPer100": 0.0079892
       },
       {
-        "id": "apToolboxH17Pro-5",
+        "id": "h17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
-        "evPer100": 0.007540158799999938,
-        "standardError": 0.00019956282765330123,
-        "triggersPer100": 0.024657200000000004
+        "evPer100": 0.007434448000000164,
+        "standardError": 0.00019652251773130715,
+        "triggersPer100": 0.024622799999999997
       },
       {
-        "id": "apToolboxH17Pro-6",
+        "id": "h17Pro-Soft19v6-D",
+        "hand": "Soft 19",
+        "dealer": "6",
+        "evPer100": 0.0007022004000000083,
+        "standardError": 0.00005175325214108081,
+        "triggersPer100": 0.06755520000000001
+      },
+      {
+        "id": "h17Pro-Soft17v2-D",
+        "hand": "Soft 17",
+        "dealer": "2",
+        "evPer100": 0.0013447727999999857,
+        "standardError": 0.00013816204598233355,
+        "triggersPer100": 0.0272124
+      },
+      {
+        "id": "h17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
-        "evPer100": 0.001788244800000011,
-        "standardError": 0.0004170882543267818,
-        "triggersPer100": 0.012466399999999999
+        "evPer100": 0.0012155167999999795,
+        "standardError": 0.0005458766595959892,
+        "triggersPer100": 0.022566799999999998
       },
       {
-        "id": "apToolboxH17Pro-7",
+        "id": "h17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
-        "evPer100": 0.04919742279999807,
-        "standardError": 0.0013448477732207387,
-        "triggersPer100": 0.7779996
+        "evPer100": 0.05515055560000126,
+        "standardError": 0.0013419998866216558,
+        "triggersPer100": 0.7801956
       },
       {
-        "id": "apToolboxH17Pro-8",
+        "id": "h17Pro-16vA-S",
         "hand": "16",
         "dealer": "A",
-        "evPer100": 0.005122711999999937,
-        "standardError": 0.0003243342376572745,
-        "triggersPer100": 0.0236648
+        "evPer100": 0.006496415999999986,
+        "standardError": 0.0003261209920972242,
+        "triggersPer100": 0.0235596
       },
       {
-        "id": "apToolboxH17Pro-9",
+        "id": "h17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
-        "evPer100": 0.016674400000000384,
-        "standardError": 0.0011014504832428176,
-        "triggersPer100": 0.0905808
+        "evPer100": 0.01873271520000069,
+        "standardError": 0.001102646763435618,
+        "triggersPer100": 0.0901748
       },
       {
-        "id": "apToolboxH17Pro-10",
+        "id": "h17Pro-15vA-S",
         "hand": "15",
         "dealer": "A",
-        "evPer100": 0.002451268800000009,
-        "standardError": 0.0002290934699186438,
-        "triggersPer100": 0.0087712
+        "evPer100": 0.002868916800000025,
+        "standardError": 0.00023356124685980248,
+        "triggersPer100": 0.008936399999999999
       },
       {
-        "id": "apToolboxH17Pro-11",
+        "id": "h17Pro-13v2-S",
         "hand": "13",
         "dealer": "2",
-        "evPer100": 0.002297409599999954,
-        "standardError": 0.00004320254309500928,
-        "triggersPer100": 0.2622968
+        "evPer100": 0.002303908000000002,
+        "standardError": 0.00004314092342487931,
+        "triggersPer100": 0.2631604
       },
       {
-        "id": "apToolboxH17Pro-12",
+        "id": "h17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
-        "evPer100": 0.015830027999999795,
-        "standardError": 0.00023060215116546033,
-        "triggersPer100": 0.062162
+        "evPer100": 0.016720959200000062,
+        "standardError": 0.00023189055251548573,
+        "triggersPer100": 0.0620076
       },
       {
-        "id": "apToolboxH17Pro-13",
+        "id": "h17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
-        "evPer100": 0.03225897039999947,
-        "standardError": 0.0002736318574379058,
-        "triggersPer100": 0.1113384
+        "evPer100": 0.0316213692000004,
+        "standardError": 0.0002727693213841338,
+        "triggersPer100": 0.1113536
       },
       {
-        "id": "apToolboxH17Pro-14",
+        "id": "h17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
-        "evPer100": 0.004308229599999505,
-        "standardError": 0.00006345256931589136,
-        "triggersPer100": 0.4434904
+        "evPer100": 0.004164691999999808,
+        "standardError": 0.0000633592028403116,
+        "triggersPer100": 0.44237360000000003
       },
       {
-        "id": "apToolboxH17Pro-15",
-        "hand": "12",
-        "dealer": "5",
-        "evPer100": 0.002474829200000052,
-        "standardError": 0.000038959351504894904,
-        "triggersPer100": 0.15719760000000002
-      },
-      {
-        "id": "apToolboxH17Pro-16",
-        "hand": "11",
-        "dealer": "A",
-        "evPer100": 0.003447644799999941,
-        "standardError": 0.00005617314427038287,
-        "triggersPer100": 0.117916
-      },
-      {
-        "id": "apToolboxH17Pro-17",
+        "id": "h17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
-        "evPer100": 0.0044968992,
-        "standardError": 0.00038751095185791837,
-        "triggersPer100": 0.0084476
+        "evPer100": 0.013934622399999855,
+        "standardError": 0.0009219684111116158,
+        "triggersPer100": 0.0509212
       },
       {
-        "id": "apToolboxH17Pro-18",
+        "id": "h17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
-        "evPer100": 0.008407702400000041,
-        "standardError": 0.0002458191413512015,
-        "triggersPer100": 0.016110000000000003
+        "evPer100": 0.008935145599999972,
+        "standardError": 0.00024274806488220078,
+        "triggersPer100": 0.0156964
       },
       {
-        "id": "apToolboxH17Pro-19",
+        "id": "h17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
-        "evPer100": 0.015348889999999954,
-        "standardError": 0.0002275771659738811,
-        "triggersPer100": 0.0956776
+        "evPer100": 0.015317515199999963,
+        "standardError": 0.00022645003301539413,
+        "triggersPer100": 0.0956068
       },
       {
-        "id": "apToolboxH17Pro-20",
+        "id": "h17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
-        "evPer100": 0.007541252800000031,
-        "standardError": 0.0003959677139932778,
-        "triggersPer100": 0.0276084
+        "evPer100": 0.008023326399999928,
+        "standardError": 0.0004005892225585359,
+        "triggersPer100": 0.027668799999999997
       },
       {
-        "id": "apToolboxH17Pro-21",
-        "hand": "8",
-        "dealer": "5",
-        "evPer100": 0.004799976000000013,
-        "standardError": 0.00022416023626174503,
-        "triggersPer100": 0.011691199999999999
-      },
-      {
-        "id": "apToolboxH17Pro-22",
+        "id": "h17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
-        "evPer100": 0.009668584799999946,
-        "standardError": 0.00026306567223313487,
-        "triggersPer100": 0.0363688
+        "evPer100": 0.009454192400000021,
+        "standardError": 0.00026079531011217235,
+        "triggersPer100": 0.0363744
       },
       {
-        "id": "apToolboxH17Pro-23",
+        "id": "h17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0,
@@ -503,7 +511,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-24",
+        "id": "h17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -511,7 +519,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-25",
+        "id": "h17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0,
@@ -519,7 +527,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-26",
+        "id": "h17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -527,23 +535,15 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-27",
-        "hand": "14",
-        "dealer": "10",
+        "id": "h17Pro-15vA-R",
+        "hand": "15",
+        "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-28",
-        "hand": "8,8",
-        "dealer": "10",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "apToolboxH17Pro-29",
+        "id": "h17Pro-17vA-R",
         "hand": "17",
         "dealer": "A",
         "evPer100": 0,
@@ -551,7 +551,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-30",
+        "id": "h17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -559,24 +559,8 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxH17Pro-31",
+        "id": "h17Pro-16vA-R",
         "hand": "16",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "apToolboxH17Pro-32",
-        "hand": "15",
-        "dealer": "A",
-        "evPer100": 0,
-        "standardError": 0,
-        "triggersPer100": 0
-      },
-      {
-        "id": "apToolboxH17Pro-33",
-        "hand": "8,8",
         "dealer": "A",
         "evPer100": 0,
         "standardError": 0,
@@ -585,7 +569,7 @@
     ],
     "s17-ls": [
       {
-        "id": "apToolboxS17Pro-0",
+        "id": "s17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
         "evPer100": 0.13871039461369966,
@@ -593,7 +577,7 @@
         "triggersPer100": 0.6056772
       },
       {
-        "id": "apToolboxS17Pro-1",
+        "id": "s17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
         "evPer100": 0.004654027200000012,
@@ -601,7 +585,7 @@
         "triggersPer100": 0.005315599999999999
       },
       {
-        "id": "apToolboxS17Pro-2",
+        "id": "s17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
         "evPer100": 0.01291205279999992,
@@ -609,7 +593,7 @@
         "triggersPer100": 0.017852
       },
       {
-        "id": "apToolboxS17Pro-3",
+        "id": "s17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
         "evPer100": 0.013209527999999984,
@@ -617,7 +601,7 @@
         "triggersPer100": 0.0179888
       },
       {
-        "id": "apToolboxS17Pro-4",
+        "id": "s17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
         "evPer100": 0.002889377600000001,
@@ -625,7 +609,7 @@
         "triggersPer100": 0.0078896
       },
       {
-        "id": "apToolboxS17Pro-5",
+        "id": "s17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
         "evPer100": 0.008063375999999985,
@@ -633,7 +617,7 @@
         "triggersPer100": 0.0248452
       },
       {
-        "id": "apToolboxS17Pro-6",
+        "id": "s17Pro-Soft19v6-D",
         "hand": "Soft 19",
         "dealer": "6",
         "evPer100": 0.009005999199999918,
@@ -641,7 +625,7 @@
         "triggersPer100": 0.024776799999999998
       },
       {
-        "id": "apToolboxS17Pro-7",
+        "id": "s17Pro-Soft18vA-S",
         "hand": "Soft 18",
         "dealer": "A",
         "evPer100": 0.0012563696000000076,
@@ -649,7 +633,7 @@
         "triggersPer100": 0.0130508
       },
       {
-        "id": "apToolboxS17Pro-8",
+        "id": "s17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -657,7 +641,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-9",
+        "id": "s17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -665,7 +649,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-10",
+        "id": "s17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -673,7 +657,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-11",
+        "id": "s17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
         "evPer100": 0.012242148800000057,
@@ -681,7 +665,7 @@
         "triggersPer100": 0.0353436
       },
       {
-        "id": "apToolboxS17Pro-12",
+        "id": "s17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
         "evPer100": 0.0282109480000004,
@@ -689,7 +673,7 @@
         "triggersPer100": 0.1114148
       },
       {
-        "id": "apToolboxS17Pro-13",
+        "id": "s17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
         "evPer100": 0.006847771599999436,
@@ -697,7 +681,7 @@
         "triggersPer100": 0.4435508
       },
       {
-        "id": "apToolboxS17Pro-14",
+        "id": "s17Pro-12v5-S",
         "hand": "12",
         "dealer": "5",
         "evPer100": 0.0013312408000000877,
@@ -705,7 +689,7 @@
         "triggersPer100": 0.26226679999999997
       },
       {
-        "id": "apToolboxS17Pro-15",
+        "id": "s17Pro-12v6-S",
         "hand": "12",
         "dealer": "6",
         "evPer100": 0.003035038000000092,
@@ -713,7 +697,7 @@
         "triggersPer100": 0.2627464
       },
       {
-        "id": "apToolboxS17Pro-16",
+        "id": "s17Pro-11vA-D",
         "hand": "11",
         "dealer": "A",
         "evPer100": 0.022270210000000238,
@@ -721,7 +705,7 @@
         "triggersPer100": 0.0678044
       },
       {
-        "id": "apToolboxS17Pro-17",
+        "id": "s17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
         "evPer100": 0.0044813183999999695,
@@ -729,7 +713,7 @@
         "triggersPer100": 0.0085596
       },
       {
-        "id": "apToolboxS17Pro-18",
+        "id": "s17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
         "evPer100": 0.006384150399999977,
@@ -737,7 +721,7 @@
         "triggersPer100": 0.0092772
       },
       {
-        "id": "apToolboxS17Pro-19",
+        "id": "s17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
         "evPer100": 0.016053266800000257,
@@ -745,7 +729,7 @@
         "triggersPer100": 0.0951312
       },
       {
-        "id": "apToolboxS17Pro-20",
+        "id": "s17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
         "evPer100": 0.007830151199999929,
@@ -753,7 +737,7 @@
         "triggersPer100": 0.0271228
       },
       {
-        "id": "apToolboxS17Pro-21",
+        "id": "s17Pro-8v5-D",
         "hand": "8",
         "dealer": "5",
         "evPer100": 0.005911837600000008,
@@ -761,7 +745,7 @@
         "triggersPer100": 0.0117456
       },
       {
-        "id": "apToolboxS17Pro-22",
+        "id": "s17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
         "evPer100": 0.009478367999999909,
@@ -769,7 +753,7 @@
         "triggersPer100": 0.0366952
       },
       {
-        "id": "apToolboxS17Pro-23",
+        "id": "s17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0.004113953600000033,
@@ -777,7 +761,7 @@
         "triggersPer100": 0.0230276
       },
       {
-        "id": "apToolboxS17Pro-24",
+        "id": "s17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0.0033046904000000694,
@@ -785,7 +769,7 @@
         "triggersPer100": 0.1288732
       },
       {
-        "id": "apToolboxS17Pro-25",
+        "id": "s17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0.01731600000000008,
@@ -793,7 +777,7 @@
         "triggersPer100": 0.0839528
       },
       {
-        "id": "apToolboxS17Pro-26",
+        "id": "s17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0.020292391599997323,
@@ -801,7 +785,7 @@
         "triggersPer100": 1.0608632
       },
       {
-        "id": "apToolboxS17Pro-27",
+        "id": "s17Pro-15vA-R",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0.013190774400000048,
@@ -809,7 +793,7 @@
         "triggersPer100": 0.0510444
       },
       {
-        "id": "apToolboxS17Pro-28",
+        "id": "s17Pro-14v10-R",
         "hand": "14",
         "dealer": "10",
         "evPer100": 0.03768855519999839,
@@ -817,7 +801,7 @@
         "triggersPer100": 0.1598356
       },
       {
-        "id": "apToolboxS17Pro-29",
+        "id": "s17Pro-8,8v10-R",
         "hand": "8,8",
         "dealer": "10",
         "evPer100": 0.009230393599999933,
@@ -825,7 +809,7 @@
         "triggersPer100": 0.0222368
       },
       {
-        "id": "apToolboxS17Pro-30",
+        "id": "s17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -833,7 +817,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-31",
+        "id": "s17Pro-16vA-R",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0.024518428400000854,
@@ -843,7 +827,7 @@
     ],
     "s17-no-ls": [
       {
-        "id": "apToolboxS17Pro-0",
+        "id": "s17Pro-InsurancevA-I",
         "hand": "Insurance",
         "dealer": "A",
         "evPer100": 0.13852045803902374,
@@ -851,7 +835,7 @@
         "triggersPer100": 0.60644
       },
       {
-        "id": "apToolboxS17Pro-1",
+        "id": "s17Pro-10,10v4-P",
         "hand": "10,10",
         "dealer": "4",
         "evPer100": 0.004057665599999989,
@@ -859,7 +843,7 @@
         "triggersPer100": 0.0053644
       },
       {
-        "id": "apToolboxS17Pro-2",
+        "id": "s17Pro-10,10v5-P",
         "hand": "10,10",
         "dealer": "5",
         "evPer100": 0.013585967999999988,
@@ -867,7 +851,7 @@
         "triggersPer100": 0.0179116
       },
       {
-        "id": "apToolboxS17Pro-3",
+        "id": "s17Pro-10,10v6-P",
         "hand": "10,10",
         "dealer": "6",
         "evPer100": 0.013101504000000022,
@@ -875,7 +859,7 @@
         "triggersPer100": 0.0178888
       },
       {
-        "id": "apToolboxS17Pro-4",
+        "id": "s17Pro-Soft19v4-D",
         "hand": "Soft 19",
         "dealer": "4",
         "evPer100": 0.003248470400000033,
@@ -883,7 +867,7 @@
         "triggersPer100": 0.0079248
       },
       {
-        "id": "apToolboxS17Pro-5",
+        "id": "s17Pro-Soft19v5-D",
         "hand": "Soft 19",
         "dealer": "5",
         "evPer100": 0.007669245200000118,
@@ -891,7 +875,7 @@
         "triggersPer100": 0.024469599999999998
       },
       {
-        "id": "apToolboxS17Pro-6",
+        "id": "s17Pro-Soft19v6-D",
         "hand": "Soft 19",
         "dealer": "6",
         "evPer100": 0.008525404800000082,
@@ -899,7 +883,7 @@
         "triggersPer100": 0.0248844
       },
       {
-        "id": "apToolboxS17Pro-7",
+        "id": "s17Pro-Soft18vA-S",
         "hand": "Soft 18",
         "dealer": "A",
         "evPer100": 0.0013050295999999994,
@@ -907,7 +891,7 @@
         "triggersPer100": 0.0130992
       },
       {
-        "id": "apToolboxS17Pro-8",
+        "id": "s17Pro-16v9-S",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0.0020721648000000133,
@@ -915,7 +899,7 @@
         "triggersPer100": 0.0124304
       },
       {
-        "id": "apToolboxS17Pro-9",
+        "id": "s17Pro-16v10-S",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0.055903111999996646,
@@ -923,7 +907,7 @@
         "triggersPer100": 0.7780119999999999
       },
       {
-        "id": "apToolboxS17Pro-10",
+        "id": "s17Pro-15v10-S",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0.01914787360000055,
@@ -931,7 +915,7 @@
         "triggersPer100": 0.09106360000000001
       },
       {
-        "id": "apToolboxS17Pro-11",
+        "id": "s17Pro-12v2-S",
         "hand": "12",
         "dealer": "2",
         "evPer100": 0.01266134240000005,
@@ -939,7 +923,7 @@
         "triggersPer100": 0.035758399999999996
       },
       {
-        "id": "apToolboxS17Pro-12",
+        "id": "s17Pro-12v3-S",
         "hand": "12",
         "dealer": "3",
         "evPer100": 0.029338552399999916,
@@ -947,7 +931,7 @@
         "triggersPer100": 0.11168319999999998
       },
       {
-        "id": "apToolboxS17Pro-13",
+        "id": "s17Pro-12v4-S",
         "hand": "12",
         "dealer": "4",
         "evPer100": 0.0066615159999992325,
@@ -955,7 +939,7 @@
         "triggersPer100": 0.4426204
       },
       {
-        "id": "apToolboxS17Pro-14",
+        "id": "s17Pro-12v5-S",
         "hand": "12",
         "dealer": "5",
         "evPer100": 0.0014917240000000172,
@@ -963,7 +947,7 @@
         "triggersPer100": 0.2619808
       },
       {
-        "id": "apToolboxS17Pro-15",
+        "id": "s17Pro-12v6-S",
         "hand": "12",
         "dealer": "6",
         "evPer100": 0.003066198400000078,
@@ -971,7 +955,7 @@
         "triggersPer100": 0.2628024
       },
       {
-        "id": "apToolboxS17Pro-16",
+        "id": "s17Pro-11vA-D",
         "hand": "11",
         "dealer": "A",
         "evPer100": 0.021750799199999768,
@@ -979,7 +963,7 @@
         "triggersPer100": 0.0676368
       },
       {
-        "id": "apToolboxS17Pro-17",
+        "id": "s17Pro-10v10-D",
         "hand": "10",
         "dealer": "10",
         "evPer100": 0.0041005968000000035,
@@ -987,7 +971,7 @@
         "triggersPer100": 0.008386399999999999
       },
       {
-        "id": "apToolboxS17Pro-18",
+        "id": "s17Pro-10vA-D",
         "hand": "10",
         "dealer": "A",
         "evPer100": 0.0054748784000000165,
@@ -995,7 +979,7 @@
         "triggersPer100": 0.0089852
       },
       {
-        "id": "apToolboxS17Pro-19",
+        "id": "s17Pro-9v2-D",
         "hand": "9",
         "dealer": "2",
         "evPer100": 0.015971569199999806,
@@ -1003,7 +987,7 @@
         "triggersPer100": 0.0955284
       },
       {
-        "id": "apToolboxS17Pro-20",
+        "id": "s17Pro-9v7-D",
         "hand": "9",
         "dealer": "7",
         "evPer100": 0.007907541600000003,
@@ -1011,7 +995,7 @@
         "triggersPer100": 0.0278008
       },
       {
-        "id": "apToolboxS17Pro-21",
+        "id": "s17Pro-8v5-D",
         "hand": "8",
         "dealer": "5",
         "evPer100": 0.004444123200000011,
@@ -1019,7 +1003,7 @@
         "triggersPer100": 0.0120276
       },
       {
-        "id": "apToolboxS17Pro-22",
+        "id": "s17Pro-8v6-D",
         "hand": "8",
         "dealer": "6",
         "evPer100": 0.010148070000000096,
@@ -1027,7 +1011,7 @@
         "triggersPer100": 0.03664
       },
       {
-        "id": "apToolboxS17Pro-23",
+        "id": "s17Pro-16v8-R",
         "hand": "16",
         "dealer": "8",
         "evPer100": 0,
@@ -1035,7 +1019,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-24",
+        "id": "s17Pro-16v9-R",
         "hand": "16",
         "dealer": "9",
         "evPer100": 0,
@@ -1043,7 +1027,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-25",
+        "id": "s17Pro-15v9-R",
         "hand": "15",
         "dealer": "9",
         "evPer100": 0,
@@ -1051,7 +1035,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-26",
+        "id": "s17Pro-15v10-R",
         "hand": "15",
         "dealer": "10",
         "evPer100": 0,
@@ -1059,7 +1043,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-27",
+        "id": "s17Pro-15vA-R",
         "hand": "15",
         "dealer": "A",
         "evPer100": 0,
@@ -1067,7 +1051,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-28",
+        "id": "s17Pro-14v10-R",
         "hand": "14",
         "dealer": "10",
         "evPer100": 0,
@@ -1075,7 +1059,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-29",
+        "id": "s17Pro-8,8v10-R",
         "hand": "8,8",
         "dealer": "10",
         "evPer100": 0,
@@ -1083,7 +1067,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-30",
+        "id": "s17Pro-16v10-R",
         "hand": "16",
         "dealer": "10",
         "evPer100": 0,
@@ -1091,7 +1075,7 @@
         "triggersPer100": 0
       },
       {
-        "id": "apToolboxS17Pro-31",
+        "id": "s17Pro-16vA-R",
         "hand": "16",
         "dealer": "A",
         "evPer100": 0,

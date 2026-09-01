@@ -2,7 +2,7 @@
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { toPrecacheUrls } from "./precacheManifest";
+import { toMediaUrls, toPrecacheUrls } from "./precacheManifest";
 
 const srcPath = path.join(process.cwd(), "public", "sw.js");
 const outDir = path.join(process.cwd(), "out");
@@ -28,15 +28,30 @@ try {
 }
 
 const source = readFileSync(srcPath, "utf8");
-if (!source.includes("__CACHE_VERSION__") || !source.includes('["__PRECACHE_URLS__"]')) {
+const placeholders = ["__CACHE_VERSION__", '["__PRECACHE_URLS__"]', '["__MEDIA_URLS__"]'];
+if (placeholders.some((placeholder) => !source.includes(placeholder))) {
   console.warn("[stamp-sw-version] public/sw.js is missing a placeholder; leaving out/sw.js as-is.");
   process.exit(0);
 }
 
-const urls = toPrecacheUrls(walk(outDir));
-writeFileSync(outPath, source.replaceAll("__CACHE_VERSION__", version).replace('["__PRECACHE_URLS__"]', JSON.stringify(urls)));
-const bytes = urls.reduce((sum, url) => {
-  const diskPath = path.join(outDir, (url.endsWith("/") ? `${url}index.html` : url).replace(/^\//, ""));
-  return sum + (existsSync(diskPath) ? readFileSync(diskPath).byteLength : 0);
-}, 0);
-console.log(`[stamp-sw-version] stamped out/sw.js with cache version ${version}; precaching ${urls.length} URLs (${(bytes / 1024 / 1024).toFixed(2)} MB)`);
+const files = walk(outDir);
+const urls = toPrecacheUrls(files);
+const mediaUrls = toMediaUrls(files);
+writeFileSync(
+  outPath,
+  source
+    .replaceAll("__CACHE_VERSION__", version)
+    .replace('["__PRECACHE_URLS__"]', JSON.stringify(urls))
+    .replace('["__MEDIA_URLS__"]', JSON.stringify(mediaUrls)),
+);
+const megabytes = (list: readonly string[]) => {
+  const bytes = list.reduce((sum, url) => {
+    const diskPath = path.join(outDir, (url.endsWith("/") ? `${url}index.html` : url).replace(/^\//, ""));
+    return sum + (existsSync(diskPath) ? readFileSync(diskPath).byteLength : 0);
+  }, 0);
+  return (bytes / 1024 / 1024).toFixed(2);
+};
+console.log(
+  `[stamp-sw-version] stamped out/sw.js with cache version ${version}; ` +
+    `precaching ${urls.length} URLs (${megabytes(urls)} MB) + ${mediaUrls.length} media URLs (${megabytes(mediaUrls)} MB)`,
+);

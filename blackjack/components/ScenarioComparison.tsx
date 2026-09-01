@@ -194,7 +194,7 @@ export function ScenarioComparison() {
                   <option value={1.2}>6:5</option>
                 </Select>
                 <Select label="Play variation" value={column.useIndices ? "indices" : "basic"} onChange={(event) => updateColumn(column.id, { useIndices: event.target.value === "indices" })}>
-                  <option value="indices">AP Toolbox Pro indices</option>
+                  <option value="indices">H17/S17 Pro indices</option>
                   <option value="basic">Basic strategy only</option>
                 </Select>
               </div>

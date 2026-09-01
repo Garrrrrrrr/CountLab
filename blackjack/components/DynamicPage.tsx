@@ -38,6 +38,7 @@ const SessionSimulator = dynamicPage(() => import("@/components/SessionSimulator
 const SessionJournal = dynamicPage(() => import("@/components/SessionJournal").then((m) => ({ default: m.SessionJournal })));
 const ScenarioComparison = dynamicPage(() => import("@/components/ScenarioComparison").then((m) => ({ default: m.ScenarioComparison })));
 const TripPlanner = dynamicPage(() => import("@/components/TripPlanner").then((m) => ({ default: m.TripPlanner })));
+const DDMLab = dynamicPage(() => import("@/components/DDMLab").then((m) => ({ default: m.DDMLab })));
 const ChaseFlushLab = dynamicPage(() => import("@/components/ChaseFlushLab").then((m) => ({ default: m.ChaseFlushLab })));
 const UTHLab = dynamicPage(() => import("@/components/UTHLab").then((m) => ({ default: m.UTHLab })));
 const RunningCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.RunningCountDrill })));
@@ -216,7 +217,13 @@ function Dashboard() {
           <div><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-400">Casino games</p><h2 className="mt-2 text-xl font-semibold">Play, practice, or analyze</h2></div>
           <p className="text-sm text-zinc-500">Separate games with their own bankrolls, chips, rules, and solvers.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <Link href="/double-down-madness" className="pressable surface group rounded-[1.35rem] p-5 hover:border-emerald-400/25 sm:p-6">
+            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400/10 text-amber-300"><i className="fa-solid fa-bolt" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-zinc-600 transition group-hover:translate-x-1 group-hover:text-emerald-300" aria-hidden="true" /></div>
+            <h3 className="mt-5 text-lg font-semibold">Double Down Madness</h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-400">Play a persistent six-deck shoe with live Hi-Lo coaching for strategy, deviations, insurance, and the optimized spread.</p>
+            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-emerald-400">Open DDM table</span>
+          </Link>
           <Link href="/ultimate-texas-holdem" className="pressable surface group rounded-[1.35rem] p-5 hover:border-emerald-400/25 sm:p-6">
             <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300"><i className="fa-solid fa-clover" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-zinc-600 transition group-hover:translate-x-1 group-hover:text-emerald-300" aria-hidden="true" /></div>
             <h3 className="mt-5 text-lg font-semibold">Ultimate Texas Hold&apos;em</h3>
@@ -669,6 +676,7 @@ export default function DynamicPage() {
     compare: <ScenarioComparison />,
     "trip-planner": <TripPlanner />,
     "bet-spread-recommender": <BankrollRecommender />,
+    "double-down-madness": <DDMLab />,
     "chase-flush": <ChaseFlushLab />,
     "ultimate-texas-holdem": <UTHLab />,
     "training/running-count": <RunningCountDrill />,

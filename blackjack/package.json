@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "postbuild": "tsx scripts/stamp-sw-version.ts",
+    "generate:ddm-buckets": "tsx scripts/generate-ddm-profile-buckets.ts",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run --exclude e2e/**",

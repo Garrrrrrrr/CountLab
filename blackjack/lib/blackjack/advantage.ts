@@ -1,8 +1,8 @@
 import { GAME_OPTIONS } from "./coefficients";
-import { AP_TOOLBOX_H17_PRO_COEFFICIENTS } from "./apToolboxH17ProCoefficients";
+import { H17_PRO_COEFFICIENTS } from "./h17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
 import { ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "./ruleAdjustments";
-export type IndexPolicy = "ap-toolbox-h17-pro";
+export type IndexPolicy = "h17-pro";
 export interface AdvantageRules {
   decks: number;
   dealerHitsSoft17: boolean;
@@ -13,7 +13,7 @@ export interface AdvantageRules {
   penetration: number;
   /** Enables an audited index policy curve. Set false for basic strategy. */
   useIndices?: boolean;
-  /** Defaults to the supplied AP Toolbox H17 Pro chart. */
+  /** Defaults to the supplied H17 Pro chart. */
   indexPolicy?: IndexPolicy;
 }
 export interface RampPoint {
@@ -79,7 +79,7 @@ export const DEFAULT_ADVANTAGE_RULES: AdvantageRules = {
   blackjackPayout: 1.5,
   penetration: 0.75,
   useIndices: true,
-  indexPolicy: "ap-toolbox-h17-pro",
+  indexPolicy: "h17-pro",
 };
 const TC_LABELS = [
   "≤ -8",
@@ -123,7 +123,7 @@ export function getCountProfile(rules: AdvantageRules) {
   const key = profileKey(rules);
   const coefficients = rules.useIndices === false
     ? NO_INDEX_COEFFICIENTS[key]
-    : AP_TOOLBOX_H17_PRO_COEFFICIENTS[key];
+    : H17_PRO_COEFFICIENTS[key];
   return coefficients.map((plain, position) => {
     const [p, adv, sd, samples, standardError] = plain;
     return {

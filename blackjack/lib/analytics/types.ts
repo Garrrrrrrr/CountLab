@@ -20,7 +20,7 @@ export type DrillId =
   | "h17_chart"
   | "full_shoe";
 
-export type GameId = "blackjack" | "ultimate_texas_holdem" | "chase_the_flush";
+export type GameId = "blackjack" | "double_down_madness" | "ultimate_texas_holdem" | "chase_the_flush";
 
 export type CalculatorId =
   | "game_bankroll_lab"

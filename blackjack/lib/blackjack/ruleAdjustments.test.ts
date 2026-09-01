@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, getCountProfile, RAMPS } from "./advantage";
-import { AP_TOOLBOX_H17_PRO_COEFFICIENTS } from "./apToolboxH17ProCoefficients";
+import { H17_PRO_COEFFICIENTS } from "./h17ProCoefficients";
 import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
 import { RULE_DELTAS, sumRuleAdjustment, isEstimated, ruleAdjustmentFlagsFromRules } from "./ruleAdjustments";
 
@@ -29,8 +29,8 @@ describe("rule-adjustment defaults", () => {
     }
   });
 
-  it("uses separately audited AP Toolbox H17 Pro and basic-strategy curves", () => {
-    const measured = AP_TOOLBOX_H17_PRO_COEFFICIENTS["6-4.5"];
+  it("uses separately audited H17 Pro and basic-strategy curves", () => {
+    const measured = H17_PRO_COEFFICIENTS["6-4.5"];
     calculateAdvantage(baseInput).rows.forEach((row, index) => {
       expect(row.advantage).toBeCloseTo(measured[index][1], 12);
       expect(row.frequency).toBeCloseTo(measured[index][0], 12);

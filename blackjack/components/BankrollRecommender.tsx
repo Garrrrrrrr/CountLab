@@ -215,7 +215,7 @@ export function BankrollRecommender() {
             </Select>
           </div>
           <div className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-200">
-            {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · audited AP Toolbox H17 Pro policy
+            {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · audited H17 Pro policy
           </div>
         </Section>
         <div className="space-y-5">
