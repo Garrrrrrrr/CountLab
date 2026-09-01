@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Panel, Select } from "@/components/ui";
-import { DEVIATION_ACTION_NAMES, deviationTransition } from "@/lib/blackjack/deviations";
+import { DEVIATION_ACTION_NAMES, deviationSentence, deviationTransition } from "@/lib/blackjack/deviations";
 import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/h17Pro";
 import { S17_PRO_DEVIATIONS } from "@/lib/blackjack/s17Pro";
 import {
@@ -34,11 +34,12 @@ export default function DeviationReferencePage() {
 
     const decorated = catalog.rows.map((row) => {
       const [evPer100, standardError, triggersPer100] = ranking[row.id] ?? [0, 0, 0];
+      const transition = deviationTransition(row, rules);
       // A row is dormant when the departure never differs from basic strategy
       // under these rules: an unconditional surrender the table already plays,
       // or a starred stand index that a late surrender outranks at every count.
       // The measured trigger rate and `changesPlay` agree; a test asserts it.
-      return { ...row, ...deviationTransition(row, rules), evPer100, standardError, triggersPer100, dormant: triggersPer100 === 0 };
+      return { ...row, ...transition, evPer100, standardError, triggersPer100, dormant: triggersPer100 === 0, sentence: deviationSentence(row, transition) };
     });
     const filtered = decorated.filter(
       (row) => !query || `${catalog.label} ${row.hand} ${row.dealer} ${DEVIATION_ACTION_NAMES[row.baseline]} ${DEVIATION_ACTION_NAMES[row.departure]}`.toLowerCase().includes(query),
@@ -105,6 +106,7 @@ export default function DeviationReferencePage() {
               ? "No effect: basic strategy already plays this way here."
               : <>EV impact {evLabel(row)} units / 100 rounds · fires {row.triggersPer100.toFixed(2)}× per 100</>}
           </p>
+          <p className="mt-2 text-xs leading-5 text-zinc-500">{row.sentence}</p>
         </article>
       ))}</div>
 
@@ -113,6 +115,7 @@ export default function DeviationReferencePage() {
           <th className="p-2">Hand</th><th className="p-2">Dealer</th><th className="p-2">Index</th>
           <th className="p-2">Baseline</th><th className="p-2">Departure</th>
           <th className="p-2 text-right">EV impact</th><th className="p-2 text-right">Fires</th>
+          <th className="p-2">Explanation</th>
         </tr></thead>
         <tbody>{rows.map((row) => (
           <tr key={row.id} className={`border-t border-white/[.06] ${row.dormant ? "text-zinc-600" : ""}`}>
@@ -123,6 +126,7 @@ export default function DeviationReferencePage() {
             <td className={`p-2 font-medium ${row.dormant ? "" : "text-emerald-200"}`}>{DEVIATION_ACTION_NAMES[row.departure]}</td>
             <td className="p-2 text-right tabular-nums" title={row.dormant ? "Basic strategy already plays this way under these rules" : "Units per 100 rounds, with a 95% interval"}>{evLabel(row)}</td>
             <td className="p-2 text-right tabular-nums text-zinc-500">{row.dormant ? "—" : `${row.triggersPer100.toFixed(2)}/100`}</td>
+            <td className="min-w-[22rem] p-2 text-xs leading-5 text-zinc-500">{row.sentence}</td>
           </tr>
         ))}</tbody>
       </table></div>

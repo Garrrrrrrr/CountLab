@@ -168,6 +168,53 @@ export function deviationTransition(row: Deviation, rules: DeviationRules, decks
   return { baseline: basic, departure: onIndex, atOrBelow: false, changesPlay: onIndex !== basic };
 }
 
+const ACTION_VERB: Record<DeviationAction, { imperative: string; plain: string }> = {
+  H: { imperative: "Hit", plain: "hit" },
+  S: { imperative: "Stand on", plain: "stand" },
+  D: { imperative: "Double down on", plain: "double down" },
+  P: { imperative: "Split", plain: "split" },
+  R: { imperative: "Surrender", plain: "surrender" },
+  I: { imperative: "Take insurance", plain: "take insurance" },
+  N: { imperative: "Decline insurance", plain: "decline insurance" },
+};
+
+const formatHand = (hand: string): string => {
+  const pair = /^(A|\d{1,2}),(A|\d{1,2})$/.exec(hand);
+  if (pair) return `a pair of ${pair[1] === "A" ? "aces" : `${pair[1]}s`}`;
+  const soft = /^Soft (\d{1,2})$/.exec(hand);
+  if (soft) return `a soft ${soft[1]}`;
+  return `a hard ${hand}`;
+};
+
+const formatDealer = (dealer: string): string => (dealer === "A" ? "a dealer ace" : `a dealer ${dealer}`);
+
+const conditionPhrase = (row: Deviation, transition: DeviationTransition): string => {
+  if (row.always) return "whenever the table offers late surrender";
+  const signedIndex = `${row.index > 0 ? "+" : ""}${row.index}`;
+  return transition.atOrBelow
+    ? `once the true count drops to ${signedIndex} or below`
+    : `once the true count reaches ${signedIndex} or higher`;
+};
+
+/**
+ * A plain-English reading of one catalog row, built off its resolved
+ * transition rather than the raw `normalAction`/`deviationAction`/`direction`
+ * fields — those read backwards for the two-sided cells (13 v 2, 12 v 4) and
+ * the chart's reversed surrender windows (15 v 10, 16 v 9), exactly the rows
+ * most likely to be misread. See `deviationTransition`'s docstring.
+ */
+export function deviationSentence(row: Deviation, transition: DeviationTransition): string {
+  const isInsurance = row.hand === "Insurance";
+  const handClause = isInsurance ? "" : ` ${formatHand(row.hand)} against ${formatDealer(row.dealer)}`;
+  if (!transition.changesPlay) {
+    return `No effect under these rules: basic strategy already calls for ${DEVIATION_ACTION_NAMES[transition.baseline]}${isInsurance ? "" : ` on${handClause}`} at every count.`;
+  }
+  const sentence = `${ACTION_VERB[transition.departure].imperative}${handClause} ${conditionPhrase(row, transition)}; otherwise ${ACTION_VERB[transition.baseline].plain}.`;
+  return row.overridesSurrender
+    ? `${sentence} Applies only where the table doesn't offer late surrender, or on a hand that's already split or drawn — otherwise this cell's surrender takes precedence.`
+    : sentence;
+}
+
 export interface DeviationTrainingRow {
   row: Deviation;
   transition: DeviationTransition;

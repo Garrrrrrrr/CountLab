@@ -13,6 +13,7 @@ import {
   DEVIATION_ACTION_NAMES,
   DeviationAction,
   deviationHandRanks,
+  deviationSentence,
   deviationTrainingRows,
 } from "@/lib/blackjack/deviations";
 import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/h17Pro";
@@ -446,12 +447,11 @@ export function DeviationDrill() {
       chosen: DeviationAction;
       correct: DeviationAction;
       normalAction: DeviationAction;
-      deviationAction: DeviationAction;
       index: number;
       tc: number;
-      direction?: "atOrAbove" | "atOrBelow";
       always?: true;
       departureTriggered: boolean;
+      sentence: string;
     }>();
   const finalArgs = useRef<Parameters<typeof finish> | null>(null);
   useEffect(() => {
@@ -532,9 +532,7 @@ export function DeviationDrill() {
             question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
             userAnswer: DEVIATION_ACTION_NAMES[chosen],
             correctAnswer: DEVIATION_ACTION_NAMES[correct],
-            explanation: d.always
-              ? `${DEVIATION_ACTION_NAMES[transition.departure]} is the chart's standing play.`
-              : `${DEVIATION_ACTION_NAMES[transition.departure]} at TC ${signed(d.index)} ${transition.atOrBelow ? "or lower" : "or higher"}; at this count the chart calls for ${DEVIATION_ACTION_NAMES[correct].toLowerCase()}.`,
+            explanation: deviationSentence(d, transition),
           }];
       const nextCategories = {
         ...categories,
@@ -548,12 +546,11 @@ export function DeviationDrill() {
         chosen,
         correct,
         normalAction: transition.baseline,
-        deviationAction: transition.departure,
         index: d.index,
         tc,
-        direction: transition.atOrBelow ? "atOrBelow" : "atOrAbove",
         always: d.always,
         departureTriggered: departureApplies,
+        sentence: deviationSentence(d, transition),
       });
       setCorrectCount(nextCorrect);
       setStreak(nextStreak);
@@ -698,9 +695,7 @@ export function DeviationDrill() {
             <span>Index: {feedback.always ? "Always" : signed(feedback.index)}</span>
           </div>
           <p className="mt-2 text-sm text-zinc-400">
-            {feedback.always
-              ? `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} is the chart's standing play.`
-              : `${DEVIATION_ACTION_NAMES[feedback.deviationAction]} at TC ${signed(feedback.index)} ${feedback.direction === "atOrBelow" ? "or lower" : "or higher"}; the previous count ${feedback.departureTriggered ? "triggered the departure" : `used the chart baseline of ${DEVIATION_ACTION_NAMES[feedback.normalAction].toLowerCase()}`}.`}
+            {feedback.sentence} {feedback.departureTriggered ? "The previous count triggered the departure." : "The previous count stayed at the chart baseline."}
           </p>
         </div>
       )}
