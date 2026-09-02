@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CertificationStatus } from "./CertificationStatus";
 
 type Drill = { name: string; href: string; icon: string; description: string; featured?: boolean };
 
@@ -18,7 +19,7 @@ const LANES: Array<{ title: string; description: string; icon: string; drills: D
   ] },
   { title: "Put it together", description: "Practice the complete sequence instead of an isolated skill.", icon: "fa-shoe-prints", drills: [
     { name: "Full Shoe", href: "/training/full-shoe", icon: "fa-shoe-prints", description: "Count, bet, play basic strategy, and use indices in one live shoe.", featured: true },
-    { name: "Proficiency Test", href: "/training/proficiency-test", icon: "fa-award", description: "A mixed assessment across the skills that matter." },
+    { name: "Test Out", href: "/training/test-out", icon: "fa-award", description: "A timed exam across every skill, scored section by section." },
     { name: "Daily Checklist", href: "/training/checklist", icon: "fa-list-check", description: "Follow a focused routine and keep your momentum." },
   ] },
 ];
@@ -42,5 +43,6 @@ export default function PracticeHub() {
       <div className="mb-3 flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]"><i className={`fa-solid ${lane.icon}`} aria-hidden="true" /></span><div><h2 id={lane.title.replaceAll(" ", "-").toLowerCase()} className="font-display text-xl font-semibold">{lane.title}</h2><p className="text-sm text-[var(--ink-muted)]">{lane.description}</p></div></div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{lane.drills.map((drill) => <DrillCard key={drill.href} drill={drill} />)}</div>
     </section>)}</div>
+    <CertificationStatus />
   </div>;
 }

@@ -18,7 +18,8 @@ export type DrillId =
   | "basic_strategy"
   | "deviations"
   | "h17_chart"
-  | "full_shoe";
+  | "full_shoe"
+  | "test_out";
 
 export type GameId = "blackjack" | "double_down_madness" | "ultimate_texas_holdem" | "chase_the_flush";
 

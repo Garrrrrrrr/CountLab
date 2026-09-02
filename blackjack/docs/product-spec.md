@@ -78,6 +78,35 @@ deviations, and bet-ramp coaching. Assistance data is hidden by default or by
 user choice. Checkpoints separately score running count, true count, play, and
 betting.
 
+### Testing out
+
+Test Out is the assessment counterpart to the drills. An exam is a configurable
+list of sections — running count, deck estimation, true-count conversion, basic
+strategy, index deviations, bet sizing, and a capstone shoe — run in sequence,
+each against its own question count, its own clock, and its own pass mark. The
+table rules the exam grades against are configurable too, so a player can
+certify for the specific game they are about to play.
+
+Passing requires clearing the overall bar *and* every enabled section's floor.
+An average alone would let a strong count hide a weak index game.
+
+Sections are graded over their configured length, so questions a clock swallows
+score as wrong rather than being dropped from the denominator; a section running
+out of time does not end the exam. The capstone shoe is the exception, because a
+round yields a variable number of checkpoints: it is graded over the checkpoints
+reached and fails outright if the clock stopped it short of its rounds.
+
+An exam deliberately does not autosave. Every drill resumes where it left off,
+but a resumable exam would let a taker dodge a section's clock by closing the
+tab, so leaving the page ends the attempt and records nothing — an abandoned
+attempt is not a failed one.
+
+A pass is a certification with an expiry. It is derived from the session log
+rather than stored separately: the passing session carries the exam identity and
+its validity window, so expiry is its date plus that window. Certifications
+therefore inherit sync, backup, and history for free, and show as current,
+expiring, or lapsed on the practice hub.
+
 ## Analysis requirements
 
 ### EV and risk

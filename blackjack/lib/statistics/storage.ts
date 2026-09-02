@@ -13,7 +13,8 @@ export type DrillType =
   | "Full Shoe"
   | "Counting Benchmark"
   | "H17 Chart"
-  | "Chase the Flush";
+  | "Chase the Flush"
+  | "Test Out";
 export type CountingErrorCategory =
   | "missed cancellation"
   | "negative arithmetic"

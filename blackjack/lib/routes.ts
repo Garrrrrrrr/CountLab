@@ -8,6 +8,9 @@ export const LEGACY_REDIRECTS: Record<string, string> = {
   analysis: "/cvcx",
   bankroll: "/cvcx",
   "reference/basic-strategy": "/reference",
+  // The timed true-count benchmark this path used to serve is now the
+  // "Quick True Count" preset of the configurable test-out exam.
+  "training/proficiency-test": "/training/test-out",
 };
 
 /** Every statically-generated route, as slug segments. Shared by the catch-all
@@ -36,7 +39,7 @@ export const ROUTES: string[][] = [
   ["training", "full-shoe"],
   ["training", "deck-estimation"],
   ["training", "benchmark"],
-  ["training", "proficiency-test"],
+  ["training", "test-out"],
   ["reference"],
   ["reference", "deviations"],
   ["reference", "h17-chart"],

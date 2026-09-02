@@ -70,8 +70,6 @@ High-speed mode will continue to omit replay data to protect memory and speed.
   deviation collection.
 - Spaced review weighted by errors, latency, recency, and user confidence.
 - Stacked checkout shoes targeting rare positive counts and index decisions.
-- Timed proficiency tests that score counting, conversion, play, and betting
-  separately.
 
 ## Next: professional planning tools
 

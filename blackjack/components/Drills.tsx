@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Card,
-  RANKS,
-  SUITS,
   Action,
 } from "@/lib/blackjack/types";
+import {
+  randomStrategyQuestion,
+  strategyCategoryOf,
+  StrategyCategory,
+} from "@/lib/blackjack/strategyQuestions";
 import { signed } from "@/lib/blackjack/hiLo";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
 import {
@@ -111,60 +114,6 @@ const rulesFromSettings = (settings: Settings) => ({
   doubleRule: "any" as const,
 });
 
-const randomCard = (): Card => ({
-  rank: RANKS[Math.floor(Math.random() * RANKS.length)],
-  suit: SUITS[Math.floor(Math.random() * SUITS.length)],
-});
-const strategyHardHands: Array<[Card["rank"], Card["rank"]]> = [
-  ["2", "3"],
-  ["3", "4"],
-  ["4", "5"],
-  ["4", "6"],
-  ["5", "6"],
-  ["5", "7"],
-  ["6", "7"],
-  ["6", "8"],
-  ["7", "8"],
-  ["6", "10"],
-  ["7", "10"],
-  ["8", "10"],
-  ["9", "10"],
-  ["10", "K"],
-];
-type StrategyCategory = "Hard totals" | "Soft totals" | "Pairs" | "Surrender";
-function randomStrategyQuestion(preferred?: StrategyCategory) {
-  const category = preferred ?? (["Pairs", "Soft totals", "Hard totals"] as StrategyCategory[])[Math.floor(Math.random() * 3)];
-  let player: Card[];
-  if (category === "Surrender") {
-    player = Math.random() < 0.5
-      ? [{ rank: "10", suit: "spades" }, { rank: "6", suit: "hearts" }]
-      : [{ rank: "10", suit: "spades" }, { rank: "5", suit: "hearts" }];
-  } else if (category === "Pairs") {
-    const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
-    player = [
-      { rank, suit: "spades" },
-      { rank, suit: "hearts" },
-    ];
-  } else if (category === "Soft totals") {
-    const softRanks: Card["rank"][] = ["2", "3", "4", "5", "6", "7", "8", "9"];
-    const rank = softRanks[Math.floor(Math.random() * softRanks.length)];
-    player = [
-      { rank: "A", suit: "spades" },
-      { rank, suit: "hearts" },
-    ];
-  } else {
-    const [first, second] =
-      strategyHardHands[Math.floor(Math.random() * strategyHardHands.length)];
-    player = [
-      { rank: first, suit: "spades" },
-      { rank: second, suit: "hearts" },
-    ];
-  }
-  const dealer = category === "Surrender"
-    ? { rank: (["9", "10", "A"] as Card["rank"][])[Math.floor(Math.random() * 3)], suit: "diamonds" as const }
-    : randomCard();
-  return { player, dealer };
-}
 type StrategySaved = {
   q: number; mode: "standard" | "adaptive"; correctCount: number; streak: number; best: number;
   totalMs: number; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
@@ -230,13 +179,7 @@ export function StrategyDrill() {
     dealerUpcard: data.dealer,
     rules,
   });
-  const category: StrategyCategory = decision.action === "R"
-    ? "Surrender"
-    : data.player[0].rank === data.player[1].rank
-      ? "Pairs"
-      : data.player.some((card) => card.rank === "A")
-        ? "Soft totals"
-        : "Hard totals";
+  const category: StrategyCategory = strategyCategoryOf(data.player, decision.action);
   const presented = useRef("");
   useEffect(() => {
     const scenario = `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`;

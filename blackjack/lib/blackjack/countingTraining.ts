@@ -21,8 +21,8 @@ export const COUNTING_PRESETS: Record<CountingPreset, {
   recovery: { label: "Interruption recovery", decks: 6, cards: 156, group: "random", speed: 850, checkpoint: "sign", interruption: true },
 };
 
-export function makeCountSequence(decks: number, amount: number, bias: CountBias = "none") {
-  const shoe = new BlackjackShoe(decks);
+export function makeCountSequence(decks: number, amount: number, bias: CountBias = "none", rng: () => number = Math.random) {
+  const shoe = new BlackjackShoe(decks, rng);
   shoe.deal(); // burn one random card so a full-deck session doesn't always resolve to a running count of 0
   const cards: Card[] = [];
   while (cards.length < Math.min(amount, decks * 52 - 1)) {
@@ -32,7 +32,7 @@ export function makeCountSequence(decks: number, amount: number, bias: CountBias
   if (bias !== "none") {
     cards.sort((a, b) => {
       const direction = bias === "positive" ? -1 : 1;
-      return direction * (hiLoValue(a) - hiLoValue(b)) + (Math.random() - 0.5) * 0.2;
+      return direction * (hiLoValue(a) - hiLoValue(b)) + (rng() - 0.5) * 0.2;
     });
   }
   return cards;
@@ -55,18 +55,20 @@ export function makeTrueCountScenario({
   resolution,
   rounding,
   focus = "all",
+  rng = Math.random,
 }: {
   decks: number;
   resolution: DeckResolution;
   rounding: TrueCountRounding;
   focus?: "all" | "positive" | "negative" | "zero" | "index" | "last-deck";
+  rng?: () => number;
 }): TrueCountScenario {
   let fallback: TrueCountScenario | undefined;
   for (let attempt = 0; attempt < 80; attempt++) {
-    const shoe = new BlackjackShoe(decks);
+    const shoe = new BlackjackShoe(decks, rng);
     const maxDealt = Math.max(1, Math.floor(decks * 52 * 0.8));
     const minDealt = focus === "last-deck" ? Math.max(1, (decks - 1) * 52) : 1;
-    const count = minDealt + Math.floor(Math.random() * Math.max(1, maxDealt - minDealt));
+    const count = minDealt + Math.floor(rng() * Math.max(1, maxDealt - minDealt));
     for (let i = 0; i < count; i++) shoe.deal();
     const rc = shoe.runningCount();
     const estimated = roundDeckEstimate(shoe.decksRemaining(), resolution);

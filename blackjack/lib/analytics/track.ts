@@ -33,6 +33,7 @@ const DRILLS: Record<string, DrillId> = {
   Deviations: "deviations",
   "H17 Chart": "h17_chart",
   "Full Shoe": "full_shoe",
+  "Test Out": "test_out",
 };
 
 const drill = (value: unknown, fallback: DrillId): DrillId =>

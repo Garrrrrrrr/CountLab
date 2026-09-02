@@ -44,7 +44,7 @@ const RunningCountDrill = dynamicPage(() => import("@/components/CountingDrills"
 const TrueCountDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.TrueCountDrill })));
 const DeckEstimationDrill = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.DeckEstimationDrill })));
 const CountingBenchmark = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.CountingBenchmark })));
-const ProficiencyTest = dynamicPage(() => import("@/components/CountingDrills").then((m) => ({ default: m.ProficiencyTest })));
+const TestOut = dynamicPage(() => import("@/components/TestOut"));
 const StrategyDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.StrategyDrill })));
 const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) => ({ default: m.DeviationDrill })));
 const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
@@ -686,7 +686,7 @@ export default function DynamicPage() {
     "training/full-shoe": null,
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
-    "training/proficiency-test": <ProficiencyTest />,
+    "training/test-out": <TestOut />,
     reference: <StrategyChartPage />,
     "reference/deviations": <StrategyChartPage initialTab="deviations" />,
     "reference/h17-chart": <StrategyChartPage initialTab="h17" />,

@@ -8,6 +8,7 @@ import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { PlayingCard } from "./PlayingCard";
 import { SessionSummary } from "./SessionSummary";
 import { Button, GhostButton, Metric, MobileActionDock, NumberField, Panel, Select } from "./ui";
+import { addCategory, Heading, inputClass, NumericPad, TrayVisual } from "./DrillKit";
 import {
   classifyCountError,
   classifyTrueCountError,
@@ -39,48 +40,7 @@ const DECK_ESTIMATION_PHOTOS = rawDeckEstimationPhotos as DeckPhoto[];
 const PHOTO_DECK_OPTIONS = Array.from(new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.numDecks))).sort((a, b) => a - b);
 const PHOTO_UNIQUE_COUNT = new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.file)).size;
 
-const inputClass = "field min-h-11 w-full rounded-xl px-3 text-center text-lg text-white outline-none";
 const actionNames: Record<DeviationAction, string> = { ...DEVIATION_ACTION_NAMES };
-
-function Heading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <div className="mb-5 sm:mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">{description}</p></div>;
-}
-
-function addCategory(all: Record<string, { correct: number; total: number }>, key: string, correct: boolean) {
-  const next = { ...all };
-  next[key] = { correct: (next[key]?.correct ?? 0) + Number(correct), total: (next[key]?.total ?? 0) + 1 };
-  return next;
-}
-
-function TrayVisual({ totalDecks, remainingDecks, style = "green", landmarks = true }: {
-  totalDecks: number; remainingDecks: number; style?: "green" | "red" | "smoke"; landmarks?: boolean;
-}) {
-  const discarded = Math.max(0, totalDecks - remainingDecks);
-  const fill = Math.min(100, discarded / totalDecks * 100);
-  const colors = style === "red" ? "from-red-950 to-red-700" : style === "smoke" ? "from-zinc-900 to-zinc-600" : "from-emerald-950 to-emerald-600";
-  return <div>
-    <div aria-label={`${discarded.toFixed(2)} decks discarded, ${remainingDecks.toFixed(2)} decks remaining`} className="relative h-40 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-inner [perspective:500px]">
-      <div className={`absolute inset-x-3 bottom-2 rounded-lg bg-gradient-to-t ${colors} transition-[height] duration-500`} style={{ height: `calc(${fill}% - 8px)` }} />
-      {landmarks && [25, 50, 75].map((value) => <div key={value} className="absolute inset-x-0 border-t border-dashed border-white/20" style={{ bottom: `${value}%` }}><span className="absolute right-2 -top-4 text-[10px] text-zinc-500">{value}% discarded</span></div>)}
-      <div className="absolute inset-0 rounded-2xl ring-8 ring-black/20 [transform:rotateX(-4deg)]" />
-    </div>
-    <div className="mt-2 flex justify-between text-xs text-zinc-500"><span>Discard tray</span><span>Fill shows cards already dealt</span></div>
-  </div>;
-}
-
-function NumericPad({ value, onChange, onSubmit, decimal = false }: { value: string; onChange: (v: string) => void; onSubmit: () => void; decimal?: boolean }) {
-  const press = (key: string) => {
-    if (key === "back") return onChange(value.slice(0, -1));
-    if (key === "sign") return onChange(value.startsWith("-") ? value.slice(1) : `-${value}`);
-    if (key === "." && value.includes(".")) return;
-    onChange(`${value}${key}`);
-  };
-  return <div className="mx-auto mt-4 grid max-w-xs grid-cols-3 gap-2 sm:hidden" aria-label="Number pad">
-    {["1", "2", "3", "4", "5", "6", "7", "8", "9", "sign", "0", decimal ? "." : "back"].map((key) => <GhostButton className="min-h-11" type="button" key={key} onClick={() => press(key)}>{key === "sign" ? "+/-" : key === "back" ? "Delete" : key}</GhostButton>)}
-    {decimal && <GhostButton className="min-h-11" type="button" onClick={() => press("back")}>Delete</GhostButton>}
-    <Button className={decimal ? "col-span-2 min-h-11" : "col-span-3 min-h-11"} type="button" onClick={onSubmit}>Submit</Button>
-  </div>;
-}
 
 function CardGroup({ cards, seed }: { cards: Card[]; seed: number }) {
   const layouts = ["justify-center", "justify-start md:pl-16", "justify-end md:pr-16"];
@@ -269,71 +229,6 @@ export function TrueCountDrill() {
   </>;
 }
 
-const PROFICIENCY_TEST_QUESTIONS = 50;
-const PROFICIENCY_TEST_SECONDS = 300;
-
-export function ProficiencyTest() {
-  const settings = storage.settings();
-  const [phase, setPhase] = useState<"setup" | "running" | "done">("setup");
-  useWakeLock(phase === "running");
-  const [question, setQuestion] = useState<TrueCountScenario>();
-  const [answer, setAnswer] = useState("");
-  const [index, setIndex] = useState(0);
-  const [correct, setCorrect] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [best, setBest] = useState(0);
-  const [mistakes, setMistakes] = useState<Mistake[]>([]);
-  const [secondsLeft, setSecondsLeft] = useState(PROFICIENCY_TEST_SECONDS);
-  const [result, setResult] = useState<Session>();
-  const answerStarted = useRef(Date.now());
-  const totalMs = useRef(0);
-
-  const finish = (askedCount: number, gotCorrect: number, bestStreak: number, finalMistakes: Mistake[]) => {
-    const session = makeSession("True Count", askedCount, gotCorrect, totalMs.current, bestStreak, finalMistakes, undefined, undefined, ["proficiency-test"]);
-    storage.addSession(session);
-    setResult(session);
-    setPhase("done");
-  };
-  const nextQuestion = (askedCount: number) => {
-    if (askedCount >= PROFICIENCY_TEST_QUESTIONS) return finish(askedCount, correct, best, mistakes);
-    const q = makeTrueCountScenario({ decks: settings.decks, resolution: 0.5, rounding: settings.rounding, focus: "all" });
-    setQuestion(q);
-    setAnswer("");
-    answerStarted.current = Date.now();
-  };
-  const start = () => {
-    setIndex(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setSecondsLeft(PROFICIENCY_TEST_SECONDS); totalMs.current = 0;
-    setPhase("running");
-    nextQuestion(0);
-    track("drill_started", { drill: "True Count", decks: settings.decks, resolution: 0.5, mode: "combined", focus: "all" });
-  };
-  const submit = () => {
-    if (!question) return;
-    const responseTimeMs = Date.now() - answerStarted.current;
-    totalMs.current += responseTimeMs;
-    const ok = Number(answer) === question.answer;
-    const nextCorrect = correct + Number(ok), nextStreak = ok ? streak + 1 : 0, nextIndex = index + 1;
-    const nextMistakes = ok ? mistakes : [...mistakes, { question: `RC ${signed(question.runningCount)} with ${question.estimatedDecksRemaining} decks remaining`, userAnswer: `TC ${answer || "blank"}`, correctAnswer: `TC ${signed(question.answer)}`, explanation: `${signed(question.runningCount)} ÷ ${question.estimatedDecksRemaining} = ${(question.runningCount / question.estimatedDecksRemaining).toFixed(2)}.` }];
-    setCorrect(nextCorrect); setStreak(nextStreak); setBest(Math.max(best, nextStreak)); setMistakes(nextMistakes); setIndex(nextIndex);
-    nextQuestion(nextIndex);
-  };
-  useEffect(() => {
-    if (phase !== "running") return;
-    const timer = setInterval(() => setSecondsLeft((value) => value - 1), 1000);
-    return () => clearInterval(timer);
-  }, [phase]);
-  useEffect(() => {
-    if (phase === "running" && secondsLeft <= 0) finish(index, correct, best, mistakes);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secondsLeft, phase]);
-  if (phase === "done" && result) return <SessionSummary session={result} onNew={() => setPhase("setup")} />;
-  return <><Heading eyebrow="Timed test" title="Counting Proficiency Test" description={`${PROFICIENCY_TEST_QUESTIONS} true-count questions or ${PROFICIENCY_TEST_SECONDS / 60} minutes, whichever comes first. No hints, no pausing.`} />
-    {phase === "setup" ? <Panel className="max-w-4xl"><p className="text-sm text-zinc-400">This is a fixed-length benchmark: mixed positive, negative, and zero counts at your saved deck count and rounding rule. Results are saved to your True Count history, tagged as a proficiency test.</p><Button className="mt-5 min-h-11" onClick={start}>Start test</Button></Panel> : question && <div className="grid gap-5 lg:grid-cols-[1fr_18rem]"><div className="order-1 grid grid-cols-2 gap-3 lg:order-2 lg:block lg:space-y-3"><Metric label="Time left" value={`${Math.floor(Math.max(0, secondsLeft) / 60)}:${String(Math.max(0, secondsLeft) % 60).padStart(2, "0")}`} /><Metric label="Question" value={`${index + 1} / ${PROFICIENCY_TEST_QUESTIONS}`} /><Metric label="Accuracy" value={`${index ? Math.round(correct / index * 100) : 0}%`} /><Metric label="Best streak" value={best} /></div><Panel className="order-2 lg:order-1">
-      <form onSubmit={(e) => { e.preventDefault(); submit(); }}><div className="grid place-items-center rounded-2xl bg-black/20 p-6 text-center"><p className="text-sm text-zinc-500">Running count</p><p className="mt-2 text-6xl font-semibold">{signed(question.runningCount)}</p><p className="mt-3 text-zinc-400">Estimated decks remaining: {question.estimatedDecksRemaining}</p></div><div className="mx-auto mt-7 max-w-xs"><label className="text-sm text-zinc-400">True count<input inputMode="numeric" aria-label="True count" className={`${inputClass} mt-2`} value={answer} onChange={(e) => setAnswer(e.target.value)} /></label></div><Button className="mx-auto mt-5 hidden min-h-11 sm:block">Check answer</Button><NumericPad value={answer} onChange={setAnswer} onSubmit={submit} /></form>
-    </Panel></div>}
-  </>;
-}
-
 type DeckEstimationSaved = {
   decks: number; resolution: DeckResolution; feedbackMode: "immediate" | "end";
   phase: "question" | "feedback"; question: number; remaining: number; photo: DeckPhoto | null; answer: string;
@@ -478,6 +373,6 @@ export function CountingBenchmark() {
     setPracticeFocus(row.drill, row.category);
     router.push(row.href);
   };
-  return <><Heading eyebrow="Mastery check" title="Counting Benchmark" description="Use consistent performance targets to decide what to practice next. Results update from your saved drill history." /><div className="grid gap-5 lg:grid-cols-[18rem_1fr]"><Metric label="Counting mastery" value={`${mastery.score}%`} sub={mastery.score === 100 ? "All benchmarks met" : "Based on latest sessions"} /><Panel><div className="space-y-3">{mastery.checks.map((check) => <Link key={check.label} href={check.href} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>{check.label}</span><span className={check.met ? "text-emerald-400" : "text-amber-300"}>{check.met ? "Met" : "Practice"}</span></Link>)}</div>{mastery.score < 100 && <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"><p className="text-sm text-zinc-400">Recommended next drill</p><Link className="mt-1 inline-block font-semibold text-emerald-300" href={mastery.next.href}>{mastery.next.label} →</Link></div>}<Link href="/training/proficiency-test" className="mt-3 flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>Timed proficiency test</span><span className="text-zinc-500">50Q / 5 min →</span></Link></Panel></div>
+  return <><Heading eyebrow="Mastery check" title="Counting Benchmark" description="Use consistent performance targets to decide what to practice next. Results update from your saved drill history." /><div className="grid gap-5 lg:grid-cols-[18rem_1fr]"><Metric label="Counting mastery" value={`${mastery.score}%`} sub={mastery.score === 100 ? "All benchmarks met" : "Based on latest sessions"} /><Panel><div className="space-y-3">{mastery.checks.map((check) => <Link key={check.label} href={check.href} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>{check.label}</span><span className={check.met ? "text-emerald-400" : "text-amber-300"}>{check.met ? "Met" : "Practice"}</span></Link>)}</div>{mastery.score < 100 && <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4"><p className="text-sm text-zinc-400">Recommended next drill</p><Link className="mt-1 inline-block font-semibold text-emerald-300" href={mastery.next.href}>{mastery.next.label} →</Link></div>}<Link href="/training/test-out" className="mt-3 flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 hover:bg-white/[.06]"><span>Test out</span><span className="text-zinc-500">Timed exam →</span></Link></Panel></div>
   {weakSpots.length > 0 && <Panel className="mt-5"><h2 className="font-semibold">Weak spots</h2><p className="mt-1 text-xs text-zinc-500">Your lowest-accuracy categories across saved sessions. Click one to jump straight into a focused drill.</p><div className="mt-4 grid gap-2 sm:grid-cols-2">{weakSpots.map((row) => <button key={`${row.drill}:${row.category}`} type="button" onClick={() => practiceWeakSpot(row)} className="flex min-h-11 items-center justify-between rounded-xl bg-black/20 p-4 text-left hover:bg-white/[.06]"><span><span className="block text-sm font-medium text-zinc-100">{row.category}</span><span className="text-xs text-zinc-500">{row.label} · {row.total} seen</span></span><span className="font-semibold text-amber-300">{Math.round(row.accuracy * 100)}%</span></button>)}</div></Panel>}</>;
 }
