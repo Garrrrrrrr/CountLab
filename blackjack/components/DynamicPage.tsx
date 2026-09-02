@@ -50,7 +50,9 @@ const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) 
 const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
 const PracticeChecklist = dynamicPage(() => import("@/components/PracticeChecklist").then((m) => ({ default: m.PracticeChecklist })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
-const StrategyChartPage = dynamicPage(() => import("@/components/StrategyChartPage"));
+const StrategyChartPage = dynamic(() => import("@/components/StrategyChartPage"), { loading: PageLoading });
+const PracticeHub = dynamicPage(() => import("@/components/PracticeHub"));
+const ReferenceHub = dynamicPage(() => import("@/components/ReferenceHub"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
@@ -286,7 +288,7 @@ function Dashboard() {
     </>
   );
 }
-function HiLoReference() {
+export function HiLoReference() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Hi-Lo System</h1>
@@ -664,7 +666,7 @@ export default function DynamicPage() {
     path = (p.slug || ["dashboard"]).join("/");
   const pages: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
-    practice: <AreaLanding area="practice" />,
+    practice: <PracticeHub />,
     analyze: <AreaLanding area="analyze" />,
     play: <AreaLanding area="play" />,
     cvcx: <CvcxLab />,
@@ -686,8 +688,9 @@ export default function DynamicPage() {
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
     "training/proficiency-test": <ProficiencyTest />,
-    reference: <HiLoReference />,
+    reference: <ReferenceHub />,
     "reference/basic-strategy": <StrategyChartPage />,
+    "reference/deviations": <StrategyChartPage initialTab="deviations" />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
     terms: <TermsPage />,
