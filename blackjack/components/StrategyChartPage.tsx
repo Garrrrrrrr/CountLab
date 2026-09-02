@@ -13,6 +13,7 @@ import type { Action } from "@/lib/blackjack/types";
 import { storage } from "@/lib/statistics/storage";
 
 type ChartTab = "strategy" | "deviations";
+type SectionTab = StrategySectionId;
 
 const DEFAULT_RULES: StrategyChartRules = {
   decks: 6,
@@ -24,9 +25,9 @@ const DEFAULT_RULES: StrategyChartRules = {
 };
 
 const SECTIONS: Array<{ id: StrategySectionId; label: string; description: string }> = [
-  { id: "pairs", label: "Pairs", description: "Split decisions" },
-  { id: "soft", label: "Soft totals", description: "Hands containing an ace counted as 11" },
   { id: "hard", label: "Hard totals", description: "Hands with no usable ace" },
+  { id: "soft", label: "Soft totals", description: "Hands containing an ace counted as 11" },
+  { id: "pairs", label: "Pairs", description: "Split decisions" },
 ];
 
 const ACTION_STYLE: Record<Action, string> = {
@@ -81,6 +82,7 @@ function StrategyCell({
   dealer,
   marker,
   profile,
+  showIndex = false,
 }: {
   rules: StrategyChartRules;
   section: StrategySectionId;
@@ -88,6 +90,7 @@ function StrategyCell({
   dealer: string;
   marker?: DeviationMarker;
   profile: DeviationRankingProfile;
+  showIndex?: boolean;
 }) {
   const cell = chartCell(rules, section, row, dealer);
   const fallback = cell.fallback ? "; otherwise " + ACTION_LABEL[cell.fallback].toLowerCase() : "";
@@ -95,35 +98,28 @@ function StrategyCell({
   return (
     <div
       aria-label={row + " versus dealer " + dealer + ": " + ACTION_LABEL[cell.action] + fallback}
-      className={["relative grid h-11 min-w-11 place-items-center rounded-md border font-data text-base font-bold", ACTION_STYLE[cell.action]].join(" ")}
+      className={["relative grid h-8 min-w-8 place-items-center rounded border font-data text-sm font-bold", ACTION_STYLE[cell.action]].join(" ")}
       title={marker ? deviationTitle(marker, profile) : ACTION_LABEL[cell.action] + fallback}
     >
       <span>
         {cell.action}
         {cell.fallback && <sub className="ml-px text-[0.62em] font-semibold">{cell.fallback.toLowerCase()}</sub>}
       </span>
-      {marker && <span className="absolute right-0.5 top-0.5 text-[0.58rem] leading-none text-[var(--ink-muted)]" aria-hidden="true">•</span>}
-    </div>
-  );
-}
-
-function DeviationGridCell({ marker, profile }: { marker?: DeviationMarker; profile: DeviationRankingProfile }) {
-  if (!marker) {
-    return <div className="grid h-11 min-w-11 place-items-center rounded-md border border-[var(--rule)] bg-[var(--paper)] text-[var(--ink-muted)]">—</div>;
-  }
-  const action = marker.row.transition.departure as Action;
-  return (
-    <div
-      className={["grid h-11 min-w-11 place-items-center rounded-md border font-data font-bold", ACTION_STYLE[action]].join(" ")}
-      title={deviationTitle(marker, profile)}
-    >
-      <span>{action} <small className="text-[0.6em] font-semibold">{indexLabel(marker.index, marker.atOrBelow)}</small></span>
+      {marker && (
+        <span
+          className={showIndex ? "absolute right-0.5 top-0.5 text-[0.5rem] leading-none text-[var(--ink)]" : "absolute right-0.5 top-0.5 text-[0.58rem] leading-none text-[var(--ink-muted)]"}
+          aria-hidden="true"
+        >
+          {showIndex ? marker.row.transition.departure + indexLabel(marker.index, marker.atOrBelow) : "•"}
+        </span>
+      )}
     </div>
   );
 }
 
 export default function StrategyChartPage() {
   const [tab, setTab] = useState<ChartTab>("strategy");
+  const [section, setSection] = useState<SectionTab>("hard");
   const [rules, setRules] = useState<StrategyChartRules>(DEFAULT_RULES);
 
   useEffect(() => {
@@ -208,9 +204,16 @@ export default function StrategyChartPage() {
         ]}
         className="mb-6"
       />
+      <Tabs
+        value={section}
+        onChange={setSection}
+        label="Hand type"
+        items={SECTIONS.map(({ id, label }) => ({ value: id, label }))}
+        className="mb-4"
+      />
 
       {tab === "strategy" ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Panel className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--ink-muted)]">
             {(["H", "S", "D", "P", "R"] as Action[]).map((action) => (
               <span key={action} className="inline-flex items-center gap-2">
@@ -221,7 +224,7 @@ export default function StrategyChartPage() {
             <span className="inline-flex items-center gap-1"><span className="font-data font-bold">D<sub className="text-[0.62em]">s</sub></span> double, otherwise stand</span>
           </Panel>
 
-          {SECTIONS.map((section) => (
+          {SECTIONS.filter(({ id }) => id === section).map((section) => (
             <Panel key={section.id} className="overflow-hidden">
               <div className="mb-4">
                 <h2 className="font-display text-2xl text-[var(--ink)]">{section.label}</h2>
@@ -249,17 +252,18 @@ export default function StrategyChartPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Panel>
             <h2 className="font-display text-2xl text-[var(--ink)]">Index deviations</h2>
-            <p className="mt-2 text-[var(--ink-muted)]">The action and signed true-count index in each marked cell are the departure from basic strategy.</p>
+            <p className="mt-2 text-[var(--ink-muted)]">Every cell keeps its basic-strategy action. A small corner tag marks the departure action and its signed true-count index.</p>
             <p className="mt-4 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
               Insurance: take at TC +3 or above.
             </p>
+            <p className="mt-3 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-[var(--ink)]">H</span> = basic strategy; <span className="font-data font-bold text-[var(--count-hot)]">S+2</span> = stand at TC +2 or above.</p>
             {rules.decks !== 6 && <p className="mt-3 text-sm text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
           </Panel>
 
-          {SECTIONS.map((section) => (
+          {SECTIONS.filter(({ id }) => id === section).map((section) => (
             <Panel key={section.id} className="overflow-hidden">
               <div className="mb-4">
                 <h2 className="font-display text-2xl text-[var(--ink)]">{section.label}</h2>
@@ -269,7 +273,15 @@ export default function StrategyChartPage() {
                 section={section.id}
                 label={section.label + " index deviations"}
                 renderCell={(row, dealer) => (
-                  <DeviationGridCell marker={deviationCells.get(section.id + ":" + row + "v" + dealer)} profile={profile} />
+                  <StrategyCell
+                    rules={rules}
+                    section={section.id}
+                    row={row}
+                    dealer={dealer}
+                    marker={deviationCells.get(section.id + ":" + row + "v" + dealer)}
+                    profile={profile}
+                    showIndex
+                  />
                 )}
               />
             </Panel>
