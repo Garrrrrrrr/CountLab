@@ -6,10 +6,13 @@
  * availability and double restrictions all resolve at read time.
  *
  * Provenance: transcribed into this repo's row/column layout from published
- * total-dependent basic strategy for these rule sets, and pinned by three tests
- * in `strategyTables.test.ts` and `strategyChart.test.ts` — parity against the
- * engine this replaces, agreement with the audited `bjaH17Chart.ts`
- * transcription, and the deck-class difference list.
+ * total-dependent basic strategy for these rule sets, and pinned by the three
+ * tests in `strategyTables.test.ts` — the deck-class mapping, every grid being
+ * complete and well-formed, and agreement with the audited `bjaH17Chart.ts`
+ * transcription. The parity
+ * check against the branch-based engine these tables replaced is gone: that
+ * engine no longer exists, since `basicStrategy.ts` now reads these grids.
+ * `strategyChart.test.ts` pins the cells where the two deliberately differed.
  *
  * The `5,5` pairs row is not a splitting decision; it repeats the hard 10 row so
  * the grid has a cell everywhere the printed chart does.

@@ -22,6 +22,18 @@
  *   branch-based engine, which gated that surrender behind H17; the artifact
  *   was patched to zeros rather than re-measured when that gate was removed.
  *
+ * The committed artifact will NOT reproduce exactly on a re-run, for a reason
+ * beyond that one patched row. It was measured while basic strategy still
+ * returned "D" for a hand that had already drawn — the branch-based engine did
+ * not consider card count — and `playBox` in `deviationEv.ts` coerces
+ * anything that is not "S" to "H" once a hand is drawing. A drawn soft 18
+ * versus a 2 therefore hit
+ * where the chart stands, on every profile, throughout the committed run. Basic
+ * strategy now demotes those cells to their own fallback, so a regeneration
+ * autoplays them correctly and every row shifts slightly. The effect is
+ * second-order and expected to sit inside the published intervals, but it is
+ * not covered by `DEVIATION_RANKING_METADATA.limit`.
+ *
  * Run: npx tsx scripts/rankDeviations.ts [rounds] [replications]
  */
 import { writeFileSync } from "node:fs";

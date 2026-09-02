@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CHART_CODES, resolveCode } from "./strategyChart";
+import { CHART_CODES, chartCell, resolveCode } from "./strategyChart";
 import { getBasicStrategyDecision } from "./basicStrategy";
-import { Card, Rank } from "./types";
+import { BlackjackRules, Card, Rank } from "./types";
 
 const all = { canDouble: true, canSplit: true, doubleAfterSplit: true, canSurrender: true };
 
@@ -64,9 +64,39 @@ describe("resolveCode", () => {
   });
 });
 
+describe("chartCell permissions", () => {
+  const anyDouble = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "late" as const, doubleRule: "any" as const, europeanNoHoleCard: false };
+  const tensOnly = { ...anyDouble, doubleRule: "10-11" as const };
+
+  it("keeps the table's doubleRule in force when the caller also permits doubling", () => {
+    // The caller's `canDouble` is a further restriction, not a replacement.
+    // Without composition here `doubleRule` would be dead for every caller that
+    // passes the flag at all, which is every caller `basicStrategy` has.
+    expect(chartCell(anyDouble, "hard", "9", "3", { canDouble: true }).action).toBe("D");
+    expect(chartCell(tensOnly, "hard", "9", "3", { canDouble: true }).action).toBe("H");
+    expect(chartCell(tensOnly, "hard", "11", "3", { canDouble: true }).action).toBe("D");
+    // Soft doubles are never permitted under a restriction, whatever the caller says.
+    expect(chartCell(anyDouble, "soft", "A,6", "4", { canDouble: true }).action).toBe("D");
+    expect(chartCell(tensOnly, "soft", "A,6", "4", { canDouble: true }).action).toBe("H");
+  });
+
+  it("still lets the caller withhold a double the table would have allowed", () => {
+    expect(chartCell(anyDouble, "hard", "11", "3", { canDouble: false }).action).toBe("H");
+    expect(chartCell(anyDouble, "soft", "A,7", "4", { canDouble: false }).action).toBe("S");
+  });
+
+  it("lets the caller override the permissions that are not double-related", () => {
+    expect(chartCell(anyDouble, "pairs", "8,8", "5").action).toBe("P");
+    expect(chartCell(anyDouble, "pairs", "8,8", "5", { canSplit: false }).action).toBe("H");
+    expect(chartCell(anyDouble, "hard", "16", "10").action).toBe("R");
+    expect(chartCell(anyDouble, "hard", "16", "10", { canSurrender: false }).action).toBe("H");
+    expect(chartCell(anyDouble, "pairs", "2,2", "3", { doubleAfterSplit: false }).action).toBe("H");
+  });
+});
+
 const card = (rank: string, suit: Card["suit"] = "spades"): Card => ({ rank: (rank === "T" ? "10" : rank) as Rank, suit });
 
-const RULES = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, resplitAces: true, lateSurrender: true, doubleRule: "any" as const };
+const RULES: BlackjackRules = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, resplitAces: true, lateSurrender: true, doubleRule: "any" };
 
 const decide = (cards: Card[], up: string, over: Partial<typeof RULES> = {}, canSplit?: boolean) =>
   getBasicStrategyDecision({ playerCards: cards, dealerUpcard: card(up, "diamonds"), rules: { ...RULES, ...over }, canSplit });
@@ -137,13 +167,41 @@ describe("getBasicStrategyDecision on the tables", () => {
     expect(decide([card("A"), card("10", "hearts")], "A").action).toBe("S");
   });
 
+  it("hits totals below the printed grid without a lookup", () => {
+    // These must not be clamped onto the hard-8 row: the 1- and 2-deck grids
+    // double hard 8 against a 5 and a 6, so a clamp would tell a two-card hard
+    // 5, 6 or 7 to double the moment those grids land.
+    for (const dealer of ["5", "6"]) {
+      expect(decide([card("2"), card("3", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
+      expect(decide([card("2"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
+      expect(decide([card("3"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
+      // The same totals reached as an unsplittable pair take the same route.
+      expect(decide(pairOf("2"), dealer, {}, false).action).toBe("H");
+      expect(decide(pairOf("3"), dealer, {}, false).action).toBe("H");
+    }
+    // Hard 8 itself is a real row and still reads from the grid.
+    expect(decide([card("5"), card("3", "hearts")], "6").action).toBe("H");
+  });
+
+  it("applies a restricted doubleRule", () => {
+    // The caller's two-card `canDouble` must not cancel the table's restriction.
+    expect(decide([card("5"), card("4", "hearts")], "3").action).toBe("D");
+    expect(decide([card("5"), card("4", "hearts")], "3", { doubleRule: "10-11" }).action).toBe("H");
+    expect(decide([card("5"), card("4", "hearts")], "3", { doubleRule: "9-11" }).action).toBe("D");
+    expect(decide([card("6"), card("5", "hearts")], "3", { doubleRule: "10-11" }).action).toBe("D");
+    expect(decide([card("A"), card("6", "hearts")], "4", { doubleRule: "9-11" }).action).toBe("H");
+  });
+
   it("answers deck counts whose grid is not transcribed yet instead of throwing", () => {
-    // FullShoeGame offers 1 and 2 decks. Until those grids land they read the
-    // 4+ deck one, which is what the engine this replaces did for every count.
+    // FullShoeGame and CountingDrills offer 1 and 2 decks. Until those grids
+    // land they read the 4+ deck one, which is what the engine this replaces
+    // did for every count — and the explanation says which grid answered.
     for (const decks of [1, 2, 4, 6, 8]) {
       expect(() => decide(pairOf("8"), "10", { decks })).not.toThrow();
       expect(decide(hard16(), "10", { decks }).action).toBe("R");
     }
+    expect(decide(hard16(), "10", { decks: 1 }).explanation).toContain("under 6-deck H17");
+    expect(decide(hard16(), "10", { decks: 8 }).explanation).toContain("under 8-deck H17");
   });
 
   it("splits nines rather than standing on their total", () => {

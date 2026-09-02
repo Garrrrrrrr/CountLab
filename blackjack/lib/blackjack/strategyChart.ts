@@ -93,6 +93,19 @@ export function chartCode(rules: StrategyChartRules, section: StrategySectionId,
   return code;
 }
 
+/**
+ * `canDouble` composes; every other permission overrides.
+ *
+ * The table's own `doubleRule` and the caller's knowledge are independent
+ * restrictions on the same action — the rules say which rows may be doubled,
+ * the caller says whether this particular hand still can (a drawn hand cannot).
+ * Letting the caller's `true` replace `doubleAllowed` would make `doubleRule`
+ * dead whenever a caller passed the flag at all, so the two are ANDed instead.
+ *
+ * The others are genuine overrides: a caller passing `canSplit: false` or
+ * `canSurrender: false` is stating a fact about the hand that the rules cannot
+ * know, and no caller has a reason to widen them.
+ */
 export function chartCell(
   rules: StrategyChartRules,
   section: StrategySectionId,
@@ -102,11 +115,11 @@ export function chartCell(
 ): ResolvedCode & { code: ChartCode } {
   const code = chartCode(rules, section, row, dealer);
   const resolved = resolveCode(code, {
-    canDouble: doubleAllowed(rules, section, row),
     canSplit: section === "pairs",
     doubleAfterSplit: rules.doubleAfterSplit,
     canSurrender: rules.surrender !== "none",
     ...permissions,
+    canDouble: doubleAllowed(rules, section, row) && (permissions.canDouble ?? true),
   });
   return { ...resolved, code };
 }
