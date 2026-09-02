@@ -193,9 +193,8 @@ describe("getBasicStrategyDecision on the tables", () => {
   });
 
   it("answers every supported deck count from its own grid", () => {
-    // FullShoeGame and CountingDrills offer 1 and 2 decks. Until those grids
-    // land they read the 4+ deck one, which is what the engine this replaces
-    // did for every count — and the explanation says which grid answered.
+    // FullShoeGame and CountingDrills offer every one of these deck counts.
+    // Each reads its own grid, and the explanation says which one answered.
     for (const decks of [1, 2, 4, 6, 8]) {
       expect(() => decide(pairOf("8"), "10", { decks })).not.toThrow();
       expect(decide(hard16(), "10", { decks }).action).toBe("R");
@@ -265,5 +264,25 @@ describe("double restrictions", () => {
   it("drops every soft double, standing where the code says so", () => {
     expect(chartCell({ ...base, doubleRule: "9-11" }, "soft", "A,7", "4").action).toBe("S");
     expect(chartCell({ ...base, doubleRule: "9-11" }, "soft", "A,4", "5").action).toBe("H");
+  });
+});
+
+describe("early surrender", () => {
+  const early = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "early" as const, doubleRule: "any" as const, europeanNoHoleCard: false };
+  const late = { ...early, surrender: "late" as const };
+
+  it("surrenders the extra cells against an ace", () => {
+    for (const row of ["12", "13", "14", "17"]) expect(chartCell(early, "hard", row, "A").action).toBe("R");
+    expect(chartCell(late, "hard", "13", "A").action).toBe("H");
+  });
+
+  it("surrenders eights against a ten and an ace", () => {
+    expect(chartCell(early, "pairs", "8,8", "10").action).toBe("R");
+    expect(chartCell(early, "pairs", "8,8", "A").action).toBe("R");
+  });
+
+  it("leaves the late-surrender cells unchanged", () => {
+    expect(chartCell(early, "hard", "16", "9").action).toBe("R");
+    expect(chartCell(early, "hard", "16", "10").action).toBe("R");
   });
 });

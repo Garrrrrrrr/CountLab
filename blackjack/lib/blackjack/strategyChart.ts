@@ -1,6 +1,6 @@
 import { Action } from "./types";
 import { CHART_DEALERS } from "./bjaH17Chart";
-import { STRATEGY_TABLES, deckClass } from "./strategyTables";
+import { EARLY_SURRENDER_CELLS, STRATEGY_TABLES, deckClass } from "./strategyTables";
 
 /**
  * A printed chart cell. Codes are composite on purpose: `Ds` is "double if the
@@ -106,8 +106,12 @@ export function chartCode(rules: StrategyChartRules, section: StrategySectionId,
   const key = `${deckClass(rules.decks)}/${rules.dealerHitsSoft17 ? "h17" : "s17"}`;
   const table = STRATEGY_TABLES[key];
   if (!table) throw new Error(`No strategy table for ${key}`);
-  const code = table.get(`${section}:${row}v${dealer}`);
+  const cellKey = `${section}:${row}v${dealer}`;
+  const code = table.get(cellKey);
   if (!code) throw new Error(`No chart cell for ${section} ${row} vs ${dealer}`);
+  if (rules.surrender === "early" && EARLY_SURRENDER_CELLS.includes(cellKey)) {
+    return code === "S" ? "Rs" : "Rh";
+  }
   return code;
 }
 

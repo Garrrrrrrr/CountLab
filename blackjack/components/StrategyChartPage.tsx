@@ -132,7 +132,7 @@ export default function StrategyChartPage() {
 
   const profile = rankingProfile(rules);
   const deviationCells = useMemo(
-    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender !== "none" }),
+    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender === "late" }),
     [rules.dealerHitsSoft17, rules.surrender],
   );
   const widestInterval = useMemo(
@@ -173,11 +173,15 @@ export default function StrategyChartPage() {
             checked={rules.doubleAfterSplit}
             onChange={(doubleAfterSplit) => setRules((current) => ({ ...current, doubleAfterSplit }))}
           />
-          <Switch
-            label="Late surrender"
-            checked={rules.surrender === "late"}
-            onChange={(lateSurrender) => setRules((current) => ({ ...current, surrender: lateSurrender ? "late" : "none" }))}
-          />
+          <Select
+            label="Surrender"
+            value={rules.surrender}
+            onChange={(event) => setRules((current) => ({ ...current, surrender: event.target.value as StrategyChartRules["surrender"] }))}
+          >
+            <option value="none">No surrender</option>
+            <option value="late">Late surrender</option>
+            <option value="early">Early surrender</option>
+          </Select>
           <Select
             label="Double rule"
             value={rules.doubleRule}
@@ -240,7 +244,9 @@ export default function StrategyChartPage() {
             </Panel>
           ))}
 
-          <p className="text-sm text-[var(--ink-muted)]">Hard totals 5–7 always hit; hard totals 18–21 always stand.</p>
+          <p className="text-sm text-[var(--ink-muted)]">
+            Hard totals 5–7 always hit; hard totals 18–21 always stand.{rules.surrender === "early" ? " With early surrender, hard 5–7 versus an ace surrender." : ""}
+          </p>
         </div>
       ) : (
         <div className="space-y-6">

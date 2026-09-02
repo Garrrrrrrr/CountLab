@@ -29,6 +29,18 @@ export const STRATEGY_ROWS: Record<StrategySectionId, readonly string[]> = {
   hard: ["17", "16", "15", "14", "13", "12", "11", "10", "9", "8"],
 };
 
+/**
+ * Early surrender is decided before the dealer checks for blackjack, so more
+ * hands are worth giving up. Hard 5, 6 and 7 versus an ace also surrender, but
+ * they sit outside the rendered rows and are carried as a footnote instead.
+ */
+export const EARLY_SURRENDER_CELLS: readonly string[] = [
+  "pairs:8,8v10", "pairs:8,8vA",
+  "hard:12vA", "hard:13vA", "hard:14vA", "hard:15vA", "hard:16vA", "hard:17vA",
+  "hard:14v10", "hard:15v10", "hard:16v10",
+  "hard:16v9",
+];
+
 const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, string>> = {
   "4plus/h17": {
     pairs: `
