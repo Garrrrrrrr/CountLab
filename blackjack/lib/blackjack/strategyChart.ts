@@ -83,6 +83,24 @@ const doubleAllowed = (rules: StrategyChartRules, section: StrategySectionId, ro
   return permitted.includes(row);
 };
 
+/**
+ * Under ENHC, a dealer blackjack takes the original wager after a double or
+ * split. Against a ten or ace, replay pair decisions as their ordinary total
+ * with both of those options unavailable. A,A is soft 12 and has no printed
+ * soft row, so it is handled directly below.
+ */
+const TOTAL_ROW_FOR_PAIR: Record<string, { section: StrategySectionId; row: string }> = {
+  "T,T": { section: "hard", row: "17" },
+  "9,9": { section: "hard", row: "17" },
+  "8,8": { section: "hard", row: "16" },
+  "7,7": { section: "hard", row: "14" },
+  "6,6": { section: "hard", row: "12" },
+  "5,5": { section: "hard", row: "10" },
+  "4,4": { section: "hard", row: "8" },
+  "3,3": { section: "hard", row: "8" },
+  "2,2": { section: "hard", row: "8" },
+};
+
 /** The printed code, before the composite codes are resolved against the table's permissions. */
 export function chartCode(rules: StrategyChartRules, section: StrategySectionId, row: string, dealer: string): ChartCode {
   const key = `${deckClass(rules.decks)}/${rules.dealerHitsSoft17 ? "h17" : "s17"}`;
@@ -114,13 +132,23 @@ export function chartCell(
   permissions: Partial<CodeOptions> = {},
 ): ResolvedCode & { code: ChartCode } {
   const code = chartCode(rules, section, row, dealer);
-  const resolved = resolveCode(code, {
+  const optionsForCell = {
     canSplit: section === "pairs",
     doubleAfterSplit: rules.doubleAfterSplit,
     canSurrender: rules.surrender !== "none",
     ...permissions,
     canDouble: doubleAllowed(rules, section, row) && (permissions.canDouble ?? true),
-  });
+  };
+  const resolved = resolveCode(code, optionsForCell);
+  const isTenOrAce = dealer === "10" || dealer === "A";
+  if (rules.europeanNoHoleCard && isTenOrAce && !(section === "pairs" && row === "A,A" && dealer === "10")) {
+    if (resolved.action === "D") return { ...resolveCode(code, { ...optionsForCell, canDouble: false }), code };
+    if (resolved.action === "P") {
+      if (row === "A,A") return { action: "H", code };
+      const total = TOTAL_ROW_FOR_PAIR[row];
+      return { ...chartCell(rules, total.section, total.row, dealer, { canDouble: false, canSplit: false }), code };
+    }
+  }
   return { ...resolved, code };
 }
 

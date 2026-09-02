@@ -218,3 +218,52 @@ describe("getBasicStrategyDecision on the tables", () => {
       .toBe("18 (soft hand) vs dealer 4 is Double if allowed, otherwise Stand under 6-deck H17 basic strategy.");
   });
 });
+
+describe("ENHC", () => {
+  const enhc = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "none" as const, doubleRule: "any" as const, europeanNoHoleCard: true };
+  const peek = { ...enhc, europeanNoHoleCard: false };
+
+  it("does not double into a ten or an ace", () => {
+    expect(chartCell(peek, "hard", "11", "10").action).toBe("D");
+    expect(chartCell(enhc, "hard", "11", "10").action).toBe("H");
+    expect(chartCell(enhc, "hard", "11", "A").action).toBe("H");
+  });
+
+  it("still doubles against every other upcard", () => {
+    expect(chartCell(enhc, "hard", "11", "6").action).toBe("D");
+  });
+
+  it("does not split eights into a ten or an ace", () => {
+    expect(chartCell(enhc, "pairs", "8,8", "10").action).toBe("H");
+    expect(chartCell(enhc, "pairs", "8,8", "A").action).toBe("H");
+  });
+
+  it("still splits aces against a ten and hits them against an ace", () => {
+    expect(chartCell(enhc, "pairs", "A,A", "10").action).toBe("P");
+    expect(chartCell(enhc, "pairs", "A,A", "A").action).toBe("H");
+  });
+
+  it("leaves cells against small upcards alone", () => {
+    expect(chartCell(enhc, "pairs", "8,8", "6").action).toBe("P");
+  });
+});
+
+describe("double restrictions", () => {
+  const base = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "none" as const, europeanNoHoleCard: false };
+
+  it("keeps hard 10 and 11 under every restriction", () => {
+    for (const doubleRule of ["any", "9-11", "10-11"] as const) {
+      expect(chartCell({ ...base, doubleRule }, "hard", "11", "5").action).toBe("D");
+    }
+  });
+
+  it("drops hard 9 under 10-11 only", () => {
+    expect(chartCell({ ...base, doubleRule: "9-11" }, "hard", "9", "5").action).toBe("D");
+    expect(chartCell({ ...base, doubleRule: "10-11" }, "hard", "9", "5").action).toBe("H");
+  });
+
+  it("drops every soft double, standing where the code says so", () => {
+    expect(chartCell({ ...base, doubleRule: "9-11" }, "soft", "A,7", "4").action).toBe("S");
+    expect(chartCell({ ...base, doubleRule: "9-11" }, "soft", "A,4", "5").action).toBe("H");
+  });
+});

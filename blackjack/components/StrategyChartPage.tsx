@@ -151,7 +151,7 @@ export default function StrategyChartPage() {
       </div>
 
       <Panel className="mb-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Select
             label="Decks"
             value={String(rules.decks)}
@@ -177,6 +177,20 @@ export default function StrategyChartPage() {
             label="Late surrender"
             checked={rules.surrender === "late"}
             onChange={(lateSurrender) => setRules((current) => ({ ...current, surrender: lateSurrender ? "late" : "none" }))}
+          />
+          <Select
+            label="Double rule"
+            value={rules.doubleRule}
+            onChange={(event) => setRules((current) => ({ ...current, doubleRule: event.target.value as StrategyChartRules["doubleRule"] }))}
+          >
+            <option value="any">Any two cards</option>
+            <option value="9-11">Hard 9–11 only</option>
+            <option value="10-11">Hard 10–11 only</option>
+          </Select>
+          <Switch
+            label="European no-hole-card (ENHC)"
+            checked={rules.europeanNoHoleCard}
+            onChange={(europeanNoHoleCard) => setRules((current) => ({ ...current, europeanNoHoleCard }))}
           />
         </div>
       </Panel>
