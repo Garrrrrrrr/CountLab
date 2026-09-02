@@ -12,16 +12,16 @@ import { useIsAdmin } from "@/lib/supabase/admin";
 
 const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) => ({ default: m.FullShoeGame })), { loading: () => null });
 const Onboarding = dynamic(() => import("@/components/Onboarding").then((m) => ({ default: m.Onboarding })), { loading: () => null });
-type Destination = readonly [name: string, href: string, icon: string, area: "Practice" | "Analyze" | "Play" | "Reference" | "Utility"];
+type Destination = readonly [name: string, href: string, icon: string, area: "Practice" | "Analyze" | "Games" | "Reference" | "Utility"];
 const destinations: readonly Destination[] = [
   ["Full Shoe", "/training/full-shoe", "fa-shoe-prints", "Practice"], ["Daily Checklist", "/training/checklist", "fa-list-check", "Practice"], ["Running Count", "/training/running-count", "fa-bolt", "Practice"], ["True Count", "/training/true-count", "fa-divide", "Practice"], ["Basic Strategy", "/training/basic-strategy", "fa-layer-group", "Practice"], ["Deviations", "/training/deviations", "fa-code-branch", "Practice"], ["H17 Chart", "/training/h17-chart", "fa-table-cells", "Practice"], ["Deck Estimation", "/training/deck-estimation", "fa-ruler", "Practice"], ["Counting Benchmark", "/training/benchmark", "fa-medal", "Practice"], ["Proficiency Test", "/training/proficiency-test", "fa-award", "Practice"],
   ["Game & Bankroll Lab", "/cvcx", "fa-chart-area", "Analyze"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group", "Analyze"], ["Session Simulator", "/simulation", "fa-wave-square", "Analyze"], ["Session Journal", "/journal", "fa-book", "Analyze"], ["Compare Scenarios", "/compare", "fa-code-compare", "Analyze"], ["Trip Planner", "/trip-planner", "fa-plane-departure", "Analyze"],
-  ["Double Down Madness", "/double-down-madness", "fa-bolt", "Play"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover", "Play"], ["Chase the Flush", "/chase-flush", "fa-diamond", "Play"],
+  ["Double Down Madness", "/double-down-madness", "fa-bolt", "Games"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover", "Games"], ["Chase the Flush", "/chase-flush", "fa-diamond", "Games"],
   ["Strategy charts", "/reference", "fa-table-cells", "Reference"],
   ["Dashboard", "/dashboard", "fa-house", "Utility"], ["Statistics", "/statistics", "fa-chart-line", "Utility"], ["Settings", "/settings", "fa-gear", "Utility"],
 ];
 const areas = [
-  ["Practice", "/practice", "fa-bolt"], ["Analyze", "/analyze", "fa-chart-area"], ["Play", "/play", "fa-dice"], ["Reference", "/reference", "fa-book-open"],
+  ["Practice", "/practice", "fa-bolt"], ["Analyze", "/analyze", "fa-chart-area"], ["Games", "/play", "fa-dice"], ["Reference", "/reference", "fa-book-open"],
 ] as const;
 const areaPaths = Object.fromEntries(areas.map(([name]) => [name, new Set(destinations.filter(([, , , area]) => area === name).map(([, href]) => href))])) as Record<(typeof areas)[number][0], Set<string>>;
 
@@ -248,7 +248,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {[
           ["Practice", "/practice", "fa-bolt"],
           ["Analyze", "/analyze", "fa-chart-area"],
-          ["Play", "/play", "fa-dice"],
+          ["Games", "/play", "fa-dice"],
           ["Reference", "/reference", "fa-book-open"],
         ].map(([name, href, icon]) => {
           const active = path === href || areaPaths[name as keyof typeof areaPaths].has(path);
