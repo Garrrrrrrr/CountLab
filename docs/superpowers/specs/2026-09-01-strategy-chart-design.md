@@ -89,16 +89,19 @@ rules at read time, which is what keeps the number of grids down to six.
 | Code | Meaning |
 |---|---|
 | `H` `S` `P` | hit / stand / split, unconditional |
-| `D` | double, else hit (hard section only) |
+| `D` | double if allowed, else hit |
 | `Ds` | double if allowed, else stand |
-| `Dh` | double if allowed, else hit |
 | `Ph` | split if DAS, else hit |
+| `Pd` | split if DAS, else double |
+| `Ps` | split if DAS, else stand |
 | `Rh` | surrender if offered, else hit |
 | `Rs` | surrender if offered, else stand |
 | `Rp` | surrender if offered, else split |
 
-Invariant, enforced by test: the `soft` section never contains a bare `D` — soft
-doubles are always written `Ds` or `Dh` so their fallback is explicit.
+This is the full vocabulary observed in the sourced data — eleven codes, no
+others. `Pd` and `Ps` occur only in the single-deck pairs grids (4,4 v 5 and 6,
+where hard 8 doubles; 9,9 v A under H17). `Rs` occurs at 1D/2D hard 17 v A and
+1D pairs 7,7 v 10. `Rp` is 8,8 v A in the 4+ and 2D H17 grids.
 
 `Rp` exists for 8,8 v A under H17 with late surrender, which today's
 `basicStrategy.ts` already plays as surrender (`basicStrategy.ts:10`).
@@ -118,12 +121,15 @@ matches every published 4–8 deck chart in the repo.
 
 Applied in order by the resolver, on top of the base grid:
 
-1. **ENHC override layer** — a small patch keyed per ruleset, touching only cells
-   against a dealer 10 or Ace, since that is the only place the missing hole card
-   changes anything. Each patched cell carries its source citation.
-2. **Early surrender override layer** — replaces cells with `Rh` / `Rs` / `Rp`
-   where early surrender is correct. Only consulted when
-   `surrender === "early"`. Each cell cited.
+1. **ENHC adjustment** — a rule, not a data layer. Against a dealer 10 or Ace
+   only: a `D`/`Ds` cell demotes as if doubling were unavailable, and a
+   `P`/`Ph`/`Pd`/`Ps` cell resolves instead on the corresponding hard or soft
+   total row with both doubling and splitting unavailable. The single exception
+   is `A,A` v 10, which still splits. No cells are stored for this.
+2. **Early surrender override layer** — the only genuine extra data, and a short
+   list: pairs `8,8` v 10 and v A; hard 5, 6, 7, 12, 13, 14, 15, 16, 17 v A;
+   hard 14, 15, 16 v 10; hard 16 v 9. Hard 5–7 fall outside the rendered rows and
+   appear as a footnote. Only consulted when `surrender === "early"`.
 3. **Double restriction** — mechanical, no data. Under `9-11`, any `D` / `Ds` /
    `Dh` outside hard 9, 10, 11 demotes to its fallback; under `10-11`, outside
    hard 10 and 11. All soft doubles demote under both.
