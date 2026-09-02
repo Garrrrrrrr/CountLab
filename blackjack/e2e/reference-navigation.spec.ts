@@ -39,3 +39,16 @@ test("practice organizes drills by skill", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Put it together" })).toBeVisible();
   await expect(page.getByRole("link", { name: /full shoe/i }).first()).toHaveAttribute("href", "/training/full-shoe/");
 });
+
+test("deviation drill opens its matching reference tab", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "Desktop drill navigation coverage.");
+  await prepareGuest(page);
+  await page.goto("/training/deviations/");
+
+  const reference = page.getByRole("link", { name: "View deviation reference" });
+  await expect(reference).toHaveAttribute("href", "/reference/deviations/");
+  await reference.click();
+
+  await expect(page).toHaveURL(/\/reference\/deviations\/$/);
+  await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+});
