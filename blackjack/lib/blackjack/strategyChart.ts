@@ -1,4 +1,6 @@
 import { Action } from "./types";
+import { CHART_DEALERS } from "./bjaH17Chart";
+import { STRATEGY_TABLES, deckClass } from "./strategyTables";
 
 /**
  * A printed chart cell. Codes are composite on purpose: `Ds` is "double if the
@@ -72,3 +74,41 @@ export function resolveCode(code: ChartCode, options: CodeOptions): ResolvedCode
         : resolveCode("P", options);
   }
 }
+
+/** Hard totals a restricted double rule still permits. Soft doubles are never permitted under a restriction. */
+const doubleAllowed = (rules: StrategyChartRules, section: StrategySectionId, row: string): boolean => {
+  if (rules.doubleRule === "any") return true;
+  if (section !== "hard") return false;
+  const permitted = rules.doubleRule === "9-11" ? ["9", "10", "11"] : ["10", "11"];
+  return permitted.includes(row);
+};
+
+/** The printed code, before the composite codes are resolved against the table's permissions. */
+export function chartCode(rules: StrategyChartRules, section: StrategySectionId, row: string, dealer: string): ChartCode {
+  const key = `${deckClass(rules.decks)}/${rules.dealerHitsSoft17 ? "h17" : "s17"}`;
+  const table = STRATEGY_TABLES[key];
+  if (!table) throw new Error(`No strategy table for ${key}`);
+  const code = table.get(`${section}:${row}v${dealer}`);
+  if (!code) throw new Error(`No chart cell for ${section} ${row} vs ${dealer}`);
+  return code;
+}
+
+export function chartCell(
+  rules: StrategyChartRules,
+  section: StrategySectionId,
+  row: string,
+  dealer: string,
+  permissions: Partial<CodeOptions> = {},
+): ResolvedCode & { code: ChartCode } {
+  const code = chartCode(rules, section, row, dealer);
+  const resolved = resolveCode(code, {
+    canDouble: doubleAllowed(rules, section, row),
+    canSplit: section === "pairs",
+    doubleAfterSplit: rules.doubleAfterSplit,
+    canSurrender: rules.surrender !== "none",
+    ...permissions,
+  });
+  return { ...resolved, code };
+}
+
+export { CHART_DEALERS };
