@@ -83,11 +83,11 @@ change to the two rows in `h17Pro.ts` plus the exemption in
 
 ### The shipped coefficient curves use the corrected policy
 
-The production artifact was regenerated on 2026-08-23 from the corrected
+The production artifact was regenerated on 2026-09-01 from the corrected
 `h17_pro.py` policy. It sampled 250 million shoes for each of nine
-profiles (116,818,680,110 resolved rounds in total), with seed `20260821`.
+profiles (116,624,081,778 resolved rounds in total), with seed `20260821`.
 Its source checksum is
-`101b81bcae4df274788780b69fca60de41fbffa76eca3d30980e73f7fec3a7a1` and is
+`ccab3d521f43018f97c8b64c93158893bf0553cfcfbe9183f2a867b413ff5984` and is
 embedded in both the JSON evidence and TypeScript artifact.
 
 The regenerated curve applies late surrender before the chart's starred stand
@@ -101,12 +101,10 @@ To reproduce the artifact:
 python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
 ```
 
-**Regeneration status.** `h17_pro.py::h17_pro_pro_action` now uses the taught
-policy: 10 v 10 against 4 splits at +6, 16 v 9 stands at +4 where surrender is
-unavailable, and unprinted 14 v 10 / 8,8 surrender rows are absent. The
-existing coefficient artifact remains the last audited run until the required
-250M-shoe, nine-profile regeneration completes; new evidence and its source
-checksum must be committed together before the curve is called audited.
+`h17_pro.py::h17_pro_pro_action` now uses the taught policy: 10 v 10 against
+4 splits at +6, 16 v 9 stands at +4 where surrender is unavailable, and
+unprinted 14 v 10 / 8,8 surrender rows are absent. The corrected JSON evidence
+and TypeScript curve were generated from that exact source together.
 
 ## Observable workflow
 

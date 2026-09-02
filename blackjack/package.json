@@ -9,7 +9,7 @@
     "generate:ddm-buckets": "tsx scripts/generate-ddm-profile-buckets.ts",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run --exclude e2e/**",
+    "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
