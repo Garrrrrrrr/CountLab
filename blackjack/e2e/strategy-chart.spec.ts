@@ -26,7 +26,22 @@ test("strategy and index charts stay compact while showing a complete hand secti
   await expect(page.getByText(/Every cell keeps its basic-strategy action/i)).toBeVisible();
   await expect(page.locator("[data-testid='chart-rail-hard'] tbody td")).toHaveCount(100);
   await expect(page.getByLabel("8 versus dealer 2: Hit")).toBeVisible();
+  await expect(page.getByLabel("13 versus dealer 2: Stand")).toHaveAttribute(
+    "title",
+    /^Hit a hard 13 against a dealer 2 once the true count drops to -1 or below; otherwise stand\./,
+  );
 
   await page.getByRole("tab", { name: "Pairs" }).click();
   await expect(page.locator("[data-testid='chart-rail-pairs'] tbody td")).toHaveCount(100);
+
+  await page.getByRole("tab", { name: "H17 chart" }).click();
+  await expect(page.getByRole("heading", { name: "H17 deviation chart" })).toBeVisible();
+  await expect(page.getByText(/answer key for the H17 chart recall drill/i)).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Hard totals" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("[data-testid='h17-reference-rail-hard'] tbody td")).toHaveCount(100);
+  await expect(page.getByLabel("16 versus dealer 9: The chart prints 4+: the deviation applies at true count +4 and above.")).toHaveText("4+");
+
+  await page.getByRole("tab", { name: "Late surrender" }).click();
+  await expect(page.locator("[data-testid='h17-reference-rail-surrender'] tbody td")).toHaveCount(40);
+  await expect(page.getByLabel("15 versus dealer 10: The chart prints 0-: the deviation applies at any negative running count.")).toHaveText("0-");
 });

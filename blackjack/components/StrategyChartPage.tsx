@@ -3,16 +3,20 @@
 import { useEffect, useMemo, useState } from "react";
 import ChartGrid from "@/components/ChartGrid";
 import { Panel, Select, Switch, Tabs } from "@/components/ui";
+import { BJA_H17_SECTIONS, CHART_DEALERS, chartToken, formatToken } from "@/lib/blackjack/bjaH17Chart";
+import type { ChartSectionId } from "@/lib/blackjack/bjaH17Chart";
+import { explainToken } from "@/lib/blackjack/chartEntry";
 import { deviationGridCells } from "@/lib/blackjack/deviationChart";
 import type { DeviationCell as DeviationMarker } from "@/lib/blackjack/deviationChart";
 import { DEVIATION_RANKING, DEVIATION_RANKING_METADATA } from "@/lib/blackjack/deviationRanking";
 import type { DeviationRankingProfile } from "@/lib/blackjack/deviationRanking";
+import { deviationSentence } from "@/lib/blackjack/deviations";
 import { chartCell } from "@/lib/blackjack/strategyChart";
 import type { StrategyChartRules, StrategySectionId } from "@/lib/blackjack/strategyChart";
 import type { Action } from "@/lib/blackjack/types";
 import { storage } from "@/lib/statistics/storage";
 
-type ChartTab = "strategy" | "deviations";
+type ChartTab = "strategy" | "deviations" | "h17";
 type SectionTab = StrategySectionId;
 
 const DEFAULT_RULES: StrategyChartRules = {
@@ -54,6 +58,28 @@ const ACTION_LABEL: Record<Action, string> = {
   R: "Surrender",
 };
 
+const H17_TOKEN_STYLE: Record<string, string> = {
+  Y: "border-violet-800 bg-violet-700 text-white",
+  N: "border-slate-700 bg-slate-800 text-white",
+  "Y/N": "border-violet-700 bg-violet-950 text-violet-100",
+  H: ACTION_STYLE.H,
+  S: ACTION_STYLE.S,
+  D: ACTION_STYLE.D,
+  Ds: "border-amber-700 bg-amber-950 text-amber-100",
+  SUR: ACTION_STYLE.R,
+  index: "border-[var(--count-warm)] bg-[var(--count-warm)] text-slate-950",
+};
+
+const H17_LEGEND = [
+  ["Y", "Split"],
+  ["N", "Do not split / surrender"],
+  ["H", "Hit"],
+  ["S", "Stand"],
+  ["D", "Double"],
+  ["Ds", "Double, otherwise stand"],
+  ["SUR", "Surrender"],
+] as const;
+
 function indexLabel(index: number, atOrBelow: boolean) {
   return (index > 0 ? "+" : "") + String(index) + (atOrBelow ? "−" : "+");
 }
@@ -63,13 +89,11 @@ function rankingProfile(rules: StrategyChartRules): DeviationRankingProfile {
 }
 
 function deviationTitle(marker: DeviationMarker, profile: DeviationRankingProfile) {
-  const transition = marker.row.transition;
   const rankingId = (marker.row.row as { id?: string }).id;
   const ranking = rankingId ? DEVIATION_RANKING[profile][rankingId] : undefined;
-  const index = "TC " + indexLabel(marker.index, marker.atOrBelow);
-  const play = transition.departure + " at " + index + "; otherwise " + transition.baseline + ".";
-  if (!ranking) return play + " EV impact has not yet been measured.";
-  return play + " EV impact " + (ranking[0] >= 0 ? "+" : "") + ranking[0].toFixed(3) + " units per 100 rounds; fires " + ranking[2].toFixed(2) + " times per 100 rounds.";
+  const explanation = deviationSentence(marker.row.row, marker.row.transition);
+  if (!ranking) return explanation + " EV impact has not yet been measured.";
+  return explanation + " EV impact " + (ranking[0] >= 0 ? "+" : "") + ranking[0].toFixed(3) + " units per 100 rounds; fires " + ranking[2].toFixed(2) + " times per 100 rounds.";
 }
 
 function settingsRules(): StrategyChartRules {
@@ -127,9 +151,58 @@ function StrategyCell({
   );
 }
 
+function H17Cell({ section, row, dealer }: { section: ChartSectionId; row: string; dealer: string }) {
+  const chartSection = BJA_H17_SECTIONS.find((candidate) => candidate.id === section)!;
+  const token = chartToken(chartSection, row, dealer);
+  const value = formatToken(token);
+  const style = token.kind === "index" ? H17_TOKEN_STYLE.index : H17_TOKEN_STYLE[token.value];
+
+  return (
+    <div
+      aria-label={`${row} versus dealer ${dealer}: ${explainToken(section, token)}`}
+      className={["grid h-8 min-w-8 place-items-center rounded border font-data text-sm font-bold", style].join(" ")}
+      title={explainToken(section, token)}
+    >
+      {value}
+    </div>
+  );
+}
+
+function H17Grid({ section }: { section: ChartSectionId }) {
+  const chartSection = BJA_H17_SECTIONS.find((candidate) => candidate.id === section)!;
+  return (
+    <div className="relative">
+      <div className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-10 px-1" data-testid={`h17-reference-rail-${section}`}>
+        <table className="w-full min-w-[31rem] table-fixed border-separate border-spacing-px text-center text-xs xl:min-w-0">
+          <caption className="sr-only">{chartSection.label} H17 deviation chart</caption>
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-20 w-10 bg-[var(--paper-raised)] px-1 text-left text-[0.65rem] font-semibold uppercase tracking-[.12em] text-[var(--ink-muted)]">Hand</th>
+              {CHART_DEALERS.map((dealer) => <th key={dealer} className="px-0.5 pb-0.5 text-xs font-semibold text-[var(--ink-muted)]">{dealer}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {chartSection.rows.map((row) => (
+              <tr key={row}>
+                <th scope="row" className="sticky left-0 z-20 w-10 bg-[var(--paper-raised)] px-1 text-left text-xs font-medium text-[var(--ink)]">{row}</th>
+                {CHART_DEALERS.map((dealer) => (
+                  <td key={dealer} className="snap-start scroll-ml-10">
+                    <H17Cell section={section} row={row} dealer={dealer} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function StrategyChartPage({ initialTab = "strategy" }: { initialTab?: ChartTab }) {
   const [tab, setTab] = useState<ChartTab>(initialTab);
   const [section, setSection] = useState<SectionTab>("hard");
+  const [h17Section, setH17Section] = useState<ChartSectionId>("hard");
   const [rules, setRules] = useState<StrategyChartRules>(DEFAULT_RULES);
 
   useEffect(() => {
@@ -151,9 +224,9 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
 
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
-      <h1 className="mb-3 font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : "Index deviation chart"}</h1>
+      <h1 className="mb-3 font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : tab === "deviations" ? "Index deviation chart" : "H17 deviation chart"}</h1>
 
-      <details className="surface mb-3 rounded-[1.35rem]">
+      {tab !== "h17" && <details className="surface mb-3 rounded-[1.35rem]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm marker:hidden sm:px-5">
           <span className="font-semibold text-[var(--ink)]">Table rules</span>
           <span className="font-data text-xs text-[var(--ink-muted)]">{rules.decks}D · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.surrender} surrender</span>
@@ -206,7 +279,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           />
         </div>
         </div>
-      </details>
+      </details>}
 
       <Tabs
         value={tab}
@@ -214,16 +287,27 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
         items={[
           { value: "strategy", label: "Strategy" },
           { value: "deviations", label: "Index deviations" },
+          { value: "h17", label: "H17 chart" },
         ]}
         className="mb-3"
       />
-      <Tabs
-        value={section}
-        onChange={setSection}
-        label="Hand type"
-        items={SECTIONS.map(({ id, label }) => ({ value: id, label }))}
-        className="mb-3"
-      />
+      {tab === "h17" ? (
+        <Tabs
+          value={h17Section}
+          onChange={setH17Section}
+          label="H17 chart section"
+          items={BJA_H17_SECTIONS.map(({ id, label }) => ({ value: id, label }))}
+          className="mb-3"
+        />
+      ) : (
+        <Tabs
+          value={section}
+          onChange={setSection}
+          label="Hand type"
+          items={SECTIONS.map(({ id, label }) => ({ value: id, label }))}
+          className="mb-3"
+        />
+      )}
 
       {tab === "strategy" ? (
         <div className="space-y-4">
@@ -264,7 +348,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             Hard totals 5–7 always hit; hard totals 18–21 always stand.{rules.surrender === "early" ? " With early surrender, hard 5–7 versus an ace surrender." : ""}
           </p>
         </div>
-      ) : (
+      ) : tab === "deviations" ? (
         <div className="space-y-4">
           <Panel className="p-3 sm:p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -311,6 +395,37 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             </p>
             <p>{DEVIATION_RANKING_METADATA.limit}, so treat the column total as close but not exact.</p>
           </Panel>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <Panel className="p-3 sm:p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 className="font-display text-xl text-[var(--ink)]">Complete H17 chart</h2>
+              <p className="text-xs text-[var(--ink-muted)]">The answer key for the H17 chart recall drill.</p>
+            </div>
+            <p className="mt-2 text-sm text-[var(--ink-muted)]">Fixed 6-deck H17 rules with DAS and late surrender. Gold cells are Hi-Lo deviations; the suffix shows whether the play changes at that count or beyond.</p>
+            <p className="mt-2 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">Insurance or even money: take at TC +3 or above.</p>
+          </Panel>
+
+          <Panel className="flex flex-wrap gap-x-4 gap-y-1.5 p-3 text-xs text-[var(--ink-muted)]">
+            {H17_LEGEND.map(([token, label]) => (
+              <span key={token} className="inline-flex items-center gap-2">
+                <span className={["grid min-h-6 min-w-6 place-items-center rounded border px-1 font-data font-bold", H17_TOKEN_STYLE[token]].join(" ")}>{token}</span>
+                {label}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-2"><span className={["grid min-h-6 min-w-6 place-items-center rounded border px-1 font-data font-bold", H17_TOKEN_STYLE.index].join(" ")}>4+</span>At TC +4 or above</span>
+          </Panel>
+
+          <Panel className="overflow-hidden p-3 sm:p-4">
+            <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
+              <h2 className="font-display text-xl text-[var(--ink)]">{BJA_H17_SECTIONS.find(({ id }) => id === h17Section)?.label}</h2>
+              <p className="text-xs text-[var(--ink-muted)]">Read your hand across to the dealer&apos;s upcard.</p>
+            </div>
+            <H17Grid section={h17Section} />
+          </Panel>
+
+          <p className="text-xs leading-5 text-[var(--ink-muted)]">Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition: soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4.</p>
         </div>
       )}
     </main>
