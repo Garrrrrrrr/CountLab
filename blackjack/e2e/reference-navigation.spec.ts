@@ -20,6 +20,13 @@ test("reference opens the combined strategy and deviations chart", async ({ page
   await page.getByRole("tab", { name: "Index deviations" }).click();
   await expect(page.getByRole("heading", { name: "Index deviation chart" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+
+  await page.goto("/reference/deviations/");
+  await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+
+  await page.goto("/reference/h17-chart/");
+  await expect(page.getByRole("tab", { name: "H17 chart" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "H17 deviation chart" })).toBeVisible();
 });
 
 test("practice organizes drills by skill", async ({ page }, testInfo) => {

@@ -13,6 +13,7 @@ async function prepareChart(page: Page) {
   });
   await page.goto("/training/h17-chart/");
   await expect(page.getByRole("heading", { name: "H17 Chart" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View H17 reference" })).toHaveAttribute("href", "/reference/h17-chart/");
   await page.getByLabel("Section").selectOption("pairs");
 }
 

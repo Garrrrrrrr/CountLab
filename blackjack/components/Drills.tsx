@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Card,
@@ -618,7 +619,15 @@ export function DeviationDrill() {
           title="Hi-Lo Deviations"
           description="Decide whether the current true count activates the index play."
         />
-        <GhostButton onClick={endDrill}>End drill</GhostButton>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/reference/deviations"
+            className="pressable inline-flex min-h-11 items-center rounded-lg border border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 font-medium text-[var(--ink)] shadow-sm outline-none transition-colors hover:bg-[var(--paper)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+          >
+            View deviation reference
+          </Link>
+          <GhostButton onClick={endDrill}>End drill</GhostButton>
+        </div>
       </div>
       {awaitingFinal ? (
         <Panel className="pb-24 lg:pb-6">

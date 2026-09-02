@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BJA_H17_SECTIONS,
@@ -254,6 +255,12 @@ export function H17ChartDrill() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button onClick={submit} disabled={graded}>Submit</Button>
         <GhostButton onClick={() => { setEntries({}); setGraded(false); setStartedAt(Date.now()); selectAt(0); }}>Start over</GhostButton>
+        <Link
+          href="/reference/h17-chart"
+          className="pressable inline-flex min-h-11 items-center rounded-lg border border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 font-medium text-[var(--ink)] shadow-sm outline-none transition-colors hover:bg-[var(--paper)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"
+        >
+          View H17 reference
+        </Link>
         {!graded && <span className="text-sm text-zinc-500">{grade.answered} / {grade.total} filled</span>}
       </div>
 

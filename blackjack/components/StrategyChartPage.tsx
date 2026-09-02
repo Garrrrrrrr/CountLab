@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import ChartGrid from "@/components/ChartGrid";
 import { Panel, Select, Switch, Tabs } from "@/components/ui";
 import { BJA_H17_SECTIONS, CHART_DEALERS, chartToken, formatToken } from "@/lib/blackjack/bjaH17Chart";
@@ -88,7 +89,7 @@ function rankingProfile(rules: StrategyChartRules): DeviationRankingProfile {
   return (rules.dealerHitsSoft17 ? "h17" : "s17") + (rules.surrender === "none" ? "-no-ls" : "-ls") as DeviationRankingProfile;
 }
 
-function deviationTitle(marker: DeviationMarker, profile: DeviationRankingProfile) {
+function deviationDescription(marker: DeviationMarker, profile: DeviationRankingProfile) {
   const rankingId = (marker.row.row as { id?: string }).id;
   const ranking = rankingId ? DEVIATION_RANKING[profile][rankingId] : undefined;
   const explanation = deviationSentence(marker.row.row, marker.row.transition);
@@ -126,12 +127,32 @@ function StrategyCell({
 }) {
   const cell = chartCell(rules, section, row, dealer);
   const fallback = cell.fallback ? "; otherwise " + ACTION_LABEL[cell.fallback].toLowerCase() : "";
+  const tooltipId = useId();
+  const description = marker ? deviationDescription(marker, profile) : undefined;
+  const [tooltip, setTooltip] = useState<{ left: number; top: number; below: boolean } | null>(null);
+
+  const showTooltip = (target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 16);
+    const halfWidth = width / 2;
+    setTooltip({
+      left: Math.max(halfWidth + 8, Math.min(window.innerWidth - halfWidth - 8, rect.left + rect.width / 2)),
+      top: rect.top < 140 ? rect.bottom + 8 : rect.top - 8,
+      below: rect.top < 140,
+    });
+  };
 
   return (
     <div
       aria-label={row + " versus dealer " + dealer + ": " + ACTION_LABEL[cell.action] + fallback}
+      aria-describedby={tooltip ? tooltipId : undefined}
       className={["relative grid h-8 min-w-8 place-items-center rounded border font-data text-base font-bold", ACTION_STYLE[cell.action]].join(" ")}
-      title={marker ? deviationTitle(marker, profile) : ACTION_LABEL[cell.action] + fallback}
+      title={marker ? undefined : ACTION_LABEL[cell.action] + fallback}
+      tabIndex={marker ? 0 : undefined}
+      onMouseEnter={marker ? (event) => showTooltip(event.currentTarget) : undefined}
+      onMouseLeave={marker ? () => setTooltip(null) : undefined}
+      onFocus={marker ? (event) => showTooltip(event.currentTarget) : undefined}
+      onBlur={marker ? () => setTooltip(null) : undefined}
     >
       <span>
         {cell.action}
@@ -146,6 +167,17 @@ function StrategyCell({
         >
           {showIndex ? marker.row.transition.departure + " " + indexLabel(marker.index, marker.atOrBelow) : "•"}
         </span>
+      )}
+      {tooltip && description && createPortal(
+        <span
+          id={tooltipId}
+          role="tooltip"
+          className="pointer-events-none fixed z-[100] w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-[var(--rule)] bg-[var(--paper-raised)] px-3 py-2 text-left font-sans text-xs font-medium leading-5 text-[var(--ink)] shadow-xl"
+          style={{ left: tooltip.left, top: tooltip.top, transform: `translateX(-50%)${tooltip.below ? "" : " translateY(-100%)"}` }}
+        >
+          {description}
+        </span>,
+        document.body,
       )}
     </div>
   );

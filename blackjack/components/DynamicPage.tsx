@@ -688,6 +688,8 @@ export default function DynamicPage() {
     "training/benchmark": <CountingBenchmark />,
     "training/proficiency-test": <ProficiencyTest />,
     reference: <StrategyChartPage />,
+    "reference/deviations": <StrategyChartPage initialTab="deviations" />,
+    "reference/h17-chart": <StrategyChartPage initialTab="h17" />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
     terms: <TermsPage />,

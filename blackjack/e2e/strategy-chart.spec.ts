@@ -26,9 +26,9 @@ test("strategy and index charts stay compact while showing a complete hand secti
   await expect(page.getByText(/Every cell keeps its basic-strategy action/i)).toBeVisible();
   await expect(page.locator("[data-testid='chart-rail-hard'] tbody td")).toHaveCount(100);
   await expect(page.getByLabel("8 versus dealer 2: Hit")).toBeVisible();
-  await expect(page.getByLabel("13 versus dealer 2: Stand")).toHaveAttribute(
-    "title",
-    /^Hit a hard 13 against a dealer 2 once the true count drops to -1 or below; otherwise stand\./,
+  await page.getByLabel("13 versus dealer 2: Stand").hover();
+  await expect(page.getByRole("tooltip")).toContainText(
+    "Hit a hard 13 against a dealer 2 once the true count drops to -1 or below; otherwise stand.",
   );
 
   await page.getByRole("tab", { name: "Pairs" }).click();
