@@ -684,11 +684,12 @@ Expected: all suites pass **except** possibly `deviations.test.ts` / `deviationR
 
 - [ ] **Step 5: Reconcile the deviation ranking artifact**
 
-Two options — **ask the user which before proceeding**, because one costs hours of compute:
+**Decided: Option A.** The user chose the targeted patch on 2026-09-01. Do not run
+the full regeneration; do not ask again.
 
 *Option A (targeted, minutes).* In `lib/blackjack/deviationRanking.generated.json`, set the `s17-ls` entry for `s17Pro-16vA-R` to `evPer100: 0, standardError: 0, triggersPer100: 0`, matching how `h17Pro-16v10-R` and `h17Pro-16vA-R` already read. Add a comment in `scripts/rankDeviations.ts` recording that the row is dormant by construction once basic strategy surrenders 16 v A under S17. Regenerate the derived `deviationRanking.ts` with the script's writer if it is generated, or hand-edit both consistently.
 
-*Option B (full, hours).* Re-run `npx tsx scripts/rankDeviations.ts 250000000 1000` to reproduce the committed artifact's precision under the corrected basic strategy. This also refreshes every other row's second-order shoe effects.
+*Option B (full, hours) — NOT CHOSEN, recorded for context.* Re-run `npx tsx scripts/rankDeviations.ts 250000000 1000` to reproduce the committed artifact's precision under the corrected basic strategy. Rejected because the row is dormant by construction once basic strategy surrenders the cell, and Option B's only additional value is the second-order shoe effects that `DEVIATION_RANKING_METADATA.limit` already discloses as unmodelled.
 
 - [ ] **Step 6: Lint, typecheck, commit**
 
