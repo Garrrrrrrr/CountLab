@@ -19,6 +19,8 @@ test("strategy and index charts stay compact while showing a complete hand secti
   const strategyCell = page.getByLabel("8 versus dealer 2: Hit");
   await expect(strategyCell).toBeVisible();
   expect((await strategyCell.boundingBox())?.height).toBeLessThanOrEqual(32);
+  const chartBox = await page.locator("[data-testid='chart-rail-hard']").boundingBox();
+  expect((chartBox?.y ?? Infinity) + (chartBox?.height ?? Infinity)).toBeLessThanOrEqual(900);
 
   await page.getByRole("tab", { name: "Index deviations" }).click();
   await expect(page.getByText(/Every cell keeps its basic-strategy action/i)).toBeVisible();

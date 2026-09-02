@@ -38,6 +38,14 @@ const ACTION_STYLE: Record<Action, string> = {
   R: "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
+const INDEX_TAG_STYLE: Record<Action, string> = {
+  H: "bg-[var(--count-cold)] text-white",
+  S: "bg-[var(--ink)] text-[var(--paper)]",
+  D: "bg-[var(--count-warm)] text-[var(--ink)]",
+  P: "bg-[var(--count-hot)] text-[var(--ink)]",
+  R: "bg-red-600 text-white",
+};
+
 const ACTION_LABEL: Record<Action, string> = {
   H: "Hit",
   S: "Stand",
@@ -98,7 +106,7 @@ function StrategyCell({
   return (
     <div
       aria-label={row + " versus dealer " + dealer + ": " + ACTION_LABEL[cell.action] + fallback}
-      className={["relative grid h-8 min-w-8 place-items-center rounded border font-data text-sm font-bold", ACTION_STYLE[cell.action]].join(" ")}
+      className={["relative grid h-8 min-w-8 place-items-center rounded border font-data text-base font-bold", ACTION_STYLE[cell.action]].join(" ")}
       title={marker ? deviationTitle(marker, profile) : ACTION_LABEL[cell.action] + fallback}
     >
       <span>
@@ -107,24 +115,29 @@ function StrategyCell({
       </span>
       {marker && (
         <span
-          className={showIndex ? "absolute right-0.5 top-0.5 text-[0.5rem] leading-none text-[var(--ink)]" : "absolute right-0.5 top-0.5 text-[0.58rem] leading-none text-[var(--ink-muted)]"}
+          className={showIndex
+            ? ["absolute bottom-0.5 right-0.5 rounded-sm px-0.5 py-px text-[0.6rem] font-bold leading-none shadow-sm", INDEX_TAG_STYLE[marker.row.transition.departure as Action]].join(" ")
+            : "absolute right-0.5 top-0.5 text-[0.58rem] leading-none text-[var(--ink-muted)]"}
           aria-hidden="true"
         >
-          {showIndex ? marker.row.transition.departure + indexLabel(marker.index, marker.atOrBelow) : "•"}
+          {showIndex ? marker.row.transition.departure + " " + indexLabel(marker.index, marker.atOrBelow) : "•"}
         </span>
       )}
     </div>
   );
 }
 
-export default function StrategyChartPage() {
-  const [tab, setTab] = useState<ChartTab>("strategy");
+export default function StrategyChartPage({ initialTab = "strategy" }: { initialTab?: ChartTab }) {
+  const [tab, setTab] = useState<ChartTab>(initialTab);
   const [section, setSection] = useState<SectionTab>("hard");
   const [rules, setRules] = useState<StrategyChartRules>(DEFAULT_RULES);
 
   useEffect(() => {
     setRules(settingsRules());
   }, []);
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   const profile = rankingProfile(rules);
   const deviationCells = useMemo(
@@ -137,16 +150,21 @@ export default function StrategyChartPage() {
   );
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-7 max-w-3xl">
-        <p className="mb-2 font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--count-warm)]">Reference</p>
-        <h1 className="font-display text-3xl text-[var(--ink)] sm:text-4xl">Basic strategy chart</h1>
-        <p className="mt-3 text-[var(--ink-muted)]">
-          Set the table rules, then read your hand across to the dealer&apos;s upcard. The chart updates immediately.
-        </p>
+    <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
+        <div>
+          <p className="font-data text-[0.65rem] font-semibold uppercase tracking-[.16em] text-[var(--count-warm)]">Reference</p>
+          <h1 className="font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : "Index deviation chart"}</h1>
+        </div>
+        <p className="text-sm text-[var(--ink-muted)]">Select a hand type, then read across to the dealer&apos;s upcard.</p>
       </div>
 
-      <Panel className="mb-6">
+      <details className="surface mb-3 rounded-[1.35rem]">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm marker:hidden sm:px-5">
+          <span className="font-semibold text-[var(--ink)]">Table rules</span>
+          <span className="font-data text-xs text-[var(--ink-muted)]">{rules.decks}D · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.surrender} surrender</span>
+        </summary>
+        <div className="border-t border-[var(--rule)] p-4 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Select
             label="Decks"
@@ -193,7 +211,8 @@ export default function StrategyChartPage() {
             onChange={(europeanNoHoleCard) => setRules((current) => ({ ...current, europeanNoHoleCard }))}
           />
         </div>
-      </Panel>
+        </div>
+      </details>
 
       <Tabs
         value={tab}
@@ -202,19 +221,19 @@ export default function StrategyChartPage() {
           { value: "strategy", label: "Strategy" },
           { value: "deviations", label: "Index deviations" },
         ]}
-        className="mb-6"
+        className="mb-3"
       />
       <Tabs
         value={section}
         onChange={setSection}
         label="Hand type"
         items={SECTIONS.map(({ id, label }) => ({ value: id, label }))}
-        className="mb-4"
+        className="mb-3"
       />
 
       {tab === "strategy" ? (
         <div className="space-y-4">
-          <Panel className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--ink-muted)]">
+          <Panel className="flex flex-wrap gap-x-4 gap-y-1.5 p-3 text-xs text-[var(--ink-muted)]">
             {(["H", "S", "D", "P", "R"] as Action[]).map((action) => (
               <span key={action} className="inline-flex items-center gap-2">
                 <span className={["grid size-6 place-items-center rounded border font-data font-bold", ACTION_STYLE[action]].join(" ")}>{action}</span>
@@ -225,10 +244,10 @@ export default function StrategyChartPage() {
           </Panel>
 
           {SECTIONS.filter(({ id }) => id === section).map((section) => (
-            <Panel key={section.id} className="overflow-hidden">
-              <div className="mb-4">
-                <h2 className="font-display text-2xl text-[var(--ink)]">{section.label}</h2>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">{section.description}</p>
+            <Panel key={section.id} className="overflow-hidden p-3 sm:p-4">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
+                <h2 className="font-display text-xl text-[var(--ink)]">{section.label}</h2>
+                <p className="text-xs text-[var(--ink-muted)]">{section.description}</p>
               </div>
               <ChartGrid
                 section={section.id}
@@ -253,21 +272,23 @@ export default function StrategyChartPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <Panel>
-            <h2 className="font-display text-2xl text-[var(--ink)]">Index deviations</h2>
-            <p className="mt-2 text-[var(--ink-muted)]">Every cell keeps its basic-strategy action. A small corner tag marks the departure action and its signed true-count index.</p>
-            <p className="mt-4 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
+          <Panel className="p-3 sm:p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 className="font-display text-xl text-[var(--ink)]">Index deviations</h2>
+              <p className="text-xs text-[var(--ink-muted)]">Every cell keeps its basic-strategy action. Badge: departure and true-count index.</p>
+            </div>
+            <p className="mt-2 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
               Insurance: take at TC +3 or above.
             </p>
-            <p className="mt-3 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-[var(--ink)]">H</span> = basic strategy; <span className="font-data font-bold text-[var(--count-hot)]">S+2</span> = stand at TC +2 or above.</p>
-            {rules.decks !== 6 && <p className="mt-3 text-sm text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
+            <p className="mt-2 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-[var(--ink)]">H</span> = basic strategy; <span className="rounded-sm bg-[var(--count-hot)] px-0.5 py-px font-data font-bold text-[var(--ink)]">S +2</span> = stand at TC +2 or above.</p>
+            {rules.decks !== 6 && <p className="mt-2 text-xs text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
           </Panel>
 
           {SECTIONS.filter(({ id }) => id === section).map((section) => (
-            <Panel key={section.id} className="overflow-hidden">
-              <div className="mb-4">
-                <h2 className="font-display text-2xl text-[var(--ink)]">{section.label}</h2>
-                <p className="mt-1 text-sm text-[var(--ink-muted)]">{section.description}</p>
+            <Panel key={section.id} className="overflow-hidden p-3 sm:p-4">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
+                <h2 className="font-display text-xl text-[var(--ink)]">{section.label}</h2>
+                <p className="text-xs text-[var(--ink-muted)]">{section.description}</p>
               </div>
               <ChartGrid
                 section={section.id}
@@ -287,7 +308,7 @@ export default function StrategyChartPage() {
             </Panel>
           ))}
 
-          <Panel className="space-y-2 text-xs leading-5 text-[var(--ink-muted)]">
+          <Panel className="space-y-2 p-3 text-xs leading-5 text-[var(--ink-muted)]">
             <p>
               <b className="text-[var(--ink)]">EV impact</b> is units won per 100 rounds by adding that one departure to basic strategy, on {DEVIATION_RANKING_METADATA.game.toLowerCase()} with a {DEVIATION_RANKING_METADATA.ramp} bet ramp. <b className="text-[var(--ink)]">Fires</b> is how often in 100 rounds it actually changes a decision.
             </p>

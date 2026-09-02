@@ -18,7 +18,7 @@ export default function ChartGrid({ section, label, renderCell }: ChartGridProps
         className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-10 px-1"
         data-testid={"chart-rail-" + section}
       >
-        <table className="w-full min-w-[31rem] table-fixed border-separate border-spacing-px text-center text-xs">
+        <table className="w-full min-w-[31rem] table-fixed border-separate border-spacing-px text-center text-xs xl:min-w-0">
           <caption className="sr-only">{label}</caption>
           <thead>
             <tr>
