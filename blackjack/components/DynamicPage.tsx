@@ -50,7 +50,6 @@ const DeviationDrill = dynamicPage(() => import("@/components/Drills").then((m) 
 const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").then((m) => ({ default: m.H17ChartDrill })));
 const PracticeChecklist = dynamicPage(() => import("@/components/PracticeChecklist").then((m) => ({ default: m.PracticeChecklist })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
-const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
 const StrategyChartPage = dynamicPage(() => import("@/components/StrategyChartPage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
@@ -689,7 +688,6 @@ export default function DynamicPage() {
     "training/proficiency-test": <ProficiencyTest />,
     reference: <HiLoReference />,
     "reference/basic-strategy": <StrategyChartPage />,
-    "reference/deviations": <DeviationReferencePage />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
     terms: <TermsPage />,

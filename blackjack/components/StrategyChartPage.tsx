@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ChartGrid from "@/components/ChartGrid";
 import { Panel, Select, Switch, Tabs } from "@/components/ui";
+import { deviationGridCells } from "@/lib/blackjack/deviationChart";
+import type { DeviationCell as DeviationMarker } from "@/lib/blackjack/deviationChart";
+import { DEVIATION_RANKING, DEVIATION_RANKING_METADATA } from "@/lib/blackjack/deviationRanking";
+import type { DeviationRankingProfile } from "@/lib/blackjack/deviationRanking";
 import { chartCell } from "@/lib/blackjack/strategyChart";
 import type { StrategyChartRules, StrategySectionId } from "@/lib/blackjack/strategyChart";
 import type { Action } from "@/lib/blackjack/types";
@@ -41,6 +45,24 @@ const ACTION_LABEL: Record<Action, string> = {
   R: "Surrender",
 };
 
+function indexLabel(index: number, atOrBelow: boolean) {
+  return (index > 0 ? "+" : "") + String(index) + (atOrBelow ? "−" : "+");
+}
+
+function rankingProfile(rules: StrategyChartRules): DeviationRankingProfile {
+  return (rules.dealerHitsSoft17 ? "h17" : "s17") + (rules.surrender === "none" ? "-no-ls" : "-ls") as DeviationRankingProfile;
+}
+
+function deviationTitle(marker: DeviationMarker, profile: DeviationRankingProfile) {
+  const transition = marker.row.transition;
+  const rankingId = (marker.row.row as { id?: string }).id;
+  const ranking = rankingId ? DEVIATION_RANKING[profile][rankingId] : undefined;
+  const index = "TC " + indexLabel(marker.index, marker.atOrBelow);
+  const play = transition.departure + " at " + index + "; otherwise " + transition.baseline + ".";
+  if (!ranking) return play + " EV impact has not yet been measured.";
+  return play + " EV impact " + (ranking[0] >= 0 ? "+" : "") + ranking[0].toFixed(3) + " units per 100 rounds; fires " + ranking[2].toFixed(2) + " times per 100 rounds.";
+}
+
 function settingsRules(): StrategyChartRules {
   const settings = storage.settings();
   return {
@@ -57,11 +79,15 @@ function StrategyCell({
   section,
   row,
   dealer,
+  marker,
+  profile,
 }: {
   rules: StrategyChartRules;
   section: StrategySectionId;
   row: string;
   dealer: string;
+  marker?: DeviationMarker;
+  profile: DeviationRankingProfile;
 }) {
   const cell = chartCell(rules, section, row, dealer);
   const fallback = cell.fallback ? "; otherwise " + ACTION_LABEL[cell.fallback].toLowerCase() : "";
@@ -69,13 +95,29 @@ function StrategyCell({
   return (
     <div
       aria-label={row + " versus dealer " + dealer + ": " + ACTION_LABEL[cell.action] + fallback}
-      className={["grid h-11 min-w-11 place-items-center rounded-md border font-data text-base font-bold", ACTION_STYLE[cell.action]].join(" ")}
-      title={ACTION_LABEL[cell.action] + fallback}
+      className={["relative grid h-11 min-w-11 place-items-center rounded-md border font-data text-base font-bold", ACTION_STYLE[cell.action]].join(" ")}
+      title={marker ? deviationTitle(marker, profile) : ACTION_LABEL[cell.action] + fallback}
     >
       <span>
         {cell.action}
         {cell.fallback && <sub className="ml-px text-[0.62em] font-semibold">{cell.fallback.toLowerCase()}</sub>}
       </span>
+      {marker && <span className="absolute right-0.5 top-0.5 text-[0.58rem] leading-none text-[var(--ink-muted)]" aria-hidden="true">•</span>}
+    </div>
+  );
+}
+
+function DeviationGridCell({ marker, profile }: { marker?: DeviationMarker; profile: DeviationRankingProfile }) {
+  if (!marker) {
+    return <div className="grid h-11 min-w-11 place-items-center rounded-md border border-[var(--rule)] bg-[var(--paper)] text-[var(--ink-muted)]">—</div>;
+  }
+  const action = marker.row.transition.departure as Action;
+  return (
+    <div
+      className={["grid h-11 min-w-11 place-items-center rounded-md border font-data font-bold", ACTION_STYLE[action]].join(" ")}
+      title={deviationTitle(marker, profile)}
+    >
+      <span>{action} <small className="text-[0.6em] font-semibold">{indexLabel(marker.index, marker.atOrBelow)}</small></span>
     </div>
   );
 }
@@ -87,6 +129,16 @@ export default function StrategyChartPage() {
   useEffect(() => {
     setRules(settingsRules());
   }, []);
+
+  const profile = rankingProfile(rules);
+  const deviationCells = useMemo(
+    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender !== "none" }, rules.decks),
+    [rules.dealerHitsSoft17, rules.decks, rules.surrender],
+  );
+  const widestInterval = useMemo(
+    () => Math.max(0, ...Object.values(DEVIATION_RANKING[profile]).map((entry) => 1.96 * entry[1])),
+    [profile],
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -158,7 +210,16 @@ export default function StrategyChartPage() {
               <ChartGrid
                 section={section.id}
                 label={section.label + " basic strategy chart"}
-                renderCell={(row, dealer) => <StrategyCell rules={rules} section={section.id} row={row} dealer={dealer} />}
+                renderCell={(row, dealer) => (
+                  <StrategyCell
+                    rules={rules}
+                    section={section.id}
+                    row={row}
+                    dealer={dealer}
+                    marker={deviationCells.get(section.id + ":" + row + "v" + dealer)}
+                    profile={profile}
+                  />
+                )}
               />
             </Panel>
           ))}
@@ -166,10 +227,42 @@ export default function StrategyChartPage() {
           <p className="text-sm text-[var(--ink-muted)]">Hard totals 5–7 always hit; hard totals 18–21 always stand.</p>
         </div>
       ) : (
-        <Panel>
-          <h2 className="font-display text-2xl text-[var(--ink)]">Index deviations</h2>
-          <p className="mt-2 text-[var(--ink-muted)]">True-count deviations will be available here next.</p>
-        </Panel>
+        <div className="space-y-6">
+          <Panel>
+            <h2 className="font-display text-2xl text-[var(--ink)]">Index deviations</h2>
+            <p className="mt-2 text-[var(--ink-muted)]">The action and signed true-count index in each marked cell are the departure from basic strategy.</p>
+            <p className="mt-4 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
+              Insurance: take at TC +3 or above.
+            </p>
+            {rules.decks !== 6 && <p className="mt-3 text-sm text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
+          </Panel>
+
+          {SECTIONS.map((section) => (
+            <Panel key={section.id} className="overflow-hidden">
+              <div className="mb-4">
+                <h2 className="font-display text-2xl text-[var(--ink)]">{section.label}</h2>
+                <p className="mt-1 text-sm text-[var(--ink-muted)]">{section.description}</p>
+              </div>
+              <ChartGrid
+                section={section.id}
+                label={section.label + " index deviations"}
+                renderCell={(row, dealer) => (
+                  <DeviationGridCell marker={deviationCells.get(section.id + ":" + row + "v" + dealer)} profile={profile} />
+                )}
+              />
+            </Panel>
+          ))}
+
+          <Panel className="space-y-2 text-xs leading-5 text-[var(--ink-muted)]">
+            <p>
+              <b className="text-[var(--ink)]">EV impact</b> is units won per 100 rounds by adding that one departure to basic strategy, on {DEVIATION_RANKING_METADATA.game.toLowerCase()} with a {DEVIATION_RANKING_METADATA.ramp} bet ramp. <b className="text-[var(--ink)]">Fires</b> is how often in 100 rounds it actually changes a decision.
+            </p>
+            <p>
+              Measured over {DEVIATION_RANKING_METADATA.rounds.toLocaleString()} rounds per profile with {DEVIATION_RANKING_METADATA.replications} paired replications per triggered decision — {DEVIATION_RANKING_METADATA.method}. Widest 95% interval on this table: ±{widestInterval.toFixed(3)}.
+            </p>
+            <p>{DEVIATION_RANKING_METADATA.limit}, so treat the column total as close but not exact.</p>
+          </Panel>
+        </div>
       )}
     </main>
   );

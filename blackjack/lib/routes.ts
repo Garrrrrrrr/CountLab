@@ -7,6 +7,7 @@
 export const LEGACY_REDIRECTS: Record<string, string> = {
   analysis: "/cvcx",
   bankroll: "/cvcx",
+  "reference/deviations": "/reference/basic-strategy",
 };
 
 /** Every statically-generated route, as slug segments. Shared by the catch-all
@@ -38,7 +39,6 @@ export const ROUTES: string[][] = [
   ["training", "proficiency-test"],
   ["reference"],
   ["reference", "basic-strategy"],
-  ["reference", "deviations"],
   ["statistics"],
   ["settings"],
   ["terms"],
