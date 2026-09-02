@@ -9,16 +9,15 @@ async function prepareGuest(page: Page) {
   });
 }
 
-test("reference exposes strategy and deviations as direct destinations", async ({ page }, testInfo) => {
+test("reference opens the combined strategy and deviations chart", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop navigation coverage.");
   await prepareGuest(page);
   await page.goto("/reference/");
 
-  await expect(page.getByRole("heading", { name: /reference, without the scavenger hunt/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: /view basic strategy/i })).toHaveAttribute("href", "/reference/basic-strategy/");
-  await expect(page.getByRole("link", { name: /view index deviations/i })).toHaveAttribute("href", "/reference/deviations/");
+  await expect(page.getByRole("heading", { name: "Basic strategy chart" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Strategy" })).toHaveAttribute("aria-selected", "true");
 
-  await page.goto("/reference/deviations/");
+  await page.getByRole("tab", { name: "Index deviations" }).click();
   await expect(page.getByRole("heading", { name: "Index deviation chart" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
 });

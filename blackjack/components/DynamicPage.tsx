@@ -52,7 +52,6 @@ const PracticeChecklist = dynamicPage(() => import("@/components/PracticeCheckli
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const StrategyChartPage = dynamic(() => import("@/components/StrategyChartPage"), { loading: PageLoading });
 const PracticeHub = dynamicPage(() => import("@/components/PracticeHub"));
-const ReferenceHub = dynamicPage(() => import("@/components/ReferenceHub"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
@@ -688,9 +687,7 @@ export default function DynamicPage() {
     "training/deck-estimation": <DeckEstimationDrill />,
     "training/benchmark": <CountingBenchmark />,
     "training/proficiency-test": <ProficiencyTest />,
-    reference: <ReferenceHub />,
-    "reference/basic-strategy": <StrategyChartPage />,
-    "reference/deviations": <StrategyChartPage initialTab="deviations" />,
+    reference: <StrategyChartPage />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
     terms: <TermsPage />,

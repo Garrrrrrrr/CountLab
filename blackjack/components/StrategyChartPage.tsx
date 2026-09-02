@@ -151,13 +151,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
 
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
-        <div>
-          <p className="font-data text-[0.65rem] font-semibold uppercase tracking-[.16em] text-[var(--count-warm)]">Reference</p>
-          <h1 className="font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : "Index deviation chart"}</h1>
-        </div>
-        <p className="text-sm text-[var(--ink-muted)]">Select a hand type, then read across to the dealer&apos;s upcard.</p>
-      </div>
+      <h1 className="mb-3 font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : "Index deviation chart"}</h1>
 
       <details className="surface mb-3 rounded-[1.35rem]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm marker:hidden sm:px-5">
