@@ -192,7 +192,7 @@ describe("getBasicStrategyDecision on the tables", () => {
     expect(decide([card("A"), card("6", "hearts")], "4", { doubleRule: "9-11" }).action).toBe("H");
   });
 
-  it("answers deck counts whose grid is not transcribed yet instead of throwing", () => {
+  it("answers every supported deck count from its own grid", () => {
     // FullShoeGame and CountingDrills offer 1 and 2 decks. Until those grids
     // land they read the 4+ deck one, which is what the engine this replaces
     // did for every count — and the explanation says which grid answered.
@@ -200,8 +200,9 @@ describe("getBasicStrategyDecision on the tables", () => {
       expect(() => decide(pairOf("8"), "10", { decks })).not.toThrow();
       expect(decide(hard16(), "10", { decks }).action).toBe("R");
     }
-    expect(decide(hard16(), "10", { decks: 1 }).explanation).toContain("under 6-deck H17");
+    expect(decide(hard16(), "10", { decks: 1 }).explanation).toContain("under 1-deck H17");
     expect(decide(hard16(), "10", { decks: 8 }).explanation).toContain("under 8-deck H17");
+    expect(decide([card("5"), card("3", "hearts")], "5", { decks: 1 }).action).toBe("D");
   });
 
   it("splits nines rather than standing on their total", () => {

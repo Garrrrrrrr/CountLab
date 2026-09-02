@@ -102,9 +102,151 @@ const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, str
       8      H   H   H   H   H   H   H   H   H   H
     `,
   },
-  // The 1D and 2D grids are added in Task 6. Until then these four keys are the
-  // only ones populated, and `deckClass` below throws for 1 and 2 decks.
-} as Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, string>>;
+  "2/h17": {
+    pairs: `
+      A,A    P   P   P   P   P   P   P   P   P   P
+      T,T    S   S   S   S   S   S   S   S   S   S
+      9,9    P   P   P   P   P   S   P   P   S   S
+      8,8    P   P   P   P   P   P   P   P   P  Rp
+      7,7    P   P   P   P   P   P  Ph   H   H   H
+      6,6    P   P   P   P   P  Ph   H   H   H   H
+      5,5    D   D   D   D   D   D   D   D   H   H
+      4,4    H   H   H  Ph  Ph   H   H   H   H   H
+      3,3   Ph  Ph   P   P   P   P   H   H   H   H
+      2,2   Ph  Ph   P   P   P   P   H   H   H   H
+    `,
+    soft: `
+      A,9    S   S   S   S   S   S   S   S   S   S
+      A,8    S   S   S   S  Ds   S   S   S   S   S
+      A,7    S  Ds  Ds  Ds  Ds   S   S   H   H   H
+      A,6    H   D   D   D   D   H   H   H   H   H
+      A,5    H   H   D   D   D   H   H   H   H   H
+      A,4    H   H   D   D   D   H   H   H   H   H
+      A,3    H   H   H   D   D   H   H   H   H   H
+      A,2    H   H   H   D   D   H   H   H   H   H
+    `,
+    hard: `
+      17     S   S   S   S   S   S   S   S   S  Rs
+      16     S   S   S   S   S   H   H   H  Rh  Rh
+      15     S   S   S   S   S   H   H   H  Rh  Rh
+      14     S   S   S   S   S   H   H   H   H   H
+      13     S   S   S   S   S   H   H   H   H   H
+      12     H   H   S   S   S   H   H   H   H   H
+      11     D   D   D   D   D   D   D   D   D   D
+      10     D   D   D   D   D   D   D   D   H   H
+      9      D   D   D   D   D   H   H   H   H   H
+      8      H   H   H   H   H   H   H   H   H   H
+    `,
+  },
+  "2/s17": {
+    pairs: `
+      A,A    P   P   P   P   P   P   P   P   P   P
+      T,T    S   S   S   S   S   S   S   S   S   S
+      9,9    P   P   P   P   P   S   P   P   S   S
+      8,8    P   P   P   P   P   P   P   P   P   P
+      7,7    P   P   P   P   P   P  Ph   H   H   H
+      6,6    P   P   P   P   P  Ph   H   H   H   H
+      5,5    D   D   D   D   D   D   D   D   H   H
+      4,4    H   H   H  Ph  Ph   H   H   H   H   H
+      3,3   Ph  Ph   P   P   P   P   H   H   H   H
+      2,2   Ph  Ph   P   P   P   P   H   H   H   H
+    `,
+    soft: `
+      A,9    S   S   S   S   S   S   S   S   S   S
+      A,8    S   S   S   S   S   S   S   S   S   S
+      A,7    S  Ds  Ds  Ds  Ds   S   S   H   H   H
+      A,6    H   D   D   D   D   H   H   H   H   H
+      A,5    H   H   D   D   D   H   H   H   H   H
+      A,4    H   H   D   D   D   H   H   H   H   H
+      A,3    H   H   H   D   D   H   H   H   H   H
+      A,2    H   H   H   D   D   H   H   H   H   H
+    `,
+    hard: `
+      17     S   S   S   S   S   S   S   S   S   S
+      16     S   S   S   S   S   H   H   H  Rh  Rh
+      15     S   S   S   S   S   H   H   H  Rh   H
+      14     S   S   S   S   S   H   H   H   H   H
+      13     S   S   S   S   S   H   H   H   H   H
+      12     H   H   S   S   S   H   H   H   H   H
+      11     D   D   D   D   D   D   D   D   D   H
+      10     D   D   D   D   D   D   D   D   H   H
+      9      D   D   D   D   D   H   H   H   H   H
+      8      H   H   H   H   H   H   H   H   H   H
+    `,
+  },
+  "1/h17": {
+    pairs: `
+      A,A    P   P   P   P   P   P   P   P   P   P
+      T,T    S   S   S   S   S   S   S   S   S   S
+      9,9    P   P   P   P   P   S   P   P   S  Ps
+      8,8    P   P   P   P   P   P   P   P   P   P
+      7,7    P   P   P   P   P   P  Ph   H  Rs  Rh
+      6,6    P   P   P   P   P  Ph   H   H   H   H
+      5,5    D   D   D   D   D   D   D   D   H   H
+      4,4    H   H  Ph  Pd  Pd   H   H   H   H   H
+      3,3   Ph  Ph   P   P   P   P  Ph   H   H   H
+      2,2   Ph   P   P   P   P   P   H   H   H   H
+    `,
+    soft: `
+      A,9    S   S   S   S   S   S   S   S   S   S
+      A,8    S   S   S   S  Ds   S   S   S   S   S
+      A,7    S  Ds  Ds  Ds  Ds   S   S   H   H   H
+      A,6    D   D   D   D   D   H   H   H   H   H
+      A,5    H   H   D   D   D   H   H   H   H   H
+      A,4    H   H   D   D   D   H   H   H   H   H
+      A,3    H   H   D   D   D   H   H   H   H   H
+      A,2    H   H   D   D   D   H   H   H   H   H
+    `,
+    hard: `
+      17     S   S   S   S   S   S   S   S   S  Rs
+      16     S   S   S   S   S   H   H   H  Rh  Rh
+      15     S   S   S   S   S   H   H   H   H   H
+      14     S   S   S   S   S   H   H   H   H   H
+      13     S   S   S   S   S   H   H   H   H   H
+      12     H   H   S   S   S   H   H   H   H   H
+      11     D   D   D   D   D   D   D   D   D   D
+      10     D   D   D   D   D   D   D   D   H   H
+      9      D   D   D   D   D   H   H   H   H   H
+      8      H   H   H   D   D   H   H   H   H   H
+    `,
+  },
+  "1/s17": {
+    pairs: `
+      A,A    P   P   P   P   P   P   P   P   P   P
+      T,T    S   S   S   S   S   S   S   S   S   S
+      9,9    P   P   P   P   P   S   P   P   S   S
+      8,8    P   P   P   P   P   P   P   P   P   P
+      7,7    P   P   P   P   P   P  Ph   H  Rs   H
+      6,6    P   P   P   P   P  Ph   H   H   H   H
+      5,5    D   D   D   D   D   D   D   D   H   H
+      4,4    H   H  Ph  Pd  Pd   H   H   H   H   H
+      3,3   Ph  Ph   P   P   P   P  Ph   H   H   H
+      2,2   Ph   P   P   P   P   P   H   H   H   H
+    `,
+    soft: `
+      A,9    S   S   S   S   S   S   S   S   S   S
+      A,8    S   S   S   S  Ds   S   S   S   S   S
+      A,7    S  Ds  Ds  Ds  Ds   S   S   H   H   S
+      A,6    D   D   D   D   D   H   H   H   H   H
+      A,5    H   H   D   D   D   H   H   H   H   H
+      A,4    H   H   D   D   D   H   H   H   H   H
+      A,3    H   H   D   D   D   H   H   H   H   H
+      A,2    H   H   D   D   D   H   H   H   H   H
+    `,
+    hard: `
+      17     S   S   S   S   S   S   S   S   S   S
+      16     S   S   S   S   S   H   H   H  Rh  Rh
+      15     S   S   S   S   S   H   H   H   H   H
+      14     S   S   S   S   S   H   H   H   H   H
+      13     S   S   S   S   S   H   H   H   H   H
+      12     H   H   S   S   S   H   H   H   H   H
+      11     D   D   D   D   D   D   D   D   D   D
+      10     D   D   D   D   D   D   D   D   H   H
+      9      D   D   D   D   D   H   H   H   H   H
+      8      H   H   H   D   D   H   H   H   H   H
+    `,
+  },
+};
 
 const isChartCode = (value: string): value is ChartCode =>
   ["H", "S", "P", "D", "Ds", "Ph", "Pd", "Ps", "Rh", "Rs", "Rp"].includes(value);

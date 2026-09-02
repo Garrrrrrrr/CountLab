@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BJA_H17_SECTIONS, CHART_DEALERS, cellKey } from "./bjaH17Chart";
 import { STRATEGY_ROWS, STRATEGY_TABLES, deckClass } from "./strategyTables";
-import { CHART_CODES, StrategySectionId, chartCell } from "./strategyChart";
+import { CHART_CODES, StrategySectionId, chartCell, chartCode } from "./strategyChart";
 
 describe("strategy tables", () => {
   it("maps deck counts to their chart class", () => {
@@ -58,5 +58,38 @@ describe("agreement with the audited BJA H17 transcription", () => {
     // 4-8 deck H17 game that offers late surrender; the printed chart's own
     // surrender table simply has no pairs row to carry it.
     expect(mismatches).toEqual(["pairs 8,8 v A: chart says split, table says R"]);
+  });
+});
+
+describe("deck-class differences", () => {
+  const base = { dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "late" as const, doubleRule: "any" as const, europeanNoHoleCard: false };
+  const differences = (decks: number) => {
+    const out: string[] = [];
+    for (const section of ["pairs", "soft", "hard"] as const) {
+      for (const row of STRATEGY_ROWS[section]) {
+        for (const dealer of CHART_DEALERS) {
+          const few = chartCode({ ...base, decks }, section, row, dealer);
+          const many = chartCode({ ...base, decks: 6 }, section, row, dealer);
+          if (few !== many) out.push(`${section}:${row}v${dealer} ${many}->${few}`);
+        }
+      }
+    }
+    return out;
+  };
+
+  it("lists the double-deck H17 departures from the 4-8 deck chart", () => {
+    expect(differences(2)).toEqual([
+      "pairs:7,7v8 H->Ph",
+      "pairs:6,6v2 Ph->P",
+      "pairs:6,6v7 H->Ph",
+      "soft:A,7v2 Ds->S",
+      "hard:17vA S->Rs",
+      "hard:16v9 Rh->H",
+      "hard:9v2 H->D",
+    ]);
+  });
+
+  it("has more single-deck H17 departures than double deck", () => {
+    expect(differences(1).length).toBeGreaterThan(differences(2).length);
   });
 });

@@ -67,7 +67,7 @@ function settingsRules(): StrategyChartRules {
   const settings = storage.settings();
   return {
     ...DEFAULT_RULES,
-    decks: settings.decks === 4 || settings.decks === 6 || settings.decks === 8 ? settings.decks : 6,
+    decks: [1, 2, 4, 6, 8].includes(settings.decks) ? settings.decks : 6,
     dealerHitsSoft17: settings.dealerHitsSoft17,
     doubleAfterSplit: settings.doubleAfterSplit,
     surrender: settings.lateSurrender ? "late" : "none",
@@ -132,8 +132,8 @@ export default function StrategyChartPage() {
 
   const profile = rankingProfile(rules);
   const deviationCells = useMemo(
-    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender !== "none" }, rules.decks),
-    [rules.dealerHitsSoft17, rules.decks, rules.surrender],
+    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender !== "none" }),
+    [rules.dealerHitsSoft17, rules.surrender],
   );
   const widestInterval = useMemo(
     () => Math.max(0, ...Object.values(DEVIATION_RANKING[profile]).map((entry) => 1.96 * entry[1])),
@@ -157,6 +157,8 @@ export default function StrategyChartPage() {
             value={String(rules.decks)}
             onChange={(event) => setRules((current) => ({ ...current, decks: Number(event.target.value) }))}
           >
+            <option value="1">1 deck</option>
+            <option value="2">2 decks</option>
             <option value="4">4 decks</option>
             <option value="6">6 decks</option>
             <option value="8">8 decks</option>
