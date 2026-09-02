@@ -31,19 +31,19 @@ const SECTIONS: Array<{ id: StrategySectionId; label: string; description: strin
 ];
 
 const ACTION_STYLE: Record<Action, string> = {
-  H: "border-[var(--count-cold)]/30 bg-[color:color-mix(in_srgb,var(--count-cold)_12%,transparent)] text-[var(--count-cold)]",
-  S: "border-[var(--ink-muted)]/30 bg-[var(--paper)] text-[var(--ink)]",
-  D: "border-[var(--count-warm)]/35 bg-[color:color-mix(in_srgb,var(--count-warm)_14%,transparent)] text-[var(--ink)]",
-  P: "border-[var(--count-hot)]/35 bg-[color:color-mix(in_srgb,var(--count-hot)_12%,transparent)] text-[var(--count-hot)]",
-  R: "border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300",
+  H: "border-sky-800 bg-sky-700 text-white",
+  S: "border-slate-800 bg-slate-700 text-white",
+  D: "border-amber-600 bg-amber-400 text-slate-950",
+  P: "border-violet-800 bg-violet-700 text-white",
+  R: "border-rose-800 bg-rose-700 text-white",
 };
 
 const INDEX_TAG_STYLE: Record<Action, string> = {
-  H: "bg-[var(--count-cold)] text-white",
-  S: "bg-[var(--ink)] text-[var(--paper)]",
-  D: "bg-[var(--count-warm)] text-[var(--ink)]",
-  P: "bg-[var(--count-hot)] text-[var(--ink)]",
-  R: "bg-red-600 text-white",
+  H: "bg-sky-950 text-white ring-1 ring-white/80",
+  S: "bg-slate-950 text-white ring-1 ring-white/80",
+  D: "bg-amber-950 text-amber-100 ring-1 ring-white/80",
+  P: "bg-violet-950 text-violet-100 ring-1 ring-white/80",
+  R: "bg-rose-950 text-rose-100 ring-1 ring-white/80",
 };
 
 const ACTION_LABEL: Record<Action, string> = {
@@ -280,7 +280,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             <p className="mt-2 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
               Insurance: take at TC +3 or above.
             </p>
-            <p className="mt-2 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-[var(--ink)]">H</span> = basic strategy; <span className="rounded-sm bg-[var(--count-hot)] px-0.5 py-px font-data font-bold text-[var(--ink)]">S +2</span> = stand at TC +2 or above.</p>
+            <p className="mt-2 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-sky-700 dark:text-sky-300">H</span> = basic strategy; <span className="rounded-sm bg-slate-950 px-0.5 py-px font-data font-bold text-white ring-1 ring-white/80">S +2</span> = stand at TC +2 or above.</p>
             {rules.decks !== 6 && <p className="mt-2 text-xs text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
           </Panel>
 
