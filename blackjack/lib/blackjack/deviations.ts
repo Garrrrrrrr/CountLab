@@ -15,6 +15,7 @@ export interface Deviation {
   priority?: number;
   overridesSurrender?: true;
   outsideSurrenderWindow?: true;
+  listedBaseline?: true;
 }
 /** The supplied H17 Pro catalog; kept as the default/legacy export. */
 export const DEVIATIONS:Deviation[] = [...H17_PRO_DEVIATIONS];
@@ -61,6 +62,7 @@ export function resolveDeviation(
     const crossed = deviation.direction === "atOrBelow" ? tc <= deviation.index : tc >= deviation.index;
     if (!crossed) return false;
     return basicAction === deviation.normalAction
+      || deviation.listedBaseline === true
       // Where the chart's surrender is a count window rather than every count,
       // its other indices are written against the play made outside that
       // window, so they still apply in a game that offers surrender.
@@ -69,6 +71,15 @@ export function resolveDeviation(
       || deviation.deviationAction === "R";
   });
   if (!candidates.length) {
+    const listedBaseline = catalog.find((deviation) => {
+      if (!deviation.listedBaseline || deviation.hand !== hand || deviation.dealer !== dealer) return false;
+      if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
+      if (deviation.overridesSurrender && rules.lateSurrender) return false;
+      return deviation.direction === "atOrBelow"
+        ? tc > deviation.index
+        : tc < deviation.index;
+    });
+    if (listedBaseline) return { action: listedBaseline.normalAction, deviation: listedBaseline, belowIndex: true };
     // Two-sided cells (13 v 2, 12 v 4 and Soft 19 v 6 in the H17 catalog)
     // already match basic strategy at TC 0, so the catalog's normalAction field
     // never matches real basic strategy and this entry never appears in

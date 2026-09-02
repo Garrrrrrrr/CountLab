@@ -81,7 +81,7 @@ export const BJA_H17_SECTIONS: readonly ChartSection[] = [
   section("pairs", "Pair splitting", `
     A,A  Y    Y    Y   Y    Y    Y  Y  Y  Y  Y
     T,T  N    N    6+  5+   4+   N  N  N  N  N
-    9,9  Y    Y    Y   Y    Y    N  Y  Y  N  N
+    9,9  Y    Y    Y   Y    Y   3+  Y  Y  N  N
     8,8  Y    Y    Y   Y    Y    Y  Y  Y  Y  Y
     7,7  Y    Y    Y   Y    Y    Y  N  N  N  N
     6,6  Y/N  Y    Y   Y    Y    N  N  N  N  N
@@ -105,9 +105,9 @@ export const BJA_H17_SECTIONS: readonly ChartSection[] = [
     16  S    S   S   S  S   H   H  4+  0+  3+
     15  S    S   S   S  S   H   H  H   4+  5+
     14  S    S   S   S  S   H   H  H   H   H
-    13  -1-  S   S   S  S   H   H  H   H   H
-    12  3+   2+  0-  S  S   H   H  H   H   H
-    11  D    D   D   D  D   D   D  D   D   D
+    13  -1- -2+  S   S  S   H   H  H   H   H
+    12  3+   2+  0- -2+ -3+ H   H  H   H   H
+    11  D    D   D   D  D   D   D  D   D  -1+
     10  D    D   D   D  D   D   D  D   4+  3+
     9   1+   D   D   D  D   3+  H  H   H   H
     8   H    H   H   H  2+  H   H  H   H   H
@@ -116,7 +116,7 @@ export const BJA_H17_SECTIONS: readonly ChartSection[] = [
     17  N  N  N  N  N  N  N   N    N    SUR
     16  N  N  N  N  N  N  4+  -1-  SUR  SUR
     15  N  N  N  N  N  N  N   2+   0-   -1+
-    14  N  N  N  N  N  N  N   N    N    N
+    14  N  N  N  N  N  N  N   N   3+    N
   `),
 ];
 

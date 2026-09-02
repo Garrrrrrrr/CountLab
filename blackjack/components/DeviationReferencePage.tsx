@@ -33,13 +33,14 @@ export default function DeviationReferencePage() {
     const query = search.trim().toLowerCase();
 
     const decorated = catalog.rows.map((row) => {
-      const [evPer100, standardError, triggersPer100] = ranking[row.id] ?? [0, 0, 0];
+      const measured = ranking[row.id];
+      const [evPer100, standardError, triggersPer100] = measured ?? [0, 0, 0];
       const transition = deviationTransition(row, rules);
       // A row is dormant when the departure never differs from basic strategy
       // under these rules: an unconditional surrender the table already plays,
       // or a starred stand index that a late surrender outranks at every count.
       // The measured trigger rate and `changesPlay` agree; a test asserts it.
-      return { ...row, ...transition, evPer100, standardError, triggersPer100, dormant: triggersPer100 === 0, sentence: deviationSentence(row, transition) };
+      return { ...row, ...transition, evPer100, standardError, triggersPer100, measured: Boolean(measured), dormant: Boolean(measured) && triggersPer100 === 0, sentence: deviationSentence(row, transition) };
     });
     const filtered = decorated.filter(
       (row) => !query || `${catalog.label} ${row.hand} ${row.dealer} ${DEVIATION_ACTION_NAMES[row.baseline]} ${DEVIATION_ACTION_NAMES[row.departure]}`.toLowerCase().includes(query),
@@ -49,19 +50,20 @@ export default function DeviationReferencePage() {
   }, [catalog, profile, ruleset, search, sort, surrender]);
 
   const live = rows.filter((row) => !row.dormant);
-  const total = live.reduce((sum, row) => sum + row.evPer100, 0);
-  const widestInterval = Math.max(0, ...live.map((row) => 1.96 * row.standardError));
+  const measuredLive = live.filter((row) => row.measured);
+  const total = measuredLive.reduce((sum, row) => sum + row.evPer100, 0);
+  const widestInterval = Math.max(0, ...measuredLive.map((row) => 1.96 * row.standardError));
 
   const indexLabel = (row: (typeof rows)[number]) =>
     row.always
       ? "Always"
       : `TC ${row.atOrBelow || row.direction === "atOrBelow" ? "≤" : "≥"} ${row.index > 0 ? "+" : ""}${row.index}`;
   const evLabel = (row: (typeof rows)[number]) =>
-    row.dormant ? "no effect" : `${signedEv(row.evPer100)} ± ${(1.96 * row.standardError).toFixed(3)}`;
+    !row.measured ? "not yet measured" : row.dormant ? "no effect" : `${signedEv(row.evPer100)} ± ${(1.96 * row.standardError).toFixed(3)}`;
 
   return <>
     <h1 className="text-3xl font-semibold">Index Deviations</h1>
-    <p className="mt-2 text-zinc-400">Index deviations for 4–8 deck games: 33 H17 plays, 32 S17 plays.</p>
+    <p className="mt-2 text-zinc-400">Index deviations for 4–8 deck games, including the added Illustrious 18 and Fab 4 cells.</p>
     <Panel className="mt-7">
       <CountRule />
       <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-sm text-zinc-300">
@@ -105,7 +107,9 @@ export default function DeviationReferencePage() {
           <p className="mt-2 text-xs text-zinc-500">
             {row.dormant
               ? "No effect: basic strategy already plays this way here."
-              : <>EV impact {evLabel(row)} units / 100 rounds · fires {row.triggersPer100.toFixed(2)}× per 100</>}
+              : !row.measured
+                ? "EV impact has not yet been measured for this added chart cell."
+                : <>EV impact {evLabel(row)} units / 100 rounds · fires {row.triggersPer100.toFixed(2)}× per 100</>}
           </p>
           <p className="mt-2 text-xs leading-5 text-zinc-500">{row.sentence}</p>
         </article>
@@ -126,7 +130,7 @@ export default function DeviationReferencePage() {
             <td className="p-2">{DEVIATION_ACTION_NAMES[row.baseline]}</td>
             <td className={`p-2 font-medium ${row.dormant ? "" : "text-emerald-200"}`}>{DEVIATION_ACTION_NAMES[row.departure]}</td>
             <td className="p-2 text-right tabular-nums" title={row.dormant ? "Basic strategy already plays this way under these rules" : "Units per 100 rounds, with a 95% interval"}>{evLabel(row)}</td>
-            <td className="p-2 text-right tabular-nums text-zinc-500">{row.dormant ? "—" : `${row.triggersPer100.toFixed(2)}/100`}</td>
+            <td className="p-2 text-right tabular-nums text-zinc-500">{!row.measured || row.dormant ? "—" : `${row.triggersPer100.toFixed(2)}/100`}</td>
             <td className="min-w-[22rem] p-2 text-xs leading-5 text-zinc-500">{row.sentence}</td>
           </tr>
         ))}</tbody>

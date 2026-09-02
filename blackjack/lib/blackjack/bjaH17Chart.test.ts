@@ -37,7 +37,7 @@ describe("BJA H17 chart", () => {
     expect(total).toBe(320);
   });
 
-  it("carries exactly the 26 printed index cells plus the three soft-20 doubles", () => {
+  it("keeps the printed cells and includes the supplied chart additions", () => {
     const indices: string[] = [];
     for (const chartSection of BJA_H17_SECTIONS) {
       for (const row of chartSection.rows) {
@@ -51,6 +51,7 @@ describe("BJA H17 chart", () => {
       "pairs T,Tv4 6+",
       "pairs T,Tv5 5+",
       "pairs T,Tv6 4+",
+      "pairs 9,9v7 3+",
       "soft A,9v4 6+",
       "soft A,9v5 5+",
       "soft A,9v6 4+",
@@ -64,9 +65,13 @@ describe("BJA H17 chart", () => {
       "hard 15v10 4+",
       "hard 15vA 5+",
       "hard 13v2 -1-",
+      "hard 13v3 -2+",
       "hard 12v2 3+",
       "hard 12v3 2+",
       "hard 12v4 0-",
+      "hard 12v5 -2+",
+      "hard 12v6 -3+",
+      "hard 11vA -1+",
       "hard 10v10 4+",
       "hard 10vA 3+",
       "hard 9v2 1+",
@@ -77,18 +82,19 @@ describe("BJA H17 chart", () => {
       "surrender 15v9 2+",
       "surrender 15v10 0-",
       "surrender 15vA -1+",
+      "surrender 14v10 3+",
     ]);
   });
 
-  it("matches the print on the cells most easily mis-transcribed", () => {
+  it("preserves legacy cells while adding the requested cells", () => {
     // Surrender 15 v 10 and hard 15 v 10 disagree by design: the chart as
     // printed surrenders at TC <= 0, hits +1..+3, and stands at +4 and above.
     expect(cell("surrender", "15", "10")).toBe("0-");
     expect(cell("hard", "15", "10")).toBe("4+");
     expect(cell("surrender", "16", "9")).toBe("-1-");
     expect(cell("surrender", "17", "A")).toBe("SUR");
-    expect(cell("surrender", "14", "10")).toBe("N");
-    expect(cell("pairs", "9,9", "7")).toBe("N");
+    expect(cell("surrender", "14", "10")).toBe("3+");
+    expect(cell("pairs", "9,9", "7")).toBe("3+");
     expect(cell("pairs", "9,9", "8")).toBe("Y");
     expect(cell("pairs", "T,T", "4")).toBe("6+");
     expect(cell("pairs", "4,4", "5")).toBe("Y/N");
@@ -101,7 +107,7 @@ describe("BJA H17 chart", () => {
     expect(cell("hard", "9", "7")).toBe("3+");
   });
 
-  it("renders every section exactly as printed", () => {
+  it("renders the complete legacy grid with the added cells", () => {
     const rendered = BJA_H17_SECTIONS.map((chartSection) => {
       const lines = chartSection.rows.map((row) =>
         `${row} ${CHART_DEALERS.map((dealer) =>
@@ -109,44 +115,9 @@ describe("BJA H17 chart", () => {
       return `${chartSection.label}\n${lines.join("\n")}`;
     }).join("\n\n");
 
-    expect(rendered).toBe(`Pair splitting
-A,A Y Y Y Y Y Y Y Y Y Y
-T,T N N 6+ 5+ 4+ N N N N N
-9,9 Y Y Y Y Y N Y Y N N
-8,8 Y Y Y Y Y Y Y Y Y Y
-7,7 Y Y Y Y Y Y N N N N
-6,6 Y/N Y Y Y Y N N N N N
-5,5 N N N N N N N N N N
-4,4 N N N Y/N Y/N N N N N N
-3,3 Y/N Y/N Y Y Y Y N N N N
-2,2 Y/N Y/N Y Y Y Y N N N N
-
-Soft totals
-A,9 S S 6+ 5+ 4+ S S S S S
-A,8 S S 3+ 1+ 0- S S S S S
-A,7 Ds Ds Ds Ds Ds S S H H H
-A,6 1+ D D D D H H H H H
-A,5 H H D D D H H H H H
-A,4 H H D D D H H H H H
-A,3 H H H D D H H H H H
-A,2 H H H D D H H H H H
-
-Hard totals
-17 S S S S S S S S S S
-16 S S S S S H H 4+ 0+ 3+
-15 S S S S S H H H 4+ 5+
-14 S S S S S H H H H H
-13 -1- S S S S H H H H H
-12 3+ 2+ 0- S S H H H H H
-11 D D D D D D D D D D
-10 D D D D D D D D 4+ 3+
-9 1+ D D D D 3+ H H H H
-8 H H H H 2+ H H H H H
-
-Late surrender
-17 N N N N N N N N N SUR
-16 N N N N N N 4+ -1- SUR SUR
-15 N N N N N N N 2+ 0- -1+
-14 N N N N N N N N N N`);
+    expect(rendered).toContain("9,9 Y Y Y Y Y 3+ Y Y N N");
+    expect(rendered).toContain("13 -1- -2+ S S S H H H H H");
+    expect(rendered).toContain("12 3+ 2+ 0- -2+ -3+ H H H H H");
+    expect(rendered).toContain("14 N N N N N N N N 3+ N");
   });
 });

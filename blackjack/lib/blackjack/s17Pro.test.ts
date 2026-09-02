@@ -5,8 +5,8 @@ import { resolveDeviation } from "./deviations";
 const s17LateSurrender = { dealerHitsSoft17: false, lateSurrender: true };
 
 describe("S17 Pro table", () => {
-  it("contains all 32 supplied decisions and key boundaries", () => {
-    expect(S17_PRO_DEVIATIONS).toHaveLength(32);
+  it("preserves the S17 catalog and includes the supplied additions", () => {
+    expect(S17_PRO_DEVIATIONS).toHaveLength(39);
     expect(S17_PRO_DEVIATIONS.find((row) => row.hand === "Insurance")?.index).toBe(3);
     expect(S17_PRO_DEVIATIONS.find((row) => row.hand === "10,10" && row.dealer === "6")?.index).toBe(5);
     expect(S17_PRO_DEVIATIONS.filter((row) => row.always)).toHaveLength(2);
@@ -28,9 +28,9 @@ describe("S17 Pro table", () => {
     expect(resolveDeviation("S", "12", "4", 1, s17LateSurrender).action).toBe("S");
   });
 
-  it("has no departure for hands the H17 Pro chart carries but S17 Pro does not", () => {
-    // 13 v 2, 15 v A (always), 17 v A, and 8,8 v A are H17-only in the supplied charts.
-    expect(resolveDeviation("S", "13", "2", -4, s17LateSurrender).action).toBe("S");
+  it("adds shared negative-index hard totals without removing S17-only departures", () => {
+    expect(resolveDeviation("S", "13", "2", -4, s17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "13", "2", -1, s17LateSurrender).action).toBe("S");
     expect(resolveDeviation("H", "17", "A", 5, s17LateSurrender).action).toBe("H");
   });
 

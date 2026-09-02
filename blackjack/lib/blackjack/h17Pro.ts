@@ -41,9 +41,11 @@ export interface H17Deviation {
    * hit at +4 rather than stand, which no reading of the chart asks for.
    */
   outsideSurrenderWindow?: true;
+  /** The listed normal action overrides basic strategy on the other side of a new threshold. */
+  listedBaseline?: true;
 }
 
-type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number, outsideSurrenderWindow?: true];
+type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number, outsideSurrenderWindow?: true, listedBaseline?: true];
 
 /**
  * The Blackjack Apprenticeship H17 chart's 26 printed index cells, the three
@@ -66,6 +68,7 @@ const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["Insurance", "A", 3, "N", "I"],
   // Pair splitting: T,T
   ["10,10", "4", 6, "S", "P"], ["10,10", "5", 5, "S", "P"], ["10,10", "6", 4, "S", "P"],
+  ["9,9", "7", 3, "S", "P"],
   // Soft totals: A,9 (this app's addition, see bjaH17Chart.ts), A,8 and A,6
   ["Soft 20", "4", 6, "S", "D"], ["Soft 20", "5", 5, "S", "D"], ["Soft 20", "6", 4, "S", "D"],
   ["Soft 19", "4", 3, "S", "D"], ["Soft 19", "5", 1, "S", "D"], ["Soft 19", "6", 0, "S", "D"],
@@ -74,10 +77,10 @@ const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["16", "9", 4, "H", "S", "atOrAbove", undefined, undefined, 3, true], ["16", "10", 0, "R", "S", "atOrAbove", true, undefined, 3], ["16", "A", 3, "R", "S", "atOrAbove", true, undefined, 3],
   ["15", "10", 4, "H", "S", "atOrAbove", undefined, undefined, 3, true], ["15", "A", 5, "R", "S", "atOrAbove", true, undefined, 3],
   // Hard totals: standing and doubling
-  ["13", "2", -1, "H", "S"], ["12", "2", 3, "H", "S"], ["12", "3", 2, "H", "S"], ["12", "4", 0, "H", "S"],
-  ["10", "10", 4, "H", "D"], ["10", "A", 3, "H", "D"], ["9", "2", 1, "H", "D"], ["9", "7", 3, "H", "D"], ["8", "6", 2, "H", "D"],
+  ["13", "2", -1, "H", "S"], ["13", "3", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true], ["12", "2", 3, "H", "S"], ["12", "3", 2, "H", "S"], ["12", "4", 0, "H", "S"], ["12", "5", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true], ["12", "6", -3, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true],
+  ["11", "A", -1, "H", "D", "atOrAbove", undefined, undefined, undefined, undefined, true], ["10", "10", 4, "H", "D"], ["10", "A", 3, "H", "D"], ["9", "2", 1, "H", "D"], ["9", "7", 3, "H", "D"], ["8", "6", 2, "H", "D"],
   // Late surrender
-  ["16", "8", 4, "H", "R", "atOrAbove", undefined, undefined, 2], ["16", "9", -1, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "9", 2, "H", "R", "atOrAbove", undefined, undefined, 2], ["15", "10", 0, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "A", -1, "H", "R", "atOrAbove", undefined, undefined, 2],
+  ["16", "8", 4, "H", "R", "atOrAbove", undefined, undefined, 2], ["16", "9", -1, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "9", 2, "H", "R", "atOrAbove", undefined, undefined, 2], ["15", "10", 0, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "A", -1, "H", "R", "atOrAbove", undefined, undefined, 2], ["14", "10", 3, "H", "R", "atOrAbove", undefined, undefined, 2, undefined, true],
   ["17", "A", 0, "S", "R", "atOrAbove", undefined, true], ["16", "10", 0, "H", "R", "atOrAbove", undefined, true], ["16", "A", 0, "H", "R", "atOrAbove", undefined, true],
 ] as const;
 
@@ -93,8 +96,8 @@ export const deviationId = (set: H17DeviationSet, hand: string, dealer: string, 
 
 export const makeDeviations = (set: H17DeviationSet, rows: readonly Row[]): H17Deviation[] => {
   const made = rows.map(
-    ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, outsideSurrenderWindow]): H17Deviation => ({
-      id: deviationId(set, hand, dealer, deviationAction), set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, outsideSurrenderWindow,
+    ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, outsideSurrenderWindow, listedBaseline]): H17Deviation => ({
+      id: deviationId(set, hand, dealer, deviationAction), set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, outsideSurrenderWindow, listedBaseline,
     }),
   );
   // Two rows can share a cell (a stand index and a surrender), but never a cell

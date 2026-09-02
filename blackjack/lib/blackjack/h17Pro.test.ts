@@ -41,14 +41,24 @@ describe("H17 deviation catalog", () => {
     expect([...catalog].sort()).toEqual([...printedIndices()].sort());
   });
 
-  it("holds the chart's 33 decisions and its key boundaries", () => {
-    expect(H17_PRO_DEVIATIONS).toHaveLength(33);
+  it("keeps existing cells and adds the supplied Illustrious 18/Fab 4 rows", () => {
+    expect(H17_PRO_DEVIATIONS).toHaveLength(39);
     // The chart's legend: "INSURANCE OR EVEN MONEY: TAKE AT 3+".
     expect(H17_PRO_DEVIATIONS.find((row) => row.hand === "Insurance")?.index).toBe(3);
     // The printed late surrenders: 17 v A, 16 v 10 and 16 v A.
     expect(H17_PRO_DEVIATIONS.filter((row) => row.always)).toHaveLength(3);
     expect(H17_PRO_DEVIATIONS.find((row) => row.hand === "10" && row.dealer === "10")?.index).toBe(4);
     expect(H17_PRO_DEVIATIONS.find((row) => row.hand === "10,10" && row.dealer === "4")?.index).toBe(6);
+    expect(resolveDeviation("S", "9,9", "7", 2, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "9,9", "7", 3, h17LateSurrender).action).toBe("P");
+    expect(resolveDeviation("S", "13", "3", -3, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "13", "3", -2, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("S", "12", "5", -3, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("S", "12", "5", -2, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("D", "11", "A", -2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("D", "11", "A", -1, h17LateSurrender).action).toBe("D");
+    expect(resolveDeviation("R", "14", "10", 2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("R", "14", "10", 3, h17LateSurrender).action).toBe("R");
     // The soft-20 doubles this app adds run on the same three indices as T,T.
     expect(H17_PRO_DEVIATIONS.filter((row) => row.hand === "Soft 20").map((row) => [row.dealer, row.index, row.deviationAction]))
       .toEqual([["4", 6, "D"], ["5", 5, "D"], ["6", 4, "D"]]);
@@ -56,18 +66,18 @@ describe("H17 deviation catalog", () => {
     expect(resolveDeviation("S", "Soft 20", "6", 4, h17LateSurrender).action).toBe("D");
     expect(resolveDeviation("S", "Soft 20", "4", 5, h17LateSurrender).action).toBe("S");
     expect(resolveDeviation("S", "Soft 20", "4", 6, h17LateSurrender).action).toBe("D");
-    // S17 keeps the printed chart, which stands on soft 20 at every count.
-    expect(resolveDeviation("S", "Soft 20", "6", 6, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("S");
+    // The supplied S17 addition doubles soft 20 against a 6 at +5.
+    expect(resolveDeviation("S", "Soft 20", "6", 4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("S");
+    expect(resolveDeviation("S", "Soft 20", "6", 5, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("D");
   });
 
   it("omits the cells the chart leaves blank", () => {
     // Other index charts carry these; this one prints nothing there, so the
     // drill must not ask for them.
-    for (const [hand, dealer] of [["12", "5"], ["11", "A"], ["8", "5"], ["14", "10"], ["8,8", "10"], ["8,8", "A"]]) {
+    for (const [hand, dealer] of [["8", "5"], ["8,8", "10"], ["8,8", "A"]]) {
       expect(H17_PRO_DEVIATIONS.find((row) => row.hand === hand && row.dealer === dealer), `${hand} v ${dealer}`).toBeUndefined();
     }
-    expect(resolveDeviation("H", "14", "10", 3, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("D", "11", "A", -2, h17LateSurrender).action).toBe("D");
+    expect(resolveDeviation("H", "8", "5", 4, h17LateSurrender).action).toBe("H");
   });
 
   it("applies starred stand indices only where surrender is unavailable", () => {
@@ -117,7 +127,7 @@ describe("H17 deviation catalog", () => {
     expect(resolveDeviation("H", "16", "A", 3, h17NoSurrender).action).toBe("S");
     expect(resolveDeviation("H", "Soft 17", "2", 0, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("H", "Soft 17", "2", 1, h17LateSurrender).action).toBe("D");
-    expect(resolveDeviation("S", "13", "2", -4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("S");
+    expect(resolveDeviation("S", "13", "2", -4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("H");
   });
 
   it("surrenders inside the window the chart prints, and plays the hand above it", () => {
