@@ -179,50 +179,32 @@ export function deviationTransition(row: Deviation, rules: DeviationRules, decks
   return { baseline: basic, departure: onIndex, atOrBelow: false, changesPlay: onIndex !== basic };
 }
 
-const ACTION_VERB: Record<DeviationAction, { imperative: string; plain: string }> = {
-  H: { imperative: "Hit", plain: "hit" },
-  S: { imperative: "Stand on", plain: "stand" },
-  D: { imperative: "Double down on", plain: "double down" },
-  P: { imperative: "Split", plain: "split" },
-  R: { imperative: "Surrender", plain: "surrender" },
-  I: { imperative: "Take insurance", plain: "take insurance" },
-  N: { imperative: "Decline insurance", plain: "decline insurance" },
-};
+const actionLabel = (action: DeviationAction) => DEVIATION_ACTION_NAMES[action];
 
-const formatHand = (hand: string): string => {
-  const pair = /^(A|\d{1,2}),(A|\d{1,2})$/.exec(hand);
-  if (pair) return `a pair of ${pair[1] === "A" ? "aces" : `${pair[1]}s`}`;
-  const soft = /^Soft (\d{1,2})$/.exec(hand);
-  if (soft) return `a soft ${soft[1]}`;
-  return `a hard ${hand}`;
-};
+const lowerCaseAction = (action: DeviationAction) => actionLabel(action).toLowerCase();
 
-const formatDealer = (dealer: string): string => (dealer === "A" ? "a dealer ace" : `a dealer ${dealer}`);
-
-const conditionPhrase = (row: Deviation, transition: DeviationTransition): string => {
-  if (row.always) return "whenever the table offers late surrender";
-  const signedIndex = `${row.index > 0 ? "+" : ""}${row.index}`;
-  return transition.atOrBelow
-    ? `once the true count drops to ${signedIndex} or below`
-    : `once the true count reaches ${signedIndex} or higher`;
-};
+const signedIndex = (index: number) => `${index > 0 ? "+" : ""}${index}`;
 
 /**
- * A plain-English reading of one catalog row, built off its resolved
- * transition rather than the raw `normalAction`/`deviationAction`/`direction`
- * fields — those read backwards for the two-sided cells (13 v 2, 12 v 4) and
- * the chart's reversed surrender windows (15 v 10, 16 v 9), exactly the rows
- * most likely to be misread. See `deviationTransition`'s docstring.
+ * A short instruction for one catalog row, built from its resolved transition.
+ * The hand and dealer are already visible wherever this sentence is rendered,
+ * so it stays focused on the count and action.
  */
 export function deviationSentence(row: Deviation, transition: DeviationTransition): string {
-  const isInsurance = row.hand === "Insurance";
-  const handClause = isInsurance ? "" : ` ${formatHand(row.hand)} against ${formatDealer(row.dealer)}`;
   if (!transition.changesPlay) {
-    return `No effect under these rules: basic strategy already calls for ${DEVIATION_ACTION_NAMES[transition.baseline]}${isInsurance ? "" : ` on${handClause}`} at every count.`;
+    return `No change: basic strategy always says ${lowerCaseAction(transition.baseline)}.`;
   }
-  const sentence = `${ACTION_VERB[transition.departure].imperative}${handClause} ${conditionPhrase(row, transition)}; otherwise ${ACTION_VERB[transition.baseline].plain}.`;
+  if (row.always) return `${actionLabel(transition.departure)} when late surrender is available; otherwise ${lowerCaseAction(transition.baseline)}.`;
+
+  const index = signedIndex(row.index);
+  // State the below-index play first for upward indices. It makes the common
+  // low-count exception read as a direct instruction rather than asking the
+  // reader to mentally invert the threshold.
+  const sentence = transition.atOrBelow
+    ? `${actionLabel(transition.departure)} when the true count is ${index} or lower; otherwise ${lowerCaseAction(transition.baseline)}.`
+    : `${actionLabel(transition.baseline)} when the true count is below ${index}; otherwise ${lowerCaseAction(transition.departure)}.`;
   return row.overridesSurrender
-    ? `${sentence} Applies only where the table doesn't offer late surrender, or on a hand that's already split or drawn — otherwise this cell's surrender takes precedence.`
+    ? `${sentence} Use surrender instead when it is available on the original two-card hand.`
     : sentence;
 }
 

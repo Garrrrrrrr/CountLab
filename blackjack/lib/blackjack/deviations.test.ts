@@ -31,7 +31,7 @@ describe("deviationSentence", () => {
     const row = findH17("15", "10", "R");
     const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
     expect(sentence).toBe(
-      "Surrender a hard 15 against a dealer 10 once the true count drops to 0 or below; otherwise hit.",
+      "Surrender when the true count is 0 or lower; otherwise hit.",
     );
   });
 
@@ -39,34 +39,40 @@ describe("deviationSentence", () => {
     const row = findH17("13", "2");
     const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
     expect(sentence).toBe(
-      "Hit a hard 13 against a dealer 2 once the true count drops to -1 or below; otherwise stand.",
+      "Hit when the true count is -1 or lower; otherwise stand.",
     );
+  });
+
+  it("states upward indices from the simpler below-index play", () => {
+    const row = findH17("12", "6");
+    const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
+    expect(sentence).toBe("Hit when the true count is below -3; otherwise stand.");
   });
 
   it("phrases an unconditional late-surrender play as a rule-availability condition, not a count", () => {
     const row = findH17("17", "A");
     const live = deviationSentence(row, deviationTransition(row, h17LateSurrender));
     expect(live).toBe(
-      "Surrender a hard 17 against a dealer ace whenever the table offers late surrender; otherwise stand.",
+      "Surrender when late surrender is available; otherwise stand.",
     );
     const dormant = deviationSentence(row, deviationTransition(row, h17NoSurrender));
     expect(dormant).toBe(
-      "No effect under these rules: basic strategy already calls for Stand on a hard 17 against a dealer ace at every count.",
+      "No change: basic strategy always says stand.",
     );
   });
 
   it("explains insurance without a redundant dealer clause", () => {
     const row = findH17("Insurance", "A");
     const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
-    expect(sentence).toBe("Take insurance once the true count reaches +3 or higher; otherwise decline insurance.");
+    expect(sentence).toBe("Decline insurance when the true count is below +3; otherwise take insurance.");
   });
 
   it("appends the surrender-precedence caveat to starred stand indices", () => {
     const row = findH17("16", "10", "S");
     const sentence = deviationSentence(row, deviationTransition(row, h17NoSurrender));
     expect(sentence).toBe(
-      "Stand on a hard 16 against a dealer 10 once the true count reaches 0 or higher; otherwise hit. "
-      + "Applies only where the table doesn't offer late surrender, or on a hand that's already split or drawn — otherwise this cell's surrender takes precedence.",
+      "Hit when the true count is below 0; otherwise stand. "
+      + "Use surrender instead when it is available on the original two-card hand.",
     );
   });
 });
