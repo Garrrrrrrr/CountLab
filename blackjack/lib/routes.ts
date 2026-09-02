@@ -44,5 +44,5 @@ export const ROUTES: string[][] = [
   ["terms"],
   ["privacy"],
   ["admin"],
-  ...Object.keys(LEGACY_REDIRECTS).map((route) => [route]),
+  ...Object.keys(LEGACY_REDIRECTS).map((route) => route.split("/")),
 ];

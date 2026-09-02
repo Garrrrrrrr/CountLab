@@ -1,6 +1,5 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -52,6 +51,7 @@ const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").the
 const PracticeChecklist = dynamicPage(() => import("@/components/PracticeChecklist").then((m) => ({ default: m.PracticeChecklist })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const DeviationReferencePage = dynamicPage(() => import("@/components/DeviationReferencePage"));
+const StrategyChartPage = dynamicPage(() => import("@/components/StrategyChartPage"));
 const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
 const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
@@ -336,27 +336,6 @@ function HiLoReference() {
           </Panel>
         ))}
       </div>
-    </>
-  );
-}
-function StrategyReference() {
-  return (
-    <>
-      <h1 className="text-3xl font-semibold">Basic Strategy Reference</h1>
-      <p className="mt-2 text-zinc-400">
-        4–8 decks · Dealer hits soft 17
-      </p>
-      <Panel className="mt-7 flex justify-center overflow-x-auto bg-white p-3 sm:p-5">
-        <Image
-          src="/basic-strategy-h17.gif"
-          alt="Basic strategy chart for four to eight deck blackjack where the dealer hits soft 17"
-          width={321}
-          height={791}
-          className="h-auto w-full max-w-[321px]"
-          unoptimized
-          priority
-        />
-      </Panel>
     </>
   );
 }
@@ -709,7 +688,7 @@ export default function DynamicPage() {
     "training/benchmark": <CountingBenchmark />,
     "training/proficiency-test": <ProficiencyTest />,
     reference: <HiLoReference />,
-    "reference/basic-strategy": <StrategyReference />,
+    "reference/basic-strategy": <StrategyChartPage />,
     "reference/deviations": <DeviationReferencePage />,
     statistics: <StatisticsPage />,
     settings: <SettingsPage />,
