@@ -30,7 +30,7 @@ export interface CodeOptions {
 
 export interface ResolvedCode {
   action: Action;
-  /** Set only where the action is still conditional at the table (a double that may be refused). */
+  /** Set only where the action is still conditional at the table (a double or surrender that may be refused). */
   fallback?: Action;
 }
 
@@ -64,6 +64,11 @@ export function resolveCode(code: ChartCode, options: CodeOptions): ResolvedCode
     case "Rs":
       return options.canSurrender ? { action: "R", fallback: "S" } : resolveCode("S", options);
     case "Rp":
-      return options.canSurrender ? { action: "R", fallback: "P" } : resolveCode("P", options);
+      // The fallback must itself be a legal action, so it is the pair's own
+      // resolution rather than a hardcoded "P" — a hand that cannot be split
+      // falls through to "H" here exactly as the `canSurrender: false` branch does.
+      return options.canSurrender
+        ? { action: "R", fallback: resolveCode("P", options).action }
+        : resolveCode("P", options);
   }
 }

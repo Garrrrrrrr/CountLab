@@ -47,6 +47,10 @@ describe("resolveCode", () => {
     expect(resolveCode("Rp", { ...all, canSurrender: false, canSplit: false })).toEqual({ action: "H" });
   });
 
+  it("names a legal fallback for Rp when surrender is offered but splitting is not", () => {
+    expect(resolveCode("Rp", { ...all, canSplit: false })).toEqual({ action: "R", fallback: "H" });
+  });
+
   it("never splits when splitting is unavailable", () => {
     for (const code of ["P", "Ph", "Pd", "Ps"] as const) {
       expect(resolveCode(code, { ...all, canSplit: false }).action).not.toBe("P");
