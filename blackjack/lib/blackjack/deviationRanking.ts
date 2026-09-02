@@ -125,7 +125,7 @@ export const DEVIATION_RANKING: Record<DeviationRankingProfile, Record<string, D
     "s17Pro-14v10-R": [0.037689, 0.000520, 0.1598],
     "s17Pro-8,8v10-R": [0.009230, 0.000957, 0.0222],
     "s17Pro-16v10-R": [0.000000, 0.000000, 0.0000],
-    "s17Pro-16vA-R": [0.024518, 0.000166, 0.3181],
+    "s17Pro-16vA-R": [0.000000, 0.000000, 0.0000],
   },
   "s17-no-ls": {
     "s17Pro-InsurancevA-I": [0.138520, 0.000241, 0.6064],

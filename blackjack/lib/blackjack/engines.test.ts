@@ -111,15 +111,21 @@ describe("strategy", () => {
         rules: DEFAULT_RULES,
       }).action,
     ).toBe("D"));
+  // A drawn hand can no longer be doubled, so the chart's `Ds` and `D` cells
+  // resolve to their own fallback here rather than reporting a double the
+  // caller has to demote. Two cards still report the conditional double.
   it("stands on multi-card soft 18 when doubling is unavailable", () => {
     const decision = getBasicStrategyDecision({
       playerCards: [c("A"), c("2"), c("5")],
       dealerUpcard: c("2"),
       rules: DEFAULT_RULES,
     });
-    expect(decision.action).toBe("D");
-    expect(decision.fallback).toBe("S");
-    expect(decision.explanation).toContain("otherwise Stand");
+    expect(decision.action).toBe("S");
+    expect(decision.fallback).toBeUndefined();
+    const twoCards = getBasicStrategyDecision({ playerCards: [c("A"), c("7")], dealerUpcard: c("2"), rules: DEFAULT_RULES });
+    expect(twoCards.action).toBe("D");
+    expect(twoCards.fallback).toBe("S");
+    expect(twoCards.explanation).toContain("otherwise Stand");
   });
   it("hits lower soft doubles when doubling is unavailable", () => {
     const decision = getBasicStrategyDecision({
@@ -127,18 +133,24 @@ describe("strategy", () => {
       dealerUpcard: c("3"),
       rules: DEFAULT_RULES,
     });
-    expect(decision.action).toBe("D");
-    expect(decision.fallback).toBe("H");
+    expect(decision.action).toBe("H");
+    expect(decision.fallback).toBeUndefined();
+    const twoCards = getBasicStrategyDecision({ playerCards: [c("A"), c("6")], dealerUpcard: c("3"), rules: DEFAULT_RULES });
+    expect(twoCards.action).toBe("D");
+    expect(twoCards.fallback).toBe("H");
   });
   it("applies the H17-only 15 vs Ace surrender rule", () => {
     const hand = [c("10"), c("5")];
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("H");
   });
-  it("applies the H17-only 16 vs Ace surrender rule", () => {
+  it("surrenders 16 vs Ace under either dealer rule", () => {
+    // Not H17-only, which is what the branch-based engine used to say. The
+    // sourced S17 grid, `S17_PRO_DEVIATIONS` (an unconditional late-surrender
+    // row) and the measured EV artifact all surrender this cell under S17 too.
     const hand = [c("10"), c("6")];
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: DEFAULT_RULES }).action).toBe("R");
-    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("H");
+    expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("A"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");
     // 16 vs 9 and 16 vs 10 surrender under either dealer rule.
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("9"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("10"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");

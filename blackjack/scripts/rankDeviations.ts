@@ -11,6 +11,17 @@
  * live only where surrender is unavailable, and its surrender rows only where
  * it is.
  *
+ * Rows that are dormant by construction, and are expected to come back as
+ * [0, 0, 0] from any future run:
+ *
+ * - `h17Pro-16v10-R`, `h17Pro-16vA-R` and, since basic strategy moved onto the
+ *   chart tables, `s17Pro-16vA-R`. Each is an unconditional late surrender of a
+ *   cell basic strategy already surrenders at every count, so the departure
+ *   never changes a play and has nothing to price. `s17Pro-16vA-R` last
+ *   measured 0.0245 units/100 over 0.318 triggers/100 against the previous
+ *   branch-based engine, which gated that surrender behind H17; the artifact
+ *   was patched to zeros rather than re-measured when that gate was removed.
+ *
  * Run: npx tsx scripts/rankDeviations.ts [rounds] [replications]
  */
 import { writeFileSync } from "node:fs";

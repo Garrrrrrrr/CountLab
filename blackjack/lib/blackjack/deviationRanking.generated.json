@@ -820,9 +820,9 @@
         "id": "s17Pro-16vA-R",
         "hand": "16",
         "dealer": "A",
-        "evPer100": 0.024518428400000854,
-        "standardError": 0.00016602546569951916,
-        "triggersPer100": 0.31811280000000003
+        "evPer100": 0,
+        "standardError": 0,
+        "triggersPer100": 0
       }
     ],
     "s17-no-ls": [
