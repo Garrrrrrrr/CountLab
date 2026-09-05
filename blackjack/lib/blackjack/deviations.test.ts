@@ -27,11 +27,19 @@ describe("deviationSentence", () => {
     }
   });
 
-  it("reads the reversed 15 v 10 surrender window in the direction it actually plays", () => {
-    const row = findH17("15", "10", "R");
+  it("reads the 15 v 10 cell as a surrender the low counts take away", () => {
+    const row = findH17("15", "10", "H");
     const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
     expect(sentence).toBe(
-      "Surrender when the true count is 0 or lower; otherwise hit.",
+      "Hit when the true count is 0 or lower; otherwise surrender.",
+    );
+  });
+
+  it("reads 16 v 9 the same way, at the index the chart prints", () => {
+    const row = findH17("16", "9", "H");
+    const sentence = deviationSentence(row, deviationTransition(row, h17LateSurrender));
+    expect(sentence).toBe(
+      "Hit when the true count is -1 or lower; otherwise surrender.",
     );
   });
 

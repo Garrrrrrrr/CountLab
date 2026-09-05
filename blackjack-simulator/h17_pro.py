@@ -137,10 +137,12 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
         if total == 15 and dealer == 1 and tc >= 5:
             return STAND
     # The chart's indexed surrender rows replace CountLab's broader static
-    # late-surrender baseline for these two decisions.
-    if total == 16 and dealer == 9 and tc < -1:
+    # late-surrender baseline for these two decisions. Both cells are printed
+    # green (SUR) over a downward index, so the index is where the chart gives
+    # the surrender up: "-1-" and "0-" are inclusive of the count they name.
+    if total == 16 and dealer == 9 and tc <= -1:
         return HIT
-    if total == 15 and dealer == 10 and tc < 0:
+    if total == 15 and dealer == 10 and tc <= 0:
         return HIT
     if can_surrender:
         if total == 17 and dealer == 1:
@@ -153,11 +155,11 @@ def h17_pro_pro_action(cards: np.ndarray, count: int, dealer: int, can_split: bo
             return SURRENDER
         if total == 16 and dealer == 8 and tc >= 4:
             return SURRENDER
-        if total == 16 and dealer == 9 and tc >= -1:
+        if total == 16 and dealer == 9 and tc >= 0:
             return SURRENDER
         if total == 15 and dealer == 9 and tc >= 2:
             return SURRENDER
-        if total == 15 and dealer == 10 and tc >= 0:
+        if total == 15 and dealer == 10 and tc >= 1:
             return SURRENDER
     # Two-sided cells: basic strategy already plays the departure at TC 0, so the
     # index marks where the play reverts below it.

@@ -28,41 +28,39 @@ export interface H17Deviation {
    * alone. Where the table offers no surrender these indices are correct and
    * valuable, and they are applied there.
    *
-   * Only set where the chart surrenders the cell at *every* count. Where its
-   * surrender is a count window instead, see `outsideSurrenderWindow`.
+   * Set on every hard-total stand index whose cell the chart also surrenders,
+   * whether that surrender is unconditional (16 v 10) or indexed (16 v 9,
+   * which surrenders from TC 0 up — well below its printed 4+ stand).
    */
   overridesSurrender?: true;
-  /**
-   * The chart surrenders this cell only inside a count window (16 v 9 at -1 and
-   * below, 15 v 10 at 0 and below), so outside that window it plays the hand —
-   * and its printed stand index is written against *that* play, not against a
-   * basic strategy that surrenders the cell at every count. Without this the
-   * row would never match a late-surrender game's basic action and 16 v 9 would
-   * hit at +4 rather than stand, which no reading of the chart asks for.
-   */
-  outsideSurrenderWindow?: true;
   /** The listed normal action overrides basic strategy on the other side of a new threshold. */
   listedBaseline?: true;
 }
 
-type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number, outsideSurrenderWindow?: true, listedBaseline?: true];
+type Row = readonly [hand: string, dealer: string, index: number, normal: DeviationAction, departure: DeviationAction, direction?: "atOrAbove" | "atOrBelow", overridesSurrender?: true, always?: true, priority?: number, listedBaseline?: true];
 
 /**
- * The Blackjack Apprenticeship H17 chart's 26 printed index cells, the three
- * soft-20 doubles this app adds to it, the chart's insurance legend
- * ("INSURANCE OR EVEN MONEY: TAKE AT 3+") and its three unconditional
- * late-surrender plays: 33 rows for 4–8 deck games.
+ * The Blackjack Apprenticeship H17 chart's printed index cells, the house
+ * additions this app makes to them, the chart's insurance legend ("INSURANCE OR
+ * EVEN MONEY: TAKE AT 3+") and its three unconditional late-surrender plays:
+ * 39 rows for 4–8 deck games.
  *
  * These are the same indices the H17 chart drill is graded against — the
- * transcription in `bjaH17Chart.ts` is the source, and a test in
- * `h17Pro.test.ts` asserts the two cannot drift apart. Cells the chart
- * leaves blank are deliberately absent, even where another chart carries an
- * index there (12 v 5, 11 v A, 8 v 5, and the 14 v 10 and 8,8 surrenders).
+ * transcription in `bjaH17Chart.ts` is the source, its docstring lists every
+ * addition, and a test in `h17Pro.test.ts` asserts the two cannot drift apart.
+ * Hard 8 v 5 and the 8,8 surrenders stay absent: the chart leaves them blank
+ * and this catalog does not add them back.
  *
- * Two of the chart's printed cells read backwards from the familiar Fab 4
- * indices: it surrenders 16 v 9 at -1 *and below* and 15 v 10 at 0 *and below*,
- * playing the hand above those counts. That is what the PDF prints, and it is
- * what the drill teaches, so it is what the catalog carries.
+ * The chart's legend is what fixes each cell's direction: "Red Numbers indicate
+ * the index that the true count must meet to deviate from basic strategy", with
+ * `+` meaning the deviation happens at that true count and above and `-` at that
+ * true count and below. Basic strategy for the cell is its printed background
+ * colour, so a red index always names the *departure*, never the baseline.
+ *
+ * That is why 16 v 9 and 15 v 10 in the late-surrender table run downwards. Both
+ * cells are printed green (SUR) — basic strategy surrenders them — so their
+ * `-1-` and `0-` mark the low counts at which the chart stops surrendering and
+ * plays the hand out. They are carried here as R -> H, not H -> R.
  */
 const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["Insurance", "A", 3, "N", "I"],
@@ -74,13 +72,14 @@ const BJA_H17_CHART_ROWS: readonly Row[] = [
   ["Soft 19", "4", 3, "S", "D"], ["Soft 19", "5", 1, "S", "D"], ["Soft 19", "6", 0, "S", "D"],
   ["Soft 17", "2", 1, "H", "D"],
   // Hard totals: the stand indices for 15 and 16, starred on the chart
-  ["16", "9", 4, "H", "S", "atOrAbove", undefined, undefined, 3, true], ["16", "10", 0, "R", "S", "atOrAbove", true, undefined, 3], ["16", "A", 3, "R", "S", "atOrAbove", true, undefined, 3],
-  ["15", "10", 4, "H", "S", "atOrAbove", undefined, undefined, 3, true], ["15", "A", 5, "R", "S", "atOrAbove", true, undefined, 3],
+  ["16", "9", 4, "H", "S", "atOrAbove", true, undefined, 3], ["16", "10", 0, "R", "S", "atOrAbove", true, undefined, 3], ["16", "A", 3, "R", "S", "atOrAbove", true, undefined, 3],
+  ["15", "10", 4, "H", "S", "atOrAbove", true, undefined, 3], ["15", "A", 5, "R", "S", "atOrAbove", true, undefined, 3],
   // Hard totals: standing and doubling
-  ["13", "2", -1, "H", "S"], ["13", "3", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true], ["12", "2", 3, "H", "S"], ["12", "3", 2, "H", "S"], ["12", "4", 0, "H", "S"], ["12", "5", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true], ["12", "6", -3, "H", "S", "atOrAbove", undefined, undefined, undefined, undefined, true],
-  ["11", "A", -1, "H", "D", "atOrAbove", undefined, undefined, undefined, undefined, true], ["10", "10", 4, "H", "D"], ["10", "A", 3, "H", "D"], ["9", "2", 1, "H", "D"], ["9", "7", 3, "H", "D"], ["8", "6", 2, "H", "D"],
-  // Late surrender
-  ["16", "8", 4, "H", "R", "atOrAbove", undefined, undefined, 2], ["16", "9", -1, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "9", 2, "H", "R", "atOrAbove", undefined, undefined, 2], ["15", "10", 0, "H", "R", "atOrBelow", undefined, undefined, 2], ["15", "A", -1, "H", "R", "atOrAbove", undefined, undefined, 2], ["14", "10", 3, "H", "R", "atOrAbove", undefined, undefined, 2, undefined, true],
+  ["13", "2", -1, "H", "S"], ["13", "3", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, true], ["12", "2", 3, "H", "S"], ["12", "3", 2, "H", "S"], ["12", "4", 0, "H", "S"], ["12", "5", -2, "H", "S", "atOrAbove", undefined, undefined, undefined, true], ["12", "6", -3, "H", "S", "atOrAbove", undefined, undefined, undefined, true],
+  ["11", "A", -1, "H", "D", "atOrAbove", undefined, undefined, undefined, true], ["10", "10", 4, "H", "D"], ["10", "A", 3, "H", "D"], ["9", "2", 1, "H", "D"], ["9", "7", 3, "H", "D"], ["8", "6", 2, "H", "D"],
+  // Late surrender. 16 v 9 and 15 v 10 are printed green (basic strategy
+  // surrenders them) with a downward index, so they depart *out* of surrender.
+  ["16", "8", 4, "H", "R", "atOrAbove", undefined, undefined, 2], ["16", "9", -1, "R", "H", "atOrBelow", undefined, undefined, 2], ["15", "9", 2, "H", "R", "atOrAbove", undefined, undefined, 2], ["15", "10", 0, "R", "H", "atOrBelow", undefined, undefined, 2], ["15", "A", -1, "H", "R", "atOrAbove", undefined, undefined, 2], ["14", "10", 3, "H", "R", "atOrAbove", undefined, undefined, 2, true],
   ["17", "A", 0, "S", "R", "atOrAbove", undefined, true], ["16", "10", 0, "H", "R", "atOrAbove", undefined, true], ["16", "A", 0, "H", "R", "atOrAbove", undefined, true],
 ] as const;
 
@@ -96,8 +95,8 @@ export const deviationId = (set: H17DeviationSet, hand: string, dealer: string, 
 
 export const makeDeviations = (set: H17DeviationSet, rows: readonly Row[]): H17Deviation[] => {
   const made = rows.map(
-    ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, outsideSurrenderWindow, listedBaseline]): H17Deviation => ({
-      id: deviationId(set, hand, dealer, deviationAction), set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, outsideSurrenderWindow, listedBaseline,
+    ([hand, dealer, index, normalAction, deviationAction, direction = "atOrAbove", overridesSurrender, always, priority, listedBaseline]): H17Deviation => ({
+      id: deviationId(set, hand, dealer, deviationAction), set, hand, dealer, index, normalAction, deviationAction, direction, overridesSurrender, always, priority, listedBaseline,
     }),
   );
   // Two rows can share a cell (a stand index and a surrender), but never a cell

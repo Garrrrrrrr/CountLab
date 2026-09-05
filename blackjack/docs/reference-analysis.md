@@ -47,48 +47,65 @@ Honouring the star in a late-surrender game costs about 0.044 percentage points
 of flat-bet edge, and about 0.25 units per 100 rounds on a 1-12 ramp, because
 every one of those decisions happens at a count where the ramp has money out.
 
-## The H17 chart's surrender windows, taught as printed
+## The H17 chart's downward surrender indices, and the reading that got them backwards
 
 On 2026-08-23 the H17 catalog behind the reference page and the play drill was
 rebuilt from the H17 chart itself, so all three teaching surfaces carry one set
-of numbers (`h17Pro.test.ts` asserts the catalog's indices *are* the chart's 26
-printed index cells). Two of those cells read backwards from the familiar Fab 4
-indices, verified against the PDF's text layer rather than by eye:
+of numbers (`h17Pro.test.ts` asserts the catalog's indices *are* the chart's
+printed index cells). Two cells were transcribed correctly and then read
+backwards, and shipped that way until 2026-09-05.
 
-| Cell | Printed | Reading |
-| --- | --- | --- |
-| Surrender 15 v 10 | `0-` | surrender at 0 and below, play the hand above |
-| Surrender 16 v 9 | `-1-` | surrender at -1 and below, play the hand above |
+Both are in the late-surrender table, and both are printed on a green `SUR`
+background with a downward index:
 
-Basic strategy surrenders both at every count, so as printed they *stop*
-surrendering as the count climbs — hitting a 15 versus a ten at +1 to +3 with a
-raised bet out. Priced over 250M rounds on a 1-12 ramp:
+| Cell | Printed | Background | Reading |
+| --- | --- | --- | --- |
+| Surrender 16 v 9 | `-1-` | green (SUR) | surrender, except hit at -1 and below |
+| Surrender 15 v 10 | `0-` | green (SUR) | surrender, except hit at 0 and below |
+
+The chart's own legend fixes this: "**Red Numbers** indicate the index that the
+true count must meet to deviate from basic strategy", with `+` meaning at that
+true count and above and `-` at that true count and below. A cell's background
+colour is its basic-strategy action, so a red number always names the
+*departure*. The same convention prints `0-` on the yellow `S` of hard 12 v 4
+(stand, but hit at 0 and below) and on the cyan `Ds` of A,8 v 6 (double, but
+stand at 0 and below) — the surrender table is not a special case.
+
+Reading the green as "no action" and the index as the surrender itself inverted
+both cells: the catalog surrendered them only at the bottom of the count and
+hit a 15 versus a ten at +1 to +3 with a raised bet out. The 250M-round pricing
+on a 1-12 ramp is what should have flagged it, since a correct index cannot lose
+money against basic strategy:
 
 ```text
-h17-ls, units per 100 rounds
+h17-ls, units per 100 rounds, under the reversed reading
   15 v 10 surrender   -0.158 ± 0.001   fires 0.50/100
   16 v 9  surrender   -0.031 ± 0.000   fires 0.24/100
-  15 v 10 stand +4    -0.069 ± 0.003   (standalone, versus a surrender the chart has closed)
+  15 v 10 stand +4    -0.069 ± 0.003   (standalone, versus a surrender the chart had closed)
   16 v 9  stand +4    -0.019 ± 0.002   (same)
-  17 v A  surrender   -0.002 ± 0.001   marginal, and negative before this rebuild too
 ```
 
-The whole H17 catalog is worth 0.04 units per 100 in a late-surrender game
-against 0.38 without surrender, and that gap is these cells. They are shipped as
-printed because the chart is what the drill grades and a silently different
-reference teaches a third set of numbers; the cost is shown on the reference
-page rather than hidden. Reversing them to the Fab 4 direction is a one-line
-change to the two rows in `h17Pro.ts` plus the exemption in
-`deviationRanking.test.ts`.
+The whole H17 catalog was worth 0.04 units per 100 in a late-surrender game
+against 0.38 without surrender, and that gap was these two cells. Corrected,
+the late-surrender profile prices in line with the no-surrender one.
+
+Their printed `4+` stand indices are a consequence rather than a separate
+decision. Surrender opens at TC 0 on 16 v 9 and +1 on 15 v 10, far below the
+stand, so those rows now carry `overridesSurrender` alongside the other four
+stand-over-surrender cells: live where the table offers no surrender, dormant
+where it does. The `outsideSurrenderWindow` flag that existed only to support
+the reversed reading is gone.
 
 ### The shipped coefficient curves use the corrected policy
 
-The production artifact was regenerated on 2026-09-01 from the corrected
-`h17_pro.py` policy. It sampled 250 million shoes for each of nine
-profiles (116,624,081,778 resolved rounds in total), with seed `20260821`.
-Its source checksum is
-`ccab3d521f43018f97c8b64c93158893bf0553cfcfbe9183f2a867b413ff5984` and is
-embedded in both the JSON evidence and TypeScript artifact.
+The production artifact was first regenerated from the corrected `h17_pro.py`
+policy on 2026-09-01, sampling 250 million shoes for each of nine profiles
+(116,624,081,778 resolved rounds in total) with seed `20260821`. That run's
+checksum was
+`ccab3d521f43018f97c8b64c93158893bf0553cfcfbe9183f2a867b413ff5984`; the
+superseding 2026-09-05 run is described below. The side artifacts
+`results/h17-pro-coefficients-corrected.json` and
+`results/h17ProCoefficients.corrected.ts` still carry the 09-01 checksum.
 
 The regenerated curve applies late surrender before the chart's starred stand
 indices, so it no longer prices the losing 15/16-versus-ten-or-ace stand. This
@@ -102,9 +119,24 @@ python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results
 ```
 
 `h17_pro.py::h17_pro_pro_action` now uses the taught policy: 10 v 10 against
-4 splits at +6, 16 v 9 stands at +4 where surrender is unavailable, and
-unprinted 14 v 10 / 8,8 surrender rows are absent. The corrected JSON evidence
+4 splits at +6, 16 v 9 stands at +4 where surrender is unavailable, and the
+unprinted 8,8 surrender rows are absent. The corrected JSON evidence
 and TypeScript curve were generated from that exact source together.
+
+**Regenerated again on 2026-09-05**, when the two surrender boundaries were
+moved one true count to match the chart's inclusive `-` notation: `h17_pro.py`
+had surrendered 16 v 9 from TC -1 and 15 v 10 from TC 0, where the chart gives
+the surrender up *at* those counts and resumes at 0 and +1. The rerun used the
+same 250 million shoes per profile across nine profiles and the same seed
+`20260821`; its source checksum is
+`ee9fd329a32f071bb5ed2c232637b00ed2517d3c97f674dfe52ead0161b56e93`.
+`tests/test_h17_pro_artifact.py` holds the JSON evidence, the TypeScript curve
+and `h17_pro.py` to one checksum, so this job has to be re-run with any policy
+edit:
+
+```powershell
+python h17_pro.py --shoes 250000000 --tasks 256 --seed 20260821 --output results/h17-pro-coefficients.json --typescript ../blackjack/lib/blackjack/h17ProCoefficients.ts
+```
 
 ## Observable workflow
 

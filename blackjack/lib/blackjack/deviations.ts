@@ -14,7 +14,6 @@ export interface Deviation {
   always?: true;
   priority?: number;
   overridesSurrender?: true;
-  outsideSurrenderWindow?: true;
   listedBaseline?: true;
 }
 /** The supplied H17 Pro catalog; kept as the default/legacy export. */
@@ -42,6 +41,12 @@ export function getDeviationCatalog(rules: { dealerHitsSoft17: boolean }): Devia
  * A starred stand index is the one case where the chart's own precedence is not
  * followed. Those rows only apply where surrender is unavailable — see the note
  * on `overridesSurrender` in h17Pro.ts.
+ *
+ * A row can also depart *away* from a surrender: the H17 chart's 16 v 9 and
+ * 15 v 10 cells surrender at basic strategy and print an index for the low
+ * counts where the hand is played out instead. Those rows carry
+ * `normalAction: "R"`, so both fallback lookups below — which can return a
+ * row's `normalAction` — have to check surrender is on offer before they do.
  */
 export function resolveDeviation(
   basicAction: DeviationAction,
@@ -63,16 +68,13 @@ export function resolveDeviation(
     if (!crossed) return false;
     return basicAction === deviation.normalAction
       || deviation.listedBaseline === true
-      // Where the chart's surrender is a count window rather than every count,
-      // its other indices are written against the play made outside that
-      // window, so they still apply in a game that offers surrender.
-      || (deviation.outsideSurrenderWindow === true && basicAction === "R")
       || deviation.overridesSurrender === true
       || deviation.deviationAction === "R";
   });
   if (!candidates.length) {
     const listedBaseline = catalog.find((deviation) => {
       if (!deviation.listedBaseline || deviation.hand !== hand || deviation.dealer !== dealer) return false;
+      if (deviation.normalAction === "R" && !rules.lateSurrender) return false;
       if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
       if (deviation.overridesSurrender && rules.lateSurrender) return false;
       return deviation.direction === "atOrBelow"
@@ -92,6 +94,9 @@ export function resolveDeviation(
       && !deviation.always
       && deviation.deviationAction === basicAction
       && deviation.normalAction !== basicAction
+      // Returning `normalAction` must never conjure a surrender at a table that
+      // does not offer one — 16 v 9 reverts to "R" only where "R" is legal.
+      && (deviation.normalAction !== "R" || rules.lateSurrender)
       && (deviation.direction === "atOrBelow" ? tc >= deviation.index : tc <= deviation.index));
     return reverted
       ? { action: reverted.normalAction, deviation: reverted, belowIndex: true }
@@ -142,10 +147,10 @@ export interface DeviationTransition {
  *
  * Both directions have to be checked. Two-sided cells (13 v 2 and 12 v 4 in the
  * H17 catalog) print the index where the play *reverts*, so reading it as
- * "departs at or above" inverts them — 13 v 2 hits at TC -1 and below. The same
- * holds where basic strategy already surrenders: the H17 chart's 16 v 9 and
- * 15 v 10 surrenders are windows at the bottom of the count, and above them the
- * revert side is the real play.
+ * "departs at or above" inverts them — 13 v 2 hits at TC -1 and below. The H17
+ * chart's 16 v 9 and 15 v 10 surrenders run downwards for a different reason:
+ * basic strategy surrenders both, and the printed index is the low count at
+ * which the chart stops and plays the hand out instead.
  *
  * Resolved against this row alone, matching how each row's EV is measured. Two
  * chart rows can cover one cell — 16 v 10 carries both a starred stand and an

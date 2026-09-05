@@ -93,13 +93,14 @@ describe("H17 deviation catalog", () => {
     expect(resolveDeviation("H", "15", "A", 5, h17NoSurrender).action).toBe("S");
   });
 
-  it("stands above a surrender window the chart closes", () => {
-    // 16 v 9 and 15 v 10 surrender at the bottom of the count only, so their
-    // printed stand indices are live even in a game that offers surrender.
-    expect(resolveDeviation("R", "16", "9", 4, h17LateSurrender).action).toBe("S");
+  it("keeps surrender ahead of the 16 v 9 and 15 v 10 stand indices", () => {
+    // These two cells carry both a printed stand index and a printed surrender.
+    // The surrender opens far below the stand (TC 0 and +1 against 4+), so where
+    // the table offers it the stand index never gets to fire.
+    expect(resolveDeviation("R", "16", "9", 4, h17LateSurrender).action).toBe("R");
     expect(resolveDeviation("H", "16", "9", 4, h17NoSurrender).action).toBe("S");
     expect(resolveDeviation("H", "16", "9", 3, h17NoSurrender).action).toBe("H");
-    expect(resolveDeviation("R", "15", "10", 4, h17LateSurrender).action).toBe("S");
+    expect(resolveDeviation("R", "15", "10", 4, h17LateSurrender).action).toBe("R");
     expect(resolveDeviation("H", "15", "10", 3, h17NoSurrender).action).toBe("H");
     expect(resolveDeviation("H", "15", "10", 4, h17NoSurrender).action).toBe("S");
   });
@@ -130,19 +131,25 @@ describe("H17 deviation catalog", () => {
     expect(resolveDeviation("S", "13", "2", -4, { dealerHitsSoft17: false, lateSurrender: true }).action).toBe("H");
   });
 
-  it("surrenders inside the window the chart prints, and plays the hand above it", () => {
-    // The chart surrenders 16 v 9 at -1 and below and 15 v 10 at 0 and below —
-    // the reverse of the familiar Fab 4 indices, and verified against the PDF.
-    expect(resolveDeviation("R", "16", "9", -2, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("R", "16", "9", -1, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("R", "16", "9", 0, h17LateSurrender).action).toBe("H");
-    expect(resolveDeviation("R", "15", "10", 0, h17LateSurrender).action).toBe("R");
-    expect(resolveDeviation("R", "15", "10", 1, h17LateSurrender).action).toBe("H");
-    // 15 v A runs the other way: surrender at -1 and above, hit below it.
+  it("stops surrendering 16 v 9 and 15 v 10 at the low counts the chart prints", () => {
+    // Both cells are printed green — basic strategy surrenders them — over a
+    // downward index, so the red number marks where the chart gives the
+    // surrender up and plays the hand out: "-1-" on 16 v 9, "0-" on 15 v 10.
+    expect(resolveDeviation("R", "16", "9", -2, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("R", "16", "9", -1, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("R", "16", "9", 0, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("R", "16", "9", 4, h17LateSurrender).action).toBe("R");
+    expect(resolveDeviation("R", "15", "10", 0, h17LateSurrender).action).toBe("H");
+    expect(resolveDeviation("R", "15", "10", 1, h17LateSurrender).action).toBe("R");
+    // 15 v A is printed white instead — basic strategy plays it — so its "-1+"
+    // is a surrender that opens upward.
     expect(resolveDeviation("R", "15", "A", -2, h17LateSurrender).action).toBe("H");
     expect(resolveDeviation("R", "15", "A", -1, h17LateSurrender).action).toBe("R");
-    // With no surrender every one of them falls back to the hit/stand indices.
+    // With no surrender every one of them falls back to the hit/stand indices,
+    // and no fallback may hand back the "R" the row reverts to.
     expect(resolveDeviation("H", "16", "9", -2, h17NoSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "16", "9", 0, h17NoSurrender).action).toBe("H");
     expect(resolveDeviation("H", "15", "10", 0, h17NoSurrender).action).toBe("H");
+    expect(resolveDeviation("H", "15", "10", 1, h17NoSurrender).action).toBe("H");
   });
 });
