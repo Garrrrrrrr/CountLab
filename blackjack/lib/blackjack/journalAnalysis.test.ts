@@ -6,6 +6,7 @@ import {
   aggregateJournal,
   classifySessionAssessment,
   currentBankroll,
+  journalByVenue,
   journalCumulativeSeries,
   sessionZScore,
   theoreticalSessionOutcome,
@@ -135,6 +136,158 @@ describe("aggregateJournal", () => {
     expect(aggregate.combinedZ).toBeNull();
     expect(aggregate.winRate).toBe(0);
   });
+
+  it("reports expenses as their own total without netting them against the table result", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", netResult: 400, expenses: 120 }),
+      makeSession({ id: "b", netResult: -100, expenses: 30 }),
+    ]);
+    expect(aggregate.totalActual).toBe(300);
+    expect(aggregate.totalExpenses).toBe(150);
+    expect(aggregate.netAfterExpenses).toBe(150);
+  });
+
+  it("divides actual and theoretical results by hours played to give hourly rates", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", hours: 4, netResult: 400 }),
+      makeSession({ id: "b", hours: 6, netResult: 100 }),
+    ]);
+    expect(aggregate.totalHours).toBe(10);
+    expect(aggregate.actualPerHour).toBe(50);
+    expect(aggregate.theoreticalPerHour).toBeCloseTo(aggregate.totalTheoretical / 10, 8);
+  });
+
+  it("totals action as average bet across every round played", () => {
+    const session = makeSession({ hours: 4, handsPerHour: 100 });
+    const outcome = theoreticalSessionOutcome(session);
+    expect(aggregateJournal([session]).totalAction).toBeCloseTo(outcome.averageBet * 400, 6);
+  });
+
+  it("reports a result exactly at expectation as the fiftieth percentile of outcomes", () => {
+    const session = makeSession();
+    const outcome = theoreticalSessionOutcome(session);
+    expect(aggregateJournal([makeSession({ netResult: outcome.tripEv })]).resultPercentile).toBeCloseTo(0.5, 6);
+  });
+
+  it("places a result one standard deviation above expectation near the eighty-fourth percentile", () => {
+    const outcome = theoreticalSessionOutcome(makeSession());
+    const aggregate = aggregateJournal([makeSession({ netResult: outcome.tripEv + outcome.standardDeviation })]);
+    expect(aggregate.resultPercentile).toBeCloseTo(0.8413, 3);
+  });
+
+  it("leaves the percentile undefined when there is no variance to place a result against", () => {
+    expect(aggregateJournal([]).resultPercentile).toBeNull();
+  });
+
+  it("reports the hours needed for expectation to overtake one standard deviation, and progress toward them", () => {
+    const session = makeSession({ hours: 4 });
+    const outcome = theoreticalSessionOutcome(session);
+    const aggregate = aggregateJournal([session]);
+    // N0 is where cumulative EV equals cumulative SD: (sd/ev)^2 hours at this pace.
+    const expected = 4 * (outcome.standardDeviation / outcome.tripEv) ** 2;
+    expect(aggregate.nZeroHours).toBeCloseTo(expected, 4);
+    expect(aggregate.longRunProgress).toBeCloseTo(4 / expected, 6);
+  });
+
+  it("leaves the long run undefined for a journal with no positive expectation", () => {
+    const aggregate = aggregateJournal([]);
+    expect(aggregate.nZeroHours).toBeNull();
+    expect(aggregate.longRunProgress).toBeNull();
+  });
+
+  it("measures the deepest and the current fall from the cumulative peak", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", date: "2026-08-01", netResult: 1000 }),
+      makeSession({ id: "b", date: "2026-08-02", netResult: -700 }),
+      makeSession({ id: "c", date: "2026-08-03", netResult: 200 }),
+    ]);
+    expect(aggregate.maxDrawdown).toBe(700);
+    expect(aggregate.currentDrawdown).toBe(500);
+  });
+
+  it("reports no drawdown for a journal that only ever climbed", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", date: "2026-08-01", netResult: 100 }),
+      makeSession({ id: "b", date: "2026-08-02", netResult: 250 }),
+    ]);
+    expect(aggregate.maxDrawdown).toBe(0);
+    expect(aggregate.currentDrawdown).toBe(0);
+  });
+
+  it("names the biggest winning and losing sessions", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", date: "2026-08-01", netResult: 120 }),
+      makeSession({ id: "b", date: "2026-08-02", netResult: 900 }),
+      makeSession({ id: "c", date: "2026-08-03", netResult: -640 }),
+    ]);
+    expect(aggregate.bestSession).toEqual({ date: "2026-08-02", netResult: 900 });
+    expect(aggregate.worstSession).toEqual({ date: "2026-08-03", netResult: -640 });
+  });
+
+  it("counts the longest runs of consecutive winning and losing sessions by date", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", date: "2026-08-01", netResult: 50 }),
+      makeSession({ id: "b", date: "2026-08-02", netResult: 60 }),
+      makeSession({ id: "c", date: "2026-08-03", netResult: 70 }),
+      makeSession({ id: "d", date: "2026-08-04", netResult: -10 }),
+      makeSession({ id: "e", date: "2026-08-05", netResult: -20 }),
+    ]);
+    expect(aggregate.longestWinStreak).toBe(3);
+    expect(aggregate.longestLossStreak).toBe(2);
+  });
+
+  it("treats a breakeven session as ending both streaks", () => {
+    const aggregate = aggregateJournal([
+      makeSession({ id: "a", date: "2026-08-01", netResult: 50 }),
+      makeSession({ id: "b", date: "2026-08-02", netResult: 0 }),
+      makeSession({ id: "c", date: "2026-08-03", netResult: 50 }),
+    ]);
+    expect(aggregate.longestWinStreak).toBe(1);
+    expect(aggregate.longestLossStreak).toBe(0);
+  });
+});
+
+describe("journalByVenue", () => {
+  it("groups sessions by location and sorts the busiest venue first", () => {
+    const venues = journalByVenue([
+      makeSession({ id: "a", location: "Downtown", hours: 3, netResult: 300 }),
+      makeSession({ id: "b", location: "Strip", hours: 8, netResult: -200 }),
+      makeSession({ id: "c", location: "Downtown", hours: 2, netResult: 100 }),
+    ]);
+    expect(venues.map((venue) => venue.location)).toEqual(["Strip", "Downtown"]);
+    expect(venues[1].sessionCount).toBe(2);
+    expect(venues[1].totalHours).toBe(5);
+    expect(venues[1].totalActual).toBe(400);
+    expect(venues[1].actualPerHour).toBe(80);
+  });
+
+  it("collects sessions logged without a location under one unnamed group", () => {
+    const venues = journalByVenue([
+      makeSession({ id: "a", netResult: 10 }),
+      makeSession({ id: "b", location: "   ", netResult: 20 }),
+    ]);
+    expect(venues).toHaveLength(1);
+    expect(venues[0].location).toBe("");
+    expect(venues[0].totalActual).toBe(30);
+  });
+
+  it("treats the same venue name in different letter cases as one venue", () => {
+    const venues = journalByVenue([
+      makeSession({ id: "a", location: "Bellagio", netResult: 10 }),
+      makeSession({ id: "b", location: "bellagio", netResult: 20 }),
+    ]);
+    expect(venues).toHaveLength(1);
+    expect(venues[0].location).toBe("Bellagio");
+    expect(venues[0].sessionCount).toBe(2);
+  });
+
+  it("scores each venue against the theoretical EV of the sessions played there", () => {
+    const session = makeSession({ location: "Downtown", netResult: 0 });
+    const outcome = theoreticalSessionOutcome(session);
+    const [venue] = journalByVenue([session]);
+    expect(venue.totalTheoretical).toBeCloseTo(outcome.tripEv, 8);
+    expect(venue.combinedZ).toBeCloseTo(-outcome.tripEv / outcome.standardDeviation, 6);
+  });
 });
 
 describe("journalCumulativeSeries", () => {
@@ -149,12 +302,19 @@ describe("journalCumulativeSeries", () => {
 });
 
 describe("currentBankroll", () => {
-  it("nets session play, expenses, deposits, and withdrawals", () => {
-    const sessions = [makeSession({ netResult: 200, expenses: 40 })];
+  it("nets session play, deposits, and withdrawals", () => {
+    const sessions = [makeSession({ netResult: 200 })];
     const transactions = [
       { type: "deposit" as const, amount: 1000 },
       { type: "withdrawal" as const, amount: 300 },
     ];
-    expect(currentBankroll(sessions, transactions)).toBe(200 - 40 + 1000 - 300);
+    expect(currentBankroll(sessions, transactions)).toBe(200 + 1000 - 300);
+  });
+
+  it("leaves session expenses out of the bankroll, since they are spending rather than table results", () => {
+    const withExpenses = [makeSession({ netResult: 200, expenses: 40 })];
+    const withoutExpenses = [makeSession({ netResult: 200, expenses: 0 })];
+    expect(currentBankroll(withExpenses, [])).toBe(currentBankroll(withoutExpenses, []));
+    expect(currentBankroll(withExpenses, [])).toBe(200);
   });
 });

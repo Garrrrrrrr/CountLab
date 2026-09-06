@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_ADVANTAGE_RULES,
   RAMPS,
+  RampPoint,
   calculateAdvantage,
+  fillRampFromTrueCount,
   getCountProfile,
   handsAt,
   simultaneousHandVarianceFactor,
@@ -59,5 +61,60 @@ describe("advantage model", () => {
     const ramp = zeroBetsBelow(RAMPS["1-4"], 2);
     expect(ramp.map((point) => point.units)).toEqual([0, 2, 3, 4]);
     expect(RAMPS["1-4"][0].units).toBe(1);
+  });
+});
+
+describe("fillRampFromTrueCount", () => {
+  const flat = (units: number) =>
+    Array.from({ length: 17 }, (_, index) => ({ trueCount: index - 8, units }));
+  const unitsFor = (ramp: RampPoint[], trueCount: number) =>
+    ramp.find((point) => point.trueCount === trueCount)!.units;
+
+  it("carries an edit at a negative count up to true count zero and no further", () => {
+    const ramp = fillRampFromTrueCount(flat(1), -8, 2);
+    expect(ramp.filter((point) => point.trueCount <= 0).every((point) => point.units === 2)).toBe(true);
+    expect(ramp.filter((point) => point.trueCount > 0).every((point) => point.units === 1)).toBe(true);
+  });
+
+  it("carries an edit at true count zero to that count alone", () => {
+    const ramp = fillRampFromTrueCount(flat(1), 0, 3);
+    expect(unitsFor(ramp, -1)).toBe(1);
+    expect(unitsFor(ramp, 0)).toBe(3);
+    expect(unitsFor(ramp, 1)).toBe(1);
+  });
+
+  it("carries an edit at a positive count up through the top of the ramp", () => {
+    const ramp = fillRampFromTrueCount(flat(1), 1, 4);
+    expect(ramp.filter((point) => point.trueCount >= 1).every((point) => point.units === 4)).toBe(true);
+    expect(ramp.filter((point) => point.trueCount < 1).every((point) => point.units === 1)).toBe(true);
+  });
+
+  it("lets a later edit at a higher count override only the counts above it", () => {
+    const ramp = fillRampFromTrueCount(fillRampFromTrueCount(flat(1), 1, 2), 3, 8);
+    expect(unitsFor(ramp, 1)).toBe(2);
+    expect(unitsFor(ramp, 2)).toBe(2);
+    expect(unitsFor(ramp, 3)).toBe(8);
+    expect(unitsFor(ramp, 8)).toBe(8);
+  });
+
+  it("leaves the source ramp untouched", () => {
+    const source = flat(1);
+    fillRampFromTrueCount(source, 2, 9);
+    expect(source.every((point) => point.units === 1)).toBe(true);
+  });
+
+  it("keeps counts the ramp does not define out of the result", () => {
+    const ramp = fillRampFromTrueCount(
+      [
+        { trueCount: -8, units: 1 },
+        { trueCount: 2, units: 4 },
+      ],
+      2,
+      6,
+    );
+    expect(ramp).toEqual([
+      { trueCount: -8, units: 1 },
+      { trueCount: 2, units: 6 },
+    ]);
   });
 });

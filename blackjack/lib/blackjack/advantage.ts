@@ -211,6 +211,26 @@ export function zeroBetsBelow(ramp: RampPoint[], trueCount: number): RampPoint[]
 export function zeroNegativeCountBets(ramp: RampPoint[]): RampPoint[] {
   return zeroBetsBelow(ramp, 0);
 }
+/**
+ * Applies a hand-entered wager to every count it implies, so editing one cell
+ * produces a ramp somebody would actually play.
+ *
+ * A negative-count edit carries up to true count 0 (nobody bets *more* as the
+ * count drops), and a positive-count edit carries up to the top (nobody bets
+ * *less* as the count climbs). Editing a higher count afterwards overrides only
+ * the counts at or above it, which is how a ramp is built step by step.
+ */
+export function fillRampFromTrueCount(
+  ramp: RampPoint[],
+  trueCount: number,
+  units: number,
+): RampPoint[] {
+  const covers = (point: RampPoint) =>
+    trueCount > 0
+      ? point.trueCount >= trueCount
+      : point.trueCount >= trueCount && point.trueCount <= 0;
+  return ramp.map((point) => (covers(point) ? { ...point, units } : point));
+}
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   const ruleAdjustment = effectiveRuleAdjustment(input.rules, input.ruleAdjustment);

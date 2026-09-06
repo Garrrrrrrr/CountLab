@@ -25,6 +25,12 @@ original CountLab features. It is ordered by user value and engine dependency.
   disagree about what was actually played. Per-session and date-range
   z-score/outlier classification, a cumulative actual-vs-theoretical chart
   with a combined-variance 95% band, and validated JSON export/import.
+- Journal performance vitals: range-scoped and always-lifetime readouts of
+  accumulated standard deviation, hours played, actual vs. expected $/hour,
+  total action, result percentile, drawdown, session extremes, streaks, and
+  progress toward N₀ (`aggregateJournal`), plus a per-venue breakdown
+  (`journalByVenue`). Session expenses are reported on their own rather than
+  deducted from the bankroll: the EV model prices the table, not the trip.
 
 ## Next: journal refinements (from Results Tracker analysis)
 

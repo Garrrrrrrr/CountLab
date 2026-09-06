@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
+import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, fillRampFromTrueCount, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
 import { Bankroll, BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
@@ -14,6 +14,7 @@ import {
   aggregateJournal,
   classifySessionAssessment,
   currentBankroll,
+  journalByVenue,
   journalCumulativeSeries,
   sessionZScore,
   theoreticalSessionOutcome,
@@ -31,6 +32,12 @@ import { ShareCard } from "./ShareCard";
 
 const money = (value: number, digits = 0) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: "auto" }).format(value);
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
+const hoursLabel = (value: number) => `${value.toLocaleString("en-US", { maximumFractionDigits: 1 })}h`;
+const ordinal = (value: number) => {
+  const remainder = value % 100;
+  if (remainder >= 11 && remainder <= 13) return `${value}th`;
+  return `${value}${["th", "st", "nd", "rd"][value % 10] ?? "th"}`;
+};
 const shortDate = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
 const expandRamp = (ramp: RampPoint[]) => Array.from({ length: 17 }, (_, index) => ({ trueCount: index - 8, units: unitsAt(index - 8, ramp) }));
 /** The seventeen true-count buckets the audited coefficients are keyed on, matching the Bankroll Lab. */
@@ -65,6 +72,44 @@ function AssessmentBadge({ assessment }: { assessment: SessionAssessment }) {
     <span className={`text-xs font-semibold ${ASSESSMENT_COLOR[assessment]}`}>
       {ASSESSMENT_LABEL[assessment]}
     </span>
+  );
+}
+
+/** One figure in a dense multi-column readout. Deliberately smaller than Metric, which is too tall to show a dozen of. */
+function Stat({ label, value, sub, tone = "neutral" }: { label: string; value: string; sub?: string; tone?: "neutral" | "positive" | "negative" }) {
+  return (
+    <div className="min-w-0">
+      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-500">{label}</p>
+      <p className={`mt-1 truncate text-sm font-semibold tracking-[-.02em] ${tone === "positive" ? "text-emerald-300" : tone === "negative" ? "text-red-300" : "text-zinc-100"}`}>{value}</p>
+      {sub && <p className="truncate text-[.7rem] text-zinc-500">{sub}</p>}
+    </div>
+  );
+}
+
+/**
+ * How far into the long run these hours are: the point where cumulative EV
+ * overtakes one standard deviation, so results start reflecting skill rather
+ * than variance. Renders nothing without a positive expectation to run toward.
+ */
+function LongRunProgress({ aggregate }: { aggregate: JournalAggregate }) {
+  if (aggregate.nZeroHours === null || aggregate.longRunProgress === null) return null;
+  const progress = Math.min(1, aggregate.longRunProgress);
+  const reached = aggregate.longRunProgress >= 1;
+  return (
+    <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-[.8rem] font-medium text-zinc-300">Progress into the long run</p>
+        <p className="text-xs text-zinc-500">{hoursLabel(aggregate.totalHours)} of {hoursLabel(aggregate.nZeroHours)} (N₀)</p>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.06]">
+        <div className={`h-full rounded-full ${reached ? "bg-emerald-300" : "bg-sky-300/70"}`} style={{ width: `${Math.max(1, progress * 100)}%` }} />
+      </div>
+      <p className="mt-2 text-xs leading-5 text-zinc-500">
+        {reached
+          ? "Past N₀: expectation now exceeds one standard deviation, so cumulative results carry real signal about the play."
+          : `At ${percent(progress, 0)} of N₀, variance still outweighs expectation — a losing stretch here says little about how well the game is being played.`}
+      </p>
+    </div>
   );
 }
 
@@ -162,6 +207,10 @@ export function SessionJournal() {
   const scopedTransactions = useMemo(() => selectedBankrollId === "all" ? transactions : transactions.filter((transaction) => transaction.bankrollId === selectedBankrollId), [transactions, selectedBankrollId]);
   const inRange = useMemo(() => sessionsInRange(scopedSessions, range), [scopedSessions, range]);
   const aggregate: JournalAggregate = useMemo(() => aggregateJournal(inRange), [inRange]);
+  // Career totals deliberately ignore the range selector: a 30-day filter
+  // should never be able to hide how many hours are actually behind you.
+  const lifetime: JournalAggregate = useMemo(() => aggregateJournal(scopedSessions), [scopedSessions]);
+  const venues = useMemo(() => journalByVenue(inRange), [inRange]);
   const cumulative = useMemo(() => journalCumulativeSeries(inRange), [inRange]);
   const bankroll = useMemo(() => currentBankroll(scopedSessions, scopedTransactions), [scopedSessions, scopedTransactions]);
   const filteredSessions = useMemo(() => {
@@ -177,10 +226,15 @@ export function SessionJournal() {
     setSpread(name);
     if (RAMPS[name]) setRamp(expandRamp(RAMPS[name]));
   };
+  /** Spreads a typed bet across every count it implies — see fillRampFromTrueCount. Zeroing stays a single-count action. */
   const updateBet = (trueCount: number, bet: number) => {
     setSpread("Custom");
     const units = bettingUnit > 0 ? Math.max(0, bet) / bettingUnit : 0;
-    setRamp((current) => current.map((point) => point.trueCount === trueCount ? { ...point, units } : point));
+    setRamp((current) => fillRampFromTrueCount(current, trueCount, units));
+  };
+  const zeroBet = (trueCount: number) => {
+    setSpread("Custom");
+    setRamp((current) => current.map((point) => point.trueCount === trueCount ? { ...point, units: 0 } : point));
   };
   const updateHands = (trueCount: number, hands: number) => {
     setHandsByCount((current) => ({ ...current, [trueCount]: hands }));
@@ -439,6 +493,23 @@ export function SessionJournal() {
         </div>
       </Panel>
 
+      {lifetime.sessionCount > 0 && (
+        <Panel className="mb-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Career totals</p>
+            <p className="text-[.7rem] text-zinc-600">All time · {selectedBankrollId === "all" ? "all bankrolls" : bankrolls.find((item) => item.id === selectedBankrollId)?.name} · not affected by the range filter below</p>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Hours played" value={hoursLabel(lifetime.totalHours)} sub={`${lifetime.sessionCount} session${lifetime.sessionCount === 1 ? "" : "s"}`} />
+            <Stat label="Lifetime result" value={money(lifetime.totalActual, 0)} tone={lifetime.totalActual >= 0 ? "positive" : "negative"} sub={`EV ${money(lifetime.totalTheoretical, 0)}`} />
+            <Stat label="Accumulated SD" value={`± ${money(lifetime.combinedStandardDeviation, 0)}`} sub={lifetime.combinedZ === null ? "No variance yet" : `z = ${lifetime.combinedZ.toFixed(2)}`} />
+            <Stat label="Actual $ / hour" value={money(lifetime.actualPerHour, 0)} tone={lifetime.actualPerHour >= 0 ? "positive" : "negative"} sub={`Expected ${money(lifetime.theoreticalPerHour, 0)}`} />
+            <Stat label="Total action" value={money(lifetime.totalAction, 0)} sub={lifetime.totalAction > 0 ? `${percent(lifetime.totalActual / lifetime.totalAction, 2)} of action won` : undefined} />
+            <Stat label="Expenses" value={money(lifetime.totalExpenses, 0)} sub={`${money(lifetime.netAfterExpenses, 0)} after expenses`} />
+          </div>
+        </Panel>
+      )}
+
       <div className="space-y-3">
         <Section
           id="log-a-session-section"
@@ -504,8 +575,8 @@ export function SessionJournal() {
             )}
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
-              <p className="mb-2 text-xs text-zinc-500">Zero-dollar counts are watched but not played. Hands falls back to your default above unless overridden per count here — priced with the same engine as the Bankroll Lab.</p>
-              <BetSpreadTable rows={countRows} onBetChange={updateBet} onHandsChange={updateHands} />
+              <p className="mb-2 text-xs text-zinc-500">Typing a bet fills the counts it implies: a bet at a negative count carries up to 0, and a bet at a positive count carries to the top, so you never bet more as the count drops or less as it climbs. <b>Zero</b> still applies to one count only — that is how you wong out. Hands falls back to your default above unless overridden per count here.</p>
+              <BetSpreadTable rows={countRows} onBetChange={updateBet} onZeroBet={zeroBet} onHandsChange={updateHands} />
             </div>
               </div>
             </details>
@@ -513,6 +584,7 @@ export function SessionJournal() {
               <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />
               <NumberField label="Expenses (comps, travel)" value={expenses} min={0} prefix="$" onValueChange={setExpenses} />
             </div>
+            <p className="mt-2 text-xs text-zinc-500">Expenses are tracked and totalled separately — they do not move your bankroll or change how this session scores against its EV, because the model prices the table, not the trip.</p>
             <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
             <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
             <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
@@ -537,11 +609,22 @@ export function SessionJournal() {
           ) : (
             <>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${aggregate.totalHours.toFixed(1)} hours · ${aggregate.sessionCount} sessions`} />
+                <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${hoursLabel(aggregate.totalHours)} · ${aggregate.sessionCount} session${aggregate.sessionCount === 1 ? "" : "s"}`} />
                 <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% CI ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
-                <Metric label="Winning sessions" value={percent(aggregate.winRate, 0)} sub={`${aggregate.combinedZ === null ? "n/a" : `z = ${aggregate.combinedZ.toFixed(2)}`}`} />
+                <Metric label="Accumulated SD" value={`± ${money(aggregate.combinedStandardDeviation, 0)}`} sub={aggregate.combinedZ === null ? "No variance to measure yet" : `z = ${aggregate.combinedZ.toFixed(2)}${aggregate.resultPercentile === null ? "" : ` · ${ordinal(Math.round(aggregate.resultPercentile * 100))} percentile`}`} />
                 <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-zinc-500">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
               </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3 sm:grid-cols-3 lg:grid-cols-4">
+                <Stat label="Actual $ / hour" value={money(aggregate.actualPerHour, 0)} tone={aggregate.actualPerHour >= 0 ? "positive" : "negative"} sub={`Expected ${money(aggregate.theoreticalPerHour, 0)} / hour`} />
+                <Stat label="Total action" value={money(aggregate.totalAction, 0)} sub={aggregate.totalAction > 0 ? `${percent(aggregate.totalActual / aggregate.totalAction, 2)} of action won` : undefined} />
+                <Stat label="Winning sessions" value={percent(aggregate.winRate, 0)} sub={`${aggregate.longestWinStreak} won / ${aggregate.longestLossStreak} lost in a row`} />
+                <Stat label="Expenses" value={money(aggregate.totalExpenses, 0)} sub={`${money(aggregate.netAfterExpenses, 0)} after expenses`} />
+                <Stat label="Max drawdown" value={money(aggregate.maxDrawdown, 0)} tone={aggregate.maxDrawdown > 0 ? "negative" : "neutral"} sub={aggregate.currentDrawdown > 0 ? `${money(aggregate.currentDrawdown, 0)} below the peak now` : "At a new peak"} />
+                <Stat label="Best session" value={aggregate.bestSession ? money(aggregate.bestSession.netResult, 0) : "—"} tone="positive" sub={aggregate.bestSession ? shortDate(aggregate.bestSession.date) : undefined} />
+                <Stat label="Worst session" value={aggregate.worstSession ? money(aggregate.worstSession.netResult, 0) : "—"} tone="negative" sub={aggregate.worstSession ? shortDate(aggregate.worstSession.date) : undefined} />
+                <Stat label="Long run (N₀)" value={aggregate.nZeroHours === null ? "n/a" : hoursLabel(aggregate.nZeroHours)} sub={aggregate.nZeroHours === null ? "Needs a positive expectation" : `${percent(Math.min(1, aggregate.longRunProgress ?? 0), 0)} of the way there`} />
+              </div>
+              <LongRunProgress aggregate={aggregate} />
               <div className="mt-5 h-72 min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={cumulative} margin={{ left: 8, right: 12 }}>
@@ -638,6 +721,46 @@ export function SessionJournal() {
           )}
         </Section>
 
+        {venues.length > 0 && (
+          <Section
+            title="By venue"
+            summary={`${venues.length} venue${venues.length === 1 ? "" : "s"} in range`}
+            icon="fa-location-dot"
+            open={false}
+          >
+            <p className="text-xs leading-5 text-zinc-500">Each venue scored against the theoretical EV of the rules and ramp you logged there. A venue running well below its own EV over real hours is worth a second look; over a handful of hours it is still just variance.</p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[40rem] text-left text-sm">
+                <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600">
+                  <tr>
+                    <th className="pb-2 pr-3">Venue</th>
+                    <th className="pb-2 pr-3 text-right">Hours</th>
+                    <th className="pb-2 pr-3 text-right">Actual</th>
+                    <th className="pb-2 pr-3 text-right">Theoretical EV</th>
+                    <th className="pb-2 pr-3 text-right">$ / hour</th>
+                    <th className="pb-2">Assessment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {venues.map((venue) => (
+                    <tr key={venue.location || "unspecified"} className="border-t border-white/[.06]">
+                      <td className="py-2.5 pr-3">
+                        {venue.location || <span className="text-zinc-600">No location logged</span>}
+                        <span className="block text-xs text-zinc-600">{venue.sessionCount} session{venue.sessionCount === 1 ? "" : "s"}</span>
+                      </td>
+                      <td className="py-2.5 pr-3 text-right text-zinc-400">{hoursLabel(venue.totalHours)}</td>
+                      <td className={`py-2.5 pr-3 text-right font-medium ${venue.totalActual >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(venue.totalActual, 0)}</td>
+                      <td className="py-2.5 pr-3 text-right text-zinc-400">{money(venue.totalTheoretical, 0)}</td>
+                      <td className={`py-2.5 pr-3 text-right ${venue.actualPerHour >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(venue.actualPerHour, 0)}</td>
+                      <td className="py-2.5"><AssessmentBadge assessment={venue.assessment} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        )}
+
         {shoeReplay && (
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -665,7 +788,7 @@ export function SessionJournal() {
           icon="fa-money-bill-transfer"
         >
           <div onChange={() => transactionForm.start("inputs")}>
-            <p className="text-xs text-zinc-500">Track money added to or removed from this bankroll separately from table results.</p>
+            <p className="text-xs text-zinc-500">Track money added to or removed from this bankroll separately from table results. Bankroll = session results + deposits − withdrawals; session expenses are reported on their own and never deducted here.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
               <Select label="Type" value={transactionType} onChange={(event) => setTransactionType(event.target.value as "deposit" | "withdrawal")}><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option></Select>

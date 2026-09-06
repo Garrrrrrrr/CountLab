@@ -21,12 +21,21 @@ const percent = (value: number, digits = 2, signed = false) =>
 export function BetSpreadTable({
   rows,
   onBetChange,
+  onZeroBet,
   onHandsChange,
 }: {
   rows: CountRow[];
   onBetChange: (trueCount: number, bet: number) => void;
+  /**
+   * Handles the Zero button separately from a typed bet. Callers that spread an
+   * entered bet across neighbouring counts need Zero to stay a single-cell
+   * action — it is how you wong out of one count without flattening the rest.
+   * Defaults to a zero-dollar `onBetChange`.
+   */
+  onZeroBet?: (trueCount: number) => void;
   onHandsChange: (trueCount: number, hands: number) => void;
 }) {
+  const zeroBet = onZeroBet ?? ((trueCount: number) => onBetChange(trueCount, 0));
   return (
     <>
       {/* Below md a 7-column table needs sideways scrolling to edit a single
@@ -57,7 +66,7 @@ export function BetSpreadTable({
                 type="button"
                 aria-label={`Zero bet at true count ${row.label}`}
                 disabled={row.bet === 0}
-                onClick={() => onBetChange(row.trueCount, 0)}
+                onClick={() => zeroBet(row.trueCount)}
                 className="min-h-11 shrink-0 rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 text-xs font-semibold text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
               >
                 Zero
@@ -125,7 +134,7 @@ export function BetSpreadTable({
                       type="button"
                       aria-label={`Zero bet at true count ${row.label}`}
                       disabled={row.bet === 0}
-                      onClick={() => onBetChange(row.trueCount, 0)}
+                      onClick={() => zeroBet(row.trueCount)}
                       className="min-h-9 rounded-lg border border-red-400/20 bg-red-400/[.06] px-2.5 text-xs font-semibold text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
                     >
                       Zero
