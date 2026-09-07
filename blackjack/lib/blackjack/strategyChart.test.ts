@@ -267,22 +267,56 @@ describe("double restrictions", () => {
   });
 });
 
-describe("early surrender", () => {
+/**
+ * Early surrender against a ten, pinned to Wong's table 32 read at a true count
+ * of zero. The rule modelled is early against the ten and late against
+ * everything else, so only the ten column may differ from `surrender: "late"`.
+ */
+describe("early surrender versus a ten", () => {
   const early = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, surrender: "early" as const, doubleRule: "any" as const, europeanNoHoleCard: false };
   const late = { ...early, surrender: "late" as const };
 
-  it("surrenders the extra cells against an ace", () => {
-    for (const row of ["12", "13", "14", "17"]) expect(chartCell(early, "hard", row, "A").action).toBe("R");
-    expect(chartCell(late, "hard", "13", "A").action).toBe("H");
-  });
-
-  it("surrenders eights against a ten and an ace", () => {
+  it("gives up hard 14 through 16 against a ten, including 7,7 and 8,8", () => {
+    for (const row of ["14", "15", "16"]) expect(chartCell(early, "hard", row, "10").action).toBe("R");
+    expect(chartCell(early, "pairs", "7,7", "10").action).toBe("R");
     expect(chartCell(early, "pairs", "8,8", "10").action).toBe("R");
-    expect(chartCell(early, "pairs", "8,8", "A").action).toBe("R");
   });
 
-  it("leaves the late-surrender cells unchanged", () => {
-    expect(chartCell(early, "hard", "16", "9").action).toBe("R");
-    expect(chartCell(early, "hard", "16", "10").action).toBe("R");
+  it("keeps the fourteens and eights that late surrender plays out", () => {
+    expect(chartCell(late, "hard", "14", "10").action).toBe("H");
+    expect(chartCell(late, "pairs", "7,7", "10").action).toBe("H");
+    expect(chartCell(late, "pairs", "8,8", "10").action).toBe("P");
+  });
+
+  it("surrenders eights back to a split, never to a hit, where the table refuses", () => {
+    expect(chartCell(early, "pairs", "8,8", "10").fallback).toBe("P");
+    expect(chartCell(early, "pairs", "8,8", "10", { canSurrender: false }).action).toBe("P");
+  });
+
+  it("plays out the cells table 32 indexes above zero", () => {
+    // Hard 17, 13 and 12 versus a ten surrender only at +5, +3 and +8.
+    for (const row of ["12", "13"]) expect(chartCell(early, "hard", row, "10").action).toBe("H");
+    expect(chartCell(early, "hard", "17", "10").action).toBe("S");
+  });
+
+  it("leaves every other upcard on late surrender", () => {
+    // The rule only reaches the ten: the ace keeps its late-surrender answers
+    // and hard 12-13 versus an ace stay hits, unlike full early surrender.
+    for (const dealer of ["8", "9", "A"]) {
+      for (const row of ["12", "13", "14", "15", "16", "17"]) {
+        expect(chartCell(early, "hard", row, dealer).action, `${row} v ${dealer}`).toBe(chartCell(late, "hard", row, dealer).action);
+      }
+    }
+    expect(chartCell(early, "hard", "13", "A").action).toBe("H");
+    expect(chartCell(early, "hard", "16", "9").action).toBe(chartCell(late, "hard", "16", "9").action);
+  });
+
+  it("splits eights against a ten in single deck with double after split", () => {
+    // The extra value double-after-split gives the split lifts 8,8 back above
+    // the flat -0.5 in one deck; without it the surrender stands.
+    const single = { ...early, decks: 1 };
+    expect(chartCell(single, "pairs", "8,8", "10").action).toBe("P");
+    expect(chartCell({ ...single, doubleAfterSplit: false }, "pairs", "8,8", "10").action).toBe("R");
+    expect(chartCell({ ...early, decks: 2 }, "pairs", "8,8", "10").action).toBe("R");
   });
 });

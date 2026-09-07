@@ -1,5 +1,6 @@
 import { Action, Rank } from "./types";
 import { getBasicStrategyDecision } from "./basicStrategy";
+import { EARLY_SURRENDER_VS_TEN, supersededByEarlySurrenderVsTen } from "./earlySurrender";
 import { H17_PRO_DEVIATIONS } from "./h17Pro";
 import { S17_PRO_DEVIATIONS } from "./s17Pro";
 export type DeviationAction = Action | "I" | "N";
@@ -23,11 +24,32 @@ export const deviationDecision=(d:Deviation,tc:number)=>((d.direction==="atOrBel
 export interface DeviationRules {
   dealerHitsSoft17: boolean;
   lateSurrender: boolean;
+  /**
+   * Early surrender against a ten. The ace, 9 and 8 stay on late surrender, so
+   * this is additive to `lateSurrender` rather than a third exclusive mode —
+   * which is also how the rule is dealt in practice.
+   */
+  earlySurrenderVsTen?: boolean;
 }
 
-/** The supplied H17/S17 Pro catalog matching a table's dealer rule. */
-export function getDeviationCatalog(rules: { dealerHitsSoft17: boolean }): Deviation[] {
-  return rules.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
+/**
+ * Whether the table lets this hand be given up against this upcard.
+ *
+ * Surrender availability is per-upcard once early surrender is in play, so
+ * every gate that used to read `lateSurrender` has to ask about a dealer card.
+ */
+export const surrenderAvailable = (rules: DeviationRules, dealer: string): boolean =>
+  rules.lateSurrender || (rules.earlySurrenderVsTen === true && dealer === "10");
+
+/**
+ * The supplied H17/S17 Pro catalog matching a table's dealer rule, with the ten
+ * column swapped for Wong's early-surrender indices where the rule calls for it.
+ */
+export function getDeviationCatalog(rules: { dealerHitsSoft17: boolean; earlySurrenderVsTen?: boolean }): Deviation[] {
+  const set = rules.dealerHitsSoft17 ? "h17Pro" : "s17Pro";
+  const catalog = rules.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
+  if (!rules.earlySurrenderVsTen) return catalog;
+  return [...catalog.filter((row) => !supersededByEarlySurrenderVsTen(row)), ...EARLY_SURRENDER_VS_TEN[set]];
 }
 
 /**
@@ -58,12 +80,13 @@ export function resolveDeviation(
 ): { action: DeviationAction; deviation?: Deviation; belowIndex?: true } {
   if (hand === "Insurance") return { action: basicAction };
 
+  const canSurrender = surrenderAvailable(rules, dealer);
   const candidates = catalog.filter((deviation) => {
     if (deviation.hand !== hand || deviation.dealer !== dealer) return false;
-    if (deviation.always) return rules.lateSurrender;
-    if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
+    if (deviation.always) return canSurrender;
+    if (deviation.deviationAction === "R" && !canSurrender) return false;
     // A starred stand index is for tables (and split hands) with no surrender.
-    if (deviation.overridesSurrender && rules.lateSurrender) return false;
+    if (deviation.overridesSurrender && canSurrender) return false;
     const crossed = deviation.direction === "atOrBelow" ? tc <= deviation.index : tc >= deviation.index;
     if (!crossed) return false;
     return basicAction === deviation.normalAction
@@ -74,9 +97,9 @@ export function resolveDeviation(
   if (!candidates.length) {
     const listedBaseline = catalog.find((deviation) => {
       if (!deviation.listedBaseline || deviation.hand !== hand || deviation.dealer !== dealer) return false;
-      if (deviation.normalAction === "R" && !rules.lateSurrender) return false;
-      if (deviation.deviationAction === "R" && !rules.lateSurrender) return false;
-      if (deviation.overridesSurrender && rules.lateSurrender) return false;
+      if (deviation.normalAction === "R" && !canSurrender) return false;
+      if (deviation.deviationAction === "R" && !canSurrender) return false;
+      if (deviation.overridesSurrender && canSurrender) return false;
       return deviation.direction === "atOrBelow"
         ? tc > deviation.index
         : tc < deviation.index;
@@ -96,7 +119,7 @@ export function resolveDeviation(
       && deviation.normalAction !== basicAction
       // Returning `normalAction` must never conjure a surrender at a table that
       // does not offer one — 16 v 9 reverts to "R" only where "R" is legal.
-      && (deviation.normalAction !== "R" || rules.lateSurrender)
+      && (deviation.normalAction !== "R" || canSurrender)
       && (deviation.direction === "atOrBelow" ? tc >= deviation.index : tc <= deviation.index));
     return reverted
       ? { action: reverted.normalAction, deviation: reverted, belowIndex: true }

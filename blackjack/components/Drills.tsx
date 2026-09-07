@@ -20,8 +20,6 @@ import {
   deviationSentence,
   deviationTrainingRows,
 } from "@/lib/blackjack/deviations";
-import { H17_PRO_DEVIATIONS } from "@/lib/blackjack/h17Pro";
-import { S17_PRO_DEVIATIONS } from "@/lib/blackjack/s17Pro";
 import {
   DEFAULT_SETTINGS,
   makeSession,
@@ -44,7 +42,8 @@ const names: Record<Action, string> = {
   P: "Split",
   R: "Surrender",
 };
-const analyticsRulesPreset = (settings: Settings) => `${settings.decks}d_${settings.dealerHitsSoft17 ? "h17" : "s17"}_${settings.doubleAfterSplit ? "das" : "ndas"}_${settings.resplitAces ? "rsa" : "nrsa"}_${settings.lateSurrender ? "ls" : "nls"}`;
+const SURRENDER_RULE_TAG = { none: "nls", late: "ls", early: "es10" } as const;
+const analyticsRulesPreset = (settings: Settings, surrender: SurrenderRule) => `${settings.decks}d_${settings.dealerHitsSoft17 ? "h17" : "s17"}_${settings.doubleAfterSplit ? "das" : "ndas"}_${settings.resplitAces ? "rsa" : "nrsa"}_${SURRENDER_RULE_TAG[surrender]}`;
 function Title({
   eyebrow,
   title,
@@ -114,9 +113,48 @@ const rulesFromSettings = (settings: Settings) => ({
   doubleRule: "any" as const,
 });
 
+/**
+ * The surrender rule a drill is graded under.
+ *
+ * "early" is early surrender against a ten with late surrender everywhere else,
+ * which is how the rule is actually dealt — the two are additive, not
+ * exclusive, so it sets both flags.
+ */
+type SurrenderRule = "none" | "late" | "early";
+
+const SURRENDER_RULE_LABEL: Record<SurrenderRule, string> = {
+  none: "No surrender",
+  late: "Late surrender",
+  early: "Early surrender vs 10",
+};
+
+const surrenderFlags = (rule: SurrenderRule) => ({
+  lateSurrender: rule !== "none",
+  earlySurrenderVsTen: rule === "early",
+});
+
+/**
+ * Saved settings carry only a late-surrender boolean, so an unset drill choice
+ * follows it. Kept as `undefined` rather than resolved once at mount because
+ * `useSavedSettings` starts on the defaults and loads in an effect, so an
+ * eagerly captured initial value would be the default rather than the player's.
+ */
+const savedSurrenderRule = (settings: Settings): SurrenderRule => (settings.lateSurrender ? "late" : "none");
+
+function SurrenderRuleSelect({ value, onChange }: { value: SurrenderRule; onChange: (rule: SurrenderRule) => void }) {
+  return (
+    <Select label="Surrender rule" value={value} onChange={(event) => onChange(event.target.value as SurrenderRule)}>
+      {(Object.keys(SURRENDER_RULE_LABEL) as SurrenderRule[]).map((rule) => (
+        <option key={rule} value={rule}>{SURRENDER_RULE_LABEL[rule]}</option>
+      ))}
+    </Select>
+  );
+}
+
 type StrategySaved = {
   q: number; mode: "standard" | "adaptive"; correctCount: number; streak: number; best: number;
   totalMs: number; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
+  surrender?: SurrenderRule;
 };
 export function StrategyDrill() {
   const settings = useSavedSettings();
@@ -135,6 +173,7 @@ export function StrategyDrill() {
     [totalMs, setTotalMs] = useState(saved?.totalMs ?? 0),
     [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []),
     [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
+    [surrender, setSurrender] = useState<SurrenderRule | undefined>(saved?.surrender),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [awaitingFinal, setAwaitingFinal] = useState(false),
@@ -145,9 +184,10 @@ export function StrategyDrill() {
       explanation: string;
       category: StrategyCategory;
     }>();
+  const surrenderRule = surrender ?? savedSurrenderRule(settings);
   const finalArgs = useRef<Parameters<typeof finish> | null>(null);
   useEffect(() => {
-    track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+    track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings, surrenderRule), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: surrenderRule });
     // A restored drill is still a new analytics attempt in this browser session.
   }, []);
   const weakest = useMemo<StrategyCategory | undefined>(() => {
@@ -173,7 +213,7 @@ export function StrategyDrill() {
     () => randomStrategyQuestion(weakest && Math.random() < 0.65 ? weakest : undefined),
     [q, weakest],
   );
-  const rules = rulesFromSettings(settings);
+  const rules = { ...rulesFromSettings(settings), ...surrenderFlags(surrenderRule) };
   const decision = getBasicStrategyDecision({
     playerCards: data.player,
     dealerUpcard: data.dealer,
@@ -189,7 +229,7 @@ export function StrategyDrill() {
     track("question_presented", { drill: "Basic Strategy", category, scenario, attempt: q + 1 });
   }, [category, data.dealer.rank, data.player, q]);
   useDrillProgress("Basic Strategy", !session, {
-    q, mode, correctCount, streak, best, totalMs, mistakes, categories,
+    q, mode, correctCount, streak, best, totalMs, mistakes, categories, surrender,
   } satisfies StrategySaved);
   const finish = (
     askedCount = q,
@@ -284,7 +324,7 @@ export function StrategyDrill() {
           setSession(undefined);
           setAwaitingFinal(false);
           setStarted(Date.now());
-          track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+          track("drill_started", { drill: "Basic Strategy", mode, questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings, surrenderRule), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: surrenderRule });
         }}
       />
     );
@@ -294,14 +334,19 @@ export function StrategyDrill() {
       <Title
         eyebrow={`Hand ${q + 1}`}
         title="Basic Strategy"
-        description={`${rules.decks}-deck, ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "no DAS"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}.`}
+        description={`${rules.decks}-deck, ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "no DAS"}, ${SURRENDER_RULE_LABEL[surrenderRule].toLowerCase()}.`}
       />
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-xs">
-          <Select label="Practice mode" value={mode} onChange={(event) => { const next = event.target.value as "standard" | "adaptive"; track("practice_mode_changed", { drill: "Basic Strategy", from: mode, to: next }); setMode(next); }}>
-            <option value="standard">Balanced</option>
-            <option value="adaptive">Adaptive to weak categories</option>
-          </Select>
+        <div className="flex flex-wrap gap-4">
+          <div className="max-w-xs">
+            <Select label="Practice mode" value={mode} onChange={(event) => { const next = event.target.value as "standard" | "adaptive"; track("practice_mode_changed", { drill: "Basic Strategy", from: mode, to: next }); setMode(next); }}>
+              <option value="standard">Balanced</option>
+              <option value="adaptive">Adaptive to weak categories</option>
+            </Select>
+          </div>
+          <div className="max-w-xs">
+            <SurrenderRuleSelect value={surrenderRule} onChange={setSurrender} />
+          </div>
         </div>
         <GhostButton onClick={endDrill}>End drill</GhostButton>
       </div>
@@ -372,6 +417,7 @@ export function StrategyDrill() {
 type DeviationSaved = {
   q: number; correctCount: number; streak: number; best: number;
   totalMs: number; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
+  surrender?: SurrenderRule;
 };
 export function DeviationDrill() {
   const settings = useSavedSettings();
@@ -383,6 +429,7 @@ export function DeviationDrill() {
     [totalMs, setTotalMs] = useState(saved?.totalMs ?? 0),
     [mistakes, setMistakes] = useState<Mistake[]>(saved?.mistakes ?? []),
     [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>(saved?.categories ?? {}),
+    [surrender, setSurrender] = useState<SurrenderRule | undefined>(saved?.surrender),
     [started, setStarted] = useState(Date.now()),
     [session, setSession] = useState<Session>(),
     [awaitingFinal, setAwaitingFinal] = useState(false),
@@ -397,14 +444,20 @@ export function DeviationDrill() {
       departureTriggered: boolean;
       sentence: string;
     }>();
+  const surrenderRule = surrender ?? savedSurrenderRule(settings);
   const finalArgs = useRef<Parameters<typeof finish> | null>(null);
   useEffect(() => {
-    track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+    track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings, surrenderRule), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: surrenderRule });
   }, []);
-  const catalog = settings.dealerHitsSoft17 ? H17_PRO_DEVIATIONS : S17_PRO_DEVIATIONS;
+  // The catalog comes from the rules rather than being picked here, so that
+  // early surrender against a ten swaps that column for Wong's table 32.
+  const deviationRules = useMemo(
+    () => ({ dealerHitsSoft17: settings.dealerHitsSoft17, ...surrenderFlags(surrenderRule) }),
+    [settings.dealerHitsSoft17, surrenderRule],
+  );
   const trainingRows = useMemo(
-    () => deviationTrainingRows(settings, settings.decks, catalog),
-    [catalog, settings.dealerHitsSoft17, settings.decks, settings.lateSurrender],
+    () => deviationTrainingRows(deviationRules, settings.decks),
+    [deviationRules, settings.decks],
   );
   const question = useMemo(
     () => trainingRows[Math.floor(Math.random() * trainingRows.length)],
@@ -447,7 +500,7 @@ export function DeviationDrill() {
       || (transition.atOrBelow ? tc <= d.index : tc >= d.index),
     correct = departureApplies ? transition.departure : transition.baseline;
   useDrillProgress("Deviations", !session, {
-    q, correctCount, streak, best, totalMs, mistakes, categories,
+    q, correctCount, streak, best, totalMs, mistakes, categories, surrender,
   } satisfies DeviationSaved);
   const finish = (
     askedCount = q,
@@ -549,7 +602,7 @@ export function DeviationDrill() {
           setSession(undefined);
           setAwaitingFinal(false);
           setStarted(Date.now());
-          track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: settings.lateSurrender ? "late" : "none" });
+          track("drill_started", { drill: "Deviations", questionTarget: 10, decks: settings.decks, rulesPreset: analyticsRulesPreset(settings, surrenderRule), dealerRule: settings.dealerHitsSoft17 ? "H17" : "S17", das: settings.doubleAfterSplit, rsa: settings.resplitAces, surrender: surrenderRule });
         }}
       />
     );
@@ -562,7 +615,10 @@ export function DeviationDrill() {
           title="Hi-Lo Deviations"
           description="Decide whether the current true count activates the index play."
         />
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="max-w-xs">
+            <SurrenderRuleSelect value={surrenderRule} onChange={setSurrender} />
+          </div>
           <Link
             href="/reference/deviations"
             className="pressable inline-flex min-h-11 items-center rounded-lg border border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 font-medium text-[var(--ink)] shadow-sm outline-none transition-colors hover:bg-[var(--paper)] focus-visible:ring-2 focus-visible:ring-[var(--focus)]"

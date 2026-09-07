@@ -30,16 +30,50 @@ export const STRATEGY_ROWS: Record<StrategySectionId, readonly string[]> = {
 };
 
 /**
- * Early surrender is decided before the dealer checks for blackjack, so more
- * hands are worth giving up. Hard 5, 6 and 7 versus an ace also surrender, but
- * they sit outside the rendered rows and are carried as a footnote instead.
+ * Early surrender against a ten: the decision is taken before the dealer checks
+ * the hole card, so the roughly 4-in-51 chance of a natural is given up along
+ * with the hand, and more sixteens-and-under are worth folding.
+ *
+ * Only the ten column moves. Where the dealer cannot hold a natural the two
+ * rules are the same decision, and Wong's early- and late-surrender tables
+ * (32 and 33) are identical cell for cell in their 8 and 9 columns; the ace is
+ * left on late surrender because that is the rule this models — early against
+ * the ten, late against everything else. The dealer's soft-17 rule does not
+ * enter into it: "whether the dealer hits or stands on soft seventeen does not
+ * matter when the dealer starts with 7 through 10" (Professional Blackjack,
+ * p. 89), which is why table 32 prints one shared ten column and splits only
+ * the ace into A-s17 and A-h17.
+ *
+ * These are table 32's ten column read at a true count of zero. 7,7 needs no
+ * entry of its own beyond the pair row, because a 7,7 you would consider
+ * surrendering is just a hard fourteen — Wong's stated reason for not giving it
+ * a row. Hard 17, 13 and 12 versus a ten surrender only at +5, +3 and +8, so
+ * they are index plays rather than basic strategy and live in
+ * `earlySurrender.ts`.
  */
-export const EARLY_SURRENDER_CELLS: readonly string[] = [
-  "pairs:8,8v10", "pairs:8,8vA",
-  "hard:12vA", "hard:13vA", "hard:14vA", "hard:15vA", "hard:16vA", "hard:17vA",
+const EARLY_SURRENDER_VS_TEN: readonly string[] = [
   "hard:14v10", "hard:15v10", "hard:16v10",
-  "hard:16v9",
+  "pairs:7,7v10", "pairs:8,8v10",
 ];
+
+/**
+ * Whether early surrender versus a ten applies to one cell under these rules.
+ *
+ * Single deck with double-after-split is the one exception: the extra value
+ * double-after-split gives the split lifts 8,8 back above the flat -0.5, so
+ * eights are split rather than surrendered there.
+ *
+ * Two further published exceptions are composition-dependent — do not surrender
+ * a fourteen made of 4+10 or 5+9 in single deck, nor 4+10 in double deck — and
+ * this grid is total-dependent, with no card composition to test. They are
+ * carried as a note on the chart page instead of being silently applied to
+ * every fourteen.
+ */
+export function earlySurrendersVsTen(cellKey: string, rules: { decks: number; doubleAfterSplit: boolean }): boolean {
+  if (!EARLY_SURRENDER_VS_TEN.includes(cellKey)) return false;
+  if (cellKey === "pairs:8,8v10") return !(rules.decks === 1 && rules.doubleAfterSplit);
+  return true;
+}
 
 const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, string>> = {
   "4plus/h17": {

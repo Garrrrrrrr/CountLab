@@ -29,6 +29,12 @@ const DEFAULT_RULES: StrategyChartRules = {
   europeanNoHoleCard: false,
 };
 
+const SURRENDER_SUMMARY: Record<StrategyChartRules["surrender"], string> = {
+  none: "no surrender",
+  late: "late surrender",
+  early: "early surrender vs 10",
+};
+
 const SECTIONS: Array<{ id: StrategySectionId; label: string; description: string }> = [
   { id: "hard", label: "Hard totals", description: "Hands with no usable ace" },
   { id: "soft", label: "Soft totals", description: "Hands containing an ace counted as 11" },
@@ -246,7 +252,14 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
 
   const profile = rankingProfile(rules);
   const deviationCells = useMemo(
-    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.surrender === "late" }),
+    // Early surrender against a ten keeps late surrender everywhere else, so
+    // both flags are on — passing `surrender === "late"` here used to hand the
+    // grid the no-surrender catalog while `rankingProfile` still said "-ls".
+    () => deviationGridCells({
+      dealerHitsSoft17: rules.dealerHitsSoft17,
+      lateSurrender: rules.surrender !== "none",
+      earlySurrenderVsTen: rules.surrender === "early",
+    }),
     [rules.dealerHitsSoft17, rules.surrender],
   );
   const widestInterval = useMemo(
@@ -261,7 +274,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
       {tab !== "h17" && <details className="surface mb-3 rounded-[1.35rem]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm marker:hidden sm:px-5">
           <span className="font-semibold text-[var(--ink)]">Table rules</span>
-          <span className="font-data text-xs text-[var(--ink-muted)]">{rules.decks}D · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.surrender} surrender</span>
+          <span className="font-data text-xs text-[var(--ink-muted)]">{rules.decks}D · {rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {SURRENDER_SUMMARY[rules.surrender]}</span>
         </summary>
         <div className="border-t border-[var(--rule)] p-4 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -293,7 +306,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           >
             <option value="none">No surrender</option>
             <option value="late">Late surrender</option>
-            <option value="early">Early surrender</option>
+            <option value="early">Early surrender vs 10</option>
           </Select>
           <Select
             label="Double rule"
@@ -377,8 +390,14 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           ))}
 
           <p className="text-sm text-[var(--ink-muted)]">
-            Hard totals 5–7 always hit; hard totals 18–21 always stand.{rules.surrender === "early" ? " With early surrender, hard 5–7 versus an ace surrender." : ""}
+            Hard totals 5–7 always hit; hard totals 18–21 always stand.
+            {rules.surrender === "early" ? " Early surrender is taken before the dealer checks the hole card, so it only changes the ten column; the ace stays on late surrender." : ""}
           </p>
+          {rules.surrender === "early" && rules.decks <= 2 && (
+            <p className="text-sm text-[var(--ink-muted)]">
+              Two published exceptions depend on the cards, not the total, so this grid cannot show them: do not surrender a fourteen made of 4+10 or 5+9 in single deck, nor 4+10 in double deck.
+            </p>
+          )}
         </div>
       ) : tab === "deviations" ? (
         <div className="space-y-4">

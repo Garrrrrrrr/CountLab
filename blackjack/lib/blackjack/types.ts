@@ -27,6 +27,8 @@ export interface BlackjackRules {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  /** Early surrender against a ten, decided before the dealer checks the hole card. Additive to `lateSurrender`. */
+  earlySurrenderVsTen?: boolean;
   doubleRule?: "any" | "9-11" | "10-11";
 }
 export const DEFAULT_RULES: BlackjackRules = {

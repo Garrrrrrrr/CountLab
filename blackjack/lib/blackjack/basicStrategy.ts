@@ -28,12 +28,12 @@ const chartDecks = (rules: BlackjackRules): number => {
   return STRATEGY_TABLES[`${deckKey}/${rules.dealerHitsSoft17 ? "h17" : "s17"}`] ? rules.decks : 6;
 };
 
-/** `BlackjackRules` predates the chart's wider rule set; ENHC and early surrender are chart-page-only. */
+/** `BlackjackRules` predates the chart's wider rule set; ENHC stays chart-page-only. */
 const toChartRules = (rules: BlackjackRules): StrategyChartRules => ({
   decks: chartDecks(rules),
   dealerHitsSoft17: rules.dealerHitsSoft17,
   doubleAfterSplit: rules.doubleAfterSplit,
-  surrender: rules.lateSurrender ? "late" : "none",
+  surrender: rules.earlySurrenderVsTen ? "early" : rules.lateSurrender ? "late" : "none",
   doubleRule: rules.doubleRule ?? "any",
   europeanNoHoleCard: false,
 });
@@ -83,7 +83,9 @@ export function getBasicStrategyDecision({ playerCards, dealerUpcard, rules, can
     // A drawn hand cannot double or surrender whatever the table allows.
     // `chartCell` ANDs this with its own `doubleRule` restriction, so both apply.
     canDouble: twoCards,
-    canSurrender: rules.lateSurrender && twoCards,
+    // Early surrender against a ten stands on its own: a table can offer it
+    // without late surrender, and only the ten column may be given up then.
+    canSurrender: twoCards && (rules.lateSurrender || (rules.earlySurrenderVsTen === true && dealer === "10")),
     canSplit: located.section === "pairs",
   });
   return withExplanation(action, fallback, kind, total, dealerUpcard, chartRules);

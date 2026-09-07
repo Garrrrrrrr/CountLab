@@ -1,6 +1,6 @@
 import { Action } from "./types";
 import { CHART_DEALERS } from "./bjaH17Chart";
-import { EARLY_SURRENDER_CELLS, STRATEGY_TABLES, deckClass } from "./strategyTables";
+import { STRATEGY_TABLES, deckClass, earlySurrendersVsTen } from "./strategyTables";
 
 /**
  * A printed chart cell. Codes are composite on purpose: `Ds` is "double if the
@@ -18,6 +18,7 @@ export interface StrategyChartRules {
   decks: number;
   dealerHitsSoft17: boolean;
   doubleAfterSplit: boolean;
+  /** "early" is early surrender against a ten with late surrender everywhere else — see `earlySurrendersVsTen`. */
   surrender: "none" | "late" | "early";
   doubleRule: "any" | "9-11" | "10-11";
   europeanNoHoleCard: boolean;
@@ -75,6 +76,14 @@ export function resolveCode(code: ChartCode, options: CodeOptions): ResolvedCode
   }
 }
 
+/**
+ * The `R` code that demotes back to what the cell already said, for a cell an
+ * early-surrender rule turns into a surrender. Anything unlisted is a hit.
+ */
+const SURRENDER_FALLING_BACK_TO: Partial<Record<ChartCode, ChartCode>> = {
+  S: "Rs", Ds: "Rs", P: "Rp", Ph: "Rp", Pd: "Rp", Ps: "Rp", Rh: "Rh", Rs: "Rs", Rp: "Rp",
+};
+
 /** Hard totals a restricted double rule still permits. Soft doubles are never permitted under a restriction. */
 const doubleAllowed = (rules: StrategyChartRules, section: StrategySectionId, row: string): boolean => {
   if (rules.doubleRule === "any") return true;
@@ -109,8 +118,10 @@ export function chartCode(rules: StrategyChartRules, section: StrategySectionId,
   const cellKey = `${section}:${row}v${dealer}`;
   const code = table.get(cellKey);
   if (!code) throw new Error(`No chart cell for ${section} ${row} vs ${dealer}`);
-  if (rules.surrender === "early" && EARLY_SURRENDER_CELLS.includes(cellKey)) {
-    return code === "S" ? "Rs" : "Rh";
+  if (rules.surrender === "early" && earlySurrendersVsTen(cellKey, rules)) {
+    // The surrender code has to keep the cell's own fallback, so that a table
+    // refusing the surrender still splits 8,8 rather than hitting it.
+    return SURRENDER_FALLING_BACK_TO[code] ?? "Rh";
   }
   return code;
 }
