@@ -1,0 +1,8 @@
+# Reference material kept locally but never committed: the book is copyrighted
+# and 18MB, and the chart is a personal working note. Named rather than matched
+# by extension, so the tracked BJA_H17.pdf and bj_4d_h17.gif stay visible.
+Professional Blackjack (Stanford Wong) (z-library.sk, 1lib.sk, z-lib.sk).pdf
+es10_surrender_chart.png
+
+# Stray installs from running a package runner outside blackjack/.
+/node_modules/
