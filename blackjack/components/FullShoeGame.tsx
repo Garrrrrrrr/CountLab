@@ -4,7 +4,7 @@ import Image from "next/image";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { getBasicStrategyDecision } from "@/lib/blackjack/basicStrategy";
-import { DEVIATION_ACTION_NAMES, deviationDecision, getDeviationCatalog, resolveDeviation, surrenderAvailable } from "@/lib/blackjack/deviations";
+import { DEVIATION_ACTION_NAMES, deviationDecision, deviationRulesForHand, getDeviationCatalog, resolveDeviation, surrenderAvailable } from "@/lib/blackjack/deviations";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "@/lib/blackjack/hand";
 import { signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
@@ -31,7 +31,9 @@ import {
   type FullShoeMode,
 } from "@/lib/blackjack/fullShoeSession";
 import { makeSession, storage, surrenderFlags, SURRENDER_RULE_LABEL, type Mistake, type SurrenderRule } from "@/lib/statistics/storage";
-import { HandReplayer } from "./HandReplayer";
+import { ShoeReportView } from "./ShoeReportView";
+import { ConfirmModal } from "./ConfirmModal";
+import { shoeLibrary, type SavedShoe } from "@/lib/blackjack/shoeLibrary";
 import { nearestDeckPhoto } from "@/lib/blackjack/deckPhotos";
 import { roundDeckEstimate, type DeckResolution } from "@/lib/blackjack/countingTraining";
 
@@ -61,10 +63,6 @@ const ACTION_NAMES: Record<Action, string> = {
 };
 
 const money = (value: number) => (value % 1 === 0 ? `${value}` : value.toFixed(2));
-const durationLabel = (milliseconds: number) => {
-  const seconds = Math.round(milliseconds / 1000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-};
 const rankForIndex = (card: Card) => (["J", "Q", "K"].includes(card.rank) ? "10" : card.rank);
 // Each card in a hand is dealt slightly lower and more rotated than the one
 // before it, so a hand reads as cards stacked diagonally on the felt rather
@@ -94,6 +92,11 @@ function sound(kind: "deal" | "chip" | "good" | "bad" | "win", enabled: boolean)
     // Audio is enhancement-only.
   }
 }
+
+const savedShoeLabel = (shoe: SavedShoe) =>
+  `${new Date(shoe.savedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${shoe.report.accuracy}% · ${shoe.report.handsPlayed} hands`;
+const savedShoeRules = (shoe: SavedShoe) =>
+  `${shoe.table.decks}D ${shoe.table.dealerHitsSoft17 ? "H17" : "S17"} · ${SURRENDER_RULE_LABEL[shoe.table.surrenderRule]} · ${shoe.table.stacked ? "TC +6 stacked" : "Random shoe"}`;
 
 function handLabel(cards: Card[]) {
   const total = calculateHandValue(cards);
@@ -148,6 +151,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [visibleIntel, setVisibleIntel] = useState<Record<string, boolean>>({});
   const [holePeek, setHolePeek] = useState(false);
   const [evResult, setEvResult] = useState<LiveEvResult>();
+  const [savedShoes, setSavedShoes] = useState<SavedShoe[]>([]);
+  const [reviewShoe, setReviewShoe] = useState<SavedShoe>();
+  const [reviewRounds, setReviewRounds] = useState<FullShoeLiveRound[]>();
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<SavedShoe>();
   const [evLoading, setEvLoading] = useState(false);
   const shoe = useRef<BlackjackShoe | undefined>(undefined);
   const statsRef = useRef(emptyFullShoeScore());
@@ -176,6 +184,16 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     load();
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
+  }, []);
+  useEffect(() => {
+    const load = () => setSavedShoes(shoeLibrary.shoes());
+    load();
+    addEventListener(shoeLibrary.event, load);
+    addEventListener("hilo-storage", load);
+    return () => {
+      removeEventListener(shoeLibrary.event, load);
+      removeEventListener("hilo-storage", load);
+    };
   }, []);
   useEffect(() => {
     if (mode === "checkout") {
@@ -367,6 +385,25 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       },
       [mode, stackShoe ? "stacked" : "random", surrenderRule],
     ));
+    // Archived separately from the drill session: this record carries every
+    // round, which the drill-session row has no room for.
+    if (rounds.length) shoeLibrary.save({
+      mode,
+      completionReason: reason,
+      table: { decks: rules.decks, dealerHitsSoft17: rules.dealerHitsSoft17, surrenderRule, stacked: stackShoe, penetration },
+      report: summarizeFullShoeSession(score, rounds, elapsed, finalBankroll - startingBankroll),
+      rounds,
+    });
+  };
+
+  const openSavedShoe = async (shoe: SavedShoe) => {
+    setReviewShoe(shoe);
+    setReviewRounds(undefined);
+    setReviewLoading(true);
+    const rounds = await shoeLibrary.loadRounds(shoe.id);
+    setReviewRounds(rounds);
+    setReviewLoading(false);
+    track("full_shoe_saved_shoe_opened", { mode: shoe.mode, accuracy: shoe.report.accuracy, handsPlayed: shoe.report.handsPlayed });
   };
 
   const endSession = () => {
@@ -667,7 +704,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       : isSoft(hand.cards)
         ? `Soft ${total}`
         : String(total);
-    const resolvedDeviation = resolveDeviation(basic.action, handLabel, rankForIndex(dealer[0]), tc, rules);
+    // The table rule is not the hand's eligibility: after a hit or a split,
+    // surrender is gone and the starred no-surrender play indices take over.
+    const deviationRules = deviationRulesForHand(rules, legal.includes("R"));
+    const resolvedDeviation = resolveDeviation(basicAction, handLabel, rankForIndex(dealer[0]), tc, deviationRules);
     const deviation = resolvedDeviation.deviation;
     let action = resolvedDeviation.action as Action;
     // An unavailable double falls back to what basic strategy plays on this
@@ -676,8 +716,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     // is wrong under every count.
     if (!legal.includes(action)) action = action === "D" ? basic.fallback ?? basic.action : action === "R" ? "H" : basic.action;
     if (!legal.includes(action)) action = "H";
+    const baselineAction = deviation?.overridesSurrender && !legal.includes("R")
+      ? basicAction
+      : deviation?.normalAction;
     const explanation = deviation
-      ? `${deviation.hand} vs ${deviation.dealer} changes from ${DEVIATION_ACTION_NAMES[deviation.normalAction]} to ${DEVIATION_ACTION_NAMES[deviation.deviationAction]} ${deviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(deviation.index)}. Current TC: ${signed(tc)}.`
+      ? `${deviation.hand} vs ${deviation.dealer} changes from ${DEVIATION_ACTION_NAMES[baselineAction!]} to ${DEVIATION_ACTION_NAMES[deviation.deviationAction]} ${deviation.direction === "atOrBelow" ? "at or below" : "at or above"} TC ${signed(deviation.index)}. Current TC: ${signed(tc)}.`
       : basic.explanation;
     return { action, basicAction, explanation };
   };
@@ -920,6 +963,36 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     setChipHistory([]);
   };
 
+  if (reviewShoe) {
+    const closeReview = () => {
+      setReviewShoe(undefined);
+      setReviewRounds(undefined);
+    };
+    if (reviewLoading || !reviewRounds) return (
+      <Panel>
+        <button type="button" onClick={closeReview} className="text-xs font-medium text-zinc-500 hover:text-zinc-200"><i className="fa-solid fa-arrow-left mr-1.5" />Back to setup</button>
+        <h1 className="mt-2 text-2xl font-semibold">{savedShoeLabel(reviewShoe)}</h1>
+        <p className="mt-3 text-sm text-zinc-400">
+          {reviewLoading
+            ? <><i className="fa-solid fa-circle-notch mr-2 animate-spin" aria-hidden="true" />Loading this shoe&rsquo;s hands…</>
+            : "This shoe's hands are no longer stored on this device. Sign in on the device that played it, or play another shoe."}
+        </p>
+      </Panel>
+    );
+    return (
+      <ShoeReportView
+        eyebrow={`Saved ${reviewShoe.mode === "checkout" ? "checkout" : "coached session"}`}
+        title={savedShoeLabel(reviewShoe)}
+        subtitle={savedShoeRules(reviewShoe)}
+        actions={<GhostButton onClick={closeReview}>Back to setup</GhostButton>}
+        report={reviewShoe.report}
+        shoe={adaptLiveRoundsToSimulatedShoe(reviewRounds)}
+        onBack={closeReview}
+        backLabel="Back to setup"
+      />
+    );
+  }
+
   if (phase === "setup") return (
     <>
       <div className="mb-7">
@@ -1037,6 +1110,47 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
           </div>
         </Panel>
       </div>
+      {savedShoes.length > 0 && (
+        <Panel className="mt-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 className="text-lg font-semibold">Saved shoes</h2>
+            <p className="text-xs text-zinc-500">{savedShoes.length} archived · newest first</p>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">Reopen a past shoe to review its grader and replay every hand.</p>
+          <ul data-testid="saved-shoes" className="mt-4 grid gap-2">
+            {savedShoes.map((shoe) => (
+              <li key={shoe.id} data-testid="saved-shoe-row" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[.06] bg-black/20 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {savedShoeLabel(shoe)}
+                    <span className={`ml-2 rounded-full px-2 py-0.5 text-[.65rem] font-bold uppercase tracking-wide ${shoe.mode === "checkout" ? "bg-amber-300/15 text-amber-200" : "bg-emerald-300/15 text-emerald-200"}`}>{shoe.mode}</span>
+                  </p>
+                  <p className="mt-1 truncate text-xs text-zinc-500">
+                    {savedShoeRules(shoe)} · <span className={shoe.report.netResult >= 0 ? "text-emerald-300" : "text-red-300"}>{shoe.report.netResult >= 0 ? "+" : ""}${shoe.report.netResult.toFixed(2)}</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button className="px-3 text-sm" data-testid="review-saved-shoe" onClick={() => void openSavedShoe(shoe)}>Review</Button>
+                  <GhostButton className="px-3 text-sm" aria-label={`Delete saved shoe from ${savedShoeLabel(shoe)}`} onClick={() => setPendingDelete(shoe)}><i className="fa-solid fa-trash" aria-hidden="true" /></GhostButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+      <ConfirmModal
+        open={Boolean(pendingDelete)}
+        title="Delete this saved shoe?"
+        description={pendingDelete ? `${savedShoeLabel(pendingDelete)} — ${savedShoeRules(pendingDelete)}. Its hands cannot be recovered.` : undefined}
+        confirmLabel="Delete"
+        tone="danger"
+        onConfirm={() => {
+          if (pendingDelete) shoeLibrary.deleteShoe(pendingDelete.id);
+          setSavedShoes(shoeLibrary.shoes());
+          setPendingDelete(undefined);
+        }}
+        onCancel={() => setPendingDelete(undefined)}
+      />
       <Button className="mt-5 hidden lg:inline-flex" onClick={startShoe}>{mode === "checkout" ? "Start checkout" : "Buy in and shuffle"}</Button>
       <MobileActionDock label="Start full shoe">
         <Button className="w-full" onClick={startShoe}>{mode === "checkout" ? "Start checkout" : "Buy in and shuffle"}</Button>
@@ -1045,39 +1159,16 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   );
 
   if (phase === "shoe-end") return (
-    <div className="space-y-5 pb-24 lg:pb-0">
-      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{mode === "checkout" ? "Checkout report" : "Coached session report"}</p>
-          <h1 className="mt-2 text-3xl font-semibold">{completionReason === "ended" ? "Session Ended" : "Full Shoe Complete"}</h1>
-          <p className="mt-2 text-zinc-400">{rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {SURRENDER_RULE_LABEL[surrenderRule]} · {stackShoe ? "TC +6 stacked" : "Random shoe"}</p>
-        </div>
-        <div className="flex gap-2"><GhostButton onClick={() => setPhase("setup")}>Setup</GhostButton><Button onClick={startShoe}>Shuffle another shoe</Button></div>
-      </div>
-
-      <Panel>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            ["Overall accuracy", `${report.accuracy}%`],
-            ["Hands played", report.handsPlayed],
-            ["Duration", durationLabel(report.durationMs)],
-            ["Net result", `${report.netResult >= 0 ? "+" : ""}$${report.netResult.toFixed(2)}`],
-            ["Decisions", report.decisions],
-          ].map(([label, value]) => <div key={label} className="rounded-xl bg-black/20 p-4"><p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}
-        </div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          {(Object.entries(report.categories) as Array<[FullShoeGradingCategory, { correct: number; total: number; accuracy: number }]>).map(([category, result]) => (
-            <div key={category} className="rounded-xl border border-white/[.06] bg-white/[.025] p-4">
-              <p className="text-sm font-semibold">{category}</p>
-              <p className="mt-2 text-3xl font-semibold text-emerald-300">{result.accuracy}%</p>
-              <p className="mt-1 text-xs text-zinc-500">{result.correct} of {result.total} correct</p>
-            </div>
-          ))}
-        </div>
-      </Panel>
-
-      <HandReplayer shoe={replayShoe} onBack={() => setPhase("setup")} backLabel="Back to setup" title="Hand Review" />
-    </div>
+    <ShoeReportView
+      eyebrow={mode === "checkout" ? "Checkout report" : "Coached session report"}
+      title={completionReason === "ended" ? "Session Ended" : "Full Shoe Complete"}
+      subtitle={`${rules.decks}D ${rules.dealerHitsSoft17 ? "H17" : "S17"} · ${SURRENDER_RULE_LABEL[surrenderRule]} · ${stackShoe ? "TC +6 stacked" : "Random shoe"}`}
+      actions={<><GhostButton onClick={() => setPhase("setup")}>Setup</GhostButton><Button onClick={startShoe}>Shuffle another shoe</Button></>}
+      report={report}
+      shoe={replayShoe}
+      onBack={() => setPhase("setup")}
+      backLabel="Back to setup"
+    />
   );
 
   const holeHidden = (phase === "dealing" || phase === "insurance" || phase === "play") && !holePeek;

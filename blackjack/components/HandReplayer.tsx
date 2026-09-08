@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { SimulatedShoe } from "@/lib/blackjack/shoeSimulation";
+import { summarizeHandGrades } from "@/lib/blackjack/fullShoeSession";
 import { GhostButton, Metric, Panel } from "./ui";
 import { PlayingCard } from "./PlayingCard";
 
@@ -20,6 +21,11 @@ export function HandReplayer({
   title?: string;
 }) {
   const [selectedHandIndex, setSelectedHandIndex] = useState(0);
+  const grades = useMemo(() => summarizeHandGrades(shoe.hands), [shoe.hands]);
+  // Shoes replayed from the simulator carry no graded decisions; the strip is
+  // only meaningful when something was actually graded.
+  const gradedHands = grades.filter((grade) => grade.graded > 0);
+  const missedHands = gradedHands.filter((grade) => grade.errors > 0).length;
   const hand = shoe.hands[selectedHandIndex];
   if (!hand) return null;
 
@@ -32,6 +38,55 @@ export function HandReplayer({
         </div>
         <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{shoe.totalHands} hands</span>
       </div>
+
+      {gradedHands.length > 0 && (
+        <div data-testid="hand-grader" className="mb-5 rounded-2xl border border-white/[.06] bg-black/10 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h3 className="font-semibold">Hand Grader</h3>
+            <p className="text-xs text-zinc-500">
+              {missedHands === 0
+                ? `All ${gradedHands.length} graded hands played correctly`
+                : `${missedHands} of ${gradedHands.length} hands had errors`}
+            </p>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">Select a hand to open it below.</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {grades.map((grade) => {
+              const tone = grade.graded === 0
+                ? "border-white/[.08] bg-white/[.03] text-zinc-500"
+                : grade.errors > 0
+                  ? "border-red-400/30 bg-red-400/[.12] text-red-200"
+                  : "border-emerald-400/25 bg-emerald-400/[.1] text-emerald-200";
+              const result = grade.graded === 0
+                ? "not graded"
+                : grade.errors > 0
+                  ? `${grade.errors} error${grade.errors === 1 ? "" : "s"}`
+                  : "all correct";
+              return (
+                <button
+                  key={grade.index}
+                  type="button"
+                  data-testid="hand-grade-tile"
+                  data-round={grade.roundInShoe}
+                  data-grade={grade.graded === 0 ? "ungraded" : grade.errors > 0 ? "error" : "ok"}
+                  aria-label={`Hand ${grade.roundInShoe}, ${result}`}
+                  aria-pressed={grade.index === selectedHandIndex}
+                  onClick={() => setSelectedHandIndex(grade.index)}
+                  className={`pressable grid h-10 w-10 place-content-center rounded-lg border text-[.7rem] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${tone} ${grade.index === selectedHandIndex ? "ring-2 ring-white/50" : ""}`}
+                >
+                  <span>{grade.roundInShoe}</span>
+                  {grade.errors > 0 && <span className="text-[.6rem] font-bold opacity-80">{grade.errors}</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[.7rem] text-zinc-500">
+            <span><i className="fa-solid fa-square mr-1.5 text-emerald-400/70" aria-hidden="true" />All correct</span>
+            <span><i className="fa-solid fa-square mr-1.5 text-red-400/70" aria-hidden="true" />Has errors</span>
+            <span><i className="fa-solid fa-square mr-1.5 text-zinc-600" aria-hidden="true" />Not graded</span>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
         <div>
