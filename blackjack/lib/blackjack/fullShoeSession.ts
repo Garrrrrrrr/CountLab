@@ -4,6 +4,23 @@ import type { Action, Card } from "./types";
 export type FullShoeMode = "coached" | "checkout";
 export type FullShoeGradingCategory = SimulatedDecision["category"];
 export type FullShoeDecision = SimulatedDecision;
+export type BetSpreadPreset = "flat" | "1-8" | "1-12" | "custom";
+export type PositiveTrueCount = 1 | 2 | 3 | 4 | 5 | 6;
+export type BetRamp = Record<PositiveTrueCount, number>;
+
+export const POSITIVE_TRUE_COUNTS = [1, 2, 3, 4, 5, 6] as const;
+
+export const BET_SPREAD_PRESETS: Record<Exclude<BetSpreadPreset, "custom">, BetRamp> = {
+  flat: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 },
+  "1-8": { 1: 2, 2: 4, 3: 6, 4: 8, 5: 8, 6: 8 },
+  "1-12": { 1: 2, 2: 4, 3: 8, 4: 12, 5: 12, 6: 12 },
+};
+
+export function betUnitsAt(ramp: BetRamp, trueCount: number): number {
+  if (trueCount <= 0) return 1;
+  const bucket = Math.min(6, Math.max(1, Math.floor(trueCount))) as PositiveTrueCount;
+  return ramp[bucket];
+}
 
 export interface FullShoeLivePlayerHand {
   cards: Card[];
@@ -40,7 +57,7 @@ export interface FullShoeReport {
   categories: Record<FullShoeGradingCategory, { correct: number; total: number; accuracy: number }>;
 }
 
-const accuracy = (correct: number, total: number) => total ? Math.round((correct / total) * 100) : 100;
+const accuracy = (correct: number, total: number) => total ? Math.round((correct / total) * 100) : 0;
 
 export const emptyFullShoeScore = (): FullShoeScore => ({
   correct: 0,

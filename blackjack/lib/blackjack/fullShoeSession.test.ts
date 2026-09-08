@@ -1,7 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { adaptLiveRoundsToSimulatedShoe, emptyFullShoeScore, gradeFullShoeDecision, playingDecisionCategory, summarizeFullShoeSession } from "./fullShoeSession";
+import { roundDeckEstimate } from "./countingTraining";
+import { trueCount } from "./hiLo";
+import {
+  adaptLiveRoundsToSimulatedShoe,
+  BET_SPREAD_PRESETS,
+  betUnitsAt,
+  emptyFullShoeScore,
+  gradeFullShoeDecision,
+  playingDecisionCategory,
+  summarizeFullShoeSession,
+  type BetRamp,
+} from "./fullShoeSession";
 
 describe("full shoe session", () => {
+  it("never divides the true count by less than the selected deck precision", () => {
+    expect(trueCount(2, roundDeckEstimate(0.12, 1), "floor")).toBe(2);
+    expect(trueCount(2, roundDeckEstimate(0.12, 0.5), "floor")).toBe(4);
+    expect(trueCount(2, roundDeckEstimate(0.12, 0.25), "floor")).toBe(8);
+  });
+
+  it("uses an editable positive-count ramp and caps TC +6 or higher", () => {
+    const ramp: BetRamp = { 1: 1.5, 2: 3, 3: 5, 4: 7, 5: 9, 6: 12 };
+    expect([-4, 0].map((count) => betUnitsAt(ramp, count))).toEqual([1, 1]);
+    expect([1, 2, 3, 4, 5, 6].map((count) => betUnitsAt(ramp, count))).toEqual([1.5, 3, 5, 7, 9, 12]);
+    expect(betUnitsAt(ramp, 9)).toBe(12);
+  });
+
+  it("keeps the existing spread presets as ramp shortcuts", () => {
+    expect(BET_SPREAD_PRESETS.flat).toEqual({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 });
+    expect(BET_SPREAD_PRESETS["1-8"]).toEqual({ 1: 2, 2: 4, 3: 6, 4: 8, 5: 8, 6: 8 });
+    expect(BET_SPREAD_PRESETS["1-12"]).toEqual({ 1: 2, 2: 4, 3: 8, 4: 12, 5: 12, 6: 12 });
+  });
+
+  it("reports zero accuracy when a session ends before any decisions", () => {
+    expect(summarizeFullShoeSession(emptyFullShoeScore(), [], 500, 0)).toMatchObject({ accuracy: 0, decisions: 0 });
+  });
+
   it("separates betting, basic strategy, and deviation grades", () => {
     let score = emptyFullShoeScore();
     score = gradeFullShoeDecision(score, "Betting", true);

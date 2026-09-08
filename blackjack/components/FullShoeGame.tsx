@@ -17,10 +17,15 @@ import { CoachPanel, EvMetrics, type CoachNote } from "./CasinoGameUI";
 import { track } from "@/lib/analytics/track";
 import {
   adaptLiveRoundsToSimulatedShoe,
+  BET_SPREAD_PRESETS,
+  betUnitsAt,
   emptyFullShoeScore,
   gradeFullShoeDecision,
   playingDecisionCategory,
+  POSITIVE_TRUE_COUNTS,
   summarizeFullShoeSession,
+  type BetRamp,
+  type BetSpreadPreset,
   type FullShoeGradingCategory,
   type FullShoeLiveRound,
   type FullShoeMode,
@@ -28,10 +33,11 @@ import {
 import { makeSession, storage, surrenderFlags, SURRENDER_RULE_LABEL, type Mistake, type SurrenderRule } from "@/lib/statistics/storage";
 import { HandReplayer } from "./HandReplayer";
 import { nearestDeckPhoto } from "@/lib/blackjack/deckPhotos";
+import { roundDeckEstimate, type DeckResolution } from "@/lib/blackjack/countingTraining";
 
 type Phase = "setup" | "bet" | "dealing" | "insurance" | "play" | "dealer" | "shoe-end";
 type HandStatus = "playing" | "stood" | "busted" | "surrendered";
-type Spread = "flat" | "1-8" | "1-12";
+type CompletionReason = "shoe-complete" | "ended";
 
 interface PlayerHand {
   cards: Card[];
@@ -52,12 +58,6 @@ const ACTION_NAMES: Record<Action, string> = {
   D: "Double",
   P: "Split",
   R: "Surrender",
-};
-
-const spreadUnits = (spread: Spread, tc: number) => {
-  if (spread === "flat") return 1;
-  if (spread === "1-8") return tc <= 0 ? 1 : [2, 4, 6, 8][Math.min(tc, 4) - 1];
-  return tc <= 0 ? 1 : [2, 4, 8, 12][Math.min(tc, 4) - 1];
 };
 
 const money = (value: number) => (value % 1 === 0 ? `${value}` : value.toFixed(2));
@@ -115,8 +115,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [mode, setMode] = useState<FullShoeMode>("coached");
   const [stackShoe, setStackShoe] = useState(false);
   const [penetration, setPenetration] = useState(5 / 6);
+  const [deckResolution, setDeckResolution] = useState<DeckResolution>(0.5);
   const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
-  const [spread, setSpread] = useState<Spread>("1-8");
+  const [spread, setSpread] = useState<BetSpreadPreset>("1-8");
+  const [betRamp, setBetRamp] = useState<BetRamp>(() => ({ ...BET_SPREAD_PRESETS["1-8"] }));
   const [unit, setUnit] = useState(10);
   const [startingBankroll, setStartingBankroll] = useState(1000);
   const [players, setPlayers] = useState(1);
@@ -142,6 +144,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [stats, setStats] = useState(emptyFullShoeScore);
   const [handHistory, setHandHistory] = useState<FullShoeLiveRound[]>([]);
   const [completedElapsed, setCompletedElapsed] = useState(0);
+  const [completionReason, setCompletionReason] = useState<CompletionReason>("shoe-complete");
   const [visibleIntel, setVisibleIntel] = useState<Record<string, boolean>>({});
   const [holePeek, setHolePeek] = useState(false);
   const [evResult, setEvResult] = useState<LiveEvResult>();
@@ -196,14 +199,16 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   };
 
   const decksRemaining = shoe.current?.decksRemaining() ?? rules.decks;
+  const deckDivisor = roundDeckEstimate(decksRemaining, deckResolution);
   const trayDecksRemaining = Math.max(0, rules.decks - discarded / 52);
   const trayPhoto = useMemo(() => nearestDeckPhoto(rules.decks, trayDecksRemaining), [rules.decks, trayDecksRemaining]);
-  const tc = trueCount(runningCount, Math.max(0.25, decksRemaining), "floor");
-  const expectedWager = unit * spreadUnits(spread, tc);
+  const tc = trueCount(runningCount, deckDivisor, "floor");
+  const expectedUnits = betUnitsAt(betRamp, tc);
+  const expectedWager = unit * expectedUnits;
   const totalWager = wagers.reduce((sum, value) => sum + value, 0);
   const occupiedSpots = wagers.filter(Boolean).length;
   const cardsTotal = rules.decks * 52;
-  const accuracy = stats.total ? Math.round((stats.correct / stats.total) * 100) : 100;
+  const accuracy = stats.total ? Math.round((stats.correct / stats.total) * 100) : 0;
   const betErrors = stats.categories.Betting.total - stats.categories.Betting.correct;
   const playErrors = stats.categories["Basic Strategy"].total + stats.categories.Deviations.total
     - stats.categories["Basic Strategy"].correct - stats.categories.Deviations.correct;
@@ -311,6 +316,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     handHistoryRef.current = [];
     setHandHistory([]);
     setCompletedElapsed(0);
+    setCompletionReason("shoe-complete");
     activeRoundRecord.current = undefined;
     mistakesRef.current = [];
     startedAt.current = Date.now();
@@ -322,14 +328,15 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     setEvLoading(false);
     setRoundMessage(mode === "checkout" ? "Choose your wager to deal the first round." : "Choose your wager. The coach expects the highlighted amount.");
     setPhase("bet");
-    track("full_shoe_started", { decks: rules.decks, penetration, spread, blackjackPayout, startingBankroll, mode, stacked: stackShoe });
+    track("full_shoe_started", { decks: rules.decks, penetration, deckResolution, spread, blackjackPayout, startingBankroll, mode, stacked: stackShoe, ...betRamp });
   };
 
   const draw = () => shoe.current?.deal();
 
-  const completeSession = (rounds: FullShoeLiveRound[], finalBankroll: number) => {
+  const completeSession = (rounds: FullShoeLiveRound[], finalBankroll: number, reason: CompletionReason = "shoe-complete") => {
     if (sessionSaved.current) return;
     sessionSaved.current = true;
+    setCompletionReason(reason);
     const elapsed = Math.max(0, Date.now() - startedAt.current);
     setCompletedElapsed(elapsed);
     const score = statsRef.current;
@@ -349,9 +356,41 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         stacked: stackShoe,
         decks: rules.decks,
         penetration,
+        divisorResolution: deckResolution,
+        completionReason: reason,
+        rampTc1: betRamp[1],
+        rampTc2: betRamp[2],
+        rampTc3: betRamp[3],
+        rampTc4: betRamp[4],
+        rampTc5: betRamp[5],
+        rampTc6Plus: betRamp[6],
       },
       [mode, stackShoe ? "stacked" : "random", surrenderRule],
     ));
+  };
+
+  const endSession = () => {
+    const unresolvedStake = phase === "insurance" || phase === "play"
+      ? hands.reduce((sum, hand) => sum + hand.bet, 0) + insuranceBet
+      : 0;
+    const finalBankroll = bankrollRef.current + unresolvedStake;
+    bankrollRef.current = finalBankroll;
+    setBankroll(finalBankroll);
+    setWagers(Array(5).fill(0));
+    setChipHistory([]);
+    setInsuranceBet(0);
+    setDealing(false);
+    setRoundMessage("Session ended by player.");
+    completeSession(handHistoryRef.current, finalBankroll, "ended");
+    setPhase("shoe-end");
+    track("full_shoe_ended", {
+      round,
+      decisions: statsRef.current.total,
+      handsPlayed: handHistoryRef.current.length,
+      unresolvedStakeRefunded: unresolvedStake,
+      finalBankroll,
+      durationMs: Math.max(0, Date.now() - startedAt.current),
+    });
   };
 
   const settleRound = (settledHands: PlayerHand[], dealerCards: Card[], insurance = insuranceBet) => {
@@ -426,11 +465,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     if (finalBankroll <= 0) {
       setRoundMessage(`${resultMessage} Bankroll exhausted.`);
       setPhase("shoe-end");
-      completeSession(completedHistory, finalBankroll);
+      completeSession(completedHistory, finalBankroll, "shoe-complete");
     } else if (reachedCut) {
       setRoundMessage(`${resultMessage} Cut card reached.`);
       setPhase("shoe-end");
-      completeSession(completedHistory, finalBankroll);
+      completeSession(completedHistory, finalBankroll, "shoe-complete");
     } else {
       setRound((value) => value + 1);
       setRoundMessage(`${resultMessage} Place the next wager when ready.`);
@@ -485,8 +524,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       betOk,
       betOk ? "Bet sizing on target" : "Bet spread mismatch",
       betOk
-        ? `${spread} calls for ${spreadUnits(spread, tc)} unit${spreadUnits(spread, tc) === 1 ? "" : "s"} ($${expectedWager}) on each occupied spot at TC ${signed(tc)}.`
-        : `At TC ${signed(tc)}, your ${spread} ramp calls for $${expectedWager} per occupied spot. Check the highlighted betting circles.`,
+        ? `${spread === "custom" ? "Your custom ramp" : spread} calls for ${expectedUnits} unit${expectedUnits === 1 ? "" : "s"} ($${expectedWager}) on each occupied spot at TC ${signed(tc)}.`
+        : `At TC ${signed(tc)}, your ${spread === "custom" ? "custom" : spread} ramp calls for $${expectedWager} per occupied spot. Check the highlighted betting circles.`,
       "Betting",
       activeBets.map(({ bet }) => `$${money(bet)}`).join(" + "),
       `${activeBets.length} × $${money(expectedWager)}`,
@@ -921,6 +960,11 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
             <Select label="Penetration" value={penetration} onChange={(event) => setPenetration(+event.target.value)}>
               <option value={0.65}>65%</option><option value={0.75}>75%</option><option value={0.8}>80%</option><option value={5 / 6}>5/6 (83%)</option><option value={0.85}>85%</option>
             </Select>
+            <Select label="Deck divisor precision" value={deckResolution} onChange={(event) => setDeckResolution(+event.target.value as DeckResolution)}>
+              <option value={1}>Full deck</option>
+              <option value={0.5}>Half deck</option>
+              <option value={0.25}>Quarter deck</option>
+            </Select>
           </div>
         </Panel>
         <Panel>
@@ -949,10 +993,34 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} player{value === 1 ? "" : "s"}</option>)}
             </Select>
             <NumberField label="One unit" prefix="$" min={1} step={5} value={unit} onValueChange={setUnit} />
-            <Select label="Bet spread" value={spread} onChange={(event) => setSpread(event.target.value as Spread)}>
-              <option value="flat">Flat bet · 1 unit</option><option value="1-8">1–8 · 1/2/4/6/8</option><option value="1-12">1–12 · 1/2/4/8/12</option>
+            <Select label="Bet spread" value={spread} onChange={(event) => {
+              const nextSpread = event.target.value as BetSpreadPreset;
+              setSpread(nextSpread);
+              if (nextSpread !== "custom") setBetRamp({ ...BET_SPREAD_PRESETS[nextSpread] });
+            }}>
+              <option value="flat">Flat bet · 1 unit</option>
+              <option value="1-8">1–8 · 1/2/4/6/8/8/8</option>
+              <option value="1-12">1–12 · 1/2/4/8/12/12/12</option>
+              <option value="custom">Custom ramp</option>
             </Select>
-            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">Ramp levels apply at TC ≤0, +1, +2, +3, and +4 or higher. {mode === "coached" ? "The coach flags missed increases and oversized bets." : "Checkout scores each wager without revealing the answer."}</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {POSITIVE_TRUE_COUNTS.map((count) => (
+                <NumberField
+                  key={count}
+                  label={count === 6 ? "TC +6 or higher" : `TC +${count}`}
+                  ariaLabel={count === 6 ? "TC +6 or higher units" : `TC +${count} units`}
+                  min={0.5}
+                  max={100}
+                  step={0.5}
+                  value={betRamp[count]}
+                  onValueChange={(value) => {
+                    setBetRamp((currentRamp) => ({ ...currentRamp, [count]: value }));
+                    setSpread("custom");
+                  }}
+                />
+              ))}
+            </div>
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">TC 0 or lower always uses 1 unit. Set the unit multiplier for every positive true count; TC +6 also applies above +6. {mode === "coached" ? "The coach flags missed increases and oversized bets." : "Checkout scores each wager without revealing the answer."}</div>
           </div>
         </Panel>
       </div>
@@ -967,8 +1035,8 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     <div className="space-y-5 pb-24 lg:pb-0">
       <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{mode === "checkout" ? "Checkout report" : "Coached shoe report"}</p>
-          <h1 className="mt-2 text-3xl font-semibold">Full Shoe Complete</h1>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{mode === "checkout" ? "Checkout report" : "Coached session report"}</p>
+          <h1 className="mt-2 text-3xl font-semibold">{completionReason === "ended" ? "Session Ended" : "Full Shoe Complete"}</h1>
           <p className="mt-2 text-zinc-400">{rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {SURRENDER_RULE_LABEL[surrenderRule]} · {stackShoe ? "TC +6 stacked" : "Random shoe"}</p>
         </div>
         <div className="flex gap-2"><GhostButton onClick={() => setPhase("setup")}>Setup</GhostButton><Button onClick={startShoe}>Shuffle another shoe</Button></div>
@@ -1005,7 +1073,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     { label: phase === "bet" ? "Available" : "In action", value: phase === "bet" ? `$${(bankroll - totalWager).toFixed(2)}` : `$${hands.reduce((sum, hand) => sum + hand.bet, 0).toFixed(2)}` },
     { label: "Running count", value: signed(runningCount), intel: "rc" },
     { label: "True count", value: signed(tc), intel: "tc" },
-    { label: "Decks left", value: decksRemaining.toFixed(2), intel: "decks" },
+    { label: "TC divisor", value: money(deckDivisor), intel: "decks" },
     { label: mode === "checkout" ? "Session mode" : "Coach accuracy", value: mode === "checkout" ? "Checkout" : `${accuracy}%` },
     { label: "Cards discarded", value: discarded, intel: "discard" },
   ];
@@ -1013,10 +1081,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     <div className="pb-24 lg:pb-0 xl:-mx-8 2xl:-mx-8">
       <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{mode === "checkout" ? "Checkout" : "Coached"} · Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread}</p>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{mode === "checkout" ? "Checkout" : "Coached"} · Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread === "custom" ? "custom ramp" : spread}</p>
           <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Full Shoe Blackjack</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-2"><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} title="Toggle fast dealing" disabled={dealing} onClick={() => setFastMode((value) => !value)} className={`pressable flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40 ${fastMode ? "border-amber-300/40 bg-amber-300/15 text-amber-200" : "border-white/10 bg-white/[.05] text-zinc-400"}`}><i className="fa-solid fa-bolt" aria-hidden="true" /><span className="hidden sm:inline">Fast</span><span className={`h-2 w-2 rounded-full ${fastMode ? "bg-amber-300" : "bg-zinc-600"}`} /></button><GhostButton disabled={dealing} className="px-3 text-sm sm:px-4" onClick={() => setPhase("setup")}>End</GhostButton></div>
+        <div className="flex shrink-0 items-center gap-2"><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} title="Toggle fast dealing" disabled={dealing} onClick={() => setFastMode((value) => !value)} className={`pressable flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40 ${fastMode ? "border-amber-300/40 bg-amber-300/15 text-amber-200" : "border-white/10 bg-white/[.05] text-zinc-400"}`}><i className="fa-solid fa-bolt" aria-hidden="true" /><span className="hidden sm:inline">Fast</span><span className={`h-2 w-2 rounded-full ${fastMode ? "bg-amber-300" : "bg-zinc-600"}`} /></button><GhostButton disabled={dealing} className="px-3 text-sm sm:px-4" onClick={endSession}>End</GhostButton></div>
       </div>
 
       <div className="casino-stat-strip mobile-scroll-rail -mx-4 mb-4 flex gap-px overflow-x-auto px-4 py-1 sm:mx-0 sm:mb-5 sm:grid sm:grid-cols-4 sm:overflow-hidden sm:px-1 sm:gap-px xl:grid-cols-7">
@@ -1041,9 +1109,18 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
             </div>
 
             <div className="casino-table-hardware pointer-events-none absolute inset-x-10 top-4 z-[1] hidden items-start justify-between xl:inset-x-12 sm:flex" aria-hidden="true">
-              <div className="casino-hardware-unit casino-discard-tray-mini">
+              <div className="casino-hardware-unit casino-discard-tray-mini casino-real-discard-tray">
                 <span className="casino-hardware-label">Discard</span>
-                <div className="casino-discard-cards" style={{ height: `${Math.max(5, Math.min(72, (discarded / Math.max(1, cardsTotal * penetration)) * 72))}%` }} />
+                {trayPhoto ? <Image
+                  key={trayPhoto.file}
+                  src={`/deck-estimation/${trayPhoto.file}`}
+                  alt=""
+                  fill
+                  sizes="100px"
+                  unoptimized
+                  data-testid="full-shoe-table-discard-photo"
+                  className="rounded-[.25rem] object-contain"
+                /> : <span data-testid="full-shoe-table-empty-tray" className="casino-empty-tray-label">Empty</span>}
               </div>
               <div className="casino-chip-rack-mini">
                 {chipValues.slice(1).map((value) => <span key={value} className={chipColorClasses(value)} />)}
@@ -1081,11 +1158,12 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
                   className={`casino-seat relative min-h-44 w-40 min-w-40 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:absolute sm:left-[var(--spot-left)] sm:top-[var(--spot-top)] sm:min-h-56 sm:w-40 sm:min-w-0 sm:-translate-x-1/2 sm:-translate-y-1/2 xl:min-h-72 xl:w-44 xl:px-2 xl:py-4 2xl:w-48 ${activeHere ? "casino-seat-active" : selected ? "casino-seat-selected" : ""}`}
                 >
                   <p className="mb-2 text-[.58rem] font-bold uppercase tracking-[.18em] text-emerald-50/55">P{spotOwners[spot] + 1} · Seat {spot + 1}</p>
-                  {spotHands.length > 0 ? <div className="flex flex-wrap justify-center gap-1">{spotHands.map((hand) => {
+                  {spotHands.length > 0 ? <div data-testid="full-shoe-spot-hands" className={spotHands.length > 1 ? "grid w-full grid-cols-2 items-start gap-x-1 gap-y-2" : "flex justify-center"}>{spotHands.map((hand) => {
                     const handIndex = hands.indexOf(hand);
-                    return <div key={handIndex} className={phase === "play" && handIndex === activeHand ? "rounded-xl bg-amber-200/10 p-1" : "p-1"}>
-                      <div className="flex justify-center -space-x-7 lg:-space-x-10 2xl:-space-x-12">{hand.cards.map((card, cardIndex) => <div key={`${card.rank}-${card.suit}-${cardIndex}`} style={cardCascade(cardIndex, arc.rotate)}>
-                        <PlayingCard card={card} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0 : 0} />
+                    const splitLayout = spotHands.length > 1;
+                    return <div key={handIndex} data-testid="full-shoe-player-hand" className={`min-w-0 p-1 ${phase === "play" && handIndex === activeHand ? "rounded-xl bg-amber-200/10" : ""}`}>
+                      <div className={`flex max-w-full justify-center ${splitLayout ? "-space-x-8" : "-space-x-7 lg:-space-x-10 2xl:-space-x-12"}`}>{hand.cards.map((card, cardIndex) => <div key={`${card.rank}-${card.suit}-${cardIndex}`} style={cardCascade(cardIndex, arc.rotate)}>
+                        <PlayingCard card={card} size={splitLayout ? "split" : "table"} animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? cardIndex === 0 ? spotOrder : cardIndex === 1 ? occupiedSpots + 1 + spotOrder : 0 : 0} />
                       </div>)}</div>
                       <p className="mt-1 text-[.62rem] font-semibold">${money(hand.bet)} · {hand.awaitingSplitCard ? "Waiting" : handLabel(hand.cards)}</p>
                       {hand.awaitingSplitCard ? <span className="text-[.55rem] font-bold uppercase text-amber-200/70">Next to deal</span> : hand.status !== "playing" && <span className="text-[.55rem] font-bold uppercase text-emerald-100/55">{hand.status}</span>}

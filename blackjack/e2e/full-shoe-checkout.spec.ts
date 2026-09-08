@@ -93,7 +93,95 @@ test("six-deck Full Shoe moves from an empty tray to a real tray photo", async (
   }
 
   const photo = game.getByTestId("full-shoe-discard-photo");
+  const tablePhoto = game.getByTestId("full-shoe-table-discard-photo");
   await expect(photo).toBeVisible();
+  await expect(tablePhoto).toBeVisible();
   await expect(photo).toHaveAttribute("src", /\/deck-estimation\/images\/tray-\d{4}\.jpg/);
+  await expect(tablePhoto).toHaveAttribute("src", /\/deck-estimation\/images\/tray-\d{4}\.jpg/);
   await expect(game.getByTestId("full-shoe-empty-tray")).toHaveCount(0);
+  await expect(game.getByTestId("full-shoe-table-empty-tray")).toHaveCount(0);
+});
+
+test("custom ramp values grade and persist when the player ends the session early", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "One desktop session-end check is sufficient.");
+  test.setTimeout(30_000);
+  await prepareGuest(page);
+  await page.goto("/training/full-shoe/");
+  const game = page.getByRole("main");
+  const spread = game.locator("label").filter({ hasText: /^Bet spread/ }).locator("select");
+  const divisorPrecision = game.locator("label").filter({ hasText: /^Deck divisor precision/ }).locator("select");
+
+  await expect(divisorPrecision).toHaveValue("0.5");
+  await expect(divisorPrecision.locator("option")).toHaveCount(3);
+  await expect(divisorPrecision.locator("option")).toHaveText(["Full deck", "Half deck", "Quarter deck"]);
+  await expect(game.getByLabel("TC +1 units")).toHaveValue("2");
+  await expect(game.getByLabel("TC +5 units")).toHaveValue("8");
+  await expect(game.getByLabel("TC +6 or higher units")).toHaveValue("8");
+  await game.getByLabel("TC +1 units").fill("3");
+  await game.getByLabel("TC +1 units").press("Tab");
+  await expect(spread).toHaveValue("custom");
+
+  await game.locator("label").filter({ hasText: /^Mode/ }).locator("select").selectOption("checkout");
+  await game.getByLabel("Card animations").uncheck();
+  await game.getByRole("button", { name: "Start checkout" }).click();
+  await game.getByRole("button", { name: "$5", exact: true }).click();
+  await game.locator("button:visible:not(:disabled)").filter({ hasText: /^Deal/ }).first().click();
+
+  const end = game.getByRole("button", { name: "End", exact: true });
+  await expect(end).toBeEnabled();
+  await end.click();
+  await expect(game.getByRole("heading", { name: "Session Ended" })).toBeVisible();
+  await expect(game.getByText("0 of 1 correct").first()).toBeVisible();
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hilo:sessions") || "[]"));
+  expect(saved[0]).toMatchObject({
+    drill: "Full Shoe",
+    questions: 1,
+    correct: 0,
+    metrics: { completionReason: "ended", mode: "checkout", rampTc1: 3, rampTc5: 8, rampTc6Plus: 8 },
+  });
+});
+
+test("resplitting four hands keeps every hand inside its table seat", async ({ page }) => {
+  test.setTimeout(30_000);
+  await prepareGuest(page);
+  await page.goto("/training/full-shoe/");
+  const game = page.getByRole("main");
+
+  await game.locator("label").filter({ hasText: /^Decks/ }).locator("select").selectOption("1");
+  await game.getByLabel("Card animations").uncheck();
+  await page.evaluate(() => {
+    let seed = 413_895;
+    Math.random = () => ((seed = (seed * 1_664_525 + 1_013_904_223) >>> 0) / 4_294_967_296);
+  });
+  await game.getByRole("button", { name: "Buy in and shuffle" }).click();
+  await game.getByRole("button", { name: "$5", exact: true }).click();
+  await game.getByRole("button", { name: "$5", exact: true }).click();
+  await game.locator("button:visible:not(:disabled)").filter({ hasText: /^Deal/ }).first().click();
+
+  await game.getByRole("button", { name: "Split", exact: true }).click();
+  await game.getByRole("button", { name: "Split", exact: true }).click();
+  await game.getByRole("button", { name: "Stand", exact: true }).click();
+  await game.getByRole("button", { name: "Split", exact: true }).click();
+
+  const seat = game.locator('[data-table-spot="2"]');
+  const handLayout = seat.getByTestId("full-shoe-spot-hands");
+  await expect(seat.getByTestId("full-shoe-player-hand")).toHaveCount(4);
+  const geometry = await handLayout.evaluate((layout) => ({
+    clientWidth: layout.clientWidth,
+    scrollWidth: layout.scrollWidth,
+    hands: Array.from(layout.querySelectorAll('[data-testid="full-shoe-player-hand"]')).map((hand) => {
+      const rect = hand.getBoundingClientRect();
+      return { left: rect.left, right: rect.right };
+    }),
+    seat: (() => {
+      const rect = layout.closest('[data-table-spot]')!.getBoundingClientRect();
+      return { left: rect.left, right: rect.right };
+    })(),
+  }));
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1);
+  for (const hand of geometry.hands) {
+    expect(hand.left).toBeGreaterThanOrEqual(geometry.seat.left - 1);
+    expect(hand.right).toBeLessThanOrEqual(geometry.seat.right + 1);
+  }
 });

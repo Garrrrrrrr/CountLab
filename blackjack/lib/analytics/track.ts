@@ -358,6 +358,9 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "full_shoe_started":
       analytics.track("feature_opened", { feature: "blackjack", category: "game" });
       return;
+    case "full_shoe_ended":
+      analytics.track("feature_completed", { feature: "blackjack", category: "game", duration_ms: number(properties, "durationMs") });
+      return;
     default:
       if (process.env.NODE_ENV !== "production") console.warn(`[analytics] unmapped legacy event: ${event}`);
   }

@@ -381,6 +381,10 @@ kbd {
   background: linear-gradient(135deg, rgba(226,239,229,.11), rgba(8,17,13,.12));
   box-shadow: inset 0 0 0 1px rgba(0,0,0,.22);
 }
+.floor .casino-real-discard-tray {
+  width: 6.25rem;
+  background: #080d0a;
+}
 .floor .casino-discard-cards {
   position: absolute;
   right: .5rem;
@@ -391,6 +395,16 @@ kbd {
   background: repeating-linear-gradient(0deg, #f5f1e6 0 2px, #9d9d96 2px 3px);
   box-shadow: 0 0 8px rgba(0,0,0,.35);
   transition: height .4s ease;
+}
+.floor .casino-empty-tray-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(229,239,224,.28);
+  font: 700 .48rem/1 ui-sans-serif, sans-serif;
+  letter-spacing: .18em;
+  text-transform: uppercase;
 }
 .floor .casino-chip-rack-mini {
   display: flex;

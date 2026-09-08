@@ -18,7 +18,7 @@ export function PlayingCard({
 }: {
   card?: Card;
   hidden?: boolean;
-  size?: "sm" | "md" | "lg" | "table";
+  size?: "split" | "sm" | "md" | "lg" | "table";
   animated?: boolean;
   fast?: boolean;
   dealIndex?: number;
@@ -27,13 +27,15 @@ export function PlayingCard({
   const scale =
       size === "table"
         ? "h-20 w-14 text-base lg:h-28 lg:w-20 lg:text-2xl 2xl:h-32 2xl:w-24 2xl:text-3xl"
+        : size === "split"
+          ? "h-16 w-11 text-sm"
         : size === "sm"
         ? "h-20 w-14 text-base"
         : size === "lg"
           ? "h-44 w-32 text-4xl"
           : "h-32 w-24 text-2xl",
     cornerOffset =
-      size === "sm" || size === "table" ? "p-1.5 lg:p-2" : "p-2";
+      size === "split" || size === "sm" || size === "table" ? "p-1.5 lg:p-2" : "p-2";
 
   if (hidden || !card)
     return (
