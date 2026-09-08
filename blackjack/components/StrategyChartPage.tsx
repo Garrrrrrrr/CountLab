@@ -131,7 +131,7 @@ function settingsRules(): StrategyChartRules {
     decks: [1, 2, 4, 6, 8].includes(settings.decks) ? settings.decks : 6,
     dealerHitsSoft17: settings.dealerHitsSoft17,
     doubleAfterSplit: settings.doubleAfterSplit,
-    surrender: settings.lateSurrender ? "late" : "none",
+    surrender: settings.surrender,
   };
 }
 
@@ -302,12 +302,28 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
   const [tab, setTab] = useState<ChartTab>(initialTab);
   const [section, setSection] = useState<SectionTab>("hard");
   const [h17Section, setH17Section] = useState<ChartSectionId>("hard");
-  const [h17Surrender, setH17Surrender] = useState<ChartSurrenderRule>("late");
   const [rules, setRules] = useState<StrategyChartRules>(DEFAULT_RULES);
-  const h17Sections = chartSections(h17Surrender);
+  // The H17 chart has no no-surrender variant; a table without the rule reads
+  // the late-surrender tables and simply never takes those cells.
+  const h17Sections = chartSections(rules.surrender === "early" ? "early10" : "late");
+
+  /**
+   * The surrender rule is the one control here that is saved rather than a
+   * scratch view. Decks, the dealer rule and the rest stay local so the chart
+   * can be poked at without disturbing the drills, but the surrender rule is
+   * the table you actually sit at, so it persists and follows the account.
+   */
+  const setSurrender = (surrender: StrategyChartRules["surrender"]) => {
+    setRules((current) => ({ ...current, surrender }));
+    storage.saveSettings({ ...storage.settings(), surrender });
+  };
 
   useEffect(() => {
+    const load = () => setRules((current) => ({ ...current, surrender: storage.settings().surrender }));
     setRules(settingsRules());
+    // Another tab, or the settings page, can change the rule while this is open.
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
   }, []);
   useEffect(() => {
     setTab(initialTab);
@@ -406,7 +422,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           <Select
             label="Surrender"
             value={rules.surrender}
-            onChange={(event) => setRules((current) => ({ ...current, surrender: event.target.value as StrategyChartRules["surrender"] }))}
+            onChange={(event) => setSurrender(event.target.value as StrategyChartRules["surrender"])}
           >
             <option value="none">No surrender</option>
             <option value="late">Late surrender</option>
@@ -520,10 +536,11 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             </div>
             <p className="mt-2 text-sm text-[var(--ink-muted)]">Fixed 6-deck H17 rules with DAS. Gold cells are Hi-Lo deviations; the suffix shows whether the play changes at that count or beyond.</p>
             <div className="mt-3 max-w-xs">
+              {/* The same saved rule the strategy tab and the drills read. */}
               <Select
                 label="Surrender rule"
-                value={h17Surrender}
-                onChange={(event) => setH17Surrender(event.target.value as ChartSurrenderRule)}
+                value={rules.surrender === "early" ? "early10" : "late"}
+                onChange={(event) => setSurrender(event.target.value === "early10" ? "early" : "late")}
               >
                 {(Object.keys(CHART_SURRENDER_LABEL) as ChartSurrenderRule[]).map((rule) => (
                   <option key={rule} value={rule}>{CHART_SURRENDER_LABEL[rule]}</option>
@@ -553,7 +570,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
 
           <p className="text-xs leading-5 text-[var(--ink-muted)]">
             Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition: soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4.
-            {h17Surrender === "early10" && " Under early surrender the ten column of the surrender table is Stanford Wong, Professional Blackjack, table 32; the 8, 9 and ace columns are the Blackjack Apprenticeship chart as printed, since the two rules only differ where the dealer can hold a natural."}
+            {rules.surrender === "early" && " Under early surrender the ten column of the surrender table is Stanford Wong, Professional Blackjack, table 32; the 8, 9 and ace columns are the Blackjack Apprenticeship chart as printed, since the two rules only differ where the dealer can hold a natural."}
           </p>
         </div>
       )}

@@ -205,7 +205,7 @@ describe("presets", () => {
   });
 
   it("grades against the saved training rules", () => {
-    const settings = { ...DEFAULT_SETTINGS, decks: 8, dealerHitsSoft17: false, lateSurrender: false, penetration: 0.85 };
+    const settings = { ...DEFAULT_SETTINGS, decks: 8, dealerHitsSoft17: false, surrender: "none" as const, penetration: 0.85 };
     const [checkout] = examPresets(settings);
     expect(checkout.rules.decks).toBe(8);
     expect(checkout.rules.dealerHitsSoft17).toBe(false);

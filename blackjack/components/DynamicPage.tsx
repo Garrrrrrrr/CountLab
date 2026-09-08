@@ -10,6 +10,8 @@ import {
   Session,
   Settings,
   storage,
+  SURRENDER_RULES,
+  SURRENDER_RULE_LABEL,
 } from "@/lib/statistics/storage";
 import { computeStreak, practiceHeatmap, unlockedMilestones } from "@/lib/statistics/streaks";
 import { evaluateChecklist } from "@/lib/blackjack/practiceChecklist";
@@ -354,11 +356,11 @@ function SettingsPage() {
     setS((x) => ({ ...x, [k]: v }));
     setSaved(false);
   };
-  const preset = s.decks === 6 && s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.lateSurrender
+  const preset = s.decks === 6 && s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.surrender === "late"
     ? "6d-h17"
-    : s.decks === 6 && !s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.lateSurrender
+    : s.decks === 6 && !s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.surrender === "late"
       ? "6d-s17"
-      : s.decks === 8 && s.dealerHitsSoft17 && s.doubleAfterSplit && !s.resplitAces && !s.lateSurrender
+      : s.decks === 8 && s.dealerHitsSoft17 && s.doubleAfterSplit && !s.resplitAces && s.surrender === "none"
         ? "8d-h17"
         : "custom";
   return (
@@ -391,7 +393,7 @@ function SettingsPage() {
                   dealerHitsSoft17: value !== "6d-s17",
                   doubleAfterSplit: true,
                   resplitAces: value !== "8d-h17",
-                  lateSurrender: value !== "8d-h17",
+                  surrender: value === "8d-h17" ? "none" : "late",
                 }));
                 setSaved(false);
               }}
@@ -441,14 +443,24 @@ function SettingsPage() {
               ))}
             </Select>
           </div>
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-            {([
-              ["doubleAfterSplit", "Double after split"],
-              ["resplitAces", "Resplit aces"],
-              ["lateSurrender", "Late surrender"],
-            ] as const).map(([key, label]) => (
-              <Switch key={key} label={label} checked={s[key]} onChange={(value) => update(key, value)} />
-            ))}
+          <div className="mt-4 grid gap-4">
+            <Select
+              label="Surrender"
+              value={s.surrender}
+              onChange={(event) => update("surrender", event.target.value as Settings["surrender"])}
+            >
+              {SURRENDER_RULES.map((rule) => (
+                <option key={rule} value={rule}>{SURRENDER_RULE_LABEL[rule]}</option>
+              ))}
+            </Select>
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              {([
+                ["doubleAfterSplit", "Double after split"],
+                ["resplitAces", "Resplit aces"],
+              ] as const).map(([key, label]) => (
+                <Switch key={key} label={label} checked={s[key]} onChange={(value) => update(key, value)} />
+              ))}
+            </div>
           </div>
         </Panel>
         <Panel>

@@ -53,6 +53,27 @@ export interface DrillProgress<T = unknown> {
   state: T;
   updatedAt: string;
 }
+/**
+ * The surrender rule the table deals. "early" is early surrender against a ten
+ * with late surrender everywhere else, which is how the rule is dealt — the two
+ * are additive rather than exclusive.
+ */
+export type SurrenderRule = "none" | "late" | "early";
+
+export const SURRENDER_RULES: readonly SurrenderRule[] = ["none", "late", "early"];
+
+export const SURRENDER_RULE_LABEL: Record<SurrenderRule, string> = {
+  none: "No surrender",
+  late: "Late surrender",
+  early: "Early surrender vs 10",
+};
+
+/** The two flags the strategy engine wants, from the one stored rule. */
+export const surrenderFlags = (rule: SurrenderRule) => ({
+  lateSurrender: rule !== "none",
+  earlySurrenderVsTen: rule === "early",
+});
+
 export interface Settings {
   theme: "system" | "light" | "dark";
   decks: number;
@@ -64,7 +85,7 @@ export interface Settings {
   dealerHitsSoft17: boolean;
   doubleAfterSplit: boolean;
   resplitAces: boolean;
-  lateSurrender: boolean;
+  surrender: SurrenderRule;
   countingPreset: "one-deck-speed" | "two-card-cancellation" | "six-deck-casino" | "recovery";
   countingFeedback: "immediate" | "end";
   countingSessionQuestions: 5 | 10 | 20;
@@ -81,12 +102,35 @@ export const DEFAULT_SETTINGS: Settings = {
   dealerHitsSoft17: true,
   doubleAfterSplit: true,
   resplitAces: true,
-  lateSurrender: true,
+  surrender: "late",
   countingPreset: "six-deck-casino",
   countingFeedback: "immediate",
   countingSessionQuestions: 10,
   penetration: 0.75,
 };
+/**
+ * What is actually on disk, which is not always what `Settings` says.
+ *
+ * `surrender` replaced a `lateSurrender` boolean. Every settings blob written
+ * before that — locally and in the synced `settings.data` column, which is
+ * stored opaquely and so was never migrated server-side — still carries the
+ * boolean and no `surrender` key.
+ */
+type StoredSettings = Partial<Settings> & { lateSurrender?: boolean };
+
+/**
+ * The stored rule, falling back through the legacy boolean before the default.
+ *
+ * Without the fallback everyone who had turned surrender off would silently get
+ * late surrender back on their first load after this shipped, and the reverse
+ * for anyone whose table had none.
+ */
+function storedSurrenderRule(stored: StoredSettings): SurrenderRule {
+  if (stored.surrender && SURRENDER_RULES.includes(stored.surrender)) return stored.surrender;
+  if (typeof stored.lateSurrender === "boolean") return stored.lateSurrender ? "late" : "none";
+  return DEFAULT_SETTINGS.surrender;
+}
+
 const SESSION_KEY = "hilo:sessions",
   SETTINGS_KEY = "hilo:settings",
   PROGRESS_PREFIX = "hilo:progress:";
@@ -275,12 +319,13 @@ export const storage = {
   settings(): Settings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
     try {
-      return {
-        ...DEFAULT_SETTINGS,
-        ...(JSON.parse(
-          localStorage.getItem(SETTINGS_KEY) || "{}",
-        ) as Partial<Settings>),
-      };
+      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") as StoredSettings;
+      // The legacy key is read but never spread through: `saveSettings` writes
+      // back whatever this returns, so carrying it would keep a dead field
+      // alive in every future blob, local and synced.
+      const rest = { ...stored };
+      delete rest.lateSurrender;
+      return { ...DEFAULT_SETTINGS, ...rest, surrender: storedSurrenderRule(stored) };
     } catch {
       return DEFAULT_SETTINGS;
     }

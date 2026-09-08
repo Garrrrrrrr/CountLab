@@ -17,7 +17,7 @@ export function examRulesFromSettings(settings: Settings = DEFAULT_SETTINGS): Ex
     dealerHitsSoft17: settings.dealerHitsSoft17,
     doubleAfterSplit: settings.doubleAfterSplit,
     resplitAces: settings.resplitAces,
-    lateSurrender: settings.lateSurrender,
+    lateSurrender: settings.surrender !== "none",
     penetration: settings.penetration,
     rounding: settings.rounding,
     deckResolution: 0.5,

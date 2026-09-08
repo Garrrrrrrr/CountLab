@@ -36,7 +36,6 @@ type H17Saved = {
   choice: SectionChoice;
   feedback: Feedback;
   startedAt: number;
-  surrender?: ChartSurrenderRule;
 };
 
 export function H17ChartDrill() {
@@ -48,7 +47,15 @@ export function H17ChartDrill() {
   }, []);
 
   const [choice, setChoice] = useState<SectionChoice>(saved?.choice ?? "all");
-  const [surrender, setSurrender] = useState<ChartSurrenderRule>(saved?.surrender ?? "late");
+  // The surrender rule is a saved setting, not drill state, so it is the same
+  // choice made on the reference chart and survives a closed tab.
+  const [surrender, setSurrender] = useState<ChartSurrenderRule>("late");
+  useEffect(() => {
+    const load = () => setSurrender(storage.settings().surrender === "early" ? "early10" : "late");
+    load();
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
   const allSections = chartSections(surrender);
   const sections = useMemo<readonly ChartSection[]>(
     () => (choice === "all" ? allSections : allSections.filter((section) => section.id === choice)),
@@ -100,7 +107,7 @@ export function H17ChartDrill() {
   }, []);
 
   useDrillProgress("H17 Chart", !graded, {
-    entries, choice, feedback, startedAt, surrender,
+    entries, choice, feedback, startedAt,
   } satisfies H17Saved);
 
   useEffect(() => { setFocus(0); }, [choice, surrender]);
@@ -248,7 +255,7 @@ export function H17ChartDrill() {
             </Select>
           </div>
           <div className="max-w-xs">
-            <Select label="Surrender rule" value={surrender} onChange={(event) => setSurrender(event.target.value as ChartSurrenderRule)}>
+            <Select label="Surrender rule" value={surrender} onChange={(event) => storage.saveSettings({ ...storage.settings(), surrender: event.target.value === "early10" ? "early" : "late" })}>
               {(Object.keys(CHART_SURRENDER_LABEL) as ChartSurrenderRule[]).map((rule) => (
                 <option key={rule} value={rule}>{CHART_SURRENDER_LABEL[rule]}</option>
               ))}

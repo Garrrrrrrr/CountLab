@@ -3,7 +3,10 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useRef, useState } from "react";
-import { DEFAULT_SETTINGS, storage } from "@/lib/statistics/storage";
+import { DEFAULT_SETTINGS, storage, SURRENDER_RULE_LABEL, type SurrenderRule } from "@/lib/statistics/storage";
+
+/** The rules badge is tight on width, so the rule gets an abbreviation rather than its full label. */
+const SURRENDER_BADGE: Record<SurrenderRule, string> = { none: "No surrender", late: "LS", early: "ES10" };
 import { computeStreak } from "@/lib/statistics/streaks";
 import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
 import { isStandalone, readPwaEnv } from "@/lib/pwa/standalone";
@@ -224,12 +227,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           )}
           <Link
             href="/settings"
-            aria-label={`Training default rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${rules.lateSurrender ? "late surrender" : "no surrender"}. Analysis pages carry their own rules. Open settings.`}
+            aria-label={`Training default rules: ${rules.dealerHitsSoft17 ? "H17" : "S17"}, ${rules.doubleAfterSplit ? "DAS" : "No DAS"}, ${rules.resplitAces ? "RSA" : "No RSA"}, ${SURRENDER_RULE_LABEL[rules.surrender].toLowerCase()}. Analysis pages carry their own rules. Open settings.`}
             className="pressable grid min-h-11 shrink-0 place-items-center rounded-full border border-white/[.07] bg-white/[.05] px-3 text-[.7rem] font-semibold tracking-[.04em] text-zinc-300 hover:bg-white/[.09]"
           >
             <span className="sm:hidden">{rules.dealerHitsSoft17 ? "H17" : "S17"}</span>
             <span className="hidden sm:inline">
-              <span className="mr-1.5 text-zinc-500">Drills</span>{rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {rules.lateSurrender ? "LS" : "No surrender"}
+              <span className="mr-1.5 text-zinc-500">Drills</span>{rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {SURRENDER_BADGE[rules.surrender]}
             </span>
           </Link>
         </header>

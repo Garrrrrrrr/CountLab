@@ -29,7 +29,7 @@ import { DEVIATION_ACTION_NAMES, DeviationAction } from "@/lib/blackjack/deviati
 import { runningCount, signed, trueCount } from "@/lib/blackjack/hiLo";
 import { BlackjackShoe } from "@/lib/blackjack/shoe";
 import { Action, BlackjackRules, Card } from "@/lib/blackjack/types";
-import { CountingErrorCategory, DrillType, makeSession, Mistake, Session, storage } from "@/lib/statistics/storage";
+import { CountingErrorCategory, DrillType, makeSession, Mistake, Session, storage, surrenderFlags } from "@/lib/statistics/storage";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { consumePracticeFocus, dueItemKeys, recordAnswer, setPracticeFocus } from "@/lib/statistics/spacedRepetition";
 import { track } from "@/lib/analytics/track";
@@ -288,7 +288,7 @@ export function FullShoeDrill() {
   const [decks, setDecks] = useState(saved.decks), [spots, setSpots] = useState(3), [penetration, setPenetration] = useState(saved.penetration), [baseBet, setBaseBet] = useState(10), [spread, setSpread] = useState<"1-4" | "1-8" | "1-12">("1-8"), [wongOut, setWongOut] = useState(true), [backCount, setBackCount] = useState(false), [burnCard, setBurnCard] = useState(true);
   const [phase, setPhase] = useState<ShoePhase>("setup"), shoe = useRef<BlackjackShoe | undefined>(undefined), [round, setRound] = useState<SimulatedRound | undefined>(undefined), [insuranceResolved, setInsuranceResolved] = useState(false), [rounds, setRounds] = useState(0), [rc, setRc] = useState(0), [answers, setAnswers] = useState<RoundAnswers>({ deck: "", tc: "", bet: "", count: "" });
   const [correct, setCorrect] = useState(0), [questions, setQuestions] = useState(0), [mistakes, setMistakes] = useState<Mistake[]>([]), [categories, setCategories] = useState<Record<string, { correct: number; total: number }>>({}), [message, setMessage] = useState(""), [result, setResult] = useState<Session>();
-  const started = useRef(0), answerStarted = useRef(Date.now()), rules: BlackjackRules = { decks, dealerHitsSoft17: saved.dealerHitsSoft17, doubleAfterSplit: saved.doubleAfterSplit, resplitAces: saved.resplitAces, lateSurrender: saved.lateSurrender, doubleRule: "any" };
+  const started = useRef(0), answerStarted = useRef(Date.now()), rules: BlackjackRules = { decks, dealerHitsSoft17: saved.dealerHitsSoft17, doubleAfterSplit: saved.doubleAfterSplit, resplitAces: saved.resplitAces, ...surrenderFlags(saved.surrender), doubleRule: "any" };
   const decksRemaining = shoe.current?.decksRemaining() ?? decks, expectedDecks = roundDeckEstimate(decksRemaining, 0.5), currentTc = trueCount(rc, expectedDecks, saved.rounding), expectedWager = backCount ? 0 : expectedBet(currentTc, baseBet, spread, wongOut);
   const start = () => { const next = new BlackjackShoe(decks); let burn = 0; if (burnCard) { const card = next.deal(); if (card) burn = runningCount([card]); } shoe.current = next; setRc(burn); setRounds(0); setCorrect(0); setQuestions(0); setMistakes([]); setCategories({}); setRound(undefined); setAnswers({ deck: "", tc: "", bet: "", count: "" }); started.current = Date.now(); answerStarted.current = Date.now(); setPhase("bet"); track("drill_started", { drill: "Full Shoe", decks, spots, penetration, spread, wongOut, backCount }); track("question_presented", { drill: "Full Shoe", category: "betting_round", scenario: "pre_round", attempt: 1 }); };
   const record = (label: string, ok: boolean) => setCategories((all) => addCategory(all, label, ok));
