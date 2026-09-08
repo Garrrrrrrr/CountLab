@@ -16,11 +16,15 @@ import type { DeviationRankingProfile } from "@/lib/blackjack/deviationRanking";
 import { deviationSentence } from "@/lib/blackjack/deviations";
 import { chartCell } from "@/lib/blackjack/strategyChart";
 import type { StrategyChartRules, StrategySectionId } from "@/lib/blackjack/strategyChart";
+import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
+import { surrenderChart } from "@/lib/blackjack/surrenderChart";
+import type { SurrenderCell } from "@/lib/blackjack/surrenderChart";
 import type { Action } from "@/lib/blackjack/types";
 import { storage } from "@/lib/statistics/storage";
 
 type ChartTab = "strategy" | "deviations" | "h17";
-type SectionTab = StrategySectionId;
+/** The surrender grid is a view, not a strategy section — it has no grid of its own in `STRATEGY_TABLES`. */
+type SectionTab = StrategySectionId | "surrender";
 
 const DEFAULT_RULES: StrategyChartRules = {
   decks: 6,
@@ -37,11 +41,20 @@ const SURRENDER_SUMMARY: Record<StrategyChartRules["surrender"], string> = {
   early: "early surrender vs 10",
 };
 
-const SECTIONS: Array<{ id: StrategySectionId; label: string; description: string }> = [
+/**
+ * Surrender is answered before the hand is played, so it gets a table of its
+ * own and the hand tables are read as though the game had none. That is how the
+ * printed charts this app teaches from are laid out, and it is what lets the
+ * hand tables show the stand indices that a surrender would otherwise hide.
+ */
+const SECTIONS: Array<{ id: SectionTab; label: string; description: string }> = [
   { id: "hard", label: "Hard totals", description: "Hands with no usable ace" },
   { id: "soft", label: "Soft totals", description: "Hands containing an ace counted as 11" },
   { id: "pairs", label: "Pairs", description: "Split decisions" },
+  { id: "surrender", label: "Surrender", description: "Checked first, before the hand is played" },
 ];
+
+const HAND_SECTIONS = SECTIONS.filter((entry): entry is { id: StrategySectionId; label: string; description: string } => entry.id !== "surrender");
 
 const ACTION_STYLE: Record<Action, string> = {
   H: "border-sky-800 bg-sky-700 text-white",
@@ -93,8 +106,14 @@ function indexLabel(index: number, atOrBelow: boolean) {
   return (index > 0 ? "+" : "") + String(index) + (atOrBelow ? "−" : "+");
 }
 
-function rankingProfile(rules: StrategyChartRules): DeviationRankingProfile {
-  return (rules.dealerHitsSoft17 ? "h17" : "s17") + (rules.surrender === "none" ? "-no-ls" : "-ls") as DeviationRankingProfile;
+/**
+ * The hand tables are read with surrender off, so their indices were measured
+ * on the no-surrender profile; the surrender table's own rows were measured
+ * with it available. Asking for one profile for both would price the starred
+ * stand indices as the dormant rows they are in a surrender game.
+ */
+function rankingProfile(rules: StrategyChartRules, surrenderAvailable: boolean): DeviationRankingProfile {
+  return (rules.dealerHitsSoft17 ? "h17" : "s17") + (surrenderAvailable ? "-ls" : "-no-ls") as DeviationRankingProfile;
 }
 
 function deviationDescription(marker: DeviationMarker, profile: DeviationRankingProfile) {
@@ -133,7 +152,9 @@ function StrategyCell({
   profile: DeviationRankingProfile;
   showIndex?: boolean;
 }) {
-  const cell = chartCell(rules, section, row, dealer);
+  // Surrender lives in its own table, so the hand tables answer the question
+  // that is left once it has been declined.
+  const cell = chartCell(rules, section, row, dealer, { canSurrender: false });
   const fallback = cell.fallback ? "; otherwise " + ACTION_LABEL[cell.fallback].toLowerCase() : "";
   const tooltipId = useId();
   const description = marker ? deviationDescription(marker, profile) : undefined;
@@ -186,6 +207,44 @@ function StrategyCell({
           {description}
         </span>,
         document.body,
+      )}
+    </div>
+  );
+}
+
+/**
+ * One cell of the surrender table. Three states: the hand is given up outright,
+ * it is given up from some count on, or the count takes an outright surrender
+ * away again — the last of which the hand tables could never show, because a
+ * cell that reads "R" has nowhere to print the count that stops it.
+ */
+function SurrenderCellView({ cell, profile }: { cell?: SurrenderCell; profile: DeviationRankingProfile }) {
+  const marker = cell?.marker;
+  const tooltip = marker
+    ? deviationDescription(marker, profile)
+    : cell?.surrenders ? "Surrender at every count." : "Do not surrender.";
+  const badge = marker
+    ? (marker.row.transition.departure === "R" ? "R " : ACTION_LABEL[marker.row.transition.departure as Action][0] + " ")
+      + indexLabel(marker.index, marker.atOrBelow)
+    : undefined;
+
+  return (
+    <div
+      aria-label={tooltip}
+      title={tooltip}
+      className={[
+        "relative grid h-8 min-w-8 place-items-center rounded border font-data text-base font-bold",
+        cell?.surrenders ? ACTION_STYLE.R : cell ? "border-rose-900/60 bg-rose-950/40 text-rose-200" : "border-[var(--rule)] bg-transparent text-[var(--ink-muted)]",
+      ].join(" ")}
+    >
+      <span>{cell?.surrenders ? "R" : cell ? "·" : "—"}</span>
+      {badge && (
+        <span
+          className="absolute bottom-0.5 right-0.5 rounded-sm bg-rose-950 px-0.5 py-px text-[0.6rem] font-bold leading-none text-rose-100 shadow-sm ring-1 ring-white/80"
+          aria-hidden="true"
+        >
+          {badge}
+        </span>
       )}
     </div>
   );
@@ -254,22 +313,63 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
     setTab(initialTab);
   }, [initialTab]);
 
-  const profile = rankingProfile(rules);
+  const profile = rankingProfile(rules, false);
+  const surrenderProfile = rankingProfile(rules, rules.surrender !== "none");
+  // The hand tables are read as though the table offered no surrender, which is
+  // what brings the starred stand indices — 16 v 10 at +0, 15 v 10 at +4 — into
+  // view. The surrender decisions they used to occupy live in their own grid.
   const deviationCells = useMemo(
-    // Early surrender against a ten keeps late surrender everywhere else, so
-    // both flags are on — passing `surrender === "late"` here used to hand the
-    // grid the no-surrender catalog while `rankingProfile` still said "-ls".
-    () => deviationGridCells({
-      dealerHitsSoft17: rules.dealerHitsSoft17,
-      lateSurrender: rules.surrender !== "none",
-      earlySurrenderVsTen: rules.surrender === "early",
-    }),
-    [rules.dealerHitsSoft17, rules.surrender],
+    () => deviationGridCells({ dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: false }),
+    [rules.dealerHitsSoft17],
   );
+  const surrender = useMemo(() => surrenderChart(rules), [rules]);
   const widestInterval = useMemo(
     () => Math.max(0, ...Object.values(DEVIATION_RANKING[profile]).map((entry) => 1.96 * entry[1])),
     [profile],
   );
+
+  /** Both tabs render the same grid; only the index badges differ. */
+  const renderSection = (showIndex: boolean) => {
+    const entry = SECTIONS.find(({ id }) => id === section)!;
+    const hand = HAND_SECTIONS.find(({ id }) => id === section);
+    return (
+      <Panel className="overflow-hidden p-3 sm:p-4">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
+          <h2 className="font-display text-xl text-[var(--ink)]">{entry.label}</h2>
+          <p className="text-xs text-[var(--ink-muted)]">{entry.description}</p>
+        </div>
+        {hand ? (
+          <ChartGrid
+            section={hand.id}
+            rows={STRATEGY_ROWS[hand.id]}
+            label={hand.label + (showIndex ? " index deviations" : " basic strategy chart")}
+            renderCell={(row, dealer) => (
+              <StrategyCell
+                rules={rules}
+                section={hand.id}
+                row={row}
+                dealer={dealer}
+                marker={deviationCells.get(hand.id + ":" + row + "v" + dealer)}
+                profile={profile}
+                showIndex={showIndex}
+              />
+            )}
+          />
+        ) : surrender.rows.length === 0 ? (
+          <p className="py-6 text-sm text-[var(--ink-muted)]">This table offers no surrender. Play every hand out from the hand tables.</p>
+        ) : (
+          <ChartGrid
+            section="surrender"
+            rows={surrender.rows}
+            label="Surrender chart"
+            renderCell={(row, dealer) => (
+              <SurrenderCellView cell={surrender.cells.get(row + "v" + dealer)} profile={surrenderProfile} />
+            )}
+          />
+        )}
+      </Panel>
+    );
+  };
 
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
@@ -370,34 +470,16 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             <span className="inline-flex items-center gap-1"><span className="font-data font-bold">D<sub className="text-[0.62em]">s</sub></span> double, otherwise stand</span>
           </Panel>
 
-          {SECTIONS.filter(({ id }) => id === section).map((section) => (
-            <Panel key={section.id} className="overflow-hidden p-3 sm:p-4">
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-                <h2 className="font-display text-xl text-[var(--ink)]">{section.label}</h2>
-                <p className="text-xs text-[var(--ink-muted)]">{section.description}</p>
-              </div>
-              <ChartGrid
-                section={section.id}
-                label={section.label + " basic strategy chart"}
-                renderCell={(row, dealer) => (
-                  <StrategyCell
-                    rules={rules}
-                    section={section.id}
-                    row={row}
-                    dealer={dealer}
-                    marker={deviationCells.get(section.id + ":" + row + "v" + dealer)}
-                    profile={profile}
-                  />
-                )}
-              />
-            </Panel>
-          ))}
+          {renderSection(false)}
 
           <p className="text-sm text-[var(--ink-muted)]">
-            Hard totals 5–7 always hit; hard totals 18–21 always stand.
-            {rules.surrender === "early" ? " Early surrender is taken before the dealer checks the hole card, so it only changes the ten column; the ace stays on late surrender." : ""}
+            {section === "surrender"
+              ? "Check this table first. Anything it does not take, play out from the hand tables."
+              : "Hard totals 5–7 always hit; hard totals 18–21 always stand."}
+            {rules.surrender !== "none" && section !== "surrender" ? " These tables assume the surrender has already been declined; the Surrender tab has that decision." : ""}
+            {rules.surrender === "early" && section === "surrender" ? " Early surrender is taken before the dealer checks the hole card, so it only changes the ten column; the ace stays on late surrender." : ""}
           </p>
-          {rules.surrender === "early" && rules.decks <= 2 && (
+          {rules.surrender === "early" && rules.decks <= 2 && section === "surrender" && (
             <p className="text-sm text-[var(--ink-muted)]">
               Two published exceptions depend on the cards, not the total, so this grid cannot show them: do not surrender a fourteen made of 4+10 or 5+9 in single deck, nor 4+10 in double deck.
             </p>
@@ -417,29 +499,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             {rules.decks !== 6 && <p className="mt-2 text-xs text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
           </Panel>
 
-          {SECTIONS.filter(({ id }) => id === section).map((section) => (
-            <Panel key={section.id} className="overflow-hidden p-3 sm:p-4">
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-                <h2 className="font-display text-xl text-[var(--ink)]">{section.label}</h2>
-                <p className="text-xs text-[var(--ink-muted)]">{section.description}</p>
-              </div>
-              <ChartGrid
-                section={section.id}
-                label={section.label + " index deviations"}
-                renderCell={(row, dealer) => (
-                  <StrategyCell
-                    rules={rules}
-                    section={section.id}
-                    row={row}
-                    dealer={dealer}
-                    marker={deviationCells.get(section.id + ":" + row + "v" + dealer)}
-                    profile={profile}
-                    showIndex
-                  />
-                )}
-              />
-            </Panel>
-          ))}
+          {renderSection(true)}
 
           <Panel className="space-y-2 p-3 text-xs leading-5 text-[var(--ink-muted)]">
             <p>

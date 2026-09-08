@@ -2,13 +2,9 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Card,
-  Action,
-} from "@/lib/blackjack/types";
+import { Card } from "@/lib/blackjack/types";
 import {
   randomStrategyQuestion,
-  strategyCategoryOf,
   StrategyCategory,
 } from "@/lib/blackjack/strategyQuestions";
 import { signed } from "@/lib/blackjack/hiLo";
@@ -35,12 +31,33 @@ import { SessionSummary } from "./SessionSummary";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { consumePracticeFocus, dueItemKeys, forceDue, recordAnswer } from "@/lib/statistics/spacedRepetition";
 import { track } from "@/lib/analytics/track";
-const names: Record<Action, string> = {
+/**
+ * Surrender is asked as its own question, so a play question never offers it.
+ * `N` is "play it out" — decline the surrender and go to the hand tables — and
+ * only ever appears on a surrender question.
+ */
+type PlayAnswer = "H" | "S" | "D" | "P";
+type DrillAnswer = PlayAnswer | "R" | "N";
+
+const PLAY_ANSWERS: readonly PlayAnswer[] = ["H", "S", "D", "P"];
+const SURRENDER_ANSWERS: readonly DrillAnswer[] = ["R", "N"];
+
+const ANSWER_NAMES: Record<DrillAnswer, string> = {
   H: "Hit",
   S: "Stand",
   D: "Double",
   P: "Split",
   R: "Surrender",
+  N: "Play it out",
+};
+
+const ANSWER_KEYS: Record<string, DrillAnswer> = { h: "H", s: "S", d: "D", p: "P", r: "R", n: "N" };
+
+/** "N" declines whatever the question offered: insurance on an insurance row, the surrender on a surrender row. */
+const deviationAnswerName = (action: DeviationAction, askingSurrender: boolean) => {
+  if (action === "I") return "Insurance";
+  if (action === "N") return askingSurrender ? "Play it out" : "No insurance";
+  return DEVIATION_ACTION_NAMES[action];
 };
 const SURRENDER_RULE_TAG = { none: "nls", late: "ls", early: "es10" } as const;
 const analyticsRulesPreset = (settings: Settings, surrender: SurrenderRule) => `${settings.decks}d_${settings.dealerHitsSoft17 ? "h17" : "s17"}_${settings.doubleAfterSplit ? "das" : "ndas"}_${settings.resplitAces ? "rsa" : "nrsa"}_${SURRENDER_RULE_TAG[surrender]}`;
@@ -179,8 +196,8 @@ export function StrategyDrill() {
     [awaitingFinal, setAwaitingFinal] = useState(false),
     [feedback, setFeedback] = useState<{
       hand: string;
-      chosen: Action;
-      correct: Action;
+      chosen: DrillAnswer;
+      correct: DrillAnswer;
       explanation: string;
       category: StrategyCategory;
     }>();
@@ -209,17 +226,41 @@ export function StrategyDrill() {
       .sort((a, b) => a[1].correct / a[1].total - b[1].correct / b[1].total);
     return ranked[0]?.[0];
   }, [mode, q]);
+  // Surrender joins the ordinary rotation once the table offers it, because it
+  // is now a question in its own right rather than an answer to a play question.
   const data = useMemo(
-    () => randomStrategyQuestion(weakest && Math.random() < 0.65 ? weakest : undefined),
-    [q, weakest],
+    () => randomStrategyQuestion(
+      weakest && Math.random() < 0.65 ? weakest
+        : surrenderRule !== "none" && Math.random() < 0.2 ? "Surrender"
+          : undefined,
+    ),
+    [q, weakest, surrenderRule],
   );
   const rules = { ...rulesFromSettings(settings), ...surrenderFlags(surrenderRule) };
-  const decision = getBasicStrategyDecision({
+  const category = data.category;
+  const askingSurrender = category === "Surrender";
+  // The play question is asked as though the surrender had already been
+  // declined, matching how the reference chart now reads.
+  const playDecision = getBasicStrategyDecision({
+    playerCards: data.player,
+    dealerUpcard: data.dealer,
+    rules: { ...rules, lateSurrender: false, earlySurrenderVsTen: false },
+  });
+  const surrenderDecision = getBasicStrategyDecision({
     playerCards: data.player,
     dealerUpcard: data.dealer,
     rules,
   });
-  const category: StrategyCategory = strategyCategoryOf(data.player, decision.action);
+  const surrenders = surrenderDecision.action === "R";
+  const answers = askingSurrender ? SURRENDER_ANSWERS : PLAY_ANSWERS;
+  const correctAnswer: DrillAnswer = askingSurrender
+    ? (surrenders ? "R" : "N")
+    : (playDecision.action as PlayAnswer);
+  const explanation = askingSurrender
+    ? surrenders
+      ? surrenderDecision.explanation
+      : `Basic strategy does not give this hand up, so decline and play it out: ${playDecision.explanation.replace(/^.*? is /, "")}`
+    : playDecision.explanation;
   const presented = useRef("");
   useEffect(() => {
     const scenario = `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`;
@@ -244,9 +285,9 @@ export function StrategyDrill() {
   };
   const endDrill = () => { track("answer_skipped", { drill: "Basic Strategy", category, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, attempt: q + 1, elapsedMs: Date.now() - started }); finish(); };
   const choose = useCallback(
-    (a: Action) => {
-      if (session || awaitingFinal) return;
-      const ok = a === decision.action;
+    (a: DrillAnswer) => {
+      if (session || awaitingFinal || !answers.includes(a)) return;
+      const ok = a === correctAnswer;
       const duration = Date.now() - started;
       const nextCorrect = correctCount + (ok ? 1 : 0);
       const nextStreak = ok ? streak + 1 : 0;
@@ -254,10 +295,10 @@ export function StrategyDrill() {
       const nextMistakes = ok
         ? mistakes
         : [...mistakes, {
-            question: `${data.player.map((card) => card.rank).join(",")} vs ${data.dealer.rank}`,
-            userAnswer: names[a],
-            correctAnswer: names[decision.action],
-            explanation: decision.explanation,
+            question: `${data.player.map((card) => card.rank).join(",")} vs ${data.dealer.rank}${askingSurrender ? " — surrender?" : ""}`,
+            userAnswer: ANSWER_NAMES[a],
+            correctAnswer: ANSWER_NAMES[correctAnswer],
+            explanation,
           }];
       const nextCategories = {
         ...categories,
@@ -267,10 +308,10 @@ export function StrategyDrill() {
         },
       };
       setFeedback({
-        hand: `${data.player.map((card) => card.rank).join(", ")} vs ${data.dealer.rank}`,
+        hand: `${data.player.map((card) => card.rank).join(", ")} vs ${data.dealer.rank}${askingSurrender ? " — surrender?" : ""}`,
         chosen: a,
-        correct: decision.action,
-        explanation: decision.explanation,
+        correct: correctAnswer,
+        explanation,
         category,
       });
       setCorrectCount(nextCorrect);
@@ -281,7 +322,7 @@ export function StrategyDrill() {
       setCategories(nextCategories);
       if (mode === "adaptive") recordAnswer("Basic Strategy", category, ok);
       feedbackTone(ok, settings.sound);
-      track("basic_strategy_answered", { ok, chosen: a, correct: decision.action, category, mode, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, responseTimeMs: duration, attempt: q + 1, streak: nextStreak });
+      track("basic_strategy_answered", { ok, chosen: a, correct: correctAnswer, category, mode, scenario: `${data.player.map((card) => card.rank).sort().join("")}_v_${data.dealer.rank}`, responseTimeMs: duration, attempt: q + 1, streak: nextStreak });
       if (q === 9) {
         finalArgs.current = [10, nextCorrect, totalMs + duration, nextBest, nextMistakes, nextCategories];
         setAwaitingFinal(true);
@@ -290,20 +331,14 @@ export function StrategyDrill() {
         setStarted(Date.now());
       }
     },
-    [awaitingFinal, best, categories, category, correctCount, data, decision, mistakes, q, session, settings.sound, started, streak, totalMs],
+    [answers, askingSurrender, awaitingFinal, best, categories, category, correctAnswer, correctCount, data, explanation, mistakes, q, session, settings.sound, started, streak, totalMs],
   );
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if (e.repeat || !settings.shortcuts || session || awaitingFinal) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) return;
-      const map: Record<string, Action> = {
-        h: "H",
-        s: "S",
-        d: "D",
-        p: "P",
-        r: "R",
-      };
-      if (map[e.key.toLowerCase()]) choose(map[e.key.toLowerCase()]);
+      const answer = ANSWER_KEYS[e.key.toLowerCase()];
+      if (answer) choose(answer);
     };
     addEventListener("keydown", fn);
     return () => removeEventListener("keydown", fn);
@@ -372,15 +407,18 @@ export function StrategyDrill() {
                 <PlayingCard card={data.dealer} animated={settings.animations} size="sm" />
               </div>
             </div>
+            {askingSurrender && (
+              <p className="mb-3 text-sm font-medium text-[var(--ink)]">Surrender this hand, or decline and play it out?</p>
+            )}
             <div className="hidden flex-wrap gap-2 lg:flex">
-              {(Object.keys(names) as Action[]).map((a) => (
+              {answers.map((a) => (
                 <GhostButton
                   key={a}
                   aria-keyshortcuts={a}
                   className="flex items-center gap-2"
                   onClick={() => choose(a)}
                 >
-                  <span>{names[a]}</span>
+                  <span>{ANSWER_NAMES[a]}</span>
                   <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">
                     {a}
                   </kbd>
@@ -395,7 +433,7 @@ export function StrategyDrill() {
           </Panel>
           <MobileActionDock label="Basic strategy actions">
             <div className="grid grid-cols-2 gap-2">
-              {(Object.keys(names) as Action[]).map((a) => <GhostButton key={a} className="px-2 text-sm" onClick={() => choose(a)}>{names[a]}</GhostButton>)}
+              {answers.map((a) => <GhostButton key={a} className="px-2 text-sm" onClick={() => choose(a)}>{ANSWER_NAMES[a]}</GhostButton>)}
             </div>
           </MobileActionDock>
         </>
@@ -404,7 +442,7 @@ export function StrategyDrill() {
         <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand}</p>
           <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
-            {feedback.chosen === feedback.correct ? `Correct — ${names[feedback.correct]}` : `You chose ${names[feedback.chosen]} · Correct: ${names[feedback.correct]}`}
+            {feedback.chosen === feedback.correct ? `Correct — ${ANSWER_NAMES[feedback.correct]}` : `You chose ${ANSWER_NAMES[feedback.chosen]} · Correct: ${ANSWER_NAMES[feedback.correct]}`}
           </b>
           <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
           <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
@@ -443,6 +481,7 @@ export function DeviationDrill() {
       always?: true;
       departureTriggered: boolean;
       sentence: string;
+      askingSurrender: boolean;
     }>();
   const surrenderRule = surrender ?? savedSurrenderRule(settings);
   const finalArgs = useRef<Parameters<typeof finish> | null>(null);
@@ -455,10 +494,23 @@ export function DeviationDrill() {
     () => ({ dealerHitsSoft17: settings.dealerHitsSoft17, ...surrenderFlags(surrenderRule) }),
     [settings.dealerHitsSoft17, surrenderRule],
   );
-  const trainingRows = useMemo(
-    () => deviationTrainingRows(deviationRules, settings.decks),
-    [deviationRules, settings.decks],
-  );
+  /**
+   * Play rows and surrender rows are drawn separately, the same split the
+   * reference chart makes.
+   *
+   * Play rows come from a no-surrender reading, which is what brings the
+   * starred stand indices — 16 v 10 at +0, 15 v 10 at +4 — into the drill. They
+   * carry `overridesSurrender`, so a single pass with surrender available
+   * resolves them to nothing and the drill has never once asked them.
+   */
+  const trainingRows = useMemo(() => {
+    const play = deviationTrainingRows({ dealerHitsSoft17: settings.dealerHitsSoft17, lateSurrender: false }, settings.decks);
+    const surrenderRows = surrenderRule === "none"
+      ? []
+      : deviationTrainingRows(deviationRules, settings.decks)
+        .filter(({ transition }) => transition.departure === "R" || transition.baseline === "R");
+    return [...play, ...surrenderRows];
+  }, [deviationRules, settings.dealerHitsSoft17, settings.decks, surrenderRule]);
   const question = useMemo(
     () => trainingRows[Math.floor(Math.random() * trainingRows.length)],
     [q, trainingRows],
@@ -492,13 +544,18 @@ export function DeviationDrill() {
       () => ({ rank: d.dealer as Card["rank"], suit: "diamonds" }) satisfies Card,
       [d],
     ),
+    // Surrender is a question of its own, so a play row never offers it and a
+    // surrender row asks only whether to give the hand up.
+    askingSurrender = transition.departure === "R" || transition.baseline === "R",
     availableActions = useMemo<DeviationAction[]>(
-      () => d.hand === "Insurance" ? ["I", "N"] : ["H", "S", "D", "P", "R"],
-      [d.hand],
+      () => d.hand === "Insurance" ? ["I", "N"] : askingSurrender ? ["R", "N"] : ["H", "S", "D", "P"],
+      [askingSurrender, d.hand],
     );
   const departureApplies = d.always === true
       || (transition.atOrBelow ? tc <= d.index : tc >= d.index),
-    correct = departureApplies ? transition.departure : transition.baseline;
+    resolved = departureApplies ? transition.departure : transition.baseline,
+    // "N" on a surrender row is "decline and play it out", not "no insurance".
+    correct: DeviationAction = askingSurrender ? (resolved === "R" ? "R" : "N") : resolved;
   useDrillProgress("Deviations", !session, {
     q, correctCount, streak, best, totalMs, mistakes, categories, surrender,
   } satisfies DeviationSaved);
@@ -527,8 +584,8 @@ export function DeviationDrill() {
         ? mistakes
         : [...mistakes, {
             question: `${d.hand} vs ${d.dealer} at TC ${signed(tc)}`,
-            userAnswer: DEVIATION_ACTION_NAMES[chosen],
-            correctAnswer: DEVIATION_ACTION_NAMES[correct],
+            userAnswer: deviationAnswerName(chosen, askingSurrender),
+            correctAnswer: deviationAnswerName(correct, askingSurrender),
             explanation: deviationSentence(d, transition),
           }];
       const nextCategories = {
@@ -548,6 +605,7 @@ export function DeviationDrill() {
         always: d.always,
         departureTriggered: departureApplies,
         sentence: deviationSentence(d, transition),
+        askingSurrender,
       });
       setCorrectCount(nextCorrect);
       setStreak(nextStreak);
@@ -671,23 +729,23 @@ export function DeviationDrill() {
                 </div>
               ))}
             </div>
+            {askingSurrender && (
+              <p className="mt-5 text-sm font-medium text-[var(--ink)]">Surrender this hand at this count, or decline and play it out?</p>
+            )}
             <div className="mt-6 hidden flex-wrap gap-2 lg:flex">
-              {availableActions.map((a) => (
-                <GhostButton key={a} onClick={() => chooseDeviation(a)}>
-                  {a === "I" ? (
-                    <><u>I</u>nsurance</>
-                  ) : a === "N" ? (
-                    <><u>N</u>o insurance</>
-                  ) : (
-                    <><u>{DEVIATION_ACTION_NAMES[a][0]}</u>{DEVIATION_ACTION_NAMES[a].slice(1)}</>
-                  )}
-                </GhostButton>
-              ))}
+              {availableActions.map((a) => {
+                const label = deviationAnswerName(a, askingSurrender);
+                return (
+                  <GhostButton key={a} onClick={() => chooseDeviation(a)}>
+                    <u>{label[0]}</u>{label.slice(1)}
+                  </GhostButton>
+                );
+              })}
             </div>
           </Panel>
           <MobileActionDock label="Deviation actions">
             <div className="grid grid-cols-2 gap-2">
-              {availableActions.map((a) => <GhostButton key={a} onClick={() => chooseDeviation(a)}>{a === "I" ? "Insurance" : a === "N" ? "No insurance" : DEVIATION_ACTION_NAMES[a]}</GhostButton>)}
+              {availableActions.map((a) => <GhostButton key={a} onClick={() => chooseDeviation(a)}>{deviationAnswerName(a, askingSurrender)}</GhostButton>)}
             </div>
           </MobileActionDock>
         </>
@@ -696,7 +754,7 @@ export function DeviationDrill() {
         <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
           <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
           <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
-            {feedback.chosen === feedback.correct ? `Correct — ${DEVIATION_ACTION_NAMES[feedback.correct]}` : `You chose ${DEVIATION_ACTION_NAMES[feedback.chosen]} · Correct: ${DEVIATION_ACTION_NAMES[feedback.correct]}`}
+            {feedback.chosen === feedback.correct ? `Correct — ${deviationAnswerName(feedback.correct, feedback.askingSurrender)}` : `You chose ${deviationAnswerName(feedback.chosen, feedback.askingSurrender)} · Correct: ${deviationAnswerName(feedback.correct, feedback.askingSurrender)}`}
           </b>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
             <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>

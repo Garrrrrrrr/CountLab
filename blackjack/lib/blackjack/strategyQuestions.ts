@@ -42,9 +42,40 @@ export const randomCard = (rng: () => number = Math.random): Card => ({
   suit: pick(SUITS, rng),
 });
 
+/**
+ * Hands worth asking a surrender question about: every total and pair a
+ * published rule gives up somewhere, plus the neighbours it does not, so the
+ * answer is not "yes" every time.
+ *
+ * Wider than the two hands this used to deal. A drill that only ever showed
+ * 10,6 and 10,5 never asked about the fourteens, 7,7 or 8,8, all of which are
+ * live surrenders under early surrender against a ten.
+ */
+const STRATEGY_SURRENDER_HANDS: Array<[Card["rank"], Card["rank"]]> = [
+  ["10", "7"],
+  ["10", "6"],
+  ["9", "7"],
+  ["10", "5"],
+  ["9", "6"],
+  ["10", "4"],
+  ["9", "5"],
+  ["10", "3"],
+  ["10", "2"],
+  ["8", "8"],
+  ["7", "7"],
+];
+
 export interface StrategyQuestion {
   player: Card[];
   dealer: Card;
+  /**
+   * The slice of the chart the hand was drawn for.
+   *
+   * Reported rather than inferred from the answer. With surrender asked as its
+   * own question the play decision is never `R`, so `strategyCategoryOf` can no
+   * longer recognise a surrender hand from the action it produces.
+   */
+  category: StrategyCategory;
 }
 
 /**
@@ -60,9 +91,11 @@ export function randomStrategyQuestion(
   const category = preferred ?? pick(["Pairs", "Soft totals", "Hard totals"] as StrategyCategory[], rng);
   let player: Card[];
   if (category === "Surrender") {
-    player = rng() < 0.5
-      ? [{ rank: "10", suit: "spades" }, { rank: "6", suit: "hearts" }]
-      : [{ rank: "10", suit: "spades" }, { rank: "5", suit: "hearts" }];
+    const [first, second] = pick(STRATEGY_SURRENDER_HANDS, rng);
+    player = [
+      { rank: first, suit: "spades" },
+      { rank: second, suit: "hearts" },
+    ];
   } else if (category === "Pairs") {
     const rank = pick(RANKS, rng);
     player = [
@@ -82,10 +115,12 @@ export function randomStrategyQuestion(
       { rank: second, suit: "hearts" },
     ];
   }
+  // Surrender is only ever on the table against a high upcard, and the 8 is
+  // included because 16 v 8 carries an index the drill should ask about.
   const dealer = category === "Surrender"
-    ? { rank: pick(["9", "10", "A"] as Card["rank"][], rng), suit: "diamonds" as const }
+    ? { rank: pick(["8", "9", "10", "A"] as Card["rank"][], rng), suit: "diamonds" as const }
     : randomCard(rng);
-  return { player, dealer };
+  return { player, dealer, category };
 }
 
 /**

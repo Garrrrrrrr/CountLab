@@ -2,16 +2,17 @@
 
 import type { ReactNode } from "react";
 import { CHART_DEALERS } from "@/lib/blackjack/bjaH17Chart";
-import type { StrategySectionId } from "@/lib/blackjack/strategyChart";
-import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
 
 export interface ChartGridProps {
-  section: StrategySectionId;
+  /** Names the rail for tests and scrolling; not every grid is a strategy section. */
+  section: string;
+  /** Hand labels top to bottom. The surrender grid derives its own, so this is passed rather than looked up. */
+  rows: readonly string[];
   label: string;
   renderCell: (row: string, dealer: string) => ReactNode;
 }
 
-export default function ChartGrid({ section, label, renderCell }: ChartGridProps) {
+export default function ChartGrid({ section, rows, label, renderCell }: ChartGridProps) {
   return (
     <div className="relative">
       <div
@@ -33,7 +34,7 @@ export default function ChartGrid({ section, label, renderCell }: ChartGridProps
             </tr>
           </thead>
           <tbody>
-            {STRATEGY_ROWS[section].map((row) => (
+            {rows.map((row) => (
               <tr key={row}>
                 <th
                   scope="row"
