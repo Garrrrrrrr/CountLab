@@ -9,8 +9,10 @@ import {
   gradeFullShoeDecision,
   playingDecisionCategory,
   summarizeFullShoeSession,
+  summarizeHandGrades,
   type BetRamp,
 } from "./fullShoeSession";
+import type { SimulatedHand } from "./shoeSimulation";
 
 describe("full shoe session", () => {
   it("never divides the true count by less than the selected deck precision", () => {
@@ -71,5 +73,46 @@ describe("full shoe session", () => {
     expect(shoe).toMatchObject({ totalHands: 1, totalProfit: 20, tcMin: 1, tcMax: 2 });
     expect(shoe.hands[0]).toMatchObject({ roundInShoe: 3, runningCountBefore: 4, netResult: 20 });
     expect(shoe.hands[0].decisions?.[0]).toMatchObject({ chosen: "Hit", correct: "Stand", ok: false });
+  });
+
+  it("summarizes hand grades", () => {
+    const decision = (ok: boolean) => ({ category: "Basic Strategy" as const, chosen: "H", correct: "H", ok, explanation: "", trueCount: 0 });
+    const hand = (overrides: Partial<SimulatedHand>): SimulatedHand => ({
+      shoeNumber: 1,
+      handNumber: 1,
+      roundInShoe: 1,
+      dealerCards: [],
+      playerHands: [],
+      bet: 10,
+      runningCountBefore: 0,
+      trueCountBefore: 0,
+      tcMin: 0,
+      tcMax: 0,
+      netResult: 0,
+      ...overrides,
+    });
+
+    expect(summarizeHandGrades([hand({ decisions: [decision(true), decision(true)] })])).toEqual([
+      { index: 0, roundInShoe: 1, graded: 2, errors: 0 },
+    ]);
+
+    expect(summarizeHandGrades([hand({ decisions: [decision(true), decision(false), decision(false)] })])).toEqual([
+      { index: 0, roundInShoe: 1, graded: 3, errors: 2 },
+    ]);
+
+    expect(summarizeHandGrades([hand({ decisions: undefined }), hand({ decisions: [] })])).toEqual([
+      { index: 0, roundInShoe: 1, graded: 0, errors: 0 },
+      { index: 1, roundInShoe: 1, graded: 0, errors: 0 },
+    ]);
+
+    expect(summarizeHandGrades([])).toEqual([]);
+
+    expect(summarizeHandGrades([
+      hand({ roundInShoe: 5, decisions: [] }),
+      hand({ roundInShoe: 12, decisions: [decision(true)] }),
+    ])).toEqual([
+      { index: 0, roundInShoe: 5, graded: 0, errors: 0 },
+      { index: 1, roundInShoe: 12, graded: 1, errors: 0 },
+    ]);
   });
 });

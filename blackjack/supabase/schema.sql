@@ -73,11 +73,30 @@ create table if not exists journal_transactions (
   note text
 );
 
+-- Replayable Full Shoe archives. `rounds` carries every card, wager and graded
+-- decision of a shoe, so it is fetched on demand rather than in the sign-in
+-- pull; every other column together forms the light header the archive list
+-- renders from.
+create table if not exists full_shoe_reviews (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  saved_at timestamptz not null default now(),
+  mode text not null,
+  completion_reason text not null,
+  table_rules jsonb not null,
+  report jsonb not null,
+  rounds jsonb not null,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists drill_sessions_user_id_idx on drill_sessions (user_id);
 create index if not exists drill_progress_user_id_idx on drill_progress (user_id);
 create index if not exists journal_bankrolls_user_id_idx on journal_bankrolls (user_id);
 create index if not exists journal_sessions_user_id_idx on journal_sessions (user_id);
 create index if not exists journal_transactions_user_id_idx on journal_transactions (user_id);
+create index if not exists full_shoe_reviews_user_id_idx on full_shoe_reviews (user_id);
+-- Supports the newest-first prune that keeps only the most recent shoes per user.
+create index if not exists full_shoe_reviews_saved_at_idx on full_shoe_reviews (user_id, saved_at desc);
 
 alter table settings enable row level security;
 alter table drill_sessions enable row level security;
@@ -85,6 +104,7 @@ alter table drill_progress enable row level security;
 alter table journal_bankrolls enable row level security;
 alter table journal_sessions enable row level security;
 alter table journal_transactions enable row level security;
+alter table full_shoe_reviews enable row level security;
 
 drop policy if exists "settings owner select" on settings;
 create policy "settings owner select" on settings for select using (auth.uid() = user_id);
@@ -139,6 +159,15 @@ drop policy if exists "journal_transactions owner update" on journal_transaction
 create policy "journal_transactions owner update" on journal_transactions for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "journal_transactions owner delete" on journal_transactions;
 create policy "journal_transactions owner delete" on journal_transactions for delete using (auth.uid() = user_id);
+
+drop policy if exists "full_shoe_reviews owner select" on full_shoe_reviews;
+create policy "full_shoe_reviews owner select" on full_shoe_reviews for select using (auth.uid() = user_id);
+drop policy if exists "full_shoe_reviews owner insert" on full_shoe_reviews;
+create policy "full_shoe_reviews owner insert" on full_shoe_reviews for insert with check (auth.uid() = user_id);
+drop policy if exists "full_shoe_reviews owner update" on full_shoe_reviews;
+create policy "full_shoe_reviews owner update" on full_shoe_reviews for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "full_shoe_reviews owner delete" on full_shoe_reviews;
+create policy "full_shoe_reviews owner delete" on full_shoe_reviews for delete using (auth.uid() = user_id);
 
 -- Rate limiting -------------------------------------------------------------
 -- CountLab is a static export with no server, so the anon key + a signed-in
@@ -231,6 +260,13 @@ begin
 end;
 $$;
 
+create or replace function rl_full_shoe_reviews() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  perform enforce_rate_limit('full_shoe_reviews_write', 30, interval '1 minute');
+  return new;
+end;
+$$;
+
 -- insert-only: Postgres always fires BEFORE INSERT to propose a row even
 -- when `upsert()` ends up routing it through ON CONFLICT DO UPDATE, so this
 -- alone still catches every upsert call exactly once. Also listening on
@@ -261,6 +297,10 @@ drop trigger if exists journal_transactions_rate_limit on journal_transactions;
 create trigger journal_transactions_rate_limit before insert on journal_transactions
   for each row execute function rl_journal_transactions();
 
+drop trigger if exists full_shoe_reviews_rate_limit on full_shoe_reviews;
+create trigger full_shoe_reviews_rate_limit before insert on full_shoe_reviews
+  for each row execute function rl_full_shoe_reviews();
+
 -- Row size caps ---------------------------------------------------------
 -- RLS stops a user from writing another user's rows, but not from writing
 -- an unbounded number of large rows of their own. Cap the free-form jsonb/text
@@ -280,6 +320,11 @@ alter table drill_progress add constraint drill_progress_size_limit check (pg_co
 
 alter table journal_bankrolls drop constraint if exists journal_bankrolls_size_limit;
 alter table journal_bankrolls add constraint journal_bankrolls_size_limit check (char_length(name) < 200);
+
+alter table full_shoe_reviews drop constraint if exists full_shoe_reviews_size_limit;
+alter table full_shoe_reviews add constraint full_shoe_reviews_size_limit check (
+  pg_column_size(rounds) < 400000 and pg_column_size(report) < 20000 and pg_column_size(table_rules) < 20000
+);
 
 alter table journal_sessions add column if not exists hands_by_true_count jsonb;
 

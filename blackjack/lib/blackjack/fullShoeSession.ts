@@ -110,6 +110,28 @@ export function summarizeFullShoeSession(
   };
 }
 
+export interface HandGrade {
+  /** Index into shoe.hands — what HandReplayer's selected index uses. */
+  index: number;
+  roundInShoe: number;
+  /** Decisions graded for this hand. 0 means the hand was never graded. */
+  graded: number;
+  /** How many of those decisions were wrong. */
+  errors: number;
+}
+
+export function summarizeHandGrades(hands: readonly SimulatedHand[]): HandGrade[] {
+  return hands.map((hand, index) => {
+    const decisions = hand.decisions ?? [];
+    return {
+      index,
+      roundInShoe: hand.roundInShoe,
+      graded: decisions.length,
+      errors: decisions.filter((decision) => decision.ok === false).length,
+    };
+  });
+}
+
 export function adaptLiveRoundsToSimulatedShoe(rounds: readonly FullShoeLiveRound[]): SimulatedShoe {
   const hands: SimulatedHand[] = rounds.map((round, index) => {
     const counts = [round.trueCountBefore, ...round.decisions.map((decision) => decision.trueCount)];
