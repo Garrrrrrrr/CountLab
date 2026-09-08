@@ -7,6 +7,7 @@ import { chartCell } from "./strategyChart";
 import type { StrategyChartRules, StrategySectionId } from "./strategyChart";
 import { STRATEGY_ROWS } from "./strategyTables";
 import { surrenderChart, toDeviationRules } from "./surrenderChart";
+import type { SurrenderChart } from "./surrenderChart";
 
 const base: StrategyChartRules = {
   decks: 6,
@@ -46,9 +47,12 @@ function combinedPlay(rules: StrategyChartRules, section: StrategySectionId, row
 /**
  * What it tells the player now: check the surrender table first, and if it does
  * not take the hand, play it out from the hand table with surrender off.
+ *
+ * The chart is built once per ruleset by the caller. Building it per assertion
+ * re-walked every row and dealer thirteen thousand times over, which ran in a
+ * second and a half locally and timed out on CI.
  */
-function splitPlay(rules: StrategyChartRules, section: StrategySectionId, row: string, dealer: string, tc: number): DeviationAction {
-  const chart = surrenderChart(rules);
+function splitPlay(chart: SurrenderChart, rules: StrategyChartRules, section: StrategySectionId, row: string, dealer: string, tc: number): DeviationAction {
   const surrender = chart.cells.get(`${row}v${dealer}`);
   if (surrender && chart.coordinate.get(row)?.section === section) {
     const marker = surrender.marker;
@@ -70,12 +74,13 @@ describe("splitting surrender out of the hand tables", () => {
     // ever disagrees with the one-step lookup it replaced, the chart is now
     // teaching a different game, and this is the guard against that.
     for (const [name, rules] of RULES) {
+      const chart = surrenderChart(rules);
       for (const section of SECTIONS) {
         for (const row of STRATEGY_ROWS[section]) {
           for (const dealer of CHART_DEALERS) {
             for (const tc of COUNTS) {
               expect(
-                splitPlay(rules, section, row, dealer, tc),
+                splitPlay(chart, rules, section, row, dealer, tc),
                 `${name} ${section} ${row} v ${dealer} at ${tc}`,
               ).toBe(combinedPlay(rules, section, row, dealer, tc));
             }
