@@ -161,6 +161,7 @@ const BACKUP_KEY_PREFIXES = [
   "countlab:simulation-runs:",
   "countlab:simulation-templates:",
   "countlab:venue-presets:",
+  "countlab:full-shoe-reviews:",
 ];
 
 function backupNamespaces(): Record<string, string> {

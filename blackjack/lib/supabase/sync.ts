@@ -1,17 +1,21 @@
 import { supabase } from "./client";
 import { storage, type DrillProgress, type Session, type Settings } from "../statistics/storage";
 import { journalLibrary, type Bankroll, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
+import { shoeLibrary, type SavedShoeHeader } from "../blackjack/shoeLibrary";
 import { observeApiRequest } from "../analytics";
 
 /** Pulls this user's rows from Supabase and merges them into the local cache. Called once on sign-in. */
 export async function pullRemoteData(userId: string): Promise<void> {
-  const [settingsRes, sessionsRes, progressRes, bankrollsRes, journalSessionsRes, transactionsRes] = await Promise.all([
+  const [settingsRes, sessionsRes, progressRes, bankrollsRes, journalSessionsRes, transactionsRes, shoeHeadersRes] = await Promise.all([
     observeApiRequest("supabase", "sync_settings_read", supabase.from("settings").select("data").eq("user_id", userId).maybeSingle()),
     observeApiRequest("supabase", "sync_drill_sessions_read", supabase.from("drill_sessions").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_drill_progress_read", supabase.from("drill_progress").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_journal_bankrolls_read", supabase.from("journal_bankrolls").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_journal_sessions_read", supabase.from("journal_sessions").select("*").eq("user_id", userId)),
     observeApiRequest("supabase", "sync_journal_transactions_read", supabase.from("journal_transactions").select("*").eq("user_id", userId)),
+    // Headers only: `rounds` holds every card and decision of a shoe, so it is
+    // fetched one row at a time when a shoe is actually opened for review.
+    observeApiRequest("supabase", "sync_full_shoe_reviews_read", supabase.from("full_shoe_reviews").select("id, saved_at, mode, completion_reason, table_rules, report").eq("user_id", userId)),
   ]);
 
   if (settingsRes.data?.data) storage.applyRemoteSettings(settingsRes.data.data as Settings);
@@ -90,6 +94,18 @@ export async function pullRemoteData(userId: string): Promise<void> {
     }));
     journalLibrary.mergeRemoteTransactions(transactions);
   }
+
+  if (shoeHeadersRes.data) {
+    const headers: SavedShoeHeader[] = shoeHeadersRes.data.map((row) => ({
+      id: row.id,
+      savedAt: row.saved_at,
+      mode: row.mode,
+      completionReason: row.completion_reason,
+      table: row.table_rules,
+      report: row.report,
+    }));
+    shoeLibrary.mergeRemoteHeaders(headers);
+  }
 }
 
 /** Refreshes just the journal while an authenticated tab is open on another device. */
@@ -148,9 +164,10 @@ export async function pullRemoteJournalData(userId: string): Promise<void> {
 export function clearLocalUserData(): void {
   storage.clearAll();
   journalLibrary.clear();
+  shoeLibrary.clear();
 }
 
 /** Pushes locally cached data (e.g. recorded while browsing as a guest) to the just-signed-in account. Resolves only once every row has actually been upserted, so callers can rely on completion before pulling remote state back. */
 export async function pushLocalDataToRemote(): Promise<void> {
-  await Promise.all([storage.pushLocalToRemote(), journalLibrary.pushAllToRemote()]);
+  await Promise.all([storage.pushLocalToRemote(), journalLibrary.pushAllToRemote(), shoeLibrary.pushAllToRemote()]);
 }
