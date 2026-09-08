@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deviationSentence, deviationTransition, DeviationRules } from "./deviations";
+import { deviationRulesForHand, deviationSentence, deviationTransition, DeviationRules, resolveDeviation } from "./deviations";
 import { H17_PRO_DEVIATIONS } from "./h17Pro";
 import { S17_PRO_DEVIATIONS } from "./s17Pro";
 
@@ -82,5 +82,64 @@ describe("deviationSentence", () => {
       "Hit when the true count is below 0; otherwise stand. "
       + "Use surrender instead when it is available on the original two-card hand.",
     );
+  });
+});
+
+describe("hand-level surrender eligibility", () => {
+  it("uses the no-surrender stand indices after a hit under every table rule", () => {
+    const cases = [
+      [h17LateSurrender, "16", "9", 4],
+      [h17LateSurrender, "16", "10", 0],
+      [h17LateSurrender, "16", "A", 3],
+      [h17LateSurrender, "15", "10", 4],
+      [h17LateSurrender, "15", "A", 5],
+      [s17LateSurrender, "16", "9", 5],
+      [s17LateSurrender, "16", "10", 0],
+      [s17LateSurrender, "16", "A", 5],
+      [s17LateSurrender, "15", "10", 4],
+    ] as const;
+
+    for (const [tableRules, hand, dealer, index] of cases) {
+      const rules = deviationRulesForHand(tableRules, false);
+      expect(resolveDeviation("H", hand, dealer, index, rules).action, `${tableRules.dealerHitsSoft17 ? "H17" : "S17"} ${hand} v ${dealer}`)
+        .toBe("S");
+    }
+  });
+
+  it("restores the no-surrender ten-column catalog after early surrender has expired", () => {
+    for (const dealerHitsSoft17 of [true, false]) {
+      const tableRules: DeviationRules = {
+        dealerHitsSoft17,
+        lateSurrender: true,
+        earlySurrenderVsTen: true,
+      };
+      const rules = deviationRulesForHand(tableRules, false);
+      expect(rules).toMatchObject({ lateSurrender: false, earlySurrenderVsTen: false });
+      expect(resolveDeviation("H", "16", "10", 0, rules).action).toBe("S");
+      expect(resolveDeviation("H", "15", "10", 4, rules).action).toBe("S");
+    }
+  });
+
+  it("never returns surrender for any surrender-related cell once the hand is ineligible", () => {
+    const tableRulesets: DeviationRules[] = [
+      h17LateSurrender,
+      s17LateSurrender,
+      { ...h17LateSurrender, earlySurrenderVsTen: true },
+      { ...s17LateSurrender, earlySurrenderVsTen: true },
+    ];
+    const cells = [
+      ["17", "A"], ["16", "8"], ["16", "9"], ["16", "10"], ["16", "A"],
+      ["15", "9"], ["15", "10"], ["15", "A"], ["14", "10"], ["13", "10"], ["12", "10"],
+    ] as const;
+
+    for (const tableRules of tableRulesets) {
+      const rules = deviationRulesForHand(tableRules, false);
+      for (const [hand, dealer] of cells) {
+        for (let trueCount = -10; trueCount <= 10; trueCount++) {
+          expect(resolveDeviation(hand === "17" ? "S" : "H", hand, dealer, trueCount, rules).action, `${hand} v ${dealer} at ${trueCount}`)
+            .not.toBe("R");
+        }
+      }
+    }
   });
 });

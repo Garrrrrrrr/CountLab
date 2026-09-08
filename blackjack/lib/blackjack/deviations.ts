@@ -42,6 +42,21 @@ export const surrenderAvailable = (rules: DeviationRules, dealer: string): boole
   rules.lateSurrender || (rules.earlySurrenderVsTen === true && dealer === "10");
 
 /**
+ * Applies the table's surrender rule to one live hand.
+ *
+ * Surrender is only available on an original two-card hand. Once a card has
+ * been drawn, or the hand came from a split, deviation lookup must use the
+ * no-surrender play indices even though the table itself still offers the
+ * rule. Clearing early surrender matters too: its ten-column catalog replaces
+ * the starred no-surrender stand indices while that option is available.
+ */
+export function deviationRulesForHand<Rules extends DeviationRules>(rules: Rules, canSurrender: boolean): Rules {
+  return canSurrender
+    ? rules
+    : { ...rules, lateSurrender: false, earlySurrenderVsTen: false };
+}
+
+/**
  * The supplied H17/S17 Pro catalog matching a table's dealer rule, with the ten
  * column swapped for Wong's early-surrender indices where the rule calls for it.
  */
