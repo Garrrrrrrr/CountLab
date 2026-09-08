@@ -1,0 +1,30 @@
+- generic [ref=f12e1]:
+  - main [ref=f12e34]:
+    - generic [ref=f12e254]:
+      - generic [ref=f12e255]:
+        - button "End session" [ref=f12e257] [cursor=pointer]
+        - button "Settings" [ref=f12e262] [cursor=pointer]
+      - generic [ref=f12e267]:
+        - generic [ref=f12e268]: Discard
+        - img "Discard tray" [ref=f12e271]
+        - generic [ref=f12e272]:
+          - button "Decks" [ref=f12e273] [cursor=pointer]
+          - button "RC" [ref=f12e280] [cursor=pointer]
+          - button "TC" [ref=f12e287] [cursor=pointer]
+      - generic [ref=f12e295]:
+        - generic [ref=f12e296]: Bankroll
+        - generic [ref=f12e297]: $10000
+      - generic [ref=f12e304]:
+        - generic [ref=f12e305]:
+          - generic [ref=f12e306]: Your Bet
+          - generic [ref=f12e307]: $25.00
+        - generic [ref=f12e308]:
+          - button "$5" [ref=f12e309] [cursor=pointer]
+          - button "$25" [active] [ref=f12e312] [cursor=pointer]
+          - button "$100" [ref=f12e315] [cursor=pointer]
+          - button "$500" [ref=f12e318] [cursor=pointer]
+          - button "$1K" [ref=f12e321] [cursor=pointer]
+        - generic [ref=f12e324]:
+          - button "Reset" [ref=f12e325] [cursor=pointer]
+          - button "Place Bet" [ref=f12e326] [cursor=pointer]
+  - alert [ref=f12e3]

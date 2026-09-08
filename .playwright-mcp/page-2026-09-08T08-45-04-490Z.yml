@@ -1,0 +1,153 @@
+- generic [ref=f12e1]:
+  - generic [ref=f12e4]:
+    - generic [ref=f12e5]:
+      - generic [ref=f12e6]:
+        - button "Open menu" [ref=f12e7] [cursor=pointer]
+        - generic [ref=f12e12]:
+          - generic [ref=f12e13]:
+            - link "Dashboard" [ref=f12e14] [cursor=pointer]:
+              - /url: /dashboard
+            - button [ref=f12e18] [cursor=pointer]
+            - button [ref=f12e21] [cursor=pointer]
+            - button [ref=f12e24] [cursor=pointer]
+          - link [aria-hidden]:
+            - /url: /dashboard
+            - generic: AP Toolbox
+        - button "User menu" [ref=f12e29] [cursor=pointer]:
+          - generic [ref=f12e30]: C
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - button "C charwork":
+                  - generic: C
+                  - generic: charwork
+            - generic:
+              - link "Ploppy 1/100":
+                - /url: /dashboard/ranking
+                - generic: Ploppy
+                - generic: 1/100
+            - generic:
+              - generic:
+                - link "Dashboard":
+                  - /url: /dashboard
+                - link "Results Tracker":
+                  - /url: /dashboard/results
+                - link "Game Directory":
+                  - /url: /dashboard/game-directory
+                - link "Forum":
+                  - /url: /dashboard/forum
+                - link "Messages":
+                  - /url: /dashboard/messages
+    - main [ref=f12e34]:
+      - generic [ref=f12e36]:
+        - generic [ref=f12e42]:
+          - heading "Checkout Session" [level=1] [ref=f12e43]
+          - paragraph [ref=f12e44]: Play a realistic game with stacked decks to practice counting, betting, and deviations under pressure.
+        - generic [ref=f12e46]:
+          - tablist [ref=f12e50]:
+            - tab "Setup" [ref=f12e51] [cursor=pointer]
+            - tab "Betting" [active] [selected] [ref=f12e55] [cursor=pointer]
+          - tabpanel "Betting" [ref=f12e141]:
+            - generic [ref=f12e144]:
+              - heading "Bankroll Settings" [level=3] [ref=f12e149]
+              - generic [ref=f12e151]:
+                - generic [ref=f12e152]:
+                  - text: Starting Bankroll
+                  - generic [ref=f12e153]:
+                    - generic [ref=f12e154]: $
+                    - spinbutton [ref=f12e155]: "10000"
+                  - paragraph [ref=f12e156]: Your starting bankroll will be tracked throughout the session.
+                - generic [ref=f12e157]:
+                  - text: Unit Size
+                  - generic [ref=f12e158]:
+                    - generic [ref=f12e159]: $
+                    - spinbutton [ref=f12e160]: "25"
+                  - paragraph [ref=f12e161]: Your minimum bet size (1 unit).
+                - generic [ref=f12e162]:
+                  - generic [ref=f12e163]:
+                    - generic [ref=f12e164]: Units in Bankroll
+                    - generic [ref=f12e165]: "400"
+                  - generic [ref=f12e166]:
+                    - generic [ref=f12e167]: Max Bet (16 units)
+                    - generic [ref=f12e168]: $400
+            - generic [ref=f12e171]:
+              - heading "Bet Spread" [level=3] [ref=f12e176]
+              - generic [ref=f12e178]:
+                - generic [ref=f12e179]: Bet Spread (True Count → Bet Amount)
+                - generic [ref=f12e181]:
+                  - generic [ref=f12e182]:
+                    - generic [ref=f12e183]:
+                      - generic [ref=f12e184]: True Count
+                      - textbox [ref=f12e185]: ≤ 0
+                    - generic [ref=f12e186]:
+                      - generic [ref=f12e187]: Bet
+                      - generic [ref=f12e188]:
+                        - generic [ref=f12e189]: $
+                        - textbox [ref=f12e190]: "25"
+                  - generic [ref=f12e191]:
+                    - generic [ref=f12e192]:
+                      - generic [ref=f12e193]: True Count
+                      - spinbutton [ref=f12e194]: "1"
+                    - generic [ref=f12e195]:
+                      - generic [ref=f12e196]: Bet
+                      - generic [ref=f12e197]:
+                        - generic [ref=f12e198]: $
+                        - textbox [ref=f12e199]: "50"
+                  - generic [ref=f12e200]:
+                    - generic [ref=f12e201]:
+                      - generic [ref=f12e202]: True Count
+                      - spinbutton [ref=f12e203]: "2"
+                    - generic [ref=f12e204]:
+                      - generic [ref=f12e205]: Bet
+                      - generic [ref=f12e206]:
+                        - generic [ref=f12e207]: $
+                        - textbox [ref=f12e208]: "100"
+                  - generic [ref=f12e209]:
+                    - generic [ref=f12e210]:
+                      - generic [ref=f12e211]: True Count
+                      - spinbutton [ref=f12e212]: "3"
+                    - generic [ref=f12e213]:
+                      - generic [ref=f12e214]: Bet
+                      - generic [ref=f12e215]:
+                        - generic [ref=f12e216]: $
+                        - textbox [ref=f12e217]: "200"
+                  - generic [ref=f12e218]:
+                    - generic [ref=f12e219]:
+                      - generic [ref=f12e220]: True Count
+                      - spinbutton [ref=f12e221]: "4"
+                    - generic [ref=f12e222]:
+                      - generic [ref=f12e223]: Bet
+                      - generic [ref=f12e224]:
+                        - generic [ref=f12e225]: $
+                        - textbox [ref=f12e226]: "300"
+                  - generic [ref=f12e227]:
+                    - generic [ref=f12e228]:
+                      - generic [ref=f12e229]: True Count
+                      - spinbutton [ref=f12e230]: "5"
+                    - generic [ref=f12e231]:
+                      - generic [ref=f12e232]: Bet
+                      - generic [ref=f12e233]:
+                        - generic [ref=f12e234]: $
+                        - textbox [ref=f12e235]: "400"
+                  - generic [ref=f12e236]:
+                    - generic [ref=f12e237]:
+                      - generic [ref=f12e238]: True Count
+                      - spinbutton [ref=f12e239]: "6"
+                    - generic [ref=f12e240]:
+                      - generic [ref=f12e241]: Bet
+                      - generic [ref=f12e242]:
+                        - generic [ref=f12e243]: $
+                        - textbox [ref=f12e244]: "400"
+                  - generic [ref=f12e245]:
+                    - generic [ref=f12e246]:
+                      - generic [ref=f12e247]: True Count
+                      - spinbutton [ref=f12e248]: "7"
+                    - generic [ref=f12e249]:
+                      - generic [ref=f12e250]: Bet
+                      - generic [ref=f12e251]:
+                        - generic [ref=f12e252]: $
+                        - textbox [ref=f12e253]: "400"
+        - button "Start Training" [ref=f12e137] [cursor=pointer]
+  - alert [ref=f12e3]

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getBasicStrategyDecision } from "./basicStrategy";
 import type { Card, Rank } from "./types";
 import { EARLY_SURRENDER_VS_TEN } from "./earlySurrender";
-import { getDeviationCatalog, resolveDeviation, deviationTransition } from "./deviations";
+import { getDeviationCatalog, resolveDeviation, deviationTransition, surrenderAvailable } from "./deviations";
 import type { Deviation, DeviationRules } from "./deviations";
 import { H17_PRO_DEVIATIONS } from "./h17Pro";
 import { S17_PRO_DEVIATIONS } from "./s17Pro";
@@ -22,6 +22,14 @@ const TABLE_32_VS_TEN: ReadonlyArray<readonly [hand: string, index: number, play
 ];
 
 describe("early surrender versus a ten", () => {
+  it("checks availability per upcard for none, late, and early-only rules", () => {
+    const none: DeviationRules = { dealerHitsSoft17: true, lateSurrender: false };
+    const earlyOnly: DeviationRules = { ...none, earlySurrenderVsTen: true };
+    expect([surrenderAvailable(none, "10"), surrenderAvailable(none, "9")]).toEqual([false, false]);
+    expect([surrenderAvailable(late, "10"), surrenderAvailable(late, "9")]).toEqual([true, true]);
+    expect([surrenderAvailable(earlyOnly, "10"), surrenderAvailable(earlyOnly, "9")]).toEqual([true, false]);
+  });
+
   it("carries table 32's ten column verbatim", () => {
     for (const [hand, index, playedOut] of TABLE_32_VS_TEN) {
       const row = EARLY_SURRENDER_VS_TEN.h17Pro.find((entry) => entry.hand === hand && entry.dealer === "10");

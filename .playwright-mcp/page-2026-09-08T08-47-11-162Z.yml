@@ -1,0 +1,30 @@
+- generic [active] [ref=f12e1]:
+  - main [ref=f12e34]:
+    - generic [ref=f12e254]:
+      - generic [ref=f12e255]:
+        - button "End session" [ref=f12e257] [cursor=pointer]
+        - button "Settings" [ref=f12e262] [cursor=pointer]
+      - generic [ref=f12e267]:
+        - generic [ref=f12e268]: Discard
+        - img "Discard tray" [ref=f12e271]
+        - generic [ref=f12e272]:
+          - button "Decks" [ref=f12e273] [cursor=pointer]
+          - button "RC" [ref=f12e280] [cursor=pointer]
+          - button "TC" [ref=f12e287] [cursor=pointer]
+      - generic [ref=f12e303]:
+        - generic [ref=f12e333]:
+          - generic [ref=f12e334]: "5"
+          - generic [ref=f12e360]: "5"
+        - generic [ref=f12e374]:
+          - generic [ref=f12e375]: "9"
+          - generic [ref=f12e417]: "9"
+      - generic [ref=f12e426]:
+        - generic [ref=f12e428]:
+          - button "Hit" [disabled]
+          - button "Stand" [disabled]
+          - button "Double" [disabled]
+          - button "Surrender" [disabled]
+        - generic:
+          - generic:
+            - button "Next Hand" [disabled]
+  - alert [ref=f12e3]

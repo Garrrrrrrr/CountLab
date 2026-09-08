@@ -1,0 +1,5 @@
+[     652ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ https://api.ap-toolbox.com/api/me:0
+[     653ms] [ERROR] Auth check failed AxiosError: Request failed with status code 401
+    at eM (https://ap-toolbox.com/_next/static/chunks/3qpbkg8cm9nl5.js:1:20421)
+    at XMLHttpRequest.y (https://ap-toolbox.com/_next/static/chunks/3qpbkg8cm9nl5.js:1:26372) @ https://ap-toolbox.com/_next/static/chunks/3i9grbmhy2c1t.js:0
+[     852ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://ap-toolbox.com/auth/login:0

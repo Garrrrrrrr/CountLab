@@ -33,12 +33,7 @@ import { CountingErrorCategory, DrillType, makeSession, Mistake, Session, storag
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { consumePracticeFocus, dueItemKeys, recordAnswer, setPracticeFocus } from "@/lib/statistics/spacedRepetition";
 import { track } from "@/lib/analytics/track";
-import rawDeckEstimationPhotos from "@/public/deck-estimation/manifest.json";
-
-type DeckPhoto = { file: string; decks: number; numDecks: number };
-const DECK_ESTIMATION_PHOTOS = rawDeckEstimationPhotos as DeckPhoto[];
-const PHOTO_DECK_OPTIONS = Array.from(new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.numDecks))).sort((a, b) => a - b);
-const PHOTO_UNIQUE_COUNT = new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.file)).size;
+import { DECK_ESTIMATION_PHOTOS, PHOTO_DECK_OPTIONS, PHOTO_UNIQUE_COUNT, randomDeckPhoto, type DeckPhoto } from "@/lib/blackjack/deckPhotos";
 
 const actionNames: Record<DeviationAction, string> = { ...DEVIATION_ACTION_NAMES };
 
@@ -250,8 +245,7 @@ export function DeckEstimationDrill() {
     correct, errors, mistakes, categories, message, totalMs: totalMs.current,
   } satisfies DeckEstimationSaved);
   const newTray = () => {
-    const pool = DECK_ESTIMATION_PHOTOS.filter((p) => p.numDecks === decks);
-    const chosen = (pool.length ? pool : DECK_ESTIMATION_PHOTOS)[Math.floor(Math.random() * (pool.length ? pool.length : DECK_ESTIMATION_PHOTOS.length))];
+    const chosen = randomDeckPhoto(decks, Math.random);
     setPhoto(chosen); setDecks(chosen.numDecks); setRemaining(chosen.decks);
     setAnswer(""); answerStarted.current = Date.now(); setPhase("question");
     track("question_presented", { drill: "Deck Estimation", category: `${resolution}_deck`, scenario: chosen.decks <= 1 ? "last_deck" : "discard_tray", attempt: question + 1 });

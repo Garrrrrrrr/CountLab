@@ -1,9 +1,14 @@
 import { Card, Rank, RANKS, SUITS } from "./types";
 import { runningCount } from "./hiLo";
+import { arrangeStackedShoe, type StackedShoeOptions } from "./stackedShoe";
 export class BlackjackShoe {
   private cards: Card[] = [];
   private dealt: Card[] = [];
-  constructor(public readonly numberOfDecks = 6, private readonly random: () => number = Math.random) { this.reset(); }
+  constructor(
+    public readonly numberOfDecks = 6,
+    private readonly random: () => number = Math.random,
+    private readonly arrangement?: StackedShoeOptions,
+  ) { this.reset(); }
   shuffle() { for (let i=this.cards.length-1;i>0;i--) { const j=Math.floor(this.random()*(i+1)); [this.cards[i],this.cards[j]]=[this.cards[j],this.cards[i]]; } }
   deal() { const card=this.cards.pop(); if (card) this.dealt.push(card); return card; }
   cardsRemaining() { return this.cards.length; }
@@ -16,5 +21,11 @@ export class BlackjackShoe {
     for (const card of this.cards) counts[card.rank]++;
     return counts;
   }
-  reset() { this.cards=[]; this.dealt=[]; for(let d=0;d<this.numberOfDecks;d++) for(const suit of SUITS) for(const rank of RANKS) this.cards.push({rank,suit}); this.shuffle(); }
+  reset() {
+    this.cards=[];
+    this.dealt=[];
+    for(let d=0;d<this.numberOfDecks;d++) for(const suit of SUITS) for(const rank of RANKS) this.cards.push({rank,suit});
+    this.shuffle();
+    if (this.arrangement) this.cards = arrangeStackedShoe([...this.cards].reverse(), this.arrangement).reverse();
+  }
 }

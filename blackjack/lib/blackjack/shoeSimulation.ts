@@ -15,6 +15,15 @@ export interface SimulatedPlayerHand {
   bet?: number;
 }
 
+export interface SimulatedDecision {
+  category: "Betting" | "Basic Strategy" | "Deviations";
+  chosen: string;
+  correct: string;
+  ok: boolean;
+  explanation: string;
+  trueCount: number;
+}
+
 export interface SimulatedHand {
   shoeNumber: number;
   handNumber: number;
@@ -27,6 +36,7 @@ export interface SimulatedHand {
   tcMin: number;
   tcMax: number;
   netResult: number;
+  decisions?: SimulatedDecision[];
 }
 
 export interface SimulatedShoe {

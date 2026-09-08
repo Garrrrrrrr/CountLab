@@ -8,7 +8,17 @@ import { PlayingCard } from "./PlayingCard";
 const money = (value: number, digits = 2) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 const cardLabel = (cards: { rank: string; suit: string }[]) => cards.map((card) => `${card.rank}${card.suit[0].toUpperCase()}`).join(" ");
 
-export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: () => void }) {
+export function HandReplayer({
+  shoe,
+  onBack,
+  backLabel = "Back to Shoes",
+  title = `Shoe #${shoe.shoeNumber} Analysis`,
+}: {
+  shoe: SimulatedShoe;
+  onBack: () => void;
+  backLabel?: string;
+  title?: string;
+}) {
   const [selectedHandIndex, setSelectedHandIndex] = useState(0);
   const hand = shoe.hands[selectedHandIndex];
   if (!hand) return null;
@@ -17,8 +27,8 @@ export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: ()
     <Panel>
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <button type="button" onClick={onBack} className="text-xs font-medium text-zinc-500 hover:text-zinc-200"><i className="fa-solid fa-arrow-left mr-1.5" />Back to Shoes</button>
-          <h2 className="mt-1 text-lg font-semibold">Shoe #{shoe.shoeNumber} Analysis</h2>
+          <button type="button" onClick={onBack} className="text-xs font-medium text-zinc-500 hover:text-zinc-200"><i className="fa-solid fa-arrow-left mr-1.5" />{backLabel}</button>
+          <h2 className="mt-1 text-lg font-semibold">{title}</h2>
         </div>
         <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{shoe.totalHands} hands</span>
       </div>
@@ -51,6 +61,23 @@ export function HandReplayer({ shoe, onBack }: { shoe: SimulatedShoe; onBack: ()
                 <p className="mt-2 text-xs text-zinc-500">{box.surrendered ? "Surrendered" : cardLabel(box.cards)} · Bet {money(box.bet ?? hand.bet, 0)}</p>
               </div>
             ))}
+
+            {hand.decisions && hand.decisions.length > 0 && (
+              <div className="mt-4 border-t border-white/[.06] pt-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Decision review</p>
+                <div className="mt-2 space-y-2">
+                  {hand.decisions.map((decision, index) => (
+                    <div key={`${decision.category}-${index}`} className={`rounded-xl border p-3 text-sm ${decision.ok ? "border-emerald-400/15 bg-emerald-400/[.05]" : "border-red-400/20 bg-red-400/[.06]"}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{decision.category} · TC {decision.trueCount >= 0 ? "+" : ""}{decision.trueCount}</span>
+                        <strong className={decision.ok ? "text-emerald-300" : "text-red-300"}>{decision.chosen} → {decision.correct}</strong>
+                      </div>
+                      <p className="mt-1 text-xs leading-5 text-zinc-400">{decision.explanation}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
