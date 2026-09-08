@@ -113,7 +113,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   });
   const [surrenderRule, setSurrenderRule] = useState<SurrenderRule>("late");
   const [mode, setMode] = useState<FullShoeMode>("coached");
-  const [stackShoe, setStackShoe] = useState(false);
+  const [stackShoe, setStackShoe] = useState(true);
   const [penetration, setPenetration] = useState(5 / 6);
   const [deckResolution, setDeckResolution] = useState<DeckResolution>(0.5);
   const [blackjackPayout, setBlackjackPayout] = useState<1.5 | 1.2>(1.5);
@@ -358,12 +358,12 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         penetration,
         divisorResolution: deckResolution,
         completionReason: reason,
-        rampTc1: betRamp[1],
-        rampTc2: betRamp[2],
-        rampTc3: betRamp[3],
-        rampTc4: betRamp[4],
-        rampTc5: betRamp[5],
-        rampTc6Plus: betRamp[6],
+        rampTc1: unit * betRamp[1],
+        rampTc2: unit * betRamp[2],
+        rampTc3: unit * betRamp[3],
+        rampTc4: unit * betRamp[4],
+        rampTc5: unit * betRamp[5],
+        rampTc6Plus: unit * betRamp[6],
       },
       [mode, stackShoe ? "stacked" : "random", surrenderRule],
     ));
@@ -524,7 +524,9 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       betOk,
       betOk ? "Bet sizing on target" : "Bet spread mismatch",
       betOk
-        ? `${spread === "custom" ? "Your custom ramp" : spread} calls for ${expectedUnits} unit${expectedUnits === 1 ? "" : "s"} ($${expectedWager}) on each occupied spot at TC ${signed(tc)}.`
+        ? spread === "custom"
+          ? `Your custom ramp calls for $${money(expectedWager)} on each occupied spot at TC ${signed(tc)}.`
+          : `${spread} calls for ${expectedUnits} unit${expectedUnits === 1 ? "" : "s"} ($${money(expectedWager)}) on each occupied spot at TC ${signed(tc)}.`
         : `At TC ${signed(tc)}, your ${spread === "custom" ? "custom" : spread} ramp calls for $${expectedWager} per occupied spot. Check the highlighted betting circles.`,
       "Betting",
       activeBets.map(({ bet }) => `$${money(bet)}`).join(" + "),
@@ -988,12 +990,22 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         <Panel>
           <h2 className="mb-5 text-lg font-semibold">Bankroll & ramp</h2>
           <div className="space-y-4">
-            <NumberField label="Shared starting bankroll" prefix="$" min={100} step={100} value={startingBankroll} onValueChange={setStartingBankroll} />
+            <NumberField label="Shared starting bankroll" prefix="$" min={1} step={1} value={startingBankroll} onValueChange={setStartingBankroll} />
             <Select label="Players" value={players} onChange={(event) => { const count = +event.target.value; setPlayers(count); setSpotOwners((owners) => owners.map((owner, spot) => owner < count ? owner : spot % count)); }}>
               {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} player{value === 1 ? "" : "s"}</option>)}
             </Select>
-            <NumberField label="One unit" prefix="$" min={1} step={5} value={unit} onValueChange={setUnit} />
-            <Select label="Bet spread" value={spread} onChange={(event) => {
+            <NumberField label="One unit" prefix="$" min={0.5} step={0.5} value={unit} onValueChange={(value) => {
+              if (spread === "custom") setBetRamp((currentRamp) => ({
+                1: currentRamp[1] * unit / value,
+                2: currentRamp[2] * unit / value,
+                3: currentRamp[3] * unit / value,
+                4: currentRamp[4] * unit / value,
+                5: currentRamp[5] * unit / value,
+                6: currentRamp[6] * unit / value,
+              }));
+              setUnit(value);
+            }} />
+            <Select label="Ramp shortcut" value={spread} onChange={(event) => {
               const nextSpread = event.target.value as BetSpreadPreset;
               setSpread(nextSpread);
               if (nextSpread !== "custom") setBetRamp({ ...BET_SPREAD_PRESETS[nextSpread] });
@@ -1007,20 +1019,21 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               {POSITIVE_TRUE_COUNTS.map((count) => (
                 <NumberField
                   key={count}
-                  label={count === 6 ? "TC +6 or higher" : `TC +${count}`}
-                  ariaLabel={count === 6 ? "TC +6 or higher units" : `TC +${count} units`}
+                  label={count === 6 ? "Bet at TC +6 or higher" : `Bet at TC +${count}`}
+                  ariaLabel={count === 6 ? "Bet at TC +6 or higher" : `Bet at TC +${count}`}
+                  prefix="$"
                   min={0.5}
-                  max={100}
+                  max={1000000}
                   step={0.5}
-                  value={betRamp[count]}
+                  value={Math.round(unit * betRamp[count] * 100) / 100}
                   onValueChange={(value) => {
-                    setBetRamp((currentRamp) => ({ ...currentRamp, [count]: value }));
+                    setBetRamp((currentRamp) => ({ ...currentRamp, [count]: value / unit }));
                     setSpread("custom");
                   }}
                 />
               ))}
             </div>
-            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">TC 0 or lower always uses 1 unit. Set the unit multiplier for every positive true count; TC +6 also applies above +6. {mode === "coached" ? "The coach flags missed increases and oversized bets." : "Checkout scores each wager without revealing the answer."}</div>
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">TC 0 or lower uses the one-unit amount. Enter the exact dollar wager for every positive true count; TC +6 also applies above +6. {mode === "coached" ? "The coach flags missed increases and oversized bets." : "Checkout scores each wager without revealing the answer."}</div>
           </div>
         </Panel>
       </div>

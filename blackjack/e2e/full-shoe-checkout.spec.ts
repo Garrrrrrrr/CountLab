@@ -21,7 +21,7 @@ test("checkout stays silent, completes a stacked shoe, and saves its report", as
   await game.locator("label").filter({ hasText: /^Decks/ }).locator("select").selectOption("1");
   await game.locator("label").filter({ hasText: /^Penetration/ }).locator("select").selectOption("0.65");
   await game.getByLabel("Card animations").uncheck();
-  await game.getByLabel("Stack the shoe").check();
+  await expect(game.getByLabel("Stack the shoe")).toBeChecked();
   await expect(game.getByText("Early surrender vs 10", { exact: true })).toBeVisible();
   await game.getByRole("button", { name: "Start checkout" }).click();
 
@@ -108,18 +108,25 @@ test("custom ramp values grade and persist when the player ends the session earl
   await prepareGuest(page);
   await page.goto("/training/full-shoe/");
   const game = page.getByRole("main");
-  const spread = game.locator("label").filter({ hasText: /^Bet spread/ }).locator("select");
+  const spread = game.locator("label").filter({ hasText: /^Ramp shortcut/ }).locator("select");
   const divisorPrecision = game.locator("label").filter({ hasText: /^Deck divisor precision/ }).locator("select");
 
   await expect(divisorPrecision).toHaveValue("0.5");
   await expect(divisorPrecision.locator("option")).toHaveCount(3);
   await expect(divisorPrecision.locator("option")).toHaveText(["Full deck", "Half deck", "Quarter deck"]);
-  await expect(game.getByLabel("TC +1 units")).toHaveValue("2");
-  await expect(game.getByLabel("TC +5 units")).toHaveValue("8");
-  await expect(game.getByLabel("TC +6 or higher units")).toHaveValue("8");
-  await game.getByLabel("TC +1 units").fill("3");
-  await game.getByLabel("TC +1 units").press("Tab");
+  await game.getByLabel("Shared starting bankroll").fill("1234");
+  await game.getByLabel("Shared starting bankroll").press("Tab");
+  await expect(game.getByLabel("Shared starting bankroll")).toHaveValue("1234");
+  await expect(game.getByLabel("Bet at TC +1")).toHaveValue("20");
+  await expect(game.getByLabel("Bet at TC +5")).toHaveValue("80");
+  await expect(game.getByLabel("Bet at TC +6 or higher")).toHaveValue("80");
+  await game.getByLabel("Bet at TC +1").fill("37");
+  await game.getByLabel("Bet at TC +1").press("Tab");
   await expect(spread).toHaveValue("custom");
+  await game.getByLabel("One unit").fill("12.5");
+  await game.getByLabel("One unit").press("Tab");
+  await expect(game.getByLabel("Bet at TC +1")).toHaveValue("37");
+  await expect(game.getByLabel("Bet at TC +5")).toHaveValue("80");
 
   await game.locator("label").filter({ hasText: /^Mode/ }).locator("select").selectOption("checkout");
   await game.getByLabel("Card animations").uncheck();
@@ -138,7 +145,7 @@ test("custom ramp values grade and persist when the player ends the session earl
     drill: "Full Shoe",
     questions: 1,
     correct: 0,
-    metrics: { completionReason: "ended", mode: "checkout", rampTc1: 3, rampTc5: 8, rampTc6Plus: 8 },
+    metrics: { completionReason: "ended", mode: "checkout", rampTc1: 37, rampTc5: 80, rampTc6Plus: 80 },
   });
 });
 
@@ -149,6 +156,7 @@ test("resplitting four hands keeps every hand inside its table seat", async ({ p
   const game = page.getByRole("main");
 
   await game.locator("label").filter({ hasText: /^Decks/ }).locator("select").selectOption("1");
+  await game.getByLabel("Stack the shoe").uncheck();
   await game.getByLabel("Card animations").uncheck();
   await page.evaluate(() => {
     let seed = 413_895;
