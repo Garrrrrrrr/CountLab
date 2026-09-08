@@ -60,6 +60,64 @@ test("checkout stays silent, completes a stacked shoe, and saves its report", as
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hilo:sessions") || "[]"));
   expect(saved[0]).toMatchObject({ drill: "Full Shoe", metrics: { mode: "checkout", stacked: true }, tags: ["checkout", "stacked", "early"] });
+
+  // The grader strip marks the round whose wager was deliberately underbet,
+  // and selecting that tile opens the same hand in the replayer.
+  const grader = game.getByTestId("hand-grader");
+  await expect(grader).toBeVisible();
+  const tiles = grader.getByTestId("hand-grade-tile");
+  await expect(tiles.first()).toHaveAttribute("data-round", "1");
+  await expect(grader.locator("[data-round='1']")).toHaveAttribute("data-grade", "error");
+  await expect(grader.locator("[data-grade='error']").first()).toBeVisible();
+
+  const handCount = await tiles.count();
+  expect(handCount).toBeGreaterThan(1);
+  await grader.locator("[data-round='1']").click();
+  await expect(game.getByText(`Hand 1 of ${handCount}`)).toBeVisible();
+
+  // The finished shoe is archived, and reopening it shows the same report.
+  await game.getByRole("button", { name: "Setup", exact: true }).click();
+  const savedShoes = game.getByTestId("saved-shoes");
+  await expect(savedShoes.getByTestId("saved-shoe-row")).toHaveCount(1);
+  await savedShoes.getByTestId("review-saved-shoe").click();
+
+  await expect(game.getByTestId("hand-grader")).toBeVisible();
+  await expect(game.getByTestId("hand-grader").locator("[data-round='1']")).toHaveAttribute("data-grade", "error");
+  await expect(game.getByTestId("hand-grade-tile")).toHaveCount(handCount);
+});
+
+test("checkout uses no-surrender deviations after a hit", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "One desktop decision-flow check is sufficient.");
+  await prepareGuest(page);
+  await page.goto("/training/full-shoe/");
+  const game = page.getByRole("main");
+
+  await game.locator("label").filter({ hasText: /^Mode/ }).locator("select").selectOption("checkout");
+  await game.locator("label").filter({ hasText: /^Decks/ }).locator("select").selectOption("1");
+  await game.getByLabel("Stack the shoe").uncheck();
+  await game.getByLabel("Card animations").uncheck();
+  // Deal 3,9 v 10, then draw a 4 at TC +1. The resulting hard 16 can no
+  // longer surrender and must use the 16 v 10 stand index at TC 0+.
+  await page.evaluate(() => {
+    let seed = 159;
+    Math.random = () => ((seed = (seed * 1_664_525 + 1_013_904_223) >>> 0) / 4_294_967_296);
+  });
+  await game.getByRole("button", { name: "Start checkout" }).click();
+  await game.getByRole("button", { name: "$5", exact: true }).click();
+  await game.locator("button:visible:not(:disabled)").filter({ hasText: /^Deal/ }).first().click();
+
+  await game.getByRole("button", { name: "Hit", exact: true }).click();
+  await expect(game.getByText("16. Hit or stand?", { exact: true })).toBeVisible();
+  await expect(game.getByRole("button", { name: "Surrender", exact: true })).toHaveCount(0);
+  // Deliberately miss the stand so the hidden checkout result records its
+  // expected action. The seeded next card busts and completes the round.
+  await game.getByRole("button", { name: "Hit", exact: true }).click();
+  await expect(game.getByRole("button", { name: "End", exact: true })).toBeEnabled();
+  await game.getByRole("button", { name: "End", exact: true }).click();
+
+  await expect(game.getByRole("heading", { name: "Session Ended" })).toBeVisible();
+  await expect(game.getByText("Hit → Stand", { exact: true })).toBeVisible();
+  await expect(game.getByText(/changes from Hit to Stand at or above TC 0/)).toBeVisible();
 });
 
 test("six-deck Full Shoe moves from an empty tray to a real tray photo", async ({ page }, testInfo) => {

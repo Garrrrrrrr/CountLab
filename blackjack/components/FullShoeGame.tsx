@@ -1145,7 +1145,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         confirmLabel="Delete"
         tone="danger"
         onConfirm={() => {
-          if (pendingDelete) shoeLibrary.deleteShoe(pendingDelete.id);
+          if (pendingDelete) {
+            shoeLibrary.deleteShoe(pendingDelete.id);
+            track("full_shoe_saved_shoe_deleted", { mode: pendingDelete.mode });
+          }
           setSavedShoes(shoeLibrary.shoes());
           setPendingDelete(undefined);
         }}

@@ -358,6 +358,12 @@ export function track(event: string, properties: LegacyProperties = {}): void {
     case "full_shoe_started":
       analytics.track("feature_opened", { feature: "blackjack", category: "game" });
       return;
+    case "full_shoe_saved_shoe_opened":
+      analytics.track("history_viewed", { feature: "blackjack", kind: "saved_shoe" });
+      return;
+    case "full_shoe_saved_shoe_deleted":
+      analytics.track("history_deleted", { feature: "blackjack", kind: "saved_shoe" });
+      return;
     case "full_shoe_ended":
       analytics.track("feature_completed", { feature: "blackjack", category: "game", duration_ms: number(properties, "durationMs") });
       return;
