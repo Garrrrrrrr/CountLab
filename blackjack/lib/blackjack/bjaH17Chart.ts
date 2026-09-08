@@ -73,7 +73,12 @@ function parsePrintedCell(text: string): ChartToken {
   };
 }
 
-function section(id: ChartSectionId, label: string, printed: string): ChartSection {
+/**
+ * Builds one section from a printed block laid out like the chart itself.
+ * Exported so `es10Chart.ts` can print its surrender table the same way rather
+ * than assembling cells by hand.
+ */
+export function section(id: ChartSectionId, label: string, printed: string): ChartSection {
   const rows: string[] = [];
   const cells = new Map<string, ChartToken>();
   for (const line of printed.trim().split("\n")) {

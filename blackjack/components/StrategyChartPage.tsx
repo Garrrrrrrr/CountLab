@@ -4,8 +4,10 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import ChartGrid from "@/components/ChartGrid";
 import { Panel, Select, Switch, Tabs } from "@/components/ui";
-import { BJA_H17_SECTIONS, CHART_DEALERS, chartToken, formatToken } from "@/lib/blackjack/bjaH17Chart";
-import type { ChartSectionId } from "@/lib/blackjack/bjaH17Chart";
+import { CHART_DEALERS, chartToken, formatToken } from "@/lib/blackjack/bjaH17Chart";
+import type { ChartSection, ChartSectionId } from "@/lib/blackjack/bjaH17Chart";
+import { CHART_SURRENDER_LABEL, chartSections } from "@/lib/blackjack/es10Chart";
+import type { ChartSurrenderRule } from "@/lib/blackjack/es10Chart";
 import { explainToken } from "@/lib/blackjack/chartEntry";
 import { deviationGridCells } from "@/lib/blackjack/deviationChart";
 import type { DeviationCell as DeviationMarker } from "@/lib/blackjack/deviationChart";
@@ -189,8 +191,8 @@ function StrategyCell({
   );
 }
 
-function H17Cell({ section, row, dealer }: { section: ChartSectionId; row: string; dealer: string }) {
-  const chartSection = BJA_H17_SECTIONS.find((candidate) => candidate.id === section)!;
+function H17Cell({ sections, section, row, dealer }: { sections: readonly ChartSection[]; section: ChartSectionId; row: string; dealer: string }) {
+  const chartSection = sections.find((candidate) => candidate.id === section)!;
   const token = chartToken(chartSection, row, dealer);
   const value = formatToken(token);
   const style = token.kind === "index" ? H17_TOKEN_STYLE.index : H17_TOKEN_STYLE[token.value];
@@ -206,8 +208,8 @@ function H17Cell({ section, row, dealer }: { section: ChartSectionId; row: strin
   );
 }
 
-function H17Grid({ section }: { section: ChartSectionId }) {
-  const chartSection = BJA_H17_SECTIONS.find((candidate) => candidate.id === section)!;
+function H17Grid({ sections, section }: { sections: readonly ChartSection[]; section: ChartSectionId }) {
+  const chartSection = sections.find((candidate) => candidate.id === section)!;
   return (
     <div className="relative">
       <div className="-mx-1 snap-x snap-mandatory overflow-x-auto scroll-pl-10 px-1" data-testid={`h17-reference-rail-${section}`}>
@@ -225,7 +227,7 @@ function H17Grid({ section }: { section: ChartSectionId }) {
                 <th scope="row" className="sticky left-0 z-20 w-10 bg-[var(--paper-raised)] px-1 text-left text-xs font-medium text-[var(--ink)]">{row}</th>
                 {CHART_DEALERS.map((dealer) => (
                   <td key={dealer} className="snap-start scroll-ml-10">
-                    <H17Cell section={section} row={row} dealer={dealer} />
+                    <H17Cell sections={sections} section={section} row={row} dealer={dealer} />
                   </td>
                 ))}
               </tr>
@@ -241,7 +243,9 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
   const [tab, setTab] = useState<ChartTab>(initialTab);
   const [section, setSection] = useState<SectionTab>("hard");
   const [h17Section, setH17Section] = useState<ChartSectionId>("hard");
+  const [h17Surrender, setH17Surrender] = useState<ChartSurrenderRule>("late");
   const [rules, setRules] = useState<StrategyChartRules>(DEFAULT_RULES);
+  const h17Sections = chartSections(h17Surrender);
 
   useEffect(() => {
     setRules(settingsRules());
@@ -341,7 +345,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           value={h17Section}
           onChange={setH17Section}
           label="H17 chart section"
-          items={BJA_H17_SECTIONS.map(({ id, label }) => ({ value: id, label }))}
+          items={h17Sections.map(({ id, label }) => ({ value: id, label }))}
           className="mb-3"
         />
       ) : (
@@ -454,7 +458,18 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
               <h2 className="font-display text-xl text-[var(--ink)]">Complete H17 chart</h2>
               <p className="text-xs text-[var(--ink-muted)]">The answer key for the H17 chart recall drill.</p>
             </div>
-            <p className="mt-2 text-sm text-[var(--ink-muted)]">Fixed 6-deck H17 rules with DAS and late surrender. Gold cells are Hi-Lo deviations; the suffix shows whether the play changes at that count or beyond.</p>
+            <p className="mt-2 text-sm text-[var(--ink-muted)]">Fixed 6-deck H17 rules with DAS. Gold cells are Hi-Lo deviations; the suffix shows whether the play changes at that count or beyond.</p>
+            <div className="mt-3 max-w-xs">
+              <Select
+                label="Surrender rule"
+                value={h17Surrender}
+                onChange={(event) => setH17Surrender(event.target.value as ChartSurrenderRule)}
+              >
+                {(Object.keys(CHART_SURRENDER_LABEL) as ChartSurrenderRule[]).map((rule) => (
+                  <option key={rule} value={rule}>{CHART_SURRENDER_LABEL[rule]}</option>
+                ))}
+              </Select>
+            </div>
             <p className="mt-2 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">Insurance or even money: take at TC +3 or above.</p>
           </Panel>
 
@@ -470,13 +485,16 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
 
           <Panel className="overflow-hidden p-3 sm:p-4">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4">
-              <h2 className="font-display text-xl text-[var(--ink)]">{BJA_H17_SECTIONS.find(({ id }) => id === h17Section)?.label}</h2>
+              <h2 className="font-display text-xl text-[var(--ink)]">{h17Sections.find(({ id }) => id === h17Section)?.label}</h2>
               <p className="text-xs text-[var(--ink-muted)]">Read your hand across to the dealer&apos;s upcard.</p>
             </div>
-            <H17Grid section={h17Section} />
+            <H17Grid sections={h17Sections} section={h17Section} />
           </Panel>
 
-          <p className="text-xs leading-5 text-[var(--ink-muted)]">Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition: soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4.</p>
+          <p className="text-xs leading-5 text-[var(--ink-muted)]">
+            Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition: soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4.
+            {h17Surrender === "early10" && " Under early surrender the ten column of the surrender table is Stanford Wong, Professional Blackjack, table 32; the 8, 9 and ace columns are the Blackjack Apprenticeship chart as printed, since the two rules only differ where the dealer can hold a natural."}
+          </p>
         </div>
       )}
     </main>

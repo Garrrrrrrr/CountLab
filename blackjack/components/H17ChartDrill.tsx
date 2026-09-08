@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  BJA_H17_SECTIONS,
   CHART_DEALERS,
   ChartSection,
   ChartSectionId,
   cellKey,
   chartToken,
 } from "@/lib/blackjack/bjaH17Chart";
+import { CHART_SURRENDER_LABEL, chartSections } from "@/lib/blackjack/es10Chart";
+import type { ChartSurrenderRule } from "@/lib/blackjack/es10Chart";
 import { BASE_LETTERS, SHIFT_COMPOUNDS, displayBuffer, explainToken, feedKey, gradeChart, parseEntry, sectionLegend } from "@/lib/blackjack/chartEntry";
 import { Button, GhostButton, MobileActionDock, Panel, Select } from "@/components/ui";
 import { loadDrillProgress, useDrillProgress } from "@/lib/statistics/useDrillProgress";
@@ -35,6 +36,7 @@ type H17Saved = {
   choice: SectionChoice;
   feedback: Feedback;
   startedAt: number;
+  surrender?: ChartSurrenderRule;
 };
 
 export function H17ChartDrill() {
@@ -46,9 +48,11 @@ export function H17ChartDrill() {
   }, []);
 
   const [choice, setChoice] = useState<SectionChoice>(saved?.choice ?? "all");
+  const [surrender, setSurrender] = useState<ChartSurrenderRule>(saved?.surrender ?? "late");
+  const allSections = chartSections(surrender);
   const sections = useMemo<readonly ChartSection[]>(
-    () => (choice === "all" ? BJA_H17_SECTIONS : BJA_H17_SECTIONS.filter((section) => section.id === choice)),
-    [choice],
+    () => (choice === "all" ? allSections : allSections.filter((section) => section.id === choice)),
+    [allSections, choice],
   );
 
   const cells = useMemo<CellRef[]>(() => {
@@ -96,10 +100,10 @@ export function H17ChartDrill() {
   }, []);
 
   useDrillProgress("H17 Chart", !graded, {
-    entries, choice, feedback, startedAt,
+    entries, choice, feedback, startedAt, surrender,
   } satisfies H17Saved);
 
-  useEffect(() => { setFocus(0); }, [choice]);
+  useEffect(() => { setFocus(0); }, [choice, surrender]);
 
   /** Move the chart cursor without making an input active (touch-safe). */
   const selectAt = useCallback((index: number) => {
@@ -196,7 +200,7 @@ export function H17ChartDrill() {
         userAnswer: cell.answered ? cell.typed : "(skipped)",
         correctAnswer: cell.expected,
         explanation: explainToken(cell.section, chartToken(
-          BJA_H17_SECTIONS.find((section) => section.id === cell.section)!, cell.row, cell.dealer)),
+          sections.find((section) => section.id === cell.section)!, cell.row, cell.dealer)),
       }));
     const session = makeSession(
       "H17 Chart", grade.total, grade.correct, duration, grade.bestStreak, mistakes, grade.bySection,
@@ -211,9 +215,10 @@ export function H17ChartDrill() {
       best_streak: grade.bestStreak,
       duration_ms: duration,
       mode: choice,
+      rules_preset: surrender === "early10" ? "6d_h17_das_es10" : "6d_h17_das_ls",
     });
     setGraded(true);
-  }, [choice, grade, graded, startedAt]);
+  }, [choice, grade, graded, sections, startedAt, surrender]);
 
   const total = sections.reduce((sum, section) => sum + section.cells.size, 0);
 
@@ -237,8 +242,15 @@ export function H17ChartDrill() {
           <div className="max-w-xs">
             <Select label="Section" value={choice} onChange={(event) => setChoice(event.target.value as SectionChoice)}>
               <option value="all">Whole chart</option>
-              {BJA_H17_SECTIONS.map((section) => (
+              {allSections.map((section) => (
                 <option key={section.id} value={section.id}>{section.label}</option>
+              ))}
+            </Select>
+          </div>
+          <div className="max-w-xs">
+            <Select label="Surrender rule" value={surrender} onChange={(event) => setSurrender(event.target.value as ChartSurrenderRule)}>
+              {(Object.keys(CHART_SURRENDER_LABEL) as ChartSurrenderRule[]).map((rule) => (
+                <option key={rule} value={rule}>{CHART_SURRENDER_LABEL[rule]}</option>
               ))}
             </Select>
           </div>
@@ -389,6 +401,7 @@ export function H17ChartDrill() {
         Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition:
         soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4, the counts where doubling overtakes
         standing. Insurance or even money: take at true count +3 or above.
+        {surrender === "early10" && " Under early surrender the ten column of the surrender table is Stanford Wong, Professional Blackjack, table 32; the 8, 9 and ace columns stay as the printed chart has them, since the two rules only differ where the dealer can hold a natural."}
       </p>
 
       <MobileActionDock label="Chart entry keys">
