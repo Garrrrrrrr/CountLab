@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, fillRampFromTrueCount, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
@@ -136,6 +136,7 @@ export function SessionJournal() {
   const importCsvInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "session"; id: string; date: string } | { kind: "transaction"; id: string } | { kind: "bankroll"; id: string; name: string }>();
   const [editingSessionId, setEditingSessionId] = useState<string>();
+  const [expandedNotesId, setExpandedNotesId] = useState<string>();
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
@@ -693,6 +694,15 @@ export function SessionJournal() {
                         <span className={`font-semibold ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</span>
                         <span className="text-zinc-500">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
                       </div>
+                      {session.notes && (
+                        <div className="mt-3 rounded-lg border border-white/[.07] bg-black/15">
+                          <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-zinc-400 hover:text-zinc-200">
+                            <span><i className="fa-solid fa-note-sticky mr-1.5 text-sky-300" aria-hidden="true" />Session notes</span>
+                            <span>{expandedNotesId === session.id ? "Hide" : "View"}</span>
+                          </button>
+                          {expandedNotesId === session.id && <p className="whitespace-pre-wrap break-words border-t border-white/[.06] px-3 py-2.5 text-sm leading-6 text-zinc-300">{session.notes}</p>}
+                        </div>
+                      )}
                       <div className="mt-3 grid grid-cols-2 gap-2">
                         <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
                         <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
@@ -713,22 +723,35 @@ export function SessionJournal() {
                       const outcome = theoreticalSessionOutcome(session);
                       const z = sessionZScore(session, outcome);
                       return (
-                        <tr key={session.id} className="border-t border-white/[.06]">
-                          <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}</td>
-                          <td className="max-w-48 truncate py-2.5 pr-3 text-zinc-300">{session.location || <span className="text-zinc-600">Not recorded</span>}</td>
-                          <td className="py-2.5 pr-3">{session.hours}h</td>
-                          <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
-                          <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
-                          <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
-                          <td className="py-2.5 text-right whitespace-nowrap">
-                            <button type="button" onClick={() => startEdit(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Edit</button>
-                            <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
-                            <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
-                              {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
-                            </button>
-                            <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
-                          </td>
-                        </tr>
+                        <Fragment key={session.id}>
+                          <tr className="border-t border-white/[.06]">
+                            <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}</td>
+                            <td className="max-w-48 truncate py-2.5 pr-3 text-zinc-300">{session.location || <span className="text-zinc-600">Not recorded</span>}</td>
+                            <td className="py-2.5 pr-3">{session.hours}h</td>
+                            <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
+                            <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
+                            <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
+                            <td className="py-2.5 text-right whitespace-nowrap">
+                              {session.notes && <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="px-2 py-1 text-xs text-zinc-500 hover:text-sky-300">Notes</button>}
+                              <button type="button" onClick={() => startEdit(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Edit</button>
+                              <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
+                              <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
+                                {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
+                              </button>
+                              <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
+                            </td>
+                          </tr>
+                          {session.notes && expandedNotesId === session.id && (
+                            <tr className="bg-sky-300/[.025]">
+                              <td colSpan={7} className="px-3 pb-3 pt-1">
+                                <div className="rounded-lg border border-sky-300/10 bg-black/15 px-3 py-2.5">
+                                  <p className="text-[.68rem] font-semibold uppercase tracking-[.1em] text-zinc-600">Session notes</p>
+                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">{session.notes}</p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
                       );
                     })}
                   </tbody>
