@@ -79,6 +79,12 @@ const decodeHandsCsv = (value: string): HandCountPoint[] => value.split(";").fil
 
 const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
+/** Accepts only real calendar dates in the browser/database's shared YYYY-MM-DD format. */
+export const isJournalDate = (value: unknown): value is string => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
 const validRules = (value: unknown): value is AdvantageRules => {
   if (!value || typeof value !== "object") return false;
   const rules = value as Partial<AdvantageRules>;
@@ -207,7 +213,10 @@ function deleteRemoteBankroll(id: string) {
 
 function pushJournalSession(session: JournalSession) {
   const user = getCurrentUser();
-  if (!user) return Promise.resolve();
+  // Legacy clients could save the date input's temporary empty value locally.
+  // Keep that row repairable on-device, but never hammer Postgres with a value
+  // its date column must reject.
+  if (!user || !isJournalDate(session.date)) return Promise.resolve();
   return observeApiRequest("supabase", "journal_session_upsert", supabase
     .from("journal_sessions")
     .upsert({
@@ -241,7 +250,7 @@ function deleteRemoteJournalSession(id: string) {
 
 function pushTransaction(transaction: BankrollTransaction) {
   const user = getCurrentUser();
-  if (!user) return Promise.resolve();
+  if (!user || !isJournalDate(transaction.date)) return Promise.resolve();
   return observeApiRequest("supabase", "journal_transaction_upsert", supabase
     .from("journal_transactions")
     .upsert({
@@ -335,6 +344,7 @@ export const journalLibrary = {
     return true;
   },
   addSession(session: Omit<JournalSession, "id" | "createdAt" | "bankrollId"> & { bankrollId?: string }, store?: StorageLike, now = new Date()) {
+    if (!isJournalDate(session.date)) throw new Error("Session date must be a complete YYYY-MM-DD calendar date.");
     const record: JournalSession = { ...session, bankrollId: session.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.sessions(store)].slice(0, MAX_SESSIONS);
     write(SESSIONS_KEY, next, store);
@@ -344,6 +354,7 @@ export const journalLibrary = {
   },
   /** Replaces an existing session's editable fields, keeping its id, createdAt, and bankrollId. Returns the updated record, or undefined if no session has that id. */
   updateSession(id: string, updates: Omit<JournalSession, "id" | "createdAt" | "bankrollId">, store?: StorageLike) {
+    if (!isJournalDate(updates.date)) throw new Error("Session date must be a complete YYYY-MM-DD calendar date.");
     const existing = this.sessions(store).find((session) => session.id === id);
     if (!existing) return undefined;
     const record: JournalSession = { ...updates, id: existing.id, createdAt: existing.createdAt, bankrollId: existing.bankrollId };
@@ -358,6 +369,7 @@ export const journalLibrary = {
     track("journal_session_deleted");
   },
   addTransaction(transaction: Omit<BankrollTransaction, "id" | "createdAt" | "bankrollId"> & { bankrollId?: string }, store?: StorageLike, now = new Date()) {
+    if (!isJournalDate(transaction.date)) throw new Error("Transaction date must be a complete YYYY-MM-DD calendar date.");
     const record: BankrollTransaction = { ...transaction, bankrollId: transaction.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString() };
     const next = [record, ...this.transactions(store)].slice(0, MAX_TRANSACTIONS);
     write(TRANSACTIONS_KEY, next, store);
@@ -502,7 +514,7 @@ export const journalLibrary = {
       const expenses = Number(row.expenses);
       const ramp = decodeRampCsv(row.ramp ?? "");
       const handsByTrueCount = decodeHandsCsv(row.handsByTrueCount ?? "");
-      if (![decks, penetration, bettingUnit, hours, handsPerHour, playerHands, netResult, expenses].every(finite) || ramp.length === 0 || !row.date) continue;
+      if (![decks, penetration, bettingUnit, hours, handsPerHour, playerHands, netResult, expenses].every(finite) || ramp.length === 0 || !isJournalDate(row.date)) continue;
       let bankrollId = row.bankroll ? bankrollIdByName.get(row.bankroll) : undefined;
       if (!bankrollId && row.bankroll) {
         bankrollId = this.addBankroll(row.bankroll, store).id;
@@ -551,5 +563,7 @@ export const journalLibrary = {
 export function sessionsInRange(sessions: JournalSession[], days: number | "all", now = new Date()) {
   if (days === "all") return sessions;
   const cutoff = now.getTime() - days * 86400000;
-  return sessions.filter((session) => new Date(session.date).getTime() >= cutoff);
+  // Invalid legacy dates stay visible in the log so the user can edit and
+  // repair them; hiding the row would make the failed edit look like data loss.
+  return sessions.filter((session) => !isJournalDate(session.date) || new Date(session.date).getTime() >= cutoff);
 }

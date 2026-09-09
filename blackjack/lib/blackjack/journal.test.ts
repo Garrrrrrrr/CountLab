@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "./advantage";
-import { journalLibrary, sessionsInRange } from "./journal";
+import { isJournalDate, journalLibrary, sessionsInRange } from "./journal";
 
 class MemoryStorage {
   private values = new Map<string, string>();
@@ -22,6 +22,14 @@ const sessionInput = {
 };
 
 describe("journal library", () => {
+  it("accepts real ISO calendar dates and rejects partial or impossible dates", () => {
+    expect(isJournalDate("2026-09-08")).toBe(true);
+    expect(isJournalDate("2024-02-29")).toBe(true);
+    expect(isJournalDate("2026-09-0")).toBe(false);
+    expect(isJournalDate("2026-02-29")).toBe(false);
+    expect(isJournalDate("")).toBe(false);
+  });
+
   it("adds and deletes casino sessions", () => {
     const store = new MemoryStorage();
     const saved = journalLibrary.addSession(sessionInput, store, new Date("2026-08-13T12:00:00Z"));
@@ -52,6 +60,13 @@ describe("journal library", () => {
     expect(journalLibrary.sessions(store).map((s) => s.netResult)).toEqual([120]);
   });
 
+  it("refuses to replace a saved session with an incomplete date", () => {
+    const store = new MemoryStorage();
+    const saved = journalLibrary.addSession(sessionInput, store);
+    expect(() => journalLibrary.updateSession(saved.id, { ...sessionInput, date: "" }, store)).toThrow(/complete YYYY-MM-DD/i);
+    expect(journalLibrary.sessions(store)[0].date).toBe(sessionInput.date);
+  });
+
   it("stores an optional per-true-count hands schedule alongside a session", () => {
     const store = new MemoryStorage();
     const handsByTrueCount = [{ trueCount: 0, hands: 1 }, { trueCount: 2, hands: 2 }];
@@ -74,6 +89,13 @@ describe("journal library", () => {
     expect(journalLibrary.sessions(store)).toEqual([]);
     store.setItem("countlab:journal-sessions:v1", JSON.stringify({ version: 0, items: [] }));
     expect(journalLibrary.sessions(store)).toEqual([]);
+  });
+
+  it("keeps a locally cached session with an invalid date available for repair", () => {
+    const store = new MemoryStorage();
+    const saved = journalLibrary.addSession(sessionInput, store);
+    store.setItem("countlab:journal-sessions:v1", JSON.stringify({ version: 1, items: [{ ...saved, date: "" }] }));
+    expect(journalLibrary.sessions(store)[0].date).toBe("");
   });
 
   it("exports and merges a validated portable backup", () => {
@@ -200,5 +222,9 @@ describe("sessionsInRange", () => {
   });
   it("returns every session when the range is 'all'", () => {
     expect(sessionsInRange(sessions, "all")).toHaveLength(2);
+  });
+  it("keeps an invalid legacy date visible so the session can be repaired", () => {
+    const invalid = { ...sessions[0], id: "invalid", date: "" };
+    expect(sessionsInRange([invalid], 7, new Date("2026-08-13T12:00:00Z"))).toEqual([invalid]);
   });
 });

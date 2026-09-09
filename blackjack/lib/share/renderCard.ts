@@ -1,4 +1,4 @@
-import type { JournalSession } from "@/lib/blackjack/journal";
+import { isJournalDate, type JournalSession } from "@/lib/blackjack/journal";
 import type { TheoreticalOutcome } from "@/lib/blackjack/journalAnalysis";
 
 const WIDTH = 1200;
@@ -53,7 +53,9 @@ export async function renderSessionCard(canvas: HTMLCanvasElement, session: Jour
   ctx.font = `600 16px ${FONT}`;
   ctx.fillText("SESSION JOURNAL" + (bankrollName ? ` · ${bankrollName.toUpperCase()}` : ""), 56, 102);
 
-  const dateLabel = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${session.date}T12:00:00`));
+  const dateLabel = isJournalDate(session.date)
+    ? new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${session.date}T12:00:00`))
+    : "Date needs repair";
   ctx.fillStyle = "#f4f4f5";
   ctx.font = `600 30px ${FONT}`;
   ctx.fillText(dateLabel + (session.location ? ` · ${session.location}` : ""), 56, 160);

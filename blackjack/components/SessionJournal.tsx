@@ -5,7 +5,7 @@ import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAx
 import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, fillRampFromTrueCount, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
-import { Bankroll, BankrollTransaction, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
+import { Bankroll, BankrollTransaction, isJournalDate, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
 import { track } from "@/lib/analytics/track";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import {
@@ -38,7 +38,9 @@ const ordinal = (value: number) => {
   if (remainder >= 11 && remainder <= 13) return `${value}th`;
   return `${value}${["th", "st", "nd", "rd"][value % 10] ?? "th"}`;
 };
-const shortDate = (value: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`));
+const shortDate = (value: string) => isJournalDate(value)
+  ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(`${value}T12:00:00`))
+  : "Invalid date";
 const expandRamp = (ramp: RampPoint[]) => Array.from({ length: 17 }, (_, index) => ({ trueCount: index - 8, units: unitsAt(index - 8, ramp) }));
 /** The seventeen true-count buckets the audited coefficients are keyed on, matching the Bankroll Lab. */
 const TRUE_COUNTS = Array.from({ length: 17 }, (_, index) => index - 8);
@@ -197,6 +199,8 @@ export function SessionJournal() {
     [rules, ramp, bettingUnit, playerHands, handsSchedule, handsPerHour, hours],
   );
   const draftOutcome = useMemo(() => theoreticalSessionOutcome(draftSession), [draftSession]);
+  const sessionDateValid = isJournalDate(date);
+  const transactionDateValid = isJournalDate(transactionDate);
   const countRows = useMemo<CountRow[]>(
     // calculateCountRows derives the rule delta from draftSession.rules.
     () => calculateCountRows({ bankroll: 0, ...draftSession }),
@@ -266,6 +270,7 @@ export function SessionJournal() {
   const loadVenuePreset = (id: string) => {
     const preset = venuePresets.find((item) => item.id === id);
     if (!preset) return;
+    setLocation(preset.name);
     const nextDecks = preset.rules.decks === 8 ? 8 : 6;
     setDecks(nextDecks);
     setDealt(Number((preset.rules.penetration * nextDecks).toFixed(2)));
@@ -277,6 +282,7 @@ export function SessionJournal() {
     const name = venuePresetName.trim();
     if (!name) return;
     venuePresetLibrary.savePreset(name, rules, ramp);
+    setLocation(name);
     setVenuePresetName("");
     setNotice(`Venue preset "${name}" saved.`);
   };
@@ -335,6 +341,11 @@ export function SessionJournal() {
   };
   const logSession = () => {
     sessionForm.submitted();
+    if (!sessionDateValid) {
+      sessionForm.validationFailed("date", "invalid_date");
+      setNotice("Enter a complete, valid session date before saving.");
+      return;
+    }
     const payload = {
       date,
       location: location.trim() || undefined,
@@ -362,6 +373,11 @@ export function SessionJournal() {
   };
   const logTransaction = () => {
     transactionForm.submitted();
+    if (!transactionDateValid) {
+      transactionForm.validationFailed("date", "invalid_date");
+      setNotice("Enter a complete, valid transaction date before recording it.");
+      return;
+    }
     journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount), bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
     setNotice(`${transactionType === "deposit" ? "Deposit" : "Withdrawal"} recorded.`);
     transactionForm.succeeded();
@@ -522,7 +538,7 @@ export function SessionJournal() {
             <p className="text-xs text-zinc-500">Start with the date, time, unit, and actual result. Your most recent assumptions stay in place; open Advanced only when the table or spread changed.</p>
             {editingSessionId && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-sky-100/80">
-                <span><i className="fa-solid fa-pen mr-1.5 text-sky-300" aria-hidden="true" />Editing session from {shortDate(date)}.</span>
+                <span><i className="fa-solid fa-pen mr-1.5 text-sky-300" aria-hidden="true" />Editing session from {sessionDateValid ? shortDate(date) : "an incomplete date"}.</span>
                 <button type="button" onClick={cancelEdit} className="font-semibold text-sky-300 hover:text-sky-200">Cancel</button>
               </div>
             )}
@@ -547,8 +563,8 @@ export function SessionJournal() {
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Location (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="Local only" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" required aria-invalid={!sessionDateValid} value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none aria-[invalid=true]:border-red-400/50" />{!sessionDateValid && <span role="alert" className="text-xs font-normal text-red-300">Enter a complete, valid date.</span>}</label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Casino name (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="e.g. Bellagio" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
               <Select label="Decks" value={decks} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
               <Select label="Penetration" value={dealt} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
               <NumberField label="Hours played" value={hours} min={0.1} step={0.5} onValueChange={setHours} />
@@ -587,7 +603,7 @@ export function SessionJournal() {
             <p className="mt-2 text-xs text-zinc-500">Expenses are tracked and totalled separately — they do not move your bankroll or change how this session scores against its EV, because the model prices the table, not the trip.</p>
             <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
             <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
-            <Button className="mt-4 hidden w-full lg:block" onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
+            <Button className="mt-4 hidden w-full lg:block" disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
           </div>
         </Section>
 
@@ -650,7 +666,7 @@ export function SessionJournal() {
           icon="fa-table-list"
         >
           <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} placeholder="Search date, venue, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
             <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
               {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
             </div>
@@ -669,7 +685,7 @@ export function SessionJournal() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold">{shortDate(session.date)}</p>
-                          {session.location && <p className="truncate text-xs text-zinc-600">{session.location}</p>}
+                          <p className="truncate text-xs text-zinc-600"><span className="text-zinc-500">Casino:</span> {session.location || "Not recorded"}</p>
                         </div>
                         <AssessmentBadge assessment={classifySessionAssessment(z)} />
                       </div>
@@ -690,15 +706,16 @@ export function SessionJournal() {
                 })}
               </div>
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[46rem] text-left text-sm">
-                  <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
+                <table className="w-full min-w-[54rem] text-left text-sm">
+                  <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Casino</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
                   <tbody>
                     {filteredSessions.map((session) => {
                       const outcome = theoreticalSessionOutcome(session);
                       const z = sessionZScore(session, outcome);
                       return (
                         <tr key={session.id} className="border-t border-white/[.06]">
-                          <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}{session.location && <span className="block text-xs text-zinc-600">{session.location}</span>}</td>
+                          <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}</td>
+                          <td className="max-w-48 truncate py-2.5 pr-3 text-zinc-300">{session.location || <span className="text-zinc-600">Not recorded</span>}</td>
                           <td className="py-2.5 pr-3">{session.hours}h</td>
                           <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
                           <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
@@ -790,10 +807,10 @@ export function SessionJournal() {
           <div onChange={() => transactionForm.start("inputs")}>
             <p className="text-xs text-zinc-500">Track money added to or removed from this bankroll separately from table results. Bankroll = session results + deposits − withdrawals; session expenses are reported on their own and never deducted here.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" required aria-invalid={!transactionDateValid} value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none aria-[invalid=true]:border-red-400/50" />{!transactionDateValid && <span role="alert" className="text-xs font-normal text-red-300">Enter a complete, valid date.</span>}</label>
               <Select label="Type" value={transactionType} onChange={(event) => setTransactionType(event.target.value as "deposit" | "withdrawal")}><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option></Select>
               <NumberField label="Amount" value={transactionAmount} min={0} prefix="$" onValueChange={setTransactionAmount} />
-              <div className="flex items-end"><GhostButton className="w-full" onClick={logTransaction}>Record</GhostButton></div>
+              <div className="flex items-end"><GhostButton className="w-full" disabled={!transactionDateValid} onClick={logTransaction}>Record</GhostButton></div>
             </div>
             {scopedTransactions.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -834,7 +851,7 @@ export function SessionJournal() {
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>
-          <Button onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
+          <Button disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
         </div>
       </MobileActionDock>
       <ConfirmModal
