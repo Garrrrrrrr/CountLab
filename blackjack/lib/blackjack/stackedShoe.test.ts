@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runningCount, trueCount } from "./hiLo";
+import { hiLoValue, runningCount, trueCount } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 
 const mulberry32 = (seed: number) => {
@@ -32,6 +32,24 @@ describe("stacked shoe", () => {
     const depth = Math.round(dealt.length * 0.5);
     expect(trueCount(runningCount(dealt.slice(0, depth)), (dealt.length - depth) / 52, "floor")).toBe(6);
     expect(cardCounts(dealt)).toEqual(cardCounts(dealAll(new BlackjackShoe(6, mulberry32(99)))));
+  });
+
+  it("keeps neutral ranks at their natural frequency instead of using them to manufacture the count", () => {
+    const shoe = new BlackjackShoe(6, mulberry32(42), { targetTrueCount: 6, depth: 0.5 });
+    const dealt = dealAll(shoe);
+    const prefix = dealt.slice(0, dealt.length / 2);
+
+    expect(prefix.filter((card) => hiLoValue(card) === 0)).toHaveLength(36);
+    expect(prefix.filter((card) => hiLoValue(card) === 1)).toHaveLength(69);
+    expect(prefix.filter((card) => hiLoValue(card) === -1)).toHaveLength(51);
+  });
+
+  it("preserves the shuffled beginning and concentrates the adjustment near the target depth", () => {
+    const random = dealAll(new BlackjackShoe(6, mulberry32(42)));
+    const stacked = dealAll(new BlackjackShoe(6, mulberry32(42), { targetTrueCount: 6, depth: 0.5 }));
+
+    expect(stacked.slice(0, 52)).toEqual(random.slice(0, 52));
+    expect(stacked.slice(0, 156)).not.toEqual(random.slice(0, 156));
   });
 
   it("is deterministic for a seed", () => {
