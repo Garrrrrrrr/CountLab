@@ -1,3 +1,4 @@
+import { accountStorage, accountGeneration, scopedStorage, accountScope } from "@/lib/supabase/accountStorage";
 import { supabase } from "../supabase/client";
 import { getCurrentUser } from "../supabase/currentUser";
 import { track } from "../analytics/track";
@@ -162,14 +163,17 @@ const BACKUP_KEY_PREFIXES = [
   "countlab:simulation-templates:",
   "countlab:venue-presets:",
   "countlab:full-shoe-reviews:",
+  "countlab:onboarding-",
+  "countlab:uth:",
+  "countlab:chase:",
 ];
 
 function backupNamespaces(): Record<string, string> {
   const collected: Record<string, string> = {};
   if (typeof window === "undefined") return collected;
-  for (const key of Object.keys(localStorage)) {
-    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
-    const value = localStorage.getItem(key);
+  for (const key of accountStorage.keys()) {
+    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) || key.includes("-ack:") || key.includes("-delete-ack:") || key.includes("journal-deletions:")) continue;
+    const value = accountStorage.getItem(key);
     if (value !== null) collected[key] = value;
   }
   return collected;
@@ -180,8 +184,15 @@ function restoreNamespaces(entries: unknown): number {
   let restored = 0;
   for (const [key, value] of Object.entries(entries as Record<string, unknown>)) {
     if (typeof value !== "string") continue;
-    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) continue;
-    localStorage.setItem(key, value);
+    if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) || key.includes("-ack:") || key.includes("-delete-ack:") || key.includes("journal-deletions:")) continue;
+    const incoming = JSON.parse(value);
+    if (key.startsWith("countlab:journal-") && Array.isArray(incoming?.items)) incoming.items = incoming.items.map((item: Record<string, unknown>) => ({ ...item, updatedAt: new Date().toISOString(), deletedAt: undefined }));
+    const existing = JSON.parse(accountStorage.getItem(key) ?? "null");
+    // Collection imports merge by stable ID. Existing unrelated history survives.
+    if (incoming?.version === 1 && Array.isArray(incoming.items) && existing?.version === 1 && Array.isArray(existing.items)) {
+      const merged = new Map([...existing.items, ...incoming.items].map((item: { id: string }) => [item.id, item]));
+      accountStorage.setItem(key, JSON.stringify({ version: 1, items: [...merged.values()] }));
+    } else accountStorage.setItem(key, JSON.stringify(incoming));
     restored += 1;
   }
   return restored;
@@ -197,7 +208,7 @@ function syncedSessionIdsKey(userId: string) {
 
 function syncedSessionIds(userId: string): Set<string> {
   try {
-    const parsed = JSON.parse(localStorage.getItem(syncedSessionIdsKey(userId)) || "[]");
+    const parsed = JSON.parse(accountStorage.getItem(syncedSessionIdsKey(userId)) || "[]");
     return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
   } catch {
     return new Set();
@@ -206,10 +217,11 @@ function syncedSessionIds(userId: string): Set<string> {
 
 function markSessionsSynced(ids: string[], userId = getCurrentUser()?.id) {
   if (typeof window === "undefined" || !userId || !ids.length) return;
+  if (getCurrentUser()?.id !== userId) return;
   const known = syncedSessionIds(userId);
   ids.forEach((id) => known.add(id));
-  // Sessions are locally capped at 500, so this remains tiny and bounded.
-  localStorage.setItem(syncedSessionIdsKey(userId), JSON.stringify([...known].slice(-500)));
+  // Keep acknowledgements for all retained sessions.
+  accountStorage.setItem(syncedSessionIdsKey(userId), JSON.stringify([...known]));
 }
 
 function scheduleSessionReplay() {
@@ -217,7 +229,7 @@ function scheduleSessionReplay() {
   replayRetryScheduled = true;
   setTimeout(() => {
     replayRetryScheduled = false;
-    void storage.pushLocalToRemote();
+    void storage.pushLocalToRemote().catch(syncFailure);
   }, 61_000);
 }
 
@@ -258,13 +270,18 @@ function pushSession(s: Session): Promise<SessionPushOutcome> {
 }
 
 function pushProgress(p: DrillProgress) {
+  const scope = scopedStorage(accountScope());
+  const signature = JSON.stringify(p);
+  const ack = `hilo:progress-ack:${p.drill}`;
+  if (scope.getItem(ack) === signature) return Promise.resolve();
   const user = getCurrentUser();
   if (!user) return Promise.resolve();
   return observeApiRequest("supabase", "drill_progress_upsert", supabase
     .from("drill_progress")
     .upsert({ user_id: user.id, drill: p.drill, state: p.state, updated_at: p.updatedAt }))
     .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync drill progress", error);
+      if (error) throw new Error(error.message);
+      scope.setItem(ack, signature);
     });
 }
 
@@ -282,30 +299,40 @@ function pushProgressClear(drill: DrillType) {
 }
 
 function pushSettings(s: Settings) {
+  const scope = scopedStorage(accountScope());
+  const signature = JSON.stringify(s);
+  if (scope.getItem("hilo:settings-ack") === signature) return Promise.resolve();
   const user = getCurrentUser();
   if (!user) return Promise.resolve();
   return observeApiRequest("supabase", "settings_upsert", supabase
     .from("settings")
     .upsert({ user_id: user.id, data: s, updated_at: new Date().toISOString() }))
     .then(({ error }) => {
-      if (error) console.error("[countlab] failed to sync settings", error);
+      if (error) throw new Error(error.message);
+      scope.setItem("hilo:settings-ack", signature);
     });
+}
+
+function syncFailure(error: unknown) {
+  console.error("[countlab] sync failed", error);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("countlab-journal-sync-error"));
 }
 
 export const storage = {
   sessions(): Session[] {
     if (typeof window === "undefined") return [];
     try {
-      return JSON.parse(localStorage.getItem(SESSION_KEY) || "[]") as Session[];
+      return JSON.parse(accountStorage.getItem(SESSION_KEY) || "[]") as Session[];
     } catch {
       return [];
     }
   },
   addSession(s: Session) {
-    const all = [s, ...this.sessions()].slice(0, 500);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(all));
+    const all = [s, ...this.sessions()];
+    accountStorage.setItem(SESSION_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("hilo-storage"));
-    pushSession(s);
+    window.dispatchEvent(new Event("countlab:sync-pending"));
+    void pushSession(s).catch(syncFailure);
     const elapsedSeconds = typeof s.metrics?.elapsedSeconds === "number" ? s.metrics.elapsedSeconds : undefined;
     track("drill_session_completed", {
       drill: s.drill,
@@ -320,7 +347,7 @@ export const storage = {
   settings(): Settings {
     if (typeof window === "undefined") return DEFAULT_SETTINGS;
     try {
-      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") as StoredSettings;
+      const stored = JSON.parse(accountStorage.getItem(SETTINGS_KEY) || "{}") as StoredSettings;
       // The legacy key is read but never spread through: `saveSettings` writes
       // back whatever this returns, so carrying it would keep a dead field
       // alive in every future blob, local and synced.
@@ -333,16 +360,19 @@ export const storage = {
   },
   saveSettings(s: Settings) {
     const previous = this.settings();
+    localStorage.setItem("countlab:theme", s.theme);
+    accountStorage.setItem("countlab:onboarding-rules-saved", "1");
     const changedKeys = (Object.keys(s) as Array<keyof Settings>).filter((key) => previous[key] !== s[key]);
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    accountStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
     window.dispatchEvent(new Event("hilo-storage"));
-    pushSettings(s);
+    window.dispatchEvent(new Event("countlab:sync-pending"));
+    void pushSettings(s).catch(syncFailure);
     if (changedKeys.length) track("settings_saved", { changedKeys, decks: s.decks });
   },
   progress<T = unknown>(drill: DrillType): DrillProgress<T> | null {
     if (typeof window === "undefined") return null;
     try {
-      const raw = localStorage.getItem(progressKey(drill));
+      const raw = accountStorage.getItem(progressKey(drill));
       return raw ? (JSON.parse(raw) as DrillProgress<T>) : null;
     } catch {
       return null;
@@ -350,11 +380,12 @@ export const storage = {
   },
   saveProgress<T>(drill: DrillType, state: T) {
     const progress: DrillProgress<T> = { drill, state, updatedAt: new Date().toISOString() };
-    localStorage.setItem(progressKey(drill), JSON.stringify(progress));
-    pushProgress(progress);
+    accountStorage.setItem(progressKey(drill), JSON.stringify(progress));
+    window.dispatchEvent(new Event("countlab:sync-pending"));
+    void pushProgress(progress).catch(syncFailure);
   },
   clearProgress(drill: DrillType) {
-    localStorage.removeItem(progressKey(drill));
+    accountStorage.removeItem(progressKey(drill));
     pushProgressClear(drill);
   },
   /** Merge progress pulled from Supabase into the local cache, keeping whichever copy is newer. */
@@ -363,7 +394,8 @@ export const storage = {
     for (const p of remote) {
       const local = this.progress(p.drill);
       if (!local || new Date(p.updatedAt) > new Date(local.updatedAt)) {
-        localStorage.setItem(progressKey(p.drill), JSON.stringify(p));
+        accountStorage.setItem(progressKey(p.drill), JSON.stringify(p));
+        accountStorage.setItem(`hilo:progress-ack:${p.drill}`, JSON.stringify(p));
       }
     }
     window.dispatchEvent(new Event("hilo-storage"));
@@ -373,21 +405,24 @@ export const storage = {
     const merged = [...remote, ...this.sessions()]
       .filter((session, index, all) => all.findIndex((candidate) => candidate.id === session.id) === index)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 500);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(merged));
+;
+    accountStorage.setItem(SESSION_KEY, JSON.stringify(merged));
     markSessionsSynced(remote.map((session) => session.id));
     window.dispatchEvent(new Event("hilo-storage"));
   },
   /** Apply settings pulled from Supabase to the local cache without re-pushing them. */
-  applyRemoteSettings(remote: Settings) {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(remote));
+  applyRemoteSettings(remote: Settings, expectedLocal = accountStorage.getItem(SETTINGS_KEY)) {
+    const local = accountStorage.getItem(SETTINGS_KEY);
+    if (local !== expectedLocal || (local !== null && local !== accountStorage.getItem("hilo:settings-ack"))) return;
+    accountStorage.setItem(SETTINGS_KEY, JSON.stringify(remote));
+    accountStorage.setItem("hilo:settings-ack", JSON.stringify(remote));
     window.dispatchEvent(new Event("hilo-storage"));
   },
   clearAll() {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SETTINGS_KEY);
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith(PROGRESS_PREFIX)) localStorage.removeItem(key);
+    accountStorage.removeItem(SESSION_KEY);
+    accountStorage.removeItem(SETTINGS_KEY);
+    for (const key of accountStorage.keys()) {
+      if (key.startsWith(PROGRESS_PREFIX)) accountStorage.removeItem(key);
     }
     window.dispatchEvent(new Event("hilo-storage"));
   },
@@ -413,10 +448,19 @@ export const storage = {
       (session) => session && typeof session.id === "string" && typeof session.drill === "string" && Number.isFinite(session.questions),
     );
     if (!valid) throw new Error("The backup contains invalid sessions");
-    localStorage.setItem(SESSION_KEY, JSON.stringify(parsed.sessions.slice(0, 500)));
-    if (parsed.settings) this.saveSettings({ ...DEFAULT_SETTINGS, ...parsed.settings });
-    const restored = restoreNamespaces(parsed.local);
+    const previous = new Map(accountStorage.keys().map((key) => [key, accountStorage.getItem(key)!]));
+    let restored = 0;
+    try {
+    accountStorage.setItem(SESSION_KEY, JSON.stringify([...new Map([...this.sessions(), ...parsed.sessions].map((session) => [session.id, session])).values()]));
+    if (parsed.settings) accountStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...DEFAULT_SETTINGS, ...parsed.settings }));
+    restored = restoreNamespaces(parsed.local);
     window.dispatchEvent(new Event("hilo-storage"));
+    } catch (error) {
+      for (const key of accountStorage.keys()) if (!previous.has(key)) accountStorage.removeItem(key);
+      for (const [key, value] of previous) accountStorage.setItem(key, value);
+      throw error;
+    }
+    window.dispatchEvent(new Event("countlab:sync-request"));
     track("data_imported", { sessions: parsed.sessions.length, namespaces: restored });
     return { sessions: parsed.sessions.length, namespaces: restored };
   },
@@ -435,31 +479,34 @@ export const storage = {
     return toCsv(rows, ["date", "drill", "questions", "correct", "accuracy", "averageResponseTime", "bestStreak"]);
   },
   clearSessions() {
-    localStorage.removeItem(SESSION_KEY);
+    accountStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new Event("hilo-storage"));
     track("data_cleared", { scope: "sessions" });
   },
-  /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. Resolves only once every row has actually been upserted. */
+  /** Pushes pending training data in the active account cache. Resolves only once every row has actually been upserted. */
   async pushLocalToRemote() {
     if (typeof window === "undefined") return;
-    const pending = [pushSettings(this.settings())];
-    for (const key of Object.keys(localStorage)) {
+    const generation = accountGeneration();
+    const pending = accountStorage.getItem(SETTINGS_KEY) ? [pushSettings(this.settings())] : [];
+    for (const key of accountStorage.keys()) {
       if (!key.startsWith(PROGRESS_PREFIX)) continue;
       const progress = this.progress(key.slice(PROGRESS_PREFIX.length) as DrillType);
       if (progress) pending.push(pushProgress(progress));
     }
     await Promise.all(pending);
 
+    if (generation !== accountGeneration()) return;
     const user = getCurrentUser();
     if (!user) return;
     const knownSyncedIds = syncedSessionIds(user.id);
     const sessions = this.sessions().filter((session) => !knownSyncedIds.has(session.id));
     for (let index = 0; index < sessions.length; index += 1) {
       if (index > 0) await new Promise<void>((resolve) => setTimeout(resolve, DRILL_SESSION_REPLAY_INTERVAL_MS));
+      if (generation !== accountGeneration()) return;
       const outcome = await pushSession(sessions[index]);
       // Continuing after a rejected row only creates console noise and extends
       // the rolling rate-limit window. A single delayed retry resumes safely.
-      if (outcome === "rate_limited" || outcome === "failed") break;
+      if (outcome === "rate_limited" || outcome === "failed") throw new Error("Training history is waiting to sync.");
     }
   },
 };
@@ -485,7 +532,7 @@ export function makeSession(
     date: new Date().toISOString(),
     mistakes,
     categories,
-    metrics,
+    metrics: { rules: `${storage.settings().decks}D ${storage.settings().dealerHitsSoft17 ? "H17" : "S17"} ${storage.settings().doubleAfterSplit ? "DAS" : "No DAS"} ${storage.settings().surrender}`, ...metrics },
     tags,
   };
 }

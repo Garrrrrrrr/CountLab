@@ -1,5 +1,6 @@
 "use client";
 
+import { isPublicRoute } from "@/lib/routes";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import { useAuth } from "@/lib/supabase/AuthProvider";
 import { useFormAnalytics } from "@/lib/analytics";
 import { Button, GhostButton, Panel } from "./ui";
 
-const PUBLIC_PATHS = new Set(["/terms", "/privacy"]);
+const PUBLIC_PATHS = { has: isPublicRoute };
 
 // Supabase Auth already rate-limits sign-in/sign-up server-side; this is a
 // client-side complement that slows down credential guessing directly in the
@@ -18,7 +19,7 @@ const lockDurationMs = (strikes: number) =>
   Math.min(30_000 * 2 ** Math.floor(strikes / LOCK_THRESHOLD - 1), 5 * 60_000);
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const path = usePathname().replace(/\/$/, "") || "/dashboard";
+  const path = usePathname().replace(/\/$/, "") || "/";
   const {
     user, loading, guest, passwordRecovery, continueAsGuest, signIn, signUp,
     signInWithGoogle, requestPasswordReset, completePasswordReset, cancelPasswordRecovery,
@@ -48,7 +49,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, [lockedUntil]);
 
   if (PUBLIC_PATHS.has(path)) return <>{children}</>;
-  if (loading) return null;
+  if (loading) return <div className="grid min-h-svh place-items-center" role="status">Loading your workspace...</div>;
   if ((user && !passwordRecovery) || guest) return <>{children}</>;
 
   const lockedForMs = Math.max(0, lockedUntil - now);
@@ -119,52 +120,53 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </span>
           <div>
             <b className="block tracking-[-.02em]">CountLab</b>
-            <small className="text-zinc-500">
+            <small className="text-[var(--ink-muted)]">
               {passwordRecovery ? "Choose a new password" : mode === "sign-in" ? "Sign in to your account" : mode === "sign-up" ? "Create an account" : "Reset your password"}
             </small>
           </div>
         </div>
+        {!passwordRecovery && <><p className="mb-3 text-sm text-[var(--ink-muted)]">Accounts keep your training and journal backed up across devices.</p><GhostButton className="mb-5 w-full" onClick={continueAsGuest}>Try CountLab as a guest</GhostButton></>}
         <form onSubmit={submit}>
           <div className="grid gap-3">
-            {!passwordRecovery && <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+            {!passwordRecovery && <label className="grid gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">
               Email
               <input
                 type="email"
                 autoComplete="email"
                 value={email}
                 onChange={(event) => { formAnalytics.start("email"); setEmail(event.target.value); }}
-                className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-zinc-100 outline-none"
+                className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-[var(--ink)] outline-none"
               />
             </label>}
-            {mode !== "reset-request" && <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+            {mode !== "reset-request" && <label className="grid gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">
               Password
               <input
                 type="password"
                 autoComplete={mode === "sign-in" && !passwordRecovery ? "current-password" : "new-password"}
                 value={password}
                 onChange={(event) => { formAnalytics.start("password"); setPassword(event.target.value); }}
-                className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-zinc-100 outline-none"
+                className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-[var(--ink)] outline-none"
               />
             </label>}
             {(mode === "sign-up" || passwordRecovery) && (
-              <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+              <label className="grid gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">
                 Confirm password
                 <input
                   type="password"
                   autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(event) => { formAnalytics.start("password_confirmation"); setConfirmPassword(event.target.value); }}
-                  className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-zinc-100 outline-none"
+                  className="field min-h-11 w-full rounded-xl px-3 text-[.95rem] text-[var(--ink)] outline-none"
                 />
               </label>
             )}
           </div>
           {error && (
-            <p role="alert" className="mt-3 text-sm text-red-300">
+            <p role="alert" className="mt-3 text-sm text-[var(--negative)]">
               {error}
             </p>
           )}
-          {info && <p className="mt-3 text-sm text-emerald-300">{info}</p>}
+          {info && <p className="mt-3 text-sm text-[var(--accent)]">{info}</p>}
           <Button
             type="submit"
             disabled={submitting || locked || (!passwordRecovery && !email) || (mode !== "reset-request" && !password) || ((mode === "sign-up" || passwordRecovery) && !confirmPassword)}
@@ -183,7 +185,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
                     : "Send reset link"}
           </Button>
         </form>
-        {!passwordRecovery && mode !== "reset-request" && <><div className="my-4 flex items-center gap-3 text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-600">
+        {!passwordRecovery && mode !== "reset-request" && <><div className="my-4 flex items-center gap-3 text-[.7rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">
           <span className="h-px flex-1 bg-white/[.09]" />
           or
           <span className="h-px flex-1 bg-white/[.09]" />
@@ -199,24 +201,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
             setError(undefined);
             setInfo(undefined);
           }}
-          className="mt-4 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300"
+          className="mt-4 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]"
         >
           {mode === "sign-in" ? "Need an account? Sign up" : "Already have an account? Sign in"}
         </button>}
-        {mode === "sign-in" && !passwordRecovery && <button type="button" onClick={() => { setMode("reset-request"); setError(undefined); setInfo(undefined); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Forgot password?</button>}
-        {mode === "reset-request" && !passwordRecovery && <button type="button" onClick={() => { setMode("sign-in"); setError(undefined); setInfo(undefined); }} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Back to sign in</button>}
-        {passwordRecovery && <button type="button" onClick={cancelPasswordRecovery} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300">Cancel</button>}
+        {mode === "sign-in" && !passwordRecovery && <button type="button" onClick={() => { setMode("reset-request"); setError(undefined); setInfo(undefined); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Forgot password?</button>}
+        {mode === "reset-request" && !passwordRecovery && <button type="button" onClick={() => { setMode("sign-in"); setError(undefined); setInfo(undefined); }} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Back to sign in</button>}
+        {passwordRecovery && <button type="button" onClick={cancelPasswordRecovery} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Cancel</button>}
         {!passwordRecovery && mode !== "reset-request" && <button
           type="button"
           onClick={() => { formAnalytics.succeeded(); continueAsGuest(); }}
-          className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-zinc-500 hover:bg-white/[.05] hover:text-zinc-300"
+          className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]"
         >
           Continue as guest — data stays on this device only
         </button>}
-        <p className="mt-5 text-center text-xs text-zinc-600">
-          <Link href="/terms" className="hover:text-zinc-400">Terms</Link>
+        <p className="mt-5 text-center text-xs text-[var(--ink-muted)]">
+          <Link href="/terms" className="hover:text-[var(--ink-muted)]">Terms</Link>
           {" · "}
-          <Link href="/privacy" className="hover:text-zinc-400">Privacy</Link>
+          <Link href="/privacy" className="hover:text-[var(--ink-muted)]">Privacy</Link>
         </p>
       </Panel>
     </div>

@@ -1,6 +1,8 @@
 "use client";
+import { accountStorage } from "@/lib/supabase/accountStorage";
+
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, GhostButton, Metric, Panel, Select } from "@/components/ui";
+import { Button, GhostButton, Tabs, Metric, Panel, Select } from "@/components/ui";
 import {
   cardName,
   Decision,
@@ -50,7 +52,7 @@ const CHASE_SETUP_KEY="countlab:chase-flush:setup:v1";
 const validCards=(value:unknown,max:number):value is number[]=>Array.isArray(value)&&value.length<=max&&value.every(card=>Number.isInteger(card)&&card>=0&&card<52);
 function readChaseSetup():SavedChaseSetup|undefined{
   try{
-    const value=JSON.parse(localStorage.getItem(CHASE_SETUP_KEY)??"null") as Partial<SavedChaseSetup>|null;
+    const value=JSON.parse(accountStorage.getItem(CHASE_SETUP_KEY)??"null") as Partial<SavedChaseSetup>|null;
     if(!value||![0,2,4].includes(value.stage as number)||!["player","dealer","board"].includes(value.target as string)||!["c","d","h","s"].includes(value.pickerSuit as string)||!["none","final","from2","all"].includes(value.policy as string)||!["game","analyze","practice","strategy","research"].includes(value.mode as string)||!validCards(value.player,3)||!validCards(value.dealer,1)||!validCards(value.board,4))return undefined;
     const all=[...value.player,...value.dealer,...value.board];if(new Set(all).size!==all.length||value.board.length>(value.stage as number))return undefined;
     return value as SavedChaseSetup;
@@ -149,12 +151,12 @@ export function ChaseFlushLab() {
 
   useEffect(()=>{
     const saved=readChaseSetup();
-    if(saved){setMode(saved.mode);setStage(saved.stage);setTarget(saved.target);setPickerSuit(saved.pickerSuit);setPlayer(saved.player);setDealer(saved.dealer);setBoard(saved.board);setPolicy(saved.policy);setSixCardPayout(saved.sixCardPayout);}
+    if(saved){if(!location.hash)setMode(saved.mode);setStage(saved.stage);setTarget(saved.target);setPickerSuit(saved.pickerSuit);setPlayer(saved.player);setDealer(saved.dealer);setBoard(saved.board);setPolicy(saved.policy);setSixCardPayout(saved.sixCardPayout);}
     setSetupLoaded(true);
   },[]);
   useEffect(()=>{
     if(!setupLoaded)return;
-    try{localStorage.setItem(CHASE_SETUP_KEY,JSON.stringify({mode,stage,target,pickerSuit,player,dealer,board,policy,sixCardPayout} satisfies SavedChaseSetup));}catch{/* Persistence is optional when storage is unavailable. */}
+    try{accountStorage.setItem(CHASE_SETUP_KEY,JSON.stringify({mode,stage,target,pickerSuit,player,dealer,board,policy,sixCardPayout} satisfies SavedChaseSetup));}catch{/* Persistence is optional when storage is unavailable. */}
   },[board,dealer,mode,pickerSuit,player,policy,setupLoaded,sixCardPayout,stage,target]);
 
   useEffect(() => {
@@ -209,6 +211,7 @@ export function ChaseFlushLab() {
     ));
   }, [board, dealer, player, practiceChoice, result, stage, started]);
 
+  useEffect(() => { const restore = () => { const value = location.hash.slice(1); if (["game", "analyze", "practice", "strategy", "research"].includes(value)) setMode(value as typeof mode); }; restore(); addEventListener("hashchange", restore); return () => removeEventListener("hashchange", restore); }, []);
   const clearResult = () => {
     requestId.current++;
     openingJob.current=undefined;
@@ -312,21 +315,15 @@ export function ChaseFlushLab() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Conditional EV training and research</p>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Conditional EV training and research</p>
           <h1 className="mt-2 text-3xl font-semibold">Chase the Flush Lab</h1>
-          <p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">Practice or analyze decisions with one exposed dealer card. Hidden dealer cards are never entered or passed to the solver.</p>
+          <p data-mobile-compact-description className="mt-2 max-w-3xl text-[var(--ink-muted)]">Practice or analyze decisions with one exposed dealer card. Hidden dealer cards are never entered or passed to the solver.</p>
         </div>
-        <a className="inline-flex min-h-11 items-center text-sm text-emerald-400 hover:underline" href="https://wizardofodds.com/games/chase-the-flush/" target="_blank" rel="noreferrer">Rules source ↗</a>
+        <a className="inline-flex min-h-11 items-center text-sm text-[var(--accent)] hover:underline" href="https://wizardofodds.com/games/chase-the-flush/" target="_blank" rel="noreferrer">Rules source ↗</a>
       </div>
 
-      <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto border-y border-white/[.06] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:mt-6 sm:flex-wrap sm:border-0 sm:bg-transparent sm:p-0" role="tablist" aria-label="Chase the Flush mode">
-        {(["game", "analyze", "practice", "strategy", "research"] as const).map((item) => (
-          <GhostButton key={item} role="tab" aria-selected={mode === item} onClick={() => { setMode(item); clearResult(); }} className={`shrink-0 whitespace-nowrap ${mode === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>
-            {item === "game" ? "Play Game" : item[0].toUpperCase() + item.slice(1)}
-          </GhostButton>
-        ))}
-      </div>
-
+      <Tabs label="Chase the Flush sections" panelId="chase-panel" value={mode} className="mt-5" onChange={(value) => { setMode(value); clearResult(); history.replaceState(null, "", `#${value}`); }} items={(["game", "analyze", "practice", "strategy", "research"] as const).map((value) => ({ value, label: value === "game" ? "Play" : value === "analyze" ? "Analyzer" : value[0].toUpperCase() + value.slice(1) }))} />
+      <div id="chase-panel" role="tabpanel" aria-label="Chase the Flush section">
       {mode === "game" ? (
         <ChaseFlushTableGame sixCardPayout={sixCardPayout} onPayoutChange={(value) => { setSixCardPayout(value); clearResult(); }} />
       ) : mode === "research" ? (
@@ -347,8 +344,8 @@ export function ChaseFlushLab() {
                 <option value="final">Visible at final decision</option>
                 <option value="none">No dealer information</option>
               </Select>
-              <div className="rounded-xl bg-sky-500/10 p-3 text-sm text-sky-200"><b className="block">Exact decision solver</b><span className="mt-1 block text-xs text-sky-200/70">Compiled-style bit-mask enumeration; no Monte Carlo recommendation noise.</span></div>
-              <div className="rounded-xl bg-emerald-500/10 p-3 text-sm text-emerald-200">
+              <div className="rounded-xl bg-sky-500/10 p-3 text-sm text-[var(--info)]"><b className="block">Exact decision solver</b><span className="mt-1 block text-xs text-[var(--info)]/70">Compiled-style bit-mask enumeration; no Monte Carlo recommendation noise.</span></div>
+              <div className="rounded-xl bg-emerald-500/10 p-3 text-sm text-[var(--accent)]">
                 EVs use Ante units. Multiply by your Ante to estimate currency value.
               </div>
             </div>
@@ -359,7 +356,7 @@ export function ChaseFlushLab() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold">Build the information state</h2>
-                  <p className="mt-1 text-sm text-zinc-500">Choose the decision stage, then click cards or drag them into a box.</p>
+                  <p className="mt-1 text-sm text-[var(--ink-muted)]">Choose the decision stage, then click cards or drag them into a box.</p>
                 </div>
                 <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
                   <GhostButton className="col-span-2 sm:col-auto" onClick={randomize}>Random valid hand</GhostButton>
@@ -369,7 +366,7 @@ export function ChaseFlushLab() {
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="Decision stage">
                 {([[0, "Opening", "3x or check"], [2, "Board", "2x or check"], [4, "River", "1x or fold"]] as const).map(([value, label, detail]) => (
-                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`min-h-14 rounded-xl border px-2 py-2 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 bg-black/20 text-zinc-400"}`}><b className="block">{label}</b><span className="mt-0.5 block text-[.65rem] opacity-70">{detail}</span></button>
+                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`min-h-14 rounded-xl border px-2 py-2 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-[var(--accent)]" : "border-white/10 bg-black/20 text-[var(--ink-muted)]"}`}><b className="block">{label}</b><span className="mt-0.5 block text-[.65rem] opacity-70">{detail}</span></button>
                 ))}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -379,12 +376,12 @@ export function ChaseFlushLab() {
               </div>
               <div className="mt-5 rounded-2xl bg-black/20 p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-zinc-400">Adding to: <b className="text-emerald-300">{target === "player" ? "Player" : target === "dealer" ? "Dealer" : "Community"}</b></p>
-                  <span className="text-xs text-zinc-600">Tap to add</span>
+                  <p className="text-sm text-[var(--ink-muted)]">Adding to: <b className="text-[var(--accent)]">{target === "player" ? "Player" : target === "dealer" ? "Dealer" : "Community"}</b></p>
+                  <span className="text-xs text-[var(--ink-muted)]">Tap to add</span>
                 </div>
-                <div className="mt-3 grid grid-cols-4 gap-2" role="tablist" aria-label="Card suit">
+                <div className="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="Card suit">
                   {(SUITS.split("") as SuitCode[]).map((suit) => (
-                    <button key={suit} type="button" role="tab" aria-selected={pickerSuit === suit} aria-label={`Show ${suit} cards`} onClick={() => setPickerSuit(suit)} className={`min-h-12 rounded-xl border text-xl ${pickerSuit === suit ? "border-emerald-400 bg-emerald-500/15" : "border-white/10 bg-white/[.04]"} ${suit === "d" || suit === "h" ? "text-red-400" : "text-zinc-100"}`}>{suitGlyph[suit]}</button>
+                    <button key={suit} type="button" aria-pressed={pickerSuit === suit} aria-label={`Show ${{s:"spades",h:"hearts",d:"diamonds",c:"clubs"}[suit]} cards`} onClick={() => setPickerSuit(suit)} className={`min-h-12 rounded-xl border text-xl ${pickerSuit === suit ? "border-emerald-400 bg-emerald-500/15" : "border-white/10 bg-white/[.04]"} ${suit === "d" || suit === "h" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>{suitGlyph[suit]}</button>
                   ))}
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7 lg:grid-cols-13" aria-label={`${pickerSuit} card picker for ${target}`}>
@@ -397,37 +394,38 @@ export function ChaseFlushLab() {
                 </div>
               </div>
               {mode === "analyze" ? (
-                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[#151916]/95 p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none"><Button className="w-full sm:w-auto" disabled={loading} onClick={calculate}>{loading ? "Calculating in background..." : "Calculate optimal action"}</Button></div>
+                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[var(--paper-raised)] p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none"><Button className="w-full sm:w-auto" disabled={loading} onClick={calculate}>{loading ? "Calculating in background..." : "Calculate optimal action"}</Button></div>
               ) : (
-                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[#151916]/95 p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none">
-                  <p className="mb-3 text-sm text-zinc-400">Choose before revealing the model:</p>
+                <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-1 mt-5 rounded-2xl bg-[var(--paper-raised)] p-2 shadow-xl backdrop-blur sm:static sm:mx-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+                  <p className="mb-3 text-sm text-[var(--ink-muted)]">Choose before revealing the model:</p>
                   <div className="grid grid-cols-2 gap-2">{availableActions(stage).map((action) => <GhostButton className="w-full" key={action} disabled={loading || Boolean(practiceChoice)} onClick={() => choosePractice(action)}>{action.toUpperCase()}</GhostButton>)}</div>
                 </div>
               )}
-              {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">{error}</p>}
+              {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-[var(--negative)]">{error}</p>}
             </Panel>
 
             <Panel>
-              {!result && !loading && <div className="grid min-h-48 place-items-center text-center text-zinc-500 md:min-h-80">Complete the cards and request a calculation.</div>}
+              {!result && !loading && <div className="grid min-h-48 place-items-center text-center text-[var(--ink-muted)] md:min-h-80">Complete the cards and request a calculation.</div>}
               {loading && provisional && <ProvisionalPanel decision={provisional} />}
-              {loading && !provisional && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-300" /><p className="mt-3 text-zinc-400">Enumerating every legal completion in parallel.</p><p className="mt-2 text-xs text-zinc-600">The exact result replaces the provisional estimate automatically.</p></div></div>}
+              {loading && !provisional && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-[var(--accent)]" /><p className="mt-3 text-[var(--ink-muted)]">Enumerating every legal completion in parallel.</p><p className="mt-2 text-xs text-[var(--ink-muted)]">The exact result replaces the provisional estimate automatically.</p></div></div>}
               {result && <DecisionPanel result={result} closeDecision={Boolean(closeDecision)} practiceChoice={practiceChoice} informationActive={informationActive} />}
             </Panel>
           </div>
         </>
       )}
-      <p className="mt-6 text-xs leading-5 text-zinc-500">Educational probability model only. Casino rules, procedures, and outcomes vary; a modeled edge does not guarantee profit and gambling can result in financial loss.</p>
+      <p className="mt-6 text-xs leading-5 text-[var(--ink-muted)]">Educational probability model only. Casino rules, procedures, and outcomes vary; a modeled edge does not guarantee profit and gambling can result in financial loss.</p>
+      </div>
     </>
   );
 }
 
 function ProvisionalPanel({decision}:{decision:Decision}){
   return <div aria-live="polite" className="min-h-48">
-    <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-amber-100"><b>Provisional Monte Carlo estimate</b><p className="mt-1 text-sm text-amber-100/70">Do not rely on this preview yet. The exact enumerator is still running and will replace it automatically.</p></div>
-    <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-zinc-500">Estimated decision</p>
-    <div className="mt-2 text-3xl font-semibold text-amber-200">{decision.action.toUpperCase()}</div>
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-[var(--warning)]"><b>Provisional Monte Carlo estimate</b><p className="mt-1 text-sm text-[var(--warning)]/70">Do not rely on this preview yet. The exact enumerator is still running and will replace it automatically.</p></div>
+    <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Estimated decision</p>
+    <div className="mt-2 text-3xl font-semibold text-[var(--warning)]">{decision.action.toUpperCase()}</div>
     <div className="mt-4 space-y-2">{Object.entries(decision.evs).map(([action,value])=><div key={action} className="flex justify-between rounded-xl bg-black/20 p-3"><span>{action.toUpperCase()}</span><b>{fmt(value,false)}</b></div>)}</div>
-    <p className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><i className="fa-solid fa-spinner fa-spin text-emerald-300" /> Exact solve in progress</p>
+    <p className="mt-4 flex items-center gap-2 text-xs text-[var(--ink-muted)]"><i className="fa-solid fa-spinner fa-spin text-[var(--accent)]" /> Exact solve in progress</p>
   </div>;
 }
 
@@ -436,7 +434,7 @@ function PracticalStrategy() {
     {
       step: "1",
       wager: "Opening · 3x or check",
-      accent: "text-emerald-300",
+      accent: "text-[var(--accent)]",
       rules: [
         "Start by identifying the player's longest suited group; pairs and straights have no value.",
         "As a practical baseline, make 3x with a three-card flush.",
@@ -447,7 +445,7 @@ function PracticalStrategy() {
     {
       step: "2",
       wager: "Two board cards · 2x or check",
-      accent: "text-sky-300",
+      accent: "text-[var(--info)]",
       rules: [
         "Count player cards plus the two community cards in each suit.",
         "Use a made three-card-or-longer flush as the practical 2x starting point.",
@@ -458,7 +456,7 @@ function PracticalStrategy() {
     {
       step: "3",
       wager: "Four board cards · 1x or fold",
-      accent: "text-amber-300",
+      accent: "text-[var(--warning)]",
       rules: [
         "Compare flush length first, then ranks from highest to lowest. Ignore all ordinary poker-hand categories.",
         "Four-card and longer player flushes are strong calls, but the exposed card can reveal that a board-heavy flush is dominated.",
@@ -470,11 +468,11 @@ function PracticalStrategy() {
   return (
     <div className="mt-5 space-y-5">
       <Panel>
-        <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-400">
+        <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--accent)]">
           Practical strategy · one dealer card exposed
         </p>
         <h2 className="mt-2 text-2xl font-semibold">Build the flush, then price the threat</h2>
-        <p className="mt-3 max-w-4xl text-sm leading-6 text-zinc-400">
+        <p className="mt-3 max-w-4xl text-sm leading-6 text-[var(--ink-muted)]">
           This is a learnable starting strategy for the displayed 50:1 six-card paytable. It compresses a conditional-EV policy into memorable rules, so it will not resolve every borderline combination. Use the analyzer whenever the exposed card attacks your best suit or two actions are close.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -484,9 +482,9 @@ function PracticalStrategy() {
             ["3", "Exposed threat", "Same-suit high cards are the largest warning."],
           ].map(([number, title, copy]) => (
             <div key={number} className="rounded-xl bg-black/20 p-4">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-300">{number}</span>
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-500/15 text-xs font-bold text-[var(--accent)]">{number}</span>
               <b className="mt-3 block">{title}</b>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">{copy}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">{copy}</p>
             </div>
           ))}
         </div>
@@ -499,7 +497,7 @@ function PracticalStrategy() {
               <span className="grid h-9 w-9 place-items-center rounded-full bg-white/[.06] text-sm font-bold">{stage.step}</span>
               <h3 className={`font-semibold ${stage.accent}`}>{stage.wager}</h3>
             </div>
-            <ul className="mt-5 space-y-3 text-sm leading-6 text-zinc-400">
+            <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--ink-muted)]">
               {stage.rules.map((rule) => (
                 <li key={rule} className="flex gap-3">
                   <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
@@ -522,20 +520,20 @@ function PracticalStrategy() {
               ["Low exposed card", "Usually less dangerous, but it can still help the dealer reach qualification or length through the board."],
             ].map(([label, copy]) => (
               <div key={label} className="rounded-xl bg-black/20 p-3">
-                <b className="text-zinc-200">{label}</b>
-                <p className="mt-1 leading-5 text-zinc-500">{copy}</p>
+                <b className="text-[var(--ink)]">{label}</b>
+                <p className="mt-1 leading-5 text-[var(--ink-muted)]">{copy}</p>
               </div>
             ))}
           </div>
         </Panel>
         <Panel>
           <h3 className="font-semibold">Fast memory aid</h3>
-          <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/[.07] p-4 text-sm leading-7 text-zinc-300">
-            <p><b className="text-emerald-300">3x:</b> made three-card flush or premium two-card suited start.</p>
-            <p><b className="text-sky-300">2x:</b> three-plus suited after the first board, unless the exposed card strongly dominates.</p>
-            <p><b className="text-amber-300">1x:</b> call strong completed flushes; calculate marginal three-card and board-heavy hands.</p>
+          <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-500/[.07] p-4 text-sm leading-7 text-[var(--ink)]">
+            <p><b className="text-[var(--accent)]">3x:</b> made three-card flush or premium two-card suited start.</p>
+            <p><b className="text-[var(--info)]">2x:</b> three-plus suited after the first board, unless the exposed card strongly dominates.</p>
+            <p><b className="text-[var(--warning)]">1x:</b> call strong completed flushes; calculate marginal three-card and board-heavy hands.</p>
           </div>
-          <p className="mt-4 text-xs leading-5 text-zinc-500">
+          <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">
             This guide is intentionally conservative around close states. The optimal policy includes the option value of waiting and cannot be represented perfectly by a short chart.
           </p>
         </Panel>
@@ -570,10 +568,10 @@ function CardGroup({ target, label, active, onActivate, cards, capacity, onDropC
       className={`rounded-xl border p-3 transition ${dragOver ? "scale-[1.02] border-emerald-300 bg-emerald-400/20 ring-2 ring-emerald-400/30" : active ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}
       aria-label={`${label} drop zone`}
     >
-      <button type="button" aria-pressed={active} onClick={onActivate} className="flex min-h-11 w-full items-center justify-between rounded-lg px-1 text-left text-xs font-semibold uppercase tracking-wide text-zinc-400"><span>{label}</span>{active && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[.62rem] text-emerald-300">Adding here</span>}</button>
+      <button type="button" aria-pressed={active} onClick={onActivate} className="flex min-h-11 w-full items-center justify-between rounded-lg px-1 text-left text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]"><span>{label}</span>{active && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[.62rem] text-[var(--accent)]">Adding here</span>}</button>
       <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2">
         {cards.map((card) => <CardChip key={card} card={card} source={target} onRemove={() => onRemove(card)} />)}
-        {cards.length < capacity && <span className={`pointer-events-none text-xs ${dragOver ? "text-emerald-100" : "text-zinc-600"}`}>{capacity === 0 ? "No cards at this stage" : active ? "Choose a card below" : "Tap to select"}</span>}
+        {cards.length < capacity && <span className={`pointer-events-none text-xs ${dragOver ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}`}>{capacity === 0 ? "No cards at this stage" : active ? "Choose a card below" : "Tap to select"}</span>}
       </div>
     </section>
   );
@@ -585,23 +583,23 @@ function DecisionPanel({ result, closeDecision, practiceChoice, informationActiv
   const normalBest = result.normal ? Math.max(...Object.values(result.normal.evs)) : undefined;
   return (
     <div aria-live="polite">
-      {result.source==="cache"&&<div className="mb-4 rounded-xl bg-sky-500/10 p-3 text-sm text-sky-200"><b>Instant exact cache hit.</b> This state was fully enumerated previously on this device.</div>}
-      {practiceChoice && <div className={`mb-4 rounded-xl p-4 ${practiceChoice === result.informed.action ? "bg-emerald-500/10 text-emerald-200" : "bg-red-500/10 text-red-200"}`}><b>{practiceChoice === result.informed.action ? "Correct" : `Recommended: ${result.informed.action.toUpperCase()}`}</b></div>}
-      <p className="text-xs font-bold uppercase tracking-[.18em] text-zinc-500">Recommended decision</p>
-      <div className="mt-3 text-4xl font-semibold text-emerald-300">{result.informed.action.toUpperCase()}</div>
+      {result.source==="cache"&&<div className="mb-4 rounded-xl bg-sky-500/10 p-3 text-sm text-[var(--info)]"><b>Instant exact cache hit.</b> This state was fully enumerated previously on this device.</div>}
+      {practiceChoice && <div className={`mb-4 rounded-xl p-4 ${practiceChoice === result.informed.action ? "bg-emerald-500/10 text-[var(--accent)]" : "bg-red-500/10 text-[var(--negative)]"}`}><b>{practiceChoice === result.informed.action ? "Correct" : `Recommended: ${result.informed.action.toUpperCase()}`}</b></div>}
+      <p className="text-xs font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Recommended decision</p>
+      <div className="mt-3 text-4xl font-semibold text-[var(--accent)]">{result.informed.action.toUpperCase()}</div>
       <div className="mt-5 space-y-3">{Object.entries(result.informed.evs).map(([action, value]) => {
         const statistics=result.informed.statistics?.[action];
-        return <div key={action} className="rounded-xl bg-black/20 p-3"><div className="flex justify-between"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-emerald-300" : "text-red-300"}>{fmt(value, exact)}</b></div>{statistics&&<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-500"><span>Standard error</span><span className="text-right">{statistics.standardError.toFixed(6)}</span><span>99.9% CI</span><span className="text-right">[{fmt(statistics.ci999[0],true)}, {fmt(statistics.ci999[1],true)}]</span></div>}</div>;
+        return <div key={action} className="rounded-xl bg-black/20 p-3"><div className="flex justify-between"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{fmt(value, exact)}</b></div>{statistics&&<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--ink-muted)]"><span>Standard error</span><span className="text-right">{statistics.standardError.toFixed(6)}</span><span>99.9% CI</span><span className="text-right">[{fmt(statistics.ci999[0],true)}, {fmt(statistics.ci999[1],true)}]</span></div>}</div>;
       })}</div>
-      <div className="mt-5 border-t border-white/[.07] pt-4 text-sm text-zinc-400">
-        <p>Best action EV: <b className="text-white">{fmt(best, exact)} Ante units</b></p>
-        <p className="mt-2">Decision margin: <b className="text-white">{result.informed.difference.toFixed(exact ? 4 : 3)} Ante units</b></p>
-        {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-emerald-200">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} decision-path terminal assignments represented{result.informed.differenceStatistics.evaluations&&result.informed.differenceStatistics.evaluations!==result.informed.differenceStatistics.samples?` · ${result.informed.differenceStatistics.evaluations.toLocaleString()} unique states evaluated`:""} · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
-        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2">Without dealer information: <b className="text-white">{result.normal.action.toUpperCase()}</b> ({fmt(normalBest, result.normal.exact)})</p>}
-        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2 text-emerald-200">The exposed card {result.normal.action === result.informed.action ? "keeps the same action" : `changes the action from ${result.normal.action.toUpperCase()} to ${result.informed.action.toUpperCase()}`} and changes modeled value by {fmt(best - normalBest, exact)} Ante units.</p>}
-        {informationActive && !result.normal && <p className="mt-2 text-zinc-500">The exposed recommendation is exact. The optional uninformed opening comparison has over 18 billion terminals and is available in the desktop analyzer.</p>}
-        {exact ? <p className="mt-3 text-xs text-emerald-300">Calculation method: EXACT. Every legal hidden dealer hand and required future board was enumerated; statistical uncertainty is zero.</p> : <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-amber-200">Decision not yet resolved. The current calculation does not meet the required confidence threshold.</p>}
-        {closeDecision && <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-amber-200">Close or unstable estimate. Increase estimate quality before relying on the recommended action.</p>}
+      <div className="mt-5 border-t border-white/[.07] pt-4 text-sm text-[var(--ink-muted)]">
+        <p>Best action EV: <b className="text-[var(--ink)]">{fmt(best, exact)} Ante units</b></p>
+        <p className="mt-2">Decision margin: <b className="text-[var(--ink)]">{result.informed.difference.toFixed(exact ? 4 : 3)} Ante units</b></p>
+        {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-[var(--accent)]">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} decision-path terminal assignments represented{result.informed.differenceStatistics.evaluations&&result.informed.differenceStatistics.evaluations!==result.informed.differenceStatistics.samples?` · ${result.informed.differenceStatistics.evaluations.toLocaleString()} unique states evaluated`:""} · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
+        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2">Without dealer information: <b className="text-[var(--ink)]">{result.normal.action.toUpperCase()}</b> ({fmt(normalBest, result.normal.exact)})</p>}
+        {informationActive && result.normal && normalBest !== undefined && <p className="mt-2 text-[var(--accent)]">The exposed card {result.normal.action === result.informed.action ? "keeps the same action" : `changes the action from ${result.normal.action.toUpperCase()} to ${result.informed.action.toUpperCase()}`} and changes modeled value by {fmt(best - normalBest, exact)} Ante units.</p>}
+        {informationActive && !result.normal && <p className="mt-2 text-[var(--ink-muted)]">The exposed recommendation is exact. The optional uninformed opening comparison has over 18 billion terminals and is available in the desktop analyzer.</p>}
+        {exact ? <p className="mt-3 text-xs text-[var(--accent)]">Calculation method: EXACT. Every legal hidden dealer hand and required future board was enumerated; statistical uncertainty is zero.</p> : <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-[var(--warning)]">Decision not yet resolved. The current calculation does not meet the required confidence threshold.</p>}
+        {closeDecision && <p className="mt-3 rounded-lg bg-amber-400/10 p-3 text-[var(--warning)]">Close or unstable estimate. Increase estimate quality before relying on the recommended action.</p>}
       </div>
     </div>
   );
@@ -612,15 +610,15 @@ function ResearchPanel({ sixCardPayout, setSixCardPayout }: { sixCardPayout: num
     <div className="mt-5 space-y-5">
       <Panel>
         <div className="max-w-sm"><Select label="Research paytable" value={sixCardPayout} onChange={(event) => setSixCardPayout(Number(event.target.value))}><option value={50}>Current displayed 50:1</option><option value={20}>Legacy analysis 20:1</option></Select></div>
-        {sixCardPayout === 50 ? <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Exposed EV / Ante" value="+12.2279%" sub="95% CI +12.0291% to +12.4266%" /><Metric label="Information value" value="+8.6442%" sub="paired CI +8.6080% to +8.6804%" /><Metric label="Edge / initial 2 units" value="+6.1140%" sub="full exposed strategy" /><Metric label="Edge / total action" value="+3.4665%" sub="average wager 3.527184" /></div> : <div className="mt-5 rounded-xl bg-amber-400/10 p-4 text-amber-200">The validated legacy 20:1 baseline is -2.3907% per Ante. The exposed-policy headline metrics above were trained for the displayed 50:1 table and are intentionally not reused here.</div>}
+        {sixCardPayout === 50 ? <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Exposed EV / Ante" value="+12.2279%" sub="95% CI +12.0291% to +12.4266%" /><Metric label="Information value" value="+8.6442%" sub="paired CI +8.6080% to +8.6804%" /><Metric label="Edge / initial 2 units" value="+6.1140%" sub="full exposed strategy" /><Metric label="Edge / total action" value="+3.4665%" sub="average wager 3.527184" /></div> : <div className="mt-5 rounded-xl bg-amber-400/10 p-4 text-[var(--warning)]">The validated legacy 20:1 baseline is -2.3907% per Ante. The exposed-policy headline metrics above were trained for the displayed 50:1 table and are intentionally not reused here.</div>}
       </Panel>
       <Panel>
         <h2 className="font-semibold">Exposed-card rank heatmap</h2>
-        <p className="mt-1 text-sm text-zinc-500">Five-million-hand conditional holdout. EV and information value are descriptive, not additive.</p>
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-13">{rankResearch.map(([rank, ev, delta]) => <div key={rank} className={`rounded-xl p-3 text-center ${ev >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}><b>{rank}</b><p className={`mt-2 text-xs ${ev >= 0 ? "text-emerald-300" : "text-red-300"}`}>EV {(ev * 100).toFixed(1)}%</p><p className="mt-1 text-[.65rem] text-zinc-500">Info +{(delta * 100).toFixed(1)}%</p></div>)}</div>
+        <p className="mt-1 text-sm text-[var(--ink-muted)]">Five-million-hand conditional holdout. EV and information value are descriptive, not additive.</p>
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-13">{rankResearch.map(([rank, ev, delta]) => <div key={rank} className={`rounded-xl p-3 text-center ${ev >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}><b>{rank}</b><p className={`mt-2 text-xs ${ev >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>EV {(ev * 100).toFixed(1)}%</p><p className="mt-1 text-[.65rem] text-[var(--ink-muted)]">Info +{(delta * 100).toFixed(1)}%</p></div>)}</div>
       </Panel>
-      <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-zinc-400"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-black/20 p-3" key={label}><span className="text-zinc-400">{label}</span><b className="text-emerald-300">{value}</b></div>)}</div></Panel></div>
-      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-zinc-400"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions use exhaustive integer-mask backward induction at every stage. The exposed opening represents 1,104,436,080 legal decision-path terminal assignments by evaluating each of the 184,072,680 unique completed-board and dealer states once, then attributing it exactly to all six board-reveal orders. This is algebraic reuse, not sampling; statistical uncertainty remains zero. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
+      <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--ink-muted)]"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-black/20 p-3" key={label}><span className="text-[var(--ink-muted)]">{label}</span><b className="text-[var(--accent)]">{value}</b></div>)}</div></Panel></div>
+      <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-[var(--ink-muted)]"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions use exhaustive integer-mask backward induction at every stage. The exposed opening represents 1,104,436,080 legal decision-path terminal assignments by evaluating each of the 184,072,680 unique completed-board and dealer states once, then attributing it exactly to all six board-reveal orders. This is algebraic reuse, not sampling; statistical uncertainty remains zero. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
     </div>
   );
 }

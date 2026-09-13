@@ -123,16 +123,16 @@ export function BankrollRecommender() {
   return (
     <>
       <div className="mb-7">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">
           Coefficient optimizer
         </p>
         <h1 className="mt-2 text-3xl font-semibold">Bet Spread Recommender</h1>
-        <p className="mt-2 max-w-4xl text-zinc-400">
+        <p className="mt-2 max-w-4xl text-[var(--ink-muted)]">
           Size a whole-dollar bet spread around the table minimum while
           targeting an hourly EV and maximum lifetime risk of ruin.
         </p>
       </div>
-      {recommendation && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {recommendation && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Spread" value={recommendation.name} sub="recommended" />
           <PinnedStat label="Minimum" value={money(recommendation.baseBet, 0)} sub="per hand" />
@@ -214,7 +214,7 @@ export function BankrollRecommender() {
               ))}
             </Select>
           </div>
-          <div className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          <div className="mt-5 rounded-xl bg-emerald-500/10 p-4 text-sm text-[var(--accent)]">
             {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · audited H17 Pro policy
           </div>
         </Section>
@@ -225,19 +225,19 @@ export function BankrollRecommender() {
               {candidates.map((candidate) => (
                 <article key={candidate.name} className="rounded-2xl bg-black/20 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div><p className="text-xs text-zinc-500">Spread</p><b className="text-xl">{candidate.name}</b></div>
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
+                    <div><p className="text-xs text-[var(--ink-muted)]">Spread</p><b className="text-xl">{candidate.name}</b></div>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-[var(--accent)]" : "bg-amber-400/10 text-[var(--warning)]"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
                   </div>
                   <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div><dt className="text-xs text-zinc-500">Bet / hand</dt><dd className="mt-1 font-semibold">{money(candidate.baseBet, 0)}–{money(candidate.maxBet, 0)}</dd></div>
-                    <div className="text-right"><dt className="text-xs text-zinc-500">Hourly EV</dt><dd className="mt-1 font-semibold text-emerald-300">{money(candidate.hourlyEv)}</dd></div>
-                    <div><dt className="text-xs text-zinc-500">Risk of ruin</dt><dd className="mt-1 font-semibold">{(candidate.risk * 100).toFixed(2)}%</dd></div>
+                    <div><dt className="text-xs text-[var(--ink-muted)]">Bet / hand</dt><dd className="mt-1 font-semibold">{money(candidate.baseBet, 0)}–{money(candidate.maxBet, 0)}</dd></div>
+                    <div className="text-right"><dt className="text-xs text-[var(--ink-muted)]">Hourly EV</dt><dd className="mt-1 font-semibold text-[var(--accent)]">{money(candidate.hourlyEv)}</dd></div>
+                    <div><dt className="text-xs text-[var(--ink-muted)]">Risk of ruin</dt><dd className="mt-1 font-semibold">{(candidate.risk * 100).toFixed(2)}%</dd></div>
                   </dl>
                 </article>
               ))}
             </div>
             <table className="hidden w-full min-w-[650px] text-right text-sm md:table">
-              <thead className="text-zinc-500">
+              <thead className="text-[var(--ink-muted)]">
                 <tr>
                   <th className="pb-3 text-left">Spread</th>
                   <th className="pb-3">Minimum / hand</th>
@@ -263,8 +263,8 @@ export function BankrollRecommender() {
                     <td
                       className={
                         candidate.status === "met"
-                          ? "text-emerald-400"
-                          : "text-amber-300"
+                          ? "text-[var(--accent)]"
+                          : "text-[var(--warning)]"
                       }
                     >
                       {candidate.status === "met"
@@ -304,24 +304,24 @@ export function BankrollRecommender() {
                     <h2 className="font-semibold">
                       Detailed whole-dollar spread
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-500">
+                    <p className="mt-1 text-sm text-[var(--ink-muted)]">
                       Per-hand wager for every true-count bucket, including repeated minimum and maximum bets. Total action is {playerHands}× the displayed amount.
                     </p>
                   </div>
-                  <span className="text-sm text-zinc-400">
+                  <span className="text-sm text-[var(--ink-muted)]">
                     RoR {(recommendation.risk * 100).toFixed(2)}%
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:hidden">
                   {recommendation.bets.map((item) => (
                     <div key={item.label} className="flex items-center justify-between rounded-xl bg-black/20 p-3">
-                      <span className="text-sm text-zinc-400">TC {item.label}</span>
+                      <span className="text-sm text-[var(--ink-muted)]">TC {item.label}</span>
                       <b>{money(item.bet, 0)}</b>
                     </div>
                   ))}
                 </div>
                 <table className="hidden w-full min-w-[420px] text-right text-sm sm:table">
-                  <thead className="text-zinc-500">
+                  <thead className="text-[var(--ink-muted)]">
                     <tr>
                       <th className="pb-3 text-left">True count</th>
                       <th className="pb-3">Bet / hand</th>
@@ -344,7 +344,7 @@ export function BankrollRecommender() {
                   </tbody>
                 </table>
                 <p
-                  className={`mt-5 text-sm ${recommendation.feasible ? "text-emerald-400" : "text-amber-300"}`}
+                  className={`mt-5 text-sm ${recommendation.feasible ? "text-[var(--accent)]" : "text-[var(--warning)]"}`}
                 >
                   {recommendation.feasible
                     ? "This integer-dollar spread meets both requested targets."
@@ -354,10 +354,10 @@ export function BankrollRecommender() {
             </>
           ) : (
             <Panel>
-              <h2 className="font-semibold text-amber-300">
+              <h2 className="font-semibold text-[var(--warning)]">
                 No compatible spread
               </h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
+              <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
                 The specified table minimum alone exceeds the selected
                 risk-of-ruin limit for every available spread. Increase the
                 bankroll, allow more risk, or choose a lower table minimum.
@@ -366,7 +366,7 @@ export function BankrollRecommender() {
           )}
         </div>
       </div>
-      <p className="mt-5 text-xs leading-5 text-zinc-500">
+      <p className="mt-5 text-xs leading-5 text-[var(--ink-muted)]">
         EV and variance use the audited fixed-strategy simulation coefficients.
         Multiple-hand results retain shared true-count-state variance and price simultaneous hands as correlated (ρ = 0.372, measured on the audited kernel), because every hand in a round is settled against the same dealer hand. {" "}
         Lifetime risk of ruin is a diffusion approximation; it is not a guarantee

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useAuth } from "@/lib/supabase/AuthProvider";
 import Link from "next/link";
 import { CertificationStatus } from "./CertificationStatus";
 
@@ -25,20 +27,27 @@ const LANES: Array<{ title: string; description: string; icon: string; drills: D
 ];
 
 function DrillCard({ drill }: { drill: Drill }) {
-  return <Link href={drill.href} className={`pressable group flex min-h-36 flex-col rounded-2xl border p-4 transition-colors sm:p-5 ${drill.featured ? "border-emerald-400/35 bg-emerald-400/[.08] hover:bg-emerald-400/[.13]" : "surface hover:border-[var(--ink-muted)]"}`}>
+  const { user, continueAsGuest } = useAuth();
+  return <Link onClick={() => { if (!user) continueAsGuest(); }} href={drill.href} className={`pressable group flex min-h-36 flex-col rounded-2xl border p-4 transition-colors sm:p-5 ${drill.featured ? "border-emerald-400/35 bg-emerald-400/[.08] hover:bg-emerald-400/[.13]" : "surface hover:border-[var(--ink-muted)]"}`}>
     <span className={`grid size-10 place-items-center rounded-xl ${drill.featured ? "bg-emerald-300 text-emerald-950" : "border border-[var(--rule)] bg-[var(--paper)] text-[var(--count-cold)]"}`}><i className={`fa-solid ${drill.icon}`} aria-hidden="true" /></span>
     <h3 className="mt-4 font-display text-lg font-semibold text-[var(--ink)]">{drill.name}</h3>
     <p className="mt-1 text-sm leading-5 text-[var(--ink-muted)]">{drill.description}</p>
-    <span className="mt-auto pt-4 text-sm font-semibold text-emerald-400">Open drill <i className="fa-solid fa-arrow-right ml-1 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+    <span className="mt-auto pt-4 text-sm font-semibold text-[var(--accent)]">Open drill <i className="fa-solid fa-arrow-right ml-1 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
   </Link>;
 }
 
 export default function PracticeHub() {
+  const [experience, setExperience] = useState("beginner");
+  const { user, continueAsGuest } = useAuth();
   return <div className="mx-auto max-w-[90rem]">
     <div className="grid gap-5 rounded-[1.75rem] border border-emerald-400/20 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.16),transparent_42%),var(--paper-raised)] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
-      <div><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-emerald-400">Training room</p><h1 className="font-display mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Practice one skill at a time.</h1><p className="mt-3 max-w-2xl text-[var(--ink-muted)]">Pick the skill you want to sharpen, then move to a full shoe when you are ready to combine them. Charts live in Reference; drills are for recall.</p></div>
-      <Link href="/training/full-shoe" className="pressable inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 font-semibold text-emerald-950 hover:bg-emerald-200"><i className="fa-solid fa-play" aria-hidden="true" />Start a full shoe</Link>
+      <div><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--accent)]">Training room</p><h1 className="font-display mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Practice one skill at a time.</h1><p className="mt-3 max-w-2xl text-[var(--ink-muted)]">Pick the skill you want to sharpen, then move to a full shoe when you are ready to combine them. Charts live in Reference; drills are for recall.</p></div>
+      <Link onClick={() => { if (!user) continueAsGuest(); }} href="/training/full-shoe" className="pressable inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 font-semibold text-emerald-950 hover:bg-emerald-200"><i className="fa-solid fa-play" aria-hidden="true" />Start a full shoe</Link>
     </div>
+    <section className="surface mt-5 rounded-2xl p-5" aria-label="Suggested practice session">
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your next 10 minutes</h2><div className="flex gap-2">{["beginner", "experienced"].map((level) => <button key={level} aria-pressed={experience === level} onClick={() => setExperience(level)} className="min-h-11 rounded-lg border border-[var(--rule)] px-3 capitalize">{level}</button>)}</div></div>
+      <ol className="mt-4 grid list-inside list-decimal gap-3 sm:grid-cols-3">{(experience === "beginner" ? [["Running count · 3 min", "/training/running-count"], ["Basic strategy · 4 min", "/training/basic-strategy"], ["True count · 3 min", "/training/true-count"]] : [["Counting benchmark · 2 min", "/training/benchmark"], ["Index deviations · 3 min", "/training/deviations"], ["Full shoe · 5 min", "/training/full-shoe"]]).map(([label, href]) => <li key={href}><Link href={href} onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-11 items-center text-[var(--accent)] underline">{label}</Link></li>)}</ol>
+    </section>
     <div className="mt-7 space-y-8">{LANES.map((lane) => <section key={lane.title} aria-labelledby={lane.title.replaceAll(" ", "-").toLowerCase()}>
       <div className="mb-3 flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]"><i className={`fa-solid ${lane.icon}`} aria-hidden="true" /></span><div><h2 id={lane.title.replaceAll(" ", "-").toLowerCase()} className="font-display text-xl font-semibold">{lane.title}</h2><p className="text-sm text-[var(--ink-muted)]">{lane.description}</p></div></div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">{lane.drills.map((drill) => <DrillCard key={drill.href} drill={drill} />)}</div>

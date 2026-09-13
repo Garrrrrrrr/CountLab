@@ -76,11 +76,11 @@ function Title({
 }) {
   return (
     <div className="mb-5 sm:mb-7">
-      <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">
+      <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">
         {eyebrow}
       </p>
       <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
-      <p data-mobile-compact-description className="mt-2 max-w-2xl text-zinc-400">{description}</p>
+      <p data-mobile-compact-description className="mt-2 max-w-2xl text-[var(--ink-muted)]">{description}</p>
     </div>
   );
 }
@@ -373,7 +373,7 @@ export function StrategyDrill() {
       </div>
       {awaitingFinal ? (
         <Panel className="pb-24 lg:pb-6">
-          <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
+          <p className="text-sm text-[var(--ink-muted)]">That was the last hand in this session.</p>
           <Button className="mt-4" onClick={() => finalArgs.current && finish(...finalArgs.current)}>View results</Button>
         </Panel>
       ) : (
@@ -381,7 +381,7 @@ export function StrategyDrill() {
           <Panel className="pb-24 lg:pb-6">
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4 py-3 md:grid-cols-2 md:gap-10 md:py-6">
               <div>
-                <p className="mb-4 text-sm text-zinc-500">Player hand</p>
+                <p className="mb-4 text-sm text-[var(--ink-muted)]">Player hand</p>
                 <div className="flex gap-3">
                   {data.player.map((c, i) => (
                   <PlayingCard key={i} card={c} animated={settings.animations} size="sm" />
@@ -389,7 +389,7 @@ export function StrategyDrill() {
                 </div>
               </div>
               <div>
-                <p className="mb-4 text-sm text-zinc-500">Dealer upcard</p>
+                <p className="mb-4 text-sm text-[var(--ink-muted)]">Dealer upcard</p>
                 <PlayingCard card={data.dealer} animated={settings.animations} size="sm" />
               </div>
             </div>
@@ -405,13 +405,13 @@ export function StrategyDrill() {
                   onClick={() => choose(a)}
                 >
                   <span>{ANSWER_NAMES[a]}</span>
-                  <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">
+                  <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">
                     {a}
                   </kbd>
                 </GhostButton>
               ))}
             </div>
-            <p className="mt-3 text-xs text-zinc-500">
+            <p className="mt-3 text-xs text-[var(--ink-muted)]">
               {settings.shortcuts
                 ? "Keyboard shortcuts are shown on each action."
                 : "Keyboard shortcuts are shown above but disabled in Settings."}
@@ -426,12 +426,12 @@ export function StrategyDrill() {
       )}
       {feedback && (
         <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand}</p>
-          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--ink-muted)]">Previous hand · {feedback.hand}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
             {feedback.chosen === feedback.correct ? `Correct — ${ANSWER_NAMES[feedback.correct]}` : `You chose ${ANSWER_NAMES[feedback.chosen]} · Correct: ${ANSWER_NAMES[feedback.correct]}`}
           </b>
-          <p className="mt-1 text-sm text-zinc-300">{feedback.explanation}</p>
-          <p className="mt-2 text-xs text-zinc-500">Category: {feedback.category}</p>
+          <p className="mt-1 text-sm text-[var(--ink)]">{feedback.explanation}</p>
+          <p className="mt-2 text-xs text-[var(--ink-muted)]">Category: {feedback.category}</p>
         </div>
       )}
     </>
@@ -672,7 +672,7 @@ export function DeviationDrill() {
       </div>
       {awaitingFinal ? (
         <Panel className="pb-24 lg:pb-6">
-          <p className="text-sm text-zinc-400">That was the last hand in this session.</p>
+          <p className="text-sm text-[var(--ink-muted)]">That was the last hand in this session.</p>
           <Button className="mt-4" onClick={() => finalArgs.current && finish(...finalArgs.current)}>View results</Button>
         </Panel>
       ) : (
@@ -680,7 +680,7 @@ export function DeviationDrill() {
           <Panel className="pb-24 lg:pb-6">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
               <div className="text-center">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-[var(--ink-muted)]">
                   Player
                 </p>
                 <div className="flex justify-center gap-3">
@@ -689,11 +689,11 @@ export function DeviationDrill() {
                   ))}
                 </div>
               </div>
-              <div className="text-center text-xs font-bold uppercase tracking-[.18em] text-zinc-600">
+              <div className="text-center text-xs font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">
                 versus
               </div>
               <div className="text-center">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-zinc-500">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[.14em] text-[var(--ink-muted)]">
                   Dealer
                 </p>
                 <div className="flex justify-center">
@@ -708,7 +708,7 @@ export function DeviationDrill() {
                 ["True count", signed(tc)],
               ].map(([a, b]) => (
                 <div key={a} className="min-w-0 rounded-xl bg-black/20 p-2.5 sm:p-4">
-                  <p className="text-xs text-zinc-500">{a}</p>
+                  <p className="text-xs text-[var(--ink-muted)]">{a}</p>
                   <b className="text-xl sm:text-2xl">{b}</b>
                 </div>
               ))}
@@ -736,15 +736,15 @@ export function DeviationDrill() {
       )}
       {feedback && (
         <div aria-live="polite" className={`mt-4 rounded-xl border p-4 ${feedback.chosen === feedback.correct ? "border-emerald-500/30 bg-emerald-500/10" : "border-red-500/30 bg-red-500/10"}`}>
-          <p className="text-xs font-semibold uppercase tracking-[.12em] text-zinc-500">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
-          <b className={feedback.chosen === feedback.correct ? "text-emerald-300" : "text-red-300"}>
+          <p className="text-xs font-semibold uppercase tracking-[.12em] text-[var(--ink-muted)]">Previous hand · {feedback.hand} · TC {signed(feedback.tc)}</p>
+          <b className={feedback.chosen === feedback.correct ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
             {feedback.chosen === feedback.correct ? `Correct — ${deviationAnswerName(feedback.correct, feedback.askingSurrender)}` : `You chose ${deviationAnswerName(feedback.chosen, feedback.askingSurrender)} · Correct: ${deviationAnswerName(feedback.correct, feedback.askingSurrender)}`}
           </b>
-          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-zinc-300">
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--ink)]">
             <span>Basic strategy: {DEVIATION_ACTION_NAMES[feedback.normalAction]}</span>
             <span>Index: {feedback.always ? "Always" : signed(feedback.index)}</span>
           </div>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--ink-muted)]">
             {feedback.sentence} {feedback.departureTriggered ? "The previous count triggered the departure." : "The previous count stayed at the chart baseline."}
           </p>
         </div>

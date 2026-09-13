@@ -235,16 +235,16 @@ function DataTable<T extends object>({
   columns: Array<{ key: keyof T; label: string; format?: (value: T[keyof T], row: T) => string | number }>;
   empty?: string;
 }) {
-  if (!rows.length) return <p className="py-8 text-center text-sm text-zinc-500">{empty}</p>;
+  if (!rows.length) return <p className="py-8 text-center text-sm text-[var(--ink-muted)]">{empty}</p>;
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="text-zinc-500"><tr>{columns.map((column) => <th className="whitespace-nowrap pb-3 pr-4 font-medium" key={String(column.key)}>{column.label}</th>)}</tr></thead>
+        <thead className="text-[var(--ink-muted)]"><tr>{columns.map((column) => <th className="whitespace-nowrap pb-3 pr-4 font-medium" key={String(column.key)}>{column.label}</th>)}</tr></thead>
         <tbody>{rows.map((row, rowIndex) => (
           <tr className="border-t border-white/[.06]" key={rowIndex}>
             {columns.map((column, columnIndex) => {
               const value = row[column.key];
-              return <td className={`whitespace-nowrap py-3 pr-4 ${columnIndex ? "text-zinc-400" : "font-medium"}`} key={String(column.key)}>{column.format ? column.format(value, row) : String(value ?? "—")}</td>;
+              return <td className={`whitespace-nowrap py-3 pr-4 ${columnIndex ? "text-[var(--ink-muted)]" : "font-medium"}`} key={String(column.key)}>{column.format ? column.format(value, row) : String(value ?? "—")}</td>;
             })}
           </tr>
         ))}</tbody>
@@ -254,7 +254,7 @@ function DataTable<T extends object>({
 }
 
 function SectionTitle({ title, note }: { title: string; note?: string }) {
-  return <div className="mb-5 flex flex-wrap items-end justify-between gap-2"><h2 className="text-lg font-semibold">{title}</h2>{note && <p className="text-xs text-zinc-500">{note}</p>}</div>;
+  return <div className="mb-5 flex flex-wrap items-end justify-between gap-2"><h2 className="text-lg font-semibold">{title}</h2>{note && <p className="text-xs text-[var(--ink-muted)]">{note}</p>}</div>;
 }
 
 function VisitorProfilePanel({ label, profile }: { label: string; profile: VisitorProfile }) {
@@ -298,6 +298,7 @@ export default function AdminPage() {
   const [previous, setPrevious] = useState<Overview>();
   const [visitors, setVisitors] = useState<VisitorSummary[]>([]);
   const [loading, setLoading] = useState(false), [error, setError] = useState<string>();
+  const [missingSections, setMissingSections] = useState<string[]>([]);
   const [lastLoaded, setLastLoaded] = useState<Date>();
   const [selectedVisitor, setSelectedVisitor] = useState<SelectedVisitor>();
   const [timeline, setTimeline] = useState<TimelineRow[]>([]), [timelineLoading, setTimelineLoading] = useState(false);
@@ -318,6 +319,7 @@ export default function AdminPage() {
       supabase.rpc("admin_analytics_funnel", { p_start: start, p_end: end, p_steps: funnelSteps, p_filters: activeFilters }),
       supabase.rpc("admin_analytics_alerts"),
     ]);
+    setMissingSections([["Overview", currentResult.error], ["Previous period", previousResult.error], ["Visitors", visitorsResult.error], ["Advanced analytics", advancedResult.error], ["Cohorts", cohortResult.error], ["Funnel", funnelResult.error], ["Alerts", alertsResult.error]].filter(([, error]) => !!error).map(([name]) => String(name)));
     if (currentResult.error) setError(currentResult.error.message);
     else setDashboard(currentResult.data as DashboardData);
     if (!previousResult.error) setPrevious((previousResult.data as DashboardData).overview);
@@ -399,9 +401,9 @@ export default function AdminPage() {
     download(`countlab-analytics-${start}-${end}.csv`, csv, "text/csv;charset=utf-8");
   };
 
-  if (!user) return <Panel className="mt-7"><p className="text-zinc-400">Sign in with an admin account to view analytics.</p></Panel>;
+  if (!user) return <Panel className="mt-7"><p className="text-[var(--ink-muted)]">Sign in with an admin account to view analytics.</p></Panel>;
   if (isAdmin === null) return null;
-  if (!isAdmin) return <Panel className="mt-7"><h1 className="text-xl font-semibold">Not authorized</h1><p className="mt-2 text-zinc-400">This account does not have analytics access.</p></Panel>;
+  if (!isAdmin) return <Panel className="mt-7"><h1 className="text-xl font-semibold">Not authorized</h1><p className="mt-2 text-[var(--ink-muted)]">This account does not have analytics access.</p></Panel>;
 
   const overview = dashboard?.overview;
   const latestRetention = dashboard?.retention.find((row) => row.d1 != null || row.d7 != null || row.d30 != null);
@@ -411,16 +413,16 @@ export default function AdminPage() {
   return (
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Admin</p><h1 className="mt-2 text-3xl font-semibold">Product analytics</h1><p className="mt-2 max-w-3xl text-zinc-400">Actionable usage, learning, retention, acquisition, reliability, and performance metrics. Bots, internal accounts, staging, and development are excluded.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Admin</p><h1 className="mt-2 text-3xl font-semibold">Product analytics</h1><p className="mt-2 max-w-3xl text-[var(--ink-muted)]">Actionable usage, learning, retention, acquisition, reliability, and performance metrics. Bots, internal accounts, staging, and development are excluded.</p></div>
         <div className="flex flex-wrap gap-2"><GhostButton onClick={() => exportData("csv")} disabled={!dashboard}>Export CSV</GhostButton><GhostButton onClick={() => exportData("json")} disabled={!dashboard}>Export JSON</GhostButton><GhostButton onClick={() => void load()} disabled={loading}><i className={`fa-solid fa-arrows-rotate mr-2 ${loading ? "animate-spin" : ""}`} />Refresh</GhostButton></div>
       </div>
 
       <Panel className="mb-6">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="grid gap-1 text-xs text-zinc-500">Range<select className="field min-h-10 rounded-xl px-3 text-sm text-zinc-200" value={preset} onChange={(event) => choosePreset(event.target.value)}>{PRESETS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Start<input type="date" className="field min-h-10 rounded-xl px-3 text-sm text-zinc-200" value={start} max={end} onChange={(event) => { setPreset("custom"); setStart(event.target.value); }} /></label>
-          <label className="grid gap-1 text-xs text-zinc-500">End<input type="date" className="field min-h-10 rounded-xl px-3 text-sm text-zinc-200" value={end} min={start} max={isoDay(new Date())} onChange={(event) => { setPreset("custom"); setEnd(event.target.value); }} /></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Authentication<select className="field min-h-10 rounded-xl px-3 text-sm text-zinc-200" value={filters.auth ?? ""} onChange={(event) => updateFilter("auth", event.target.value)}><option value="">All visitors</option><option value="authenticated">Authenticated</option><option value="anonymous">Anonymous</option></select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Range<select className="field min-h-10 rounded-xl px-3 text-sm text-[var(--ink)]" value={preset} onChange={(event) => choosePreset(event.target.value)}>{PRESETS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Start<input type="date" className="field min-h-10 rounded-xl px-3 text-sm text-[var(--ink)]" value={start} max={end} onChange={(event) => { setPreset("custom"); setStart(event.target.value); }} /></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">End<input type="date" className="field min-h-10 rounded-xl px-3 text-sm text-[var(--ink)]" value={end} min={start} max={isoDay(new Date())} onChange={(event) => { setPreset("custom"); setEnd(event.target.value); }} /></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Authentication<select className="field min-h-10 rounded-xl px-3 text-sm text-[var(--ink)]" value={filters.auth ?? ""} onChange={(event) => updateFilter("auth", event.target.value)}><option value="">All visitors</option><option value="authenticated">Authenticated</option><option value="anonymous">Anonymous</option></select></label>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           {([
@@ -429,26 +431,27 @@ export default function AdminPage() {
             ["region", "Region", dashboard?.segments.regions], ["channel", "Channel", dashboard?.segments.channels],
             ["campaign", "Campaign", dashboard?.segments.campaigns], ["app_version", "Release", dashboard?.segments.versions],
           ] as Array<[string, string, string[] | undefined]>).map(([key, label, values]) => (
-            <label className="grid gap-1 text-xs text-zinc-500" key={key}>{label}<select className="field min-h-9 min-w-0 rounded-lg px-2 text-xs text-zinc-200" value={filters[key] ?? ""} onChange={(event) => updateFilter(key, event.target.value)}><option value="">All</option>{values?.filter(Boolean).sort().map((value) => <option key={value}>{value}</option>)}</select></label>
+            <label className="grid gap-1 text-xs text-[var(--ink-muted)]" key={key}>{label}<select className="field min-h-9 min-w-0 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters[key] ?? ""} onChange={(event) => updateFilter(key, event.target.value)}><option value="">All</option>{values?.filter(Boolean).sort().map((value) => <option key={value}>{value}</option>)}</select></label>
           ))}
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-          <label className="grid gap-1 text-xs text-zinc-500">New / returning<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.visitor_type ?? ""} onChange={(event) => updateFilter("visitor_type", event.target.value)}><option value="">All</option><option value="new">New</option><option value="returning">Returning</option></select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Feature<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.feature ?? ""} onChange={(event) => updateFilter("feature", event.target.value)}><option value="">All</option>{advanced?.adoption.map((row) => <option key={row.feature}>{row.feature}</option>)}</select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Lifecycle<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.lifecycle ?? ""} onChange={(event) => updateFilter("lifecycle", event.target.value)}><option value="">All</option><option value="recently_active">Recently active</option><option value="slipping">Slipping</option><option value="churned">Churned</option></select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Cohort dimension<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={cohortDimension} onChange={(event) => setCohortDimension(event.target.value)}>{["acquisition","first_feature","device","country","app_version","auth_state","signup"].map((value) => <option key={value}>{value}</option>)}</select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Training drill<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.drill ?? ""} onChange={(event) => updateFilter("drill", event.target.value)}><option value="">All</option>{dashboard?.segments.drills?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{displayName(value)}</option>)}</select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Rules preset<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.rules_preset ?? ""} onChange={(event) => updateFilter("rules_preset", event.target.value)}><option value="">All</option>{dashboard?.segments.rules?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{displayName(value)}</option>)}</select></label>
-          <label className="grid gap-1 text-xs text-zinc-500">Scenario<select className="field min-h-9 rounded-lg px-2 text-xs text-zinc-200" value={filters.scenario ?? ""} onChange={(event) => updateFilter("scenario", event.target.value)}><option value="">All</option>{dashboard?.segments.scenarios?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">New / returning<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.visitor_type ?? ""} onChange={(event) => updateFilter("visitor_type", event.target.value)}><option value="">All</option><option value="new">New</option><option value="returning">Returning</option></select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Feature<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.feature ?? ""} onChange={(event) => updateFilter("feature", event.target.value)}><option value="">All</option>{advanced?.adoption.map((row) => <option key={row.feature}>{row.feature}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Lifecycle<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.lifecycle ?? ""} onChange={(event) => updateFilter("lifecycle", event.target.value)}><option value="">All</option><option value="recently_active">Recently active</option><option value="slipping">Slipping</option><option value="churned">Churned</option></select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Cohort dimension<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={cohortDimension} onChange={(event) => setCohortDimension(event.target.value)}>{["acquisition","first_feature","device","country","app_version","auth_state","signup"].map((value) => <option key={value}>{value}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Training drill<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.drill ?? ""} onChange={(event) => updateFilter("drill", event.target.value)}><option value="">All</option>{dashboard?.segments.drills?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{displayName(value)}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Rules preset<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.rules_preset ?? ""} onChange={(event) => updateFilter("rules_preset", event.target.value)}><option value="">All</option>{dashboard?.segments.rules?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{displayName(value)}</option>)}</select></label>
+          <label className="grid gap-1 text-xs text-[var(--ink-muted)]">Scenario<select className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)]" value={filters.scenario ?? ""} onChange={(event) => updateFilter("scenario", event.target.value)}><option value="">All</option>{dashboard?.segments.scenarios?.filter(Boolean).sort().map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label className="grid flex-1 gap-1 text-xs text-zinc-500">Ordered funnel events (comma separated)<input className="field min-h-9 rounded-lg px-3 text-xs text-zinc-200" value={funnelDraft} onChange={(event) => setFunnelDraft(event.target.value)} /></label>
+          <label className="grid flex-1 gap-1 text-xs text-[var(--ink-muted)]">Ordered funnel events (comma separated)<input className="field min-h-9 rounded-lg px-3 text-xs text-[var(--ink)]" value={funnelDraft} onChange={(event) => setFunnelDraft(event.target.value)} /></label>
           <GhostButton className="min-h-9" onClick={() => setFunnelInput(funnelDraft)}>Apply funnel</GhostButton>
         </div>
-        {lastLoaded && <p className="mt-3 text-right text-xs text-zinc-600">Loaded {lastLoaded.toLocaleTimeString()}</p>}
+        {lastLoaded && <p className="mt-3 text-right text-xs text-[var(--ink-muted)]">Loaded {lastLoaded.toLocaleTimeString()}</p>}
       </Panel>
 
-      {error && <Panel className="mb-6 border border-red-400/20 bg-red-400/[.04]"><p className="text-sm text-red-300">Analytics could not load: {error}. Apply the comprehensive analytics section in <code>supabase/schema.sql</code>, then retry.</p></Panel>}
+      <p className="mb-4 text-sm text-[var(--ink-muted)]" role="status">{lastLoaded ? `Last refresh: ${lastLoaded.toLocaleString()}.` : "Waiting for analytics."} {missingSections.length ? `Partial data: ${missingSections.join(", ")} could not refresh. Any retained figures are from the previous successful request.` : ""} Analytics reflects visitors who allow collection; it is not a census of every visit.</p>
+      {error && <Panel className="mb-6 border border-red-400/20 bg-red-400/[.04]"><p className="text-sm text-[var(--negative)]">Analytics could not load: {error}. Apply the comprehensive analytics section in <code>supabase/schema.sql</code>, then retry.</p></Panel>}
 
       {overview && <>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
@@ -472,7 +475,7 @@ export default function AdminPage() {
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <Panel><SectionTitle title="Active users and completed practice" note="Meaningful activity only" /><div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={dashboard.daily}><CartesianGrid stroke="#ffffff0d" /><XAxis dataKey="day" stroke="#71717a" tickFormatter={(value) => String(value).slice(5)} /><YAxis stroke="#71717a" allowDecimals={false} /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="active_users" name="Active users" stroke="#b5ed5c" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="completed_practice" name="Completed practice" stroke="#38bdf8" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div></Panel>
-          <Panel><SectionTitle title="Training funnel" note="Unique visitors reaching each stage" /><div className="space-y-4">{dashboard.funnel.map((row, index) => { const priorUsers = dashboard.funnel[index - 1]?.users; return <div key={row.stage}><div className="mb-1 flex justify-between text-sm"><span>{row.stage}</span><span className="text-zinc-400">{integer.format(row.users)}{priorUsers ? ` · ${((100 * row.users) / priorUsers).toFixed(1)}%` : ""}</span></div><div className="h-3 rounded-full bg-white/[.05]"><div className="h-full rounded-full bg-emerald-400/70" style={{ width: `${Math.max(2, (100 * row.users) / maxFunnel)}%` }} /></div></div>; })}</div></Panel>
+          <Panel><SectionTitle title="Training funnel" note="Unique visitors reaching each stage" /><div className="space-y-4">{dashboard.funnel.map((row, index) => { const priorUsers = dashboard.funnel[index - 1]?.users; return <div key={row.stage}><div className="mb-1 flex justify-between text-sm"><span>{row.stage}</span><span className="text-[var(--ink-muted)]">{integer.format(row.users)}{priorUsers ? ` · ${((100 * row.users) / priorUsers).toFixed(1)}%` : ""}</span></div><div className="h-3 rounded-full bg-white/[.05]"><div className="h-full rounded-full bg-emerald-400/70" style={{ width: `${Math.max(2, (100 * row.users) / maxFunnel)}%` }} /></div></div>; })}</div></Panel>
         </div>
 
         <Panel className="mt-6"><SectionTitle title="Training performance" note="Accuracy, speed, completion, and change across the selected period" /><DataTable rows={dashboard.training} columns={[
@@ -531,7 +534,7 @@ export default function AdminPage() {
           { key: "first_seen", label: "First seen", format: (value) => new Date(String(value)).toLocaleDateString() },
         ]} />{visitors.length > 0 && <div className="mt-4 flex flex-wrap gap-2">{visitors.slice(0, 20).map((visitor) => <GhostButton className="px-3 py-1 text-xs" key={visitor.visitor_id} onClick={() => void viewVisitor(visitor)}>{visitorLabel(visitor)}</GhostButton>)}</div>}</Panel>
 
-        {selectedVisitor && <Panel className="mt-6"><div className="mb-5 flex items-center justify-between"><SectionTitle title={`High-level timeline · ${selectedVisitor.label}`} note="Answers and sensitive values are omitted" /><GhostButton onClick={() => setSelectedVisitor(undefined)}>Close</GhostButton></div>{timelineLoading ? <p className="py-8 text-center text-zinc-500">Loading…</p> : <DataTable rows={timeline} columns={[{ key: "occurred_at", label: "Time", format: (value) => new Date(String(value)).toLocaleString() }, { key: "event", label: "Event", format: (value) => displayName(String(value)) }, { key: "path", label: "Route" }, { key: "properties", label: "Safe details", format: (value) => JSON.stringify(value) }]} />}</Panel>}
+        {selectedVisitor && <Panel className="mt-6"><div className="mb-5 flex items-center justify-between"><SectionTitle title={`High-level timeline · ${selectedVisitor.label}`} note="Answers and sensitive values are omitted" /><GhostButton onClick={() => setSelectedVisitor(undefined)}>Close</GhostButton></div>{timelineLoading ? <p className="py-8 text-center text-[var(--ink-muted)]">Loading…</p> : <DataTable rows={timeline} columns={[{ key: "occurred_at", label: "Time", format: (value) => new Date(String(value)).toLocaleString() }, { key: "event", label: "Event", format: (value) => displayName(String(value)) }, { key: "path", label: "Route" }, { key: "properties", label: "Safe details", format: (value) => JSON.stringify(value) }]} />}</Panel>}
 
         <Panel className="mt-6"><SectionTitle title="Recent meaningful activity" note="Most recent first; click/vital noise excluded" /><DataTable rows={dashboard.recent} columns={[{ key: "occurred_at", label: "Time", format: (value) => new Date(String(value)).toLocaleString() }, { key: "event", label: "Event", format: (value) => displayName(String(value)) }, { key: "path", label: "Route" }, { key: "visitor", label: "Visitor" }, { key: "properties", label: "Safe details", format: (value) => JSON.stringify(value) }]} /></Panel>
       </>}

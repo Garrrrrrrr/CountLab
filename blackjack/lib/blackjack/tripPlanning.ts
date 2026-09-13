@@ -1,10 +1,11 @@
-import { AdvantageRules, RampPoint, calculateAdvantage } from "./advantage";
+import { AdvantageRules, RampPoint, HandCountPoint, calculateAdvantage } from "./advantage";
 import { finiteHorizonRisk, goalByHorizonProbability, normalCdf, resultPercentile } from "./cvcx";
 
 export interface TripPlanInput {
   bankroll: number;
   bettingUnit: number;
   playerHands: number;
+  handsByTrueCount?: HandCountPoint[];
   handsPerHour: number;
   hours: number;
   rules: AdvantageRules;
@@ -41,6 +42,7 @@ export function planTrip(input: TripPlanInput): TripPlanResult {
     bankroll: input.bankroll,
     bettingUnit: input.bettingUnit,
     playerHands: input.playerHands,
+    handsByTrueCount: input.handsByTrueCount,
     handsPerHour: input.handsPerHour,
     hours: input.hours,
     rules: input.rules,

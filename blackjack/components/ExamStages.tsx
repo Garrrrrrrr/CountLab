@@ -246,7 +246,7 @@ function QuestionBody({
       ? <div className="grid min-h-80 place-items-center text-center">
         <div>
           <div className="flex justify-center"><PlayingCard card={card} animated /></div>
-          <p className="mt-6 text-sm text-zinc-500">Card {dealt + 1} of {prompt.cards.length}</p>
+          <p className="mt-6 text-sm text-[var(--ink-muted)]">Card {dealt + 1} of {prompt.cards.length}</p>
         </div>
       </div>
       : <form className="mx-auto max-w-sm py-6 text-center sm:py-14" onSubmit={(event) => { event.preventDefault(); onSubmit(answer); }}>
@@ -260,8 +260,8 @@ function QuestionBody({
   if (prompt.kind === "tray") {
     return <form className="mx-auto max-w-xl" onSubmit={(event) => { event.preventDefault(); onSubmit(answer); }}>
       <Image src={`/deck-estimation/${prompt.file}`} alt="Discard tray" width={640} height={480} unoptimized className="mx-auto max-h-80 w-auto rounded-2xl border border-white/15 bg-black/40 object-contain shadow-inner" />
-      <p className="mt-2 text-center text-xs text-zinc-500">{prompt.totalDecks}-deck shoe</p>
-      <label className="mx-auto mt-6 block max-w-xs text-center text-sm text-zinc-400">Decks remaining
+      <p className="mt-2 text-center text-xs text-[var(--ink-muted)]">{prompt.totalDecks}-deck shoe</p>
+      <label className="mx-auto mt-6 block max-w-xs text-center text-sm text-[var(--ink-muted)]">Decks remaining
         <input autoFocus inputMode="decimal" className={`${inputClass} mt-2`} value={answer} onChange={(event) => onAnswer(event.target.value)} />
       </label>
       <Button className="mx-auto mt-4 hidden min-h-11 sm:block">Submit</Button>
@@ -282,13 +282,13 @@ function QuestionBody({
           aria-label={`Running count ${signed(scenario.runningCount)} with ${scenario.estimatedDecksRemaining} decks remaining`}
         >
           <div>
-            <p className="text-sm text-zinc-500" aria-hidden="true">Running count</p>
+            <p className="text-sm text-[var(--ink-muted)]" aria-hidden="true">Running count</p>
             <p className="mt-2 text-6xl font-semibold" aria-hidden="true">{signed(scenario.runningCount)}</p>
-            <p className="mt-3 text-zinc-400" aria-hidden="true">Estimated decks remaining: {scenario.estimatedDecksRemaining}</p>
+            <p className="mt-3 text-[var(--ink-muted)]" aria-hidden="true">Estimated decks remaining: {scenario.estimatedDecksRemaining}</p>
           </div>
         </div>
       </div>
-      <label className="mx-auto mt-7 block max-w-xs text-center text-sm text-zinc-400">True count
+      <label className="mx-auto mt-7 block max-w-xs text-center text-sm text-[var(--ink-muted)]">True count
         <input autoFocus inputMode="numeric" className={`${inputClass} mt-2`} value={answer} onChange={(event) => onAnswer(event.target.value)} />
       </label>
       <Button className="mx-auto mt-4 hidden min-h-11 sm:block">Submit</Button>
@@ -298,10 +298,10 @@ function QuestionBody({
 
   if (prompt.kind === "bet") {
     return <form className="mx-auto max-w-sm py-6 text-center sm:py-14" onSubmit={(event) => { event.preventDefault(); onSubmit(answer); }}>
-      <p className="text-sm text-zinc-500">True count</p>
+      <p className="text-sm text-[var(--ink-muted)]">True count</p>
       <p className="mt-2 text-6xl font-semibold">{signed(prompt.trueCount)}</p>
-      <p className="mt-3 text-zinc-400">{prompt.spread} spread on a ${prompt.baseBet} unit</p>
-      <label className="mt-6 block text-sm text-zinc-400">Bet amount
+      <p className="mt-3 text-[var(--ink-muted)]">{prompt.spread} spread on a ${prompt.baseBet} unit</p>
+      <label className="mt-6 block text-sm text-[var(--ink-muted)]">Bet amount
         <input autoFocus inputMode="numeric" className={`${inputClass} mt-2`} value={answer} onChange={(event) => onAnswer(event.target.value)} />
       </label>
       <Button className="mt-4 hidden min-h-11 w-full sm:block">Submit</Button>
@@ -311,13 +311,13 @@ function QuestionBody({
 
   const insurance = prompt.player.length === 0;
   return <div>
-    <p className="text-center text-sm text-zinc-500">Dealer</p>
+    <p className="text-center text-sm text-[var(--ink-muted)]">Dealer</p>
     <div className="mt-2 flex justify-center gap-2"><PlayingCard card={prompt.dealer} /><PlayingCard hidden /></div>
     {!insurance && <>
-      <p className="mt-8 text-center text-sm text-zinc-500">Your hand</p>
+      <p className="mt-8 text-center text-sm text-[var(--ink-muted)]">Your hand</p>
       <div className="mt-2 flex justify-center gap-2">{prompt.player.map((card, position) => <PlayingCard key={position} card={card} />)}</div>
     </>}
-    {prompt.trueCount !== null && <p className="mt-6 text-center text-zinc-400">True count <b className="text-white">{signed(prompt.trueCount)}</b></p>}
+    {prompt.trueCount !== null && <p className="mt-6 text-center text-[var(--ink-muted)]">True count <b className="text-[var(--ink)]">{signed(prompt.trueCount)}</b></p>}
     {insurance && <p className="mt-6 text-center font-medium">Insurance?</p>}
     <div className="mt-6 hidden flex-wrap justify-center gap-2 lg:flex">
       {prompt.actions.map((action) => (
@@ -491,13 +491,13 @@ export function ShoeStage({
     {phase === "bet" && <form onSubmit={(event) => { event.preventDefault(); submitBet(); }}>
       <TrayVisual totalDecks={rules.decks} remainingDecks={decksRemaining} />
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <label className="text-sm text-zinc-400">Decks remaining
+        <label className="text-sm text-[var(--ink-muted)]">Decks remaining
           <input className={`${inputClass} mt-2`} inputMode="decimal" value={answers.deck} onChange={(event) => setAnswers({ ...answers, deck: event.target.value })} />
         </label>
-        <label className="text-sm text-zinc-400">True count
+        <label className="text-sm text-[var(--ink-muted)]">True count
           <input className={`${inputClass} mt-2`} inputMode="numeric" value={answers.tc} onChange={(event) => setAnswers({ ...answers, tc: event.target.value })} />
         </label>
-        <label className="text-sm text-zinc-400">Bet amount
+        <label className="text-sm text-[var(--ink-muted)]">Bet amount
           <input className={`${inputClass} mt-2`} inputMode="numeric" value={answers.bet} onChange={(event) => setAnswers({ ...answers, bet: event.target.value })} />
         </label>
       </div>
@@ -505,9 +505,9 @@ export function ShoeStage({
     </form>}
 
     {(phase === "insurance" || phase === "play") && round && <div>
-      <p className="text-center text-sm text-zinc-500">Dealer</p>
+      <p className="text-center text-sm text-[var(--ink-muted)]">Dealer</p>
       <div className="mt-2 flex justify-center gap-2"><PlayingCard card={round.dealerUpcard} /><PlayingCard hidden /></div>
-      <p className="mt-8 text-center text-sm text-zinc-500">Your hand</p>
+      <p className="mt-8 text-center text-sm text-[var(--ink-muted)]">Your hand</p>
       <div className="mt-2 flex justify-center gap-2">{round.heroInitial.map((card, position) => <PlayingCard key={position} card={card} />)}</div>
       {phase === "insurance"
         ? <div className="mt-7 text-center">
@@ -525,17 +525,17 @@ export function ShoeStage({
     {phase === "count" && round && <form onSubmit={(event) => { event.preventDefault(); submitCount(); }}>
       <div className="space-y-6">
         <div>
-          <p className="text-center text-sm text-zinc-500">Dealer, hole card revealed</p>
+          <p className="text-center text-sm text-[var(--ink-muted)]">Dealer, hole card revealed</p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">{round.dealerHand.map((card, position) => <PlayingCard size="sm" key={position} card={card} />)}</div>
         </div>
         <div>
-          <p className="text-center text-sm text-zinc-500">All player hands</p>
+          <p className="text-center text-sm text-[var(--ink-muted)]">All player hands</p>
           <div className="mt-2 flex flex-wrap justify-center gap-5">
             {round.playerHands.map((hand, handIndex) => <div key={handIndex} className="flex -space-x-8">{hand.map((card, position) => <PlayingCard size="sm" key={position} card={card} />)}</div>)}
           </div>
         </div>
       </div>
-      <label className="mx-auto mt-7 block max-w-xs text-center text-sm text-zinc-400">Ending running count
+      <label className="mx-auto mt-7 block max-w-xs text-center text-sm text-[var(--ink-muted)]">Ending running count
         <input autoFocus className={`${inputClass} mt-2`} inputMode="numeric" value={answers.count} onChange={(event) => setAnswers({ ...answers, count: event.target.value })} />
       </label>
       <Button className="mx-auto mt-4 block min-h-11">Submit</Button>

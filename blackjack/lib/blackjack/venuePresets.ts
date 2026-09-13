@@ -1,3 +1,4 @@
+import { accountStorage } from "@/lib/supabase/accountStorage";
 import type { AdvantageRules, RampPoint } from "./advantage";
 
 export interface VenuePreset {
@@ -23,7 +24,7 @@ const PRESETS_KEY = "countlab:venue-presets:v1";
 const LIBRARY_EVENT = "countlab-venue-presets";
 const MAX_PRESETS = 20;
 
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const validRules = (value: unknown): value is AdvantageRules => {
   if (!value || typeof value !== "object") return false;

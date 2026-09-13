@@ -1,5 +1,7 @@
 "use client";
 
+import { ScenarioPicker, scenarioRamp, unsupportedScenario } from "./ScenarioPicker";
+import { templateHandSchedule } from "@/lib/blackjack/cvcxLibrary";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
@@ -86,7 +88,7 @@ export function SessionSimulator() {
   const requestId = useRef(0);
   const runStartedAt = useRef(0);
   const pendingRun = useRef<{ config: SessionSimulationConfig; name: string } | undefined>(undefined);
-  const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks }), [decks, dealt]);
+  const rules = useMemo(() => ({ ...DEFAULT_ADVANTAGE_RULES, decks, penetration: dealt / decks, useIndices: deviationGroups.length > 0 }), [decks, dealt, deviationGroups]);
   const config = useMemo<SessionSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, rounds, paths, roundsPerHour, seed: seed.trim() || "countlab", rules, ramp }), [bankroll, unit, playerHands, rounds, paths, roundsPerHour, seed, rules, ramp]);
   const shoeConfig = useMemo<ShoeSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed: hashSeed(seed.trim() || "countlab"), rules, ramp, deviationGroups }), [bankroll, unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed, rules, ramp, deviationGroups]);
   const comparedRuns = useMemo(() => selectedRunIds.map((id) => savedRuns.find((run) => run.id === id)).filter((run): run is SavedSimulationRun => Boolean(run)), [savedRuns, selectedRunIds]);
@@ -206,6 +208,7 @@ export function SessionSimulator() {
     setVenuePresetName("");
   };
   const applyConfig = (next: SessionSimulationConfig) => {
+    setDeviationGroups(next.rules.useIndices === false ? [] : ["h17-pro"]);
     const nextDecks = next.rules.decks === 8 ? 8 : 6;
     setBankroll(next.bankroll);
     setUnit(next.bettingUnit);
@@ -261,19 +264,20 @@ export function SessionSimulator() {
 
   return (
     <>
+      <ScenarioPicker disabled={running} unsupported={(config) => unsupportedScenario(config, true)} onLoad={({ name, config: c }) => { setBankroll(c.bankroll); setUnit(c.baseBet); setRoundsPerHour(c.handsPerHour); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); setDecks(c.decks); setDealt(c.dealt); setRamp(scenarioRamp(c)); setSpread("Custom"); setAnalysisName(name); setDeviationGroups(c.useIndices === false ? [] : ["h17-pro"]); setResult(undefined); setShoeResult(undefined); }} />
       <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Analysis · Monte Carlo</p>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Analysis · Monte Carlo</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Simulator</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Model bankroll variance across reproducible paths and see exactly which counts create—or consume—your EV.</p>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--ink-muted)] sm:text-base">Model bankroll variance across reproducible paths and see exactly which counts create—or consume—your EV.</p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs text-zinc-400">
+        <div className="flex flex-wrap gap-2 text-xs text-[var(--ink-muted)]">
           <span className="rounded-full border border-white/[.08] bg-white/[.04] px-3 py-1.5">H17 · DAS · RSA · LS</span>
-          <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1.5 text-emerald-300">Card-level shoes by default</span>
+          <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1.5 text-[var(--accent)]">Card-level shoes by default</span>
         </div>
       </div>
 
-      {mode === "profile" && result && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {mode === "profile" && result && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Hourly EV" value={money(result.expectedHourlyEv, 2)} sub="expected" />
           <PinnedStat label="Median bankroll" value={money(result.medianEndingBankroll)} sub="ending" />
@@ -281,7 +285,7 @@ export function SessionSimulator() {
           <PinnedStat label="Crossed zero" value={percent(result.ruinCrossingRate, 2)} sub="at any point" />
         </div>
       </div>}
-      {mode === "shoes" && shoeResult && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {mode === "shoes" && shoeResult && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} rounds`} />
           <PinnedStat label="Total profit" value={money(shoeResult.totalProfit, 2)} sub={`${shoeResult.totalShoes} shoes`} />
@@ -291,29 +295,29 @@ export function SessionSimulator() {
       </div>}
 
       <div className="mb-5 flex gap-2 text-sm">
-        <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Fast approximation</button>
-        <button type="button" disabled={running} onClick={() => setMode("shoes")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "shoes" ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-300" : "border-white/[.08] text-zinc-400 hover:bg-white/[.05]"}`}>Real shoes</button>
+        <button type="button" disabled={running} onClick={() => setMode("profile")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "profile" ? "border-emerald-300/30 bg-emerald-300/10 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}>Fast approximation</button>
+        <button type="button" disabled={running} onClick={() => setMode("shoes")} className={`rounded-xl border px-4 py-2.5 font-semibold ${mode === "shoes" ? "border-emerald-300/30 bg-emerald-300/10 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}>Real shoes</button>
       </div>
 
       {mode === "profile" ? (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
-          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-zinc-200 marker:hidden">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><i className="fa-solid fa-circle-info" /></span>
+          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-[var(--ink)] marker:hidden">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-[var(--warning)]"><i className="fa-solid fa-circle-info" /></span>
             <span className="flex-1">Profile-based model and assumptions</span>
-            <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
-            <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
+            <span className="hidden text-xs font-normal text-[var(--ink-muted)] sm:inline">What this simulation does</span>
+            <i className="fa-solid fa-chevron-down text-xs text-[var(--ink-muted)] transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">This is a fast analytical approximation: it draws from the audited true-count frequencies and conditional payoff moments for the H17 Pro index policy, sampling each round independently. The index EV is priced into those coefficients, but card order, count clustering inside a shoe, and card-level drawdowns are not reproduced. Use Real shoes for those.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-[var(--ink-muted)]">This is a fast analytical approximation: it draws from the audited true-count frequencies and conditional payoff moments for the H17 Pro index policy, sampling each round independently. The index EV is priced into those coefficients, but card order, count clustering inside a shoe, and card-level drawdowns are not reproduced. Use Real shoes for those.</p>
         </details>
       ) : (
         <details className="surface group mb-5 rounded-2xl border border-amber-300/10 px-4 py-3 open:bg-amber-300/[.025]">
-          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-zinc-200 marker:hidden">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-amber-200"><i className="fa-solid fa-circle-info" /></span>
+          <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 text-sm font-medium text-[var(--ink)] marker:hidden">
+            <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-300/10 text-[var(--warning)]"><i className="fa-solid fa-circle-info" /></span>
             <span className="flex-1">Card-by-card shoe model</span>
-            <span className="hidden text-xs font-normal text-zinc-500 sm:inline">What this simulation does</span>
-            <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
+            <span className="hidden text-xs font-normal text-[var(--ink-muted)] sm:inline">What this simulation does</span>
+            <i className="fa-solid fa-chevron-down text-xs text-[var(--ink-muted)] transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-zinc-400">Deals real shoes and plays every hand with basic strategy plus your selected index deviations, so every card, running count, and payout is reproducible. Standard mode caps at 250,000 hands and keeps every shoe for inspection below; High-Speed Mode discards per-hand data as it goes so you can run far larger sessions for aggregate stats only.</p>
+          <p className="mt-3 border-t border-white/[.06] pt-3 text-sm leading-6 text-[var(--ink-muted)]">Deals real shoes and plays every hand with basic strategy plus your selected index deviations, so every card, running count, and payout is reproducible. Standard mode caps at 250,000 hands and keeps every shoe for inspection below; High-Speed Mode discards per-hand data as it goes so you can run far larger sessions for aggregate stats only.</p>
         </details>
       )}
 
@@ -321,8 +325,8 @@ export function SessionSimulator() {
       <Panel className="overflow-hidden p-0">
         <div className="p-4 sm:p-5 md:p-6">
           <div className="mb-4 flex items-center gap-3">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-300/10 text-sm font-bold text-emerald-300">1</span>
-            <div><h2 className="font-semibold">Game and session</h2><p className="text-xs text-zinc-500">Choose an audited profile and the experiment size.</p></div>
+            <span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-300/10 text-sm font-bold text-[var(--accent)]">1</span>
+            <div><h2 className="font-semibold">Game and session</h2><p className="text-xs text-[var(--ink-muted)]">Choose an audited profile and the experiment size.</p></div>
           </div>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <Select label="Decks" value={decks} disabled={running} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
@@ -336,7 +340,7 @@ export function SessionSimulator() {
                 </Select>
               )}
               <div className="flex items-end gap-2">
-                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name" disabled={running} className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name" disabled={running} className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
                 <GhostButton onClick={saveVenuePreset} disabled={running || !venuePresetName.trim()}>Save</GhostButton>
               </div>
               {mode === "profile" ? (
@@ -355,13 +359,13 @@ export function SessionSimulator() {
                     disabled={running}
                     onValueChange={(value) => setHandsToSimulate(Math.round(value))}
                   />
-                  <label className="grid gap-2 text-[.8rem] font-medium text-zinc-400">
+                  <label className="grid gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">
                     High-Speed Mode
                     <button
                       type="button"
                       disabled={running}
                       onClick={() => setHighSpeed((value) => !value)}
-                      className={`field flex min-h-11 items-center justify-between rounded-xl px-3 text-left text-[.9rem] ${highSpeed ? "text-emerald-300" : "text-zinc-400"}`}
+                      className={`field flex min-h-11 items-center justify-between rounded-xl px-3 text-left text-[.9rem] ${highSpeed ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}`}
                     >
                       {highSpeed ? "On · no per-shoe data" : "Off · full shoe data"}
                     </button>
@@ -371,11 +375,11 @@ export function SessionSimulator() {
               <NumberField label="Rounds per hour" value={roundsPerHour} min={1} disabled={running} onValueChange={setRoundsPerHour} />
               <Select label="Simultaneous hands" value={playerHands} disabled={running} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6, 7].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
               {mode === "shoes" && (
-                <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">
+                <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)] lg:col-span-2">
                   Index deviations
                   <div className="flex min-h-11 items-center gap-4 px-1">
                     {(["h17-pro"] as DeviationGroup[]).map((group) => (
-                      <label key={group} className="flex items-center gap-2 text-sm text-zinc-300">
+                      <label key={group} className="flex items-center gap-2 text-sm text-[var(--ink)]">
                         <input
                           type="checkbox"
                           disabled={running}
@@ -389,75 +393,75 @@ export function SessionSimulator() {
                   </div>
                 </label>
               )}
-              <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">Analysis name<input value={analysisName} disabled={running} onChange={(event) => setAnalysisName(event.target.value)} placeholder="Generated automatically if blank" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
-              <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400 lg:col-span-2">Deterministic seed<input value={seed} disabled={running} onChange={(event) => setSeed(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none" /></label>
+              <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)] lg:col-span-2">Analysis name<input value={analysisName} disabled={running} onChange={(event) => setAnalysisName(event.target.value)} placeholder="Generated automatically if blank" className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
+              <label className="col-span-2 grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)] lg:col-span-2">Deterministic seed<input value={seed} disabled={running} onChange={(event) => setSeed(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none" /></label>
             </div>
         </div>
 
         <div className="border-t border-white/[.06] p-4 sm:p-5 md:p-6">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-300/10 text-sm font-bold text-emerald-300">2</span><div><h2 className="font-semibold">Bet ramp</h2><p className="text-xs text-zinc-500">Units wagered per hand at each floored true count.</p></div></div>
+            <div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-300/10 text-sm font-bold text-[var(--accent)]">2</span><div><h2 className="font-semibold">Bet ramp</h2><p className="text-xs text-[var(--ink-muted)]">Units wagered per hand at each floored true count.</p></div></div>
             <div className="w-full sm:w-48"><Select label="Preset" value={spread} disabled={running} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div>
           </div>
           <div className="grid grid-cols-4 gap-2 lg:grid-cols-8">{ramp.filter((point) => point.trueCount >= -1 && point.trueCount <= 6).map((point) => <NumberField key={point.trueCount} label={`TC ${point.trueCount > 0 ? "+" : ""}${point.trueCount}`} value={point.units} min={0} step={1} disabled={running} onValueChange={(value) => updateRamp(point.trueCount, value)} />)}</div>
-          <p className="mt-3 text-xs text-zinc-500">−1 covers all lower counts; +6 covers all higher counts. Set a bucket to 0 to Wong out.</p>
+          <p className="mt-3 text-xs text-[var(--ink-muted)]">−1 covers all lower counts; +6 covers all higher counts. Set a bucket to 0 to Wong out.</p>
         </div>
 
         <div className="border-t border-white/[.06] bg-black/15 p-4 sm:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            <div className="grid flex-1 grid-cols-3 gap-2 text-xs">{mode === "profile" ? <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(modeledOutcomes)} rounds</b></div><div><p className="text-zinc-600">Hours / path</p><b className="mt-1 block text-zinc-300">{compact(rounds / roundsPerHour)}</b></div></> : <><div><p className="text-zinc-600">Workload</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate)} hands</b></div><div><p className="text-zinc-600">Hours</p><b className="mt-1 block text-zinc-300">{compact(handsToSimulate / roundsPerHour)}</b></div></>}<div><p className="text-zinc-600">Max action</p><b className="mt-1 block text-zinc-300">{money(maxAction)}</b></div></div>
+            <div className="grid flex-1 grid-cols-3 gap-2 text-xs">{mode === "profile" ? <><div><p className="text-[var(--ink-muted)]">Workload</p><b className="mt-1 block text-[var(--ink)]">{compact(modeledOutcomes)} rounds</b></div><div><p className="text-[var(--ink-muted)]">Hours / path</p><b className="mt-1 block text-[var(--ink)]">{compact(rounds / roundsPerHour)}</b></div></> : <><div><p className="text-[var(--ink-muted)]">Workload</p><b className="mt-1 block text-[var(--ink)]">{compact(handsToSimulate)} hands</b></div><div><p className="text-[var(--ink-muted)]">Hours</p><b className="mt-1 block text-[var(--ink)]">{compact(handsToSimulate / roundsPerHour)}</b></div></>}<div><p className="text-[var(--ink-muted)]">Max action</p><b className="mt-1 block text-[var(--ink)]">{money(maxAction)}</b></div></div>
             <div className="hidden gap-2 lg:flex lg:w-[24rem]"><Button onClick={run} disabled={running} className="flex-1"><i className="fa-solid fa-play mr-2 text-xs" />Run simulation</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
           </div>
-          {(running || progress > 0) && <div className="mt-4"><div className="mb-2 flex justify-between text-xs text-zinc-500"><span>{running ? "Simulating in worker…" : "Complete"}</span><span>{percent(progress, 0)}</span></div><div className="h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width: `${progress * 100}%` }} /></div></div>}
-          {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
+          {(running || progress > 0) && <div className="mt-4"><div className="mb-2 flex justify-between text-xs text-[var(--ink-muted)]"><span>{running ? "Simulating..." : "Complete"}</span><span>{percent(progress, 0)}</span></div><div role="progressbar" aria-label="Simulation progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} className="h-2 overflow-hidden rounded-full bg-black/30"><div className="h-full rounded-full bg-emerald-400 transition-[width]" style={{ width: `${progress * 100}%` }} /></div></div>}
+          {error && <p role="alert" className="mt-3 text-sm text-[var(--negative)]">{error}</p>}
         </div>
       </Panel>
       </Section>
 
       <details className="surface group mt-5 rounded-2xl border border-white/[.07]">
         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 marker:hidden sm:px-5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-sky-300/10 text-sky-300"><i className="fa-solid fa-floppy-disk" /></span>
-          <div className="min-w-0 flex-1"><h2 className="font-semibold">Saved analysis</h2><p className="truncate text-xs text-zinc-500">{templates.length} setup{templates.length === 1 ? "" : "s"} · {savedRuns.length} completed run{savedRuns.length === 1 ? "" : "s"}</p></div>
-          <i className="fa-solid fa-chevron-down text-xs text-zinc-500 transition-transform group-open:rotate-180" />
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-sky-300/10 text-[var(--info)]"><i className="fa-solid fa-floppy-disk" /></span>
+          <div className="min-w-0 flex-1"><h2 className="font-semibold">Saved analysis</h2><p className="truncate text-xs text-[var(--ink-muted)]">{templates.length} setup{templates.length === 1 ? "" : "s"} · {savedRuns.length} completed run{savedRuns.length === 1 ? "" : "s"}</p></div>
+          <i className="fa-solid fa-chevron-down text-xs text-[var(--ink-muted)] transition-transform group-open:rotate-180" />
         </summary>
         <div className="border-t border-white/[.06] p-4 sm:p-5">
           <div className="mb-5 flex flex-col justify-between gap-3 border-b border-white/[.06] pb-4 sm:flex-row sm:items-center">
-            <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. Export a portable backup before clearing site data.</p>
-            <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={exportLibrary} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export</button><button type="button" onClick={() => importInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import</button><input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importLibrary(event.target.files?.[0])} className="hidden" />{libraryNotice && <span role="status" className="text-xs text-emerald-300">{libraryNotice}</span>}</div>
+            <p className="text-xs leading-5 text-[var(--ink-muted)]">Stored only in this browser. Export a portable backup before clearing site data.</p>
+            <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={exportLibrary} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export</button><button type="button" onClick={() => importInputRef.current?.click()} className="rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import</button><input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importLibrary(event.target.files?.[0])} className="hidden" />{libraryNotice && <span role="status" className="text-xs text-[var(--accent)]">{libraryNotice}</span>}</div>
           </div>
           <div className="grid gap-6 xl:grid-cols-[minmax(16rem,.75fr)_minmax(0,2fr)]">
             <section>
               <h3 className="text-sm font-semibold">Reusable setups</h3>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">Save the current rules, ramp, bankroll, and simulation size.</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">Save the current rules, ramp, bankroll, and simulation size.</p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row xl:flex-col 2xl:flex-row">
-                <input value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="Setup name" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+                <input value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="Setup name" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
                 <GhostButton onClick={saveTemplate} disabled={running}><i className="fa-solid fa-plus mr-2" />Save setup</GhostButton>
               </div>
               <div className="mt-3 space-y-2">
-                {templates.length === 0 && <p className="rounded-xl border border-dashed border-white/[.08] p-3 text-xs text-zinc-600">No saved setups yet.</p>}
-                {templates.map((template) => <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5"><button type="button" onClick={() => { applyConfig(template.config); setTemplateName(template.name); }} className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-medium text-zinc-200">{template.name}</span><span className="text-xs text-zinc-600">{template.config.rules.decks}D · {Math.round(template.config.rules.penetration * 100)}% · {template.config.playerHands} spot{template.config.playerHands === 1 ? "" : "s"}</span></button><button type="button" aria-label={`Delete ${template.name}`} onClick={() => setPendingDelete({ kind: "template", id: template.id, name: template.name })} className="grid h-9 w-9 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300"><i className="fa-solid fa-trash-can" /></button></div>)}
+                {templates.length === 0 && <p className="rounded-xl border border-dashed border-white/[.08] p-3 text-xs text-[var(--ink-muted)]">No saved setups yet.</p>}
+                {templates.map((template) => <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5"><button type="button" onClick={() => { applyConfig(template.config); setTemplateName(template.name); }} className="min-w-0 flex-1 text-left"><span className="block truncate text-sm font-medium text-[var(--ink)]">{template.name}</span><span className="text-xs text-[var(--ink-muted)]">{template.config.rules.decks}D · {Math.round(template.config.rules.penetration * 100)}% · {template.config.playerHands} spot{template.config.playerHands === 1 ? "" : "s"}</span></button><button type="button" aria-label={`Delete ${template.name}`} onClick={() => setPendingDelete({ kind: "template", id: template.id, name: template.name })} className="grid h-9 w-9 place-items-center rounded-lg text-[var(--ink-muted)] hover:bg-red-400/10 hover:text-[var(--negative)]"><i className="fa-solid fa-trash-can" /></button></div>)}
               </div>
             </section>
 
             <section className="min-w-0">
-              <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-sm font-semibold">Completed runs</h3><p className="mt-1 text-xs leading-5 text-zinc-500">Runs save automatically. Select any two to compare.</p></div>{selectedRunIds.length > 0 && <button type="button" onClick={() => setSelectedRunIds([])} className="text-xs font-medium text-zinc-500 hover:text-zinc-200">Clear comparison</button>}</div>
-              {savedRuns.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-white/[.08] p-4 text-sm text-zinc-600">Your first completed simulation will appear here automatically.</p> : <><div className="mt-3 grid gap-3 sm:hidden">{savedRuns.map((saved) => <article key={saved.id} className={`rounded-xl border border-white/[.06] p-3 ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : "bg-black/10"}`}><div className="flex items-center gap-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-5 w-5 accent-emerald-400" /><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="min-w-0 flex-1 bg-transparent font-medium text-zinc-200 outline-none focus:text-emerald-300" /></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><span className="text-zinc-500">{savedDate(saved.createdAt)}</span><span className="text-right font-semibold text-emerald-300">{money(saved.result.expectedHourlyEv, 2)} / hr</span><span className="text-zinc-500">Avg action</span><span className="text-right">{money(saved.result.averageBet, 2)}</span></div><div className="mt-3 grid grid-cols-3 gap-2"><GhostButton className="px-2 text-xs" onClick={() => loadRun(saved)}>Load</GhostButton><GhostButton className="px-2 text-xs" onClick={() => simulationLibrary.duplicateRun(saved.id)}>Copy</GhostButton><GhostButton className="px-2 text-xs text-red-300" onClick={() => setPendingDelete({ kind: "run", id: saved.id, name: saved.name })}>Delete</GhostButton></div></article>)}</div><div className="mt-3 hidden overflow-x-auto sm:block"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Compare</th><th className="pb-2">Name</th><th className="pb-2">Created</th><th className="pb-2 text-right">EV / hour</th><th className="pb-2 text-right">Avg action</th><th className="pb-2 text-right">Actions</th></tr></thead><tbody>{savedRuns.map((saved) => <tr key={saved.id} className={`border-t border-white/[.06] ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : ""}`}><td className="py-2.5 pr-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-4 w-4 accent-emerald-400" /></td><td className="py-2.5 pr-3"><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="w-full min-w-40 bg-transparent font-medium text-zinc-200 outline-none focus:text-emerald-300" /></td><td className="whitespace-nowrap py-2.5 pr-3 text-xs text-zinc-500">{savedDate(saved.createdAt)}</td><td className="whitespace-nowrap py-2.5 text-right font-medium text-emerald-300">{money(saved.result.expectedHourlyEv, 2)}</td><td className="whitespace-nowrap py-2.5 text-right">{money(saved.result.averageBet, 2)}</td><td className="whitespace-nowrap py-2.5 text-right"><button type="button" onClick={() => loadRun(saved)} className="min-h-11 px-2 py-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200">Load</button><button type="button" onClick={() => simulationLibrary.duplicateRun(saved.id)} className="min-h-11 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-200">Duplicate</button><button type="button" aria-label={`Delete ${saved.name}`} onClick={() => setPendingDelete({ kind: "run", id: saved.id, name: saved.name })} className="min-h-11 px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button></td></tr>)}</tbody></table></div></>}
+              <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-sm font-semibold">Completed runs</h3><p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">Runs save automatically. Select any two to compare.</p></div>{selectedRunIds.length > 0 && <button type="button" onClick={() => setSelectedRunIds([])} className="text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]">Clear comparison</button>}</div>
+              {savedRuns.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-white/[.08] p-4 text-sm text-[var(--ink-muted)]">Your first completed simulation will appear here automatically.</p> : <><div className="mt-3 grid gap-3 sm:hidden">{savedRuns.map((saved) => <article key={saved.id} className={`rounded-xl border border-white/[.06] p-3 ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : "bg-black/10"}`}><div className="flex items-center gap-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-5 w-5 accent-emerald-400" /><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="min-w-0 flex-1 bg-transparent font-medium text-[var(--ink)] outline-none focus:text-[var(--accent)]" /></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><span className="text-[var(--ink-muted)]">{savedDate(saved.createdAt)}</span><span className="text-right font-semibold text-[var(--accent)]">{money(saved.result.expectedHourlyEv, 2)} / hr</span><span className="text-[var(--ink-muted)]">Avg action</span><span className="text-right">{money(saved.result.averageBet, 2)}</span></div><div className="mt-3 grid grid-cols-3 gap-2"><GhostButton className="px-2 text-xs" onClick={() => loadRun(saved)}>Load</GhostButton><GhostButton className="px-2 text-xs" onClick={() => simulationLibrary.duplicateRun(saved.id)}>Copy</GhostButton><GhostButton className="px-2 text-xs text-[var(--negative)]" onClick={() => setPendingDelete({ kind: "run", id: saved.id, name: saved.name })}>Delete</GhostButton></div></article>)}</div><div className="mt-3 hidden overflow-x-auto sm:block"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-[.7rem] uppercase tracking-wide text-[var(--ink-muted)]"><tr><th className="pb-2 pr-3">Compare</th><th className="pb-2">Name</th><th className="pb-2">Created</th><th className="pb-2 text-right">EV / hour</th><th className="pb-2 text-right">Avg action</th><th className="pb-2 text-right">Actions</th></tr></thead><tbody>{savedRuns.map((saved) => <tr key={saved.id} className={`border-t border-white/[.06] ${saved.id === currentRunId ? "bg-emerald-300/[.025]" : ""}`}><td className="py-2.5 pr-3"><input type="checkbox" checked={selectedRunIds.includes(saved.id)} onChange={() => toggleComparison(saved.id)} aria-label={`Compare ${saved.name}`} className="h-4 w-4 accent-emerald-400" /></td><td className="py-2.5 pr-3"><input value={saved.name} onChange={(event) => setSavedRuns((current) => current.map((item) => item.id === saved.id ? { ...item, name: event.target.value } : item))} onBlur={(event) => simulationLibrary.renameRun(saved.id, event.target.value)} className="w-full min-w-40 bg-transparent font-medium text-[var(--ink)] outline-none focus:text-[var(--accent)]" /></td><td className="whitespace-nowrap py-2.5 pr-3 text-xs text-[var(--ink-muted)]">{savedDate(saved.createdAt)}</td><td className="whitespace-nowrap py-2.5 text-right font-medium text-[var(--accent)]">{money(saved.result.expectedHourlyEv, 2)}</td><td className="whitespace-nowrap py-2.5 text-right">{money(saved.result.averageBet, 2)}</td><td className="whitespace-nowrap py-2.5 text-right"><button type="button" onClick={() => loadRun(saved)} className="min-h-11 px-2 py-1 text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent)]">Load</button><button type="button" onClick={() => simulationLibrary.duplicateRun(saved.id)} className="min-h-11 px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--ink)]">Duplicate</button><button type="button" aria-label={`Delete ${saved.name}`} onClick={() => setPendingDelete({ kind: "run", id: saved.id, name: saved.name })} className="min-h-11 px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--negative)]">Delete</button></td></tr>)}</tbody></table></div></>}
             </section>
           </div>
 
-          {comparedRuns.length === 2 && <div className="mt-6 border-t border-white/[.06] pt-5"><div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-300/10 text-violet-300"><i className="fa-solid fa-code-compare" /></span><div><h3 className="text-sm font-semibold">Run comparison</h3><p className="text-xs text-zinc-500">The difference column is the second run minus the first.</p></div></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[38rem] text-sm"><thead><tr className="text-left text-xs text-zinc-500"><th className="pb-2">Metric</th><th className="pb-2">{comparedRuns[0].name}</th><th className="pb-2">{comparedRuns[1].name}</th><th className="pb-2">Difference</th></tr></thead><tbody>{[
+          {comparedRuns.length === 2 && <div className="mt-6 border-t border-white/[.06] pt-5"><div className="flex items-center gap-3"><span className="grid h-8 w-8 place-items-center rounded-lg bg-violet-300/10 text-violet-300"><i className="fa-solid fa-code-compare" /></span><div><h3 className="text-sm font-semibold">Run comparison</h3><p className="text-xs text-[var(--ink-muted)]">The difference column is the second run minus the first.</p></div></div><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[38rem] text-sm"><thead><tr className="text-left text-xs text-[var(--ink-muted)]"><th className="pb-2">Metric</th><th className="pb-2">{comparedRuns[0].name}</th><th className="pb-2">{comparedRuns[1].name}</th><th className="pb-2">Difference</th></tr></thead><tbody>{[
             ["Expected EV / hour", comparedRuns[0].result.expectedHourlyEv, comparedRuns[1].result.expectedHourlyEv, money, 1],
             ["Simulated EV / round", comparedRuns[0].result.simulatedEvPerRound, comparedRuns[1].result.simulatedEvPerRound, (value: number) => money(value, 3), 1],
             ["Average action", comparedRuns[0].result.averageBet, comparedRuns[1].result.averageBet, (value: number) => money(value, 2), 0],
             ["Chance of profit", comparedRuns[0].result.chanceOfProfit, comparedRuns[1].result.chanceOfProfit, (value: number) => percent(value, 1), 1],
             ["Crossed zero", comparedRuns[0].result.ruinCrossingRate, comparedRuns[1].result.ruinCrossingRate, (value: number) => percent(value, 2), -1],
             ["Average max drawdown", comparedRuns[0].result.averageMaxDrawdown, comparedRuns[1].result.averageMaxDrawdown, money, -1],
-          ].map(([label, first, second, format, direction]) => { const formatter = format as (value: number) => string; const delta = Number(second) - Number(first); const score = delta * Number(direction); return <tr key={String(label)} className="border-t border-white/[.06]"><th className="py-3 text-left font-medium text-zinc-400">{String(label)}</th><td>{formatter(Number(first))}</td><td>{formatter(Number(second))}</td><td className={score > 0 ? "text-emerald-300" : score < 0 ? "text-red-300" : "text-zinc-500"}>{delta > 0 ? "+" : ""}{formatter(delta)}</td></tr>; })}</tbody></table></div></div>}
+          ].map(([label, first, second, format, direction]) => { const formatter = format as (value: number) => string; const delta = Number(second) - Number(first); const score = delta * Number(direction); return <tr key={String(label)} className="border-t border-white/[.06]"><th className="py-3 text-left font-medium text-[var(--ink-muted)]">{String(label)}</th><td>{formatter(Number(first))}</td><td>{formatter(Number(second))}</td><td className={score > 0 ? "text-[var(--accent)]" : score < 0 ? "text-[var(--negative)]" : "text-[var(--ink-muted)]"}>{delta > 0 ? "+" : ""}{formatter(delta)}</td></tr>; })}</tbody></table></div></div>}
         </div>
       </details>
 
       <div className="mt-5 space-y-5">
-          {mode === "profile" && !result && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-chart-line" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Expectation, uncertainty, bankroll percentiles, drawdown, and TC contribution.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
+          {mode === "profile" && !result && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-[var(--accent)]"><i className="fa-solid fa-chart-line" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-[var(--ink-muted)]">Expectation, uncertainty, bankroll percentiles, drawdown, and TC contribution.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-[var(--ink-muted)]">No simulated data yet</span></div>}
           {mode === "profile" && result && <>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Metric label="Expected hourly EV" value={money(result.expectedHourlyEv, 2)} sub={`${money(result.expectedEvPerRound, 3)} / round`} />
@@ -468,16 +472,16 @@ export function SessionSimulator() {
               <Metric label="Crossed zero" value={percent(result.ruinCrossingRate, 2)} sub={`Avg max drawdown ${money(result.averageMaxDrawdown)}`} />
             </div>
             <Panel>
-              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">One reproducible sample path</h2><p className="mt-1 text-xs text-zinc-500">Seed {result.seed} · context only; percentiles above summarize all paths.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{compact(result.observations)} observations</span></div>
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">One reproducible sample path</h2><p className="mt-1 text-xs text-[var(--ink-muted)]">Seed {result.seed} · context only; percentiles above summarize all paths.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-[var(--ink-muted)]">{compact(result.observations)} observations</span></div>
               <div className="mt-5 h-72 min-w-0"><ResponsiveContainer width="100%" height="100%"><LineChart data={result.samplePath} margin={{ left: 8, right: 8 }}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} /><XAxis dataKey="round" stroke="#71717a" tickFormatter={compact} minTickGap={35} /><YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} /><Tooltip formatter={(value) => money(Number(value))} labelFormatter={(value) => `Round ${compact(Number(value))}`} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} /><Line type="monotone" dataKey="bankroll" stroke="#86efac" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
             </Panel>
             <Panel>
-              <h2 className="text-lg font-semibold">True-count frequency and EV contribution</h2><p className="mt-1 text-xs leading-5 text-zinc-500">Expected frequency and edge come from the audited profile. Simulated frequency is a seeded sampling check. Contribution is expected dollars per observed round.</p>
-              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-zinc-500"><tr><th className="pb-3">TC</th><th>Expected freq.</th><th>Simulated freq.</th><th>Player edge</th><th>Total wager</th><th>EV contribution</th></tr></thead><tbody>{result.countBreakdown.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-3 font-medium">{row.label}</td><td>{percent(row.frequency, 2)}</td><td>{percent(row.simulatedFrequency, 2)}</td><td className={row.playerEdge >= 0 ? "text-emerald-300" : "text-red-300"}>{row.playerEdge >= 0 ? "+" : ""}{percent(row.playerEdge, 3)}</td><td>{money(row.wager, 2)}</td><td className={row.evContribution >= 0 ? "text-emerald-300" : "text-red-300"}>{money(row.evContribution, 4)}</td></tr>)}</tbody></table></div>
+              <h2 className="text-lg font-semibold">True-count frequency and EV contribution</h2><p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">Expected frequency and edge come from the audited profile. Simulated frequency is a seeded sampling check. Contribution is expected dollars per observed round.</p>
+              <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[44rem] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-[var(--ink-muted)]"><tr><th className="pb-3">TC</th><th>Expected freq.</th><th>Simulated freq.</th><th>Player edge</th><th>Total wager</th><th>EV contribution</th></tr></thead><tbody>{result.countBreakdown.map((row) => <tr key={row.trueCount} className="border-t border-white/[.06]"><td className="py-3 font-medium">{row.label}</td><td>{percent(row.frequency, 2)}</td><td>{percent(row.simulatedFrequency, 2)}</td><td className={row.playerEdge >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{row.playerEdge >= 0 ? "+" : ""}{percent(row.playerEdge, 3)}</td><td>{money(row.wager, 2)}</td><td className={row.evContribution >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{money(row.evContribution, 4)}</td></tr>)}</tbody></table></div>
             </Panel>
           </>}
 
-          {mode === "shoes" && !shoeResult && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-emerald-300"><i className="fa-solid fa-cards-blank" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-zinc-500">Bankroll trace, and every shoe/hand dealt if High-Speed Mode is off.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-zinc-500">No simulated data yet</span></div>}
+          {mode === "shoes" && !shoeResult && <div className="flex flex-col items-start justify-between gap-4 rounded-2xl border border-dashed border-white/[.09] bg-white/[.02] p-4 sm:flex-row sm:items-center sm:p-5"><div className="flex items-center gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-emerald-300/10 text-[var(--accent)]"><i className="fa-solid fa-cards-blank" /></span><div><h2 className="font-semibold">Results appear here</h2><p className="mt-1 text-sm text-[var(--ink-muted)]">Bankroll trace, and every shoe/hand dealt if High-Speed Mode is off.</p></div></div><span className="rounded-full bg-white/[.04] px-3 py-1.5 text-xs text-[var(--ink-muted)]">No simulated data yet</span></div>}
           {mode === "shoes" && shoeResult && <>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <Metric label="AV per hour" value={money(shoeResult.avPerHour, 2)} sub={`${compact(shoeResult.totalHands)} rounds`} />
@@ -488,12 +492,12 @@ export function SessionSimulator() {
               <Metric label="Low bankroll" value={money(shoeResult.lowBankroll)} />
             </div>
             <Panel>
-              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Bankroll history</h2><p className="mt-1 text-xs text-zinc-500">Sampled trajectory over the simulation.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-zinc-400">{compact(shoeResult.totalHands)} rounds</span></div>
+              <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold">Bankroll history</h2><p className="mt-1 text-xs text-[var(--ink-muted)]">Sampled trajectory over the simulation.</p></div><span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-[var(--ink-muted)]">{compact(shoeResult.totalHands)} rounds</span></div>
               <div className="mt-5 h-72 min-w-0"><ResponsiveContainer width="100%" height="100%"><LineChart data={shoeResult.bankrollTrace} margin={{ left: 8, right: 8 }}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} /><XAxis dataKey="round" stroke="#71717a" tickFormatter={compact} minTickGap={35} /><YAxis stroke="#71717a" tickFormatter={(value) => `$${Math.round(value / 1000)}k`} width={52} /><Tooltip formatter={(value) => money(Number(value))} labelFormatter={(value) => `Hand ${compact(Number(value))}`} contentStyle={{ background: "#101411", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }} /><Line type="monotone" dataKey="bankroll" stroke="#86efac" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
             </Panel>
 
             {shoeResult.shoes.length === 0 ? (
-              <Panel><p className="text-sm text-zinc-500">High-Speed Mode was on for this run, so per-shoe data wasn&apos;t kept. Turn it off and re-run to explore individual shoes and hands.</p></Panel>
+              <Panel><p className="text-sm text-[var(--ink-muted)]">High-Speed Mode was on for this run, so per-shoe data wasn&apos;t kept. Turn it off and re-run to explore individual shoes and hands.</p></Panel>
             ) : selectedShoeIndex === undefined ? (
               <ShoeExplorer shoes={shoeResult.shoes} onSelectShoe={setSelectedShoeIndex} />
             ) : (
@@ -501,10 +505,10 @@ export function SessionSimulator() {
             )}
           </>}
       </div>
-      <p className="mt-6 text-xs leading-5 text-zinc-600">Analytical audit basis: {NO_INDEX_METADATA.totalRounds.toLocaleString()} basic-strategy resolved rounds · source seed {NO_INDEX_METADATA.seed} · coefficient uncertainty remains separate from the fast approximation&apos;s Monte Carlo standard error. Real-shoe runs resolve cards directly. A path may go below zero because neither mode force-resizes bets; “crossed zero” records that event.</p>
+      <p className="mt-6 text-xs leading-5 text-[var(--ink-muted)]">Analytical audit basis: {NO_INDEX_METADATA.totalRounds.toLocaleString()} basic-strategy resolved rounds · source seed {NO_INDEX_METADATA.seed} · coefficient uncertainty remains separate from the fast approximation&apos;s Monte Carlo standard error. Real-shoe runs resolve cards directly. A path may go below zero because neither mode force-resizes bets; “crossed zero” records that event.</p>
       <MobileActionDock label="Simulation actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-          <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">{running ? "Simulation progress" : mode === "profile" ? "Profile workload" : "Hands to simulate"}</p><b className="block truncate text-zinc-200">{running ? percent(progress, 0) : mode === "profile" ? `${compact(modeledOutcomes)} rounds` : `${compact(handsToSimulate)} hands`}</b></div>
+          <div className="min-w-0 px-2 text-xs"><p className="text-[var(--ink-muted)]">{running ? "Simulation progress" : mode === "profile" ? "Profile workload" : "Hands to simulate"}</p><b className="block truncate text-[var(--ink)]">{running ? percent(progress, 0) : mode === "profile" ? `${compact(modeledOutcomes)} rounds` : `${compact(handsToSimulate)} hands`}</b></div>
           <div className="flex gap-2"><Button onClick={run} disabled={running}><i className="fa-solid fa-play mr-2 text-xs" />Run</Button>{running && <GhostButton onClick={cancel}>Cancel</GhostButton>}</div>
         </div>
       </MobileActionDock>

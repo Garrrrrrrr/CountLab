@@ -104,7 +104,7 @@ describe("journal library", () => {
     journalLibrary.addTransaction({ date: "2026-08-01", type: "deposit", amount: 500 }, source, new Date("2026-08-13T12:00:00Z"));
     const target = new MemoryStorage();
     const imported = journalLibrary.importData(journalLibrary.exportData(source), target);
-    expect(imported).toEqual({ sessions: 1, transactions: 1 });
+    expect(imported).toEqual({ sessions: 1, transactions: 1, dropped: 0 });
     expect(journalLibrary.sessions(target)[0].netResult).toBe(120);
     expect(() => journalLibrary.importData('{"version":1,"sessions":[{}],"transactions":[]}', target)).toThrow(/invalid/i);
   });
@@ -226,5 +226,105 @@ describe("sessionsInRange", () => {
   it("keeps an invalid legacy date visible so the session can be repaired", () => {
     const invalid = { ...sessions[0], id: "invalid", date: "" };
     expect(sessionsInRange([invalid], 7, new Date("2026-08-13T12:00:00Z"))).toEqual([invalid]);
+  });
+});
+
+describe("storage never drops a record to make room", () => {
+  // Regression: sessions were capped with a positional slice, so whichever
+  // records happened to sit past the end of the array were destroyed
+  // regardless of how recent they were. Logging past the old 500 limit and
+  // restoring a large backup are the two ways that used to lose real data.
+  it("keeps every session logged past the old cap", () => {
+    const store = new MemoryStorage();
+    for (let index = 0; index < 502; index++) {
+      journalLibrary.addSession({ ...sessionInput, date: "2026-08-01", notes: `filler${index}` }, store);
+    }
+    const oldest = journalLibrary.addSession({ ...sessionInput, date: "2020-01-01", notes: "oldest" }, store);
+    const ids = journalLibrary.sessions(store).map((session) => session.id);
+    expect(ids).toHaveLength(503);
+    expect(ids).toContain(oldest.id);
+  });
+
+  it("keeps the importer's own sessions when a large backup is restored over them", () => {
+    const store = new MemoryStorage();
+    const mine = journalLibrary.addSession({ ...sessionInput, date: "2026-09-09", notes: "mine" }, store);
+    const backupStore = new MemoryStorage();
+    for (let index = 0; index < 502; index++) {
+      journalLibrary.addSession({ ...sessionInput, date: "2024-01-01", notes: `imported${index}` }, backupStore);
+    }
+    const result = journalLibrary.importData(journalLibrary.exportData(backupStore), store);
+    const ids = journalLibrary.sessions(store).map((session) => session.id);
+    expect(ids).toContain(mine.id);
+    expect(ids).toHaveLength(503);
+    expect(result.dropped).toBe(0);
+  });
+});
+
+describe("remote merge conflict resolution", () => {
+  it("keeps a session deleted on this device out of a pull that still carries it", () => {
+    const store = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, store, new Date("2026-08-02T10:00:00Z"));
+    journalLibrary.deleteSession(session.id, store, new Date("2026-08-02T11:00:00Z"));
+    journalLibrary.mergeRemoteSessions([session], store);
+    expect(journalLibrary.sessions(store).map((item) => item.id)).not.toContain(session.id);
+  });
+
+  it("drops a session another device soft-deleted", () => {
+    const store = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, store, new Date("2026-08-02T10:00:00Z"));
+    journalLibrary.mergeRemoteSessions([{ ...session, deletedAt: "2026-08-03T10:00:00.000Z" }], store);
+    expect(journalLibrary.sessions(store)).toHaveLength(0);
+  });
+
+  it("keeps a local edit that has not finished pushing when a stale pull arrives", () => {
+    const store = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, store, new Date("2026-08-02T10:00:00Z"));
+    journalLibrary.updateSession(session.id, { ...sessionInput, netResult: 999 }, store, new Date("2026-08-02T12:00:00Z"));
+    journalLibrary.mergeRemoteSessions([session], store);
+    expect(journalLibrary.sessions(store)[0].netResult).toBe(999);
+  });
+
+  it("takes a remote edit that is newer than the local copy", () => {
+    const store = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, store, new Date("2026-08-02T10:00:00Z"));
+    journalLibrary.mergeRemoteSessions([{ ...session, netResult: 555, updatedAt: "2026-08-05T10:00:00.000Z" }], store);
+    expect(journalLibrary.sessions(store)[0].netResult).toBe(555);
+  });
+
+  it("restores a previously deleted session when the user imports a backup containing it", () => {
+    const store = new MemoryStorage();
+    const backupStore = new MemoryStorage();
+    const session = journalLibrary.addSession(sessionInput, backupStore);
+    const backup = journalLibrary.exportData(backupStore);
+    journalLibrary.importData(backup, store);
+    journalLibrary.deleteSession(session.id, store);
+    journalLibrary.importData(backup, store);
+    expect(journalLibrary.sessions(store).map((item) => item.id)).toContain(session.id);
+  });
+
+  it("keeps a deleted transaction out of a pull that still carries it", () => {
+    const store = new MemoryStorage();
+    const transaction = journalLibrary.addTransaction({ date: "2026-08-01", type: "deposit", amount: 500 }, store, new Date("2026-08-01T10:00:00Z"));
+    journalLibrary.deleteTransaction(transaction.id, store, new Date("2026-08-01T11:00:00Z"));
+    journalLibrary.mergeRemoteTransactions([transaction], store);
+    expect(journalLibrary.transactions(store)).toHaveLength(0);
+  });
+});
+
+describe("moving a session between bankrolls", () => {
+  it("keeps the existing bankroll when the update does not name one", () => {
+    const store = new MemoryStorage();
+    const second = journalLibrary.addBankroll("Vegas trip", store);
+    const session = journalLibrary.addSession({ ...sessionInput, bankrollId: second.id }, store);
+    journalLibrary.updateSession(session.id, { ...sessionInput, netResult: 10 }, store);
+    expect(journalLibrary.sessions(store)[0].bankrollId).toBe(second.id);
+  });
+
+  it("moves the session when the update names a different bankroll", () => {
+    const store = new MemoryStorage();
+    const second = journalLibrary.addBankroll("Vegas trip", store);
+    const session = journalLibrary.addSession(sessionInput, store);
+    journalLibrary.updateSession(session.id, { ...sessionInput, bankrollId: second.id }, store);
+    expect(journalLibrary.sessions(store)[0].bankrollId).toBe(second.id);
   });
 });

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DDMTableGame } from "@/components/DDMTableGame";
 import { DDMEvCalculator } from "@/components/DDMEvCalculator";
 import { DDMLongRunCalculator } from "@/components/DDMLongRunCalculator";
-import { GhostButton, Metric, Panel } from "@/components/ui";
+import { Tabs, Metric, Panel } from "@/components/ui";
 import {
   ACTION_NAMES,
   BETTING_RAMP,
@@ -27,7 +27,7 @@ const tabLabels: Record<Tab, string> = {
 };
 
 function StrategyCell({ action }: { action: DDMAction }) {
-  const tone = action === "D" ? "bg-amber-400/15 text-amber-200" : action === "S" ? "bg-sky-400/15 text-sky-200" : "bg-emerald-400/10 text-emerald-200";
+  const tone = action === "D" ? "bg-amber-400/15 text-[var(--warning)]" : action === "S" ? "bg-sky-400/15 text-[var(--info)]" : "bg-emerald-400/10 text-[var(--accent)]";
   return <td className={`min-w-12 border border-white/[.06] px-3 py-2 text-center font-bold ${tone}`} title={ACTION_NAMES[action]}>{action}</td>;
 }
 
@@ -37,7 +37,7 @@ function StrategyTable({ title, rows }: { title: string; rows: Record<number, st
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[38rem] text-sm">
-          <thead><tr><th className="px-3 py-2 text-left text-zinc-500">Player</th>{UPCARDS.map((upcard) => <th key={upcard} className="px-3 py-2 text-center text-zinc-500">{formatUpcard(upcard)}</th>)}</tr></thead>
+          <thead><tr><th className="px-3 py-2 text-left text-[var(--ink-muted)]">Player</th>{UPCARDS.map((upcard) => <th key={upcard} className="px-3 py-2 text-center text-[var(--ink-muted)]">{formatUpcard(upcard)}</th>)}</tr></thead>
           <tbody>{Object.entries(rows).map(([row, actions]) => <tr key={row}><th className="border border-white/[.06] px-3 py-2 text-left">{row}</th>{actions.split("").map((action, index) => <StrategyCell key={`${row}-${UPCARDS[index]}`} action={action as DDMAction} />)}</tr>)}</tbody>
         </table>
       </div>
@@ -50,7 +50,7 @@ function StrategyReference() {
     <div className="mt-5 space-y-4">
       <Panel className="border border-amber-400/15 bg-amber-400/[.025]">
         <h2 className="text-lg font-semibold">How to read the charts</h2>
-        <p className="mt-3 text-sm leading-6 text-zinc-400"><b className="text-emerald-200">H</b> hit · <b className="text-sky-200">S</b> stand · <b className="text-amber-200">D</b> double. Use the first-card chart before the first draw, then hard or soft total after every additional card. A lone ace always doubles and receives exactly one final card under the strict ace rule.</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]"><b className="text-[var(--accent)]">H</b> hit · <b className="text-[var(--info)]">S</b> stand · <b className="text-[var(--warning)]">D</b> double. Use the first-card chart before the first draw, then hard or soft total after every additional card. A lone ace always doubles and receives exactly one final card under the strict ace rule.</p>
       </Panel>
       <StrategyTable title="First non-ace card" rows={STRATEGY_TABLES.first} />
       <StrategyTable title="Continued hard totals" rows={STRATEGY_TABLES.hard} />
@@ -63,16 +63,16 @@ function DeviationsReference() {
   return (
     <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_320px]">
       <Panel>
-        <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-emerald-400">Selected by whole-round EV gain</p><h2 className="mt-2 text-xl font-semibold">Top 18 Hi-Lo departures</h2></div><span className="text-xs text-zinc-500">TC is floored</span></div>
+        <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--accent)]">Selected by whole-round EV gain</p><h2 className="mt-2 text-xl font-semibold">Top 18 Hi-Lo departures</h2></div><span className="text-xs text-[var(--ink-muted)]">TC is floored</span></div>
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[42rem] text-left text-sm">
-            <thead className="text-zinc-500"><tr><th className="pb-3">#</th><th className="pb-3">State</th><th className="pb-3">Index</th><th className="pb-3">Change</th></tr></thead>
+            <thead className="text-[var(--ink-muted)]"><tr><th className="pb-3">#</th><th className="pb-3">State</th><th className="pb-3">Index</th><th className="pb-3">Change</th></tr></thead>
             <tbody>{TOP_DEVIATIONS.map((item, index) => (
               <tr key={`${item.plane}-${item.row}-${item.upcard}`} className="border-t border-white/[.06]">
-                <td className="py-3 text-zinc-600">{index + 1}</td>
+                <td className="py-3 text-[var(--ink-muted)]">{index + 1}</td>
                 <td className="py-3">{item.plane === "first" ? "First card" : "Hard"} {item.row} vs {formatUpcard(item.upcard)}</td>
-                <td className="py-3 font-semibold text-amber-200">TC {item.direction === 1 ? "≥" : "≤"} {item.threshold >= 0 ? "+" : ""}{item.threshold}</td>
-                <td className="py-3">{ACTION_NAMES[item.baseAction]} → <b className="text-emerald-300">{ACTION_NAMES[item.action]}</b></td>
+                <td className="py-3 font-semibold text-[var(--warning)]">TC {item.direction === 1 ? "≥" : "≤"} {item.threshold >= 0 ? "+" : ""}{item.threshold}</td>
+                <td className="py-3">{ACTION_NAMES[item.baseAction]} → <b className="text-[var(--accent)]">{ACTION_NAMES[item.action]}</b></td>
               </tr>
             ))}</tbody>
           </table>
@@ -80,13 +80,13 @@ function DeviationsReference() {
       </Panel>
       <div className="space-y-4">
         <Panel className="border border-emerald-400/20">
-          <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">Insurance</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-[var(--accent)]">Insurance</p>
           <p className="mt-3 text-3xl font-semibold">Take at TC +4</p>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">Insurance supplied most of the measured index gain. The coach grades the decision before checking the dealer hole card.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">Insurance supplied most of the measured index gain. The coach grades the decision before checking the dealer hole card.</p>
         </Panel>
         <Panel>
           <h2 className="font-semibold">Important distinction</h2>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">“First 9” means your original one-card 9. “Hard 9” is a multi-card total. Those are different decision states because a one-card hand can draw into a two-card blackjack.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">“First 9” means your original one-card 9. “Hard 9” is a multi-card total. Those are different decision states because a one-card hand can draw into a two-card blackjack.</p>
         </Panel>
       </div>
     </div>
@@ -109,20 +109,20 @@ function EdgeAndSpread() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel>
           <h2 className="text-xl font-semibold">Recommended 1–16 ramp</h2>
-          <div className="mt-4 space-y-2">{BETTING_RAMP.map((row) => <div key={row.label} className="flex items-center justify-between rounded-xl bg-black/20 px-4 py-3 text-sm"><span className="text-zinc-400">{row.label}</span><b>{row.units} unit{row.units === 1 ? "" : "s"}</b></div>)}</div>
-          <p className="mt-4 text-xs leading-5 text-zinc-500">Benchmark: Version 1, six decks, H17, one deck cut off, one occupied spot, exact deck estimation, insurance +4, and the 18 departures. The independent ten-billion-round run produced 7.398 units/hour with 84.010 units/hour SD.</p>
+          <div className="mt-4 space-y-2">{BETTING_RAMP.map((row) => <div key={row.label} className="flex items-center justify-between rounded-xl bg-black/20 px-4 py-3 text-sm"><span className="text-[var(--ink-muted)]">{row.label}</span><b>{row.units} unit{row.units === 1 ? "" : "s"}</b></div>)}</div>
+          <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Benchmark: Version 1, six decks, H17, one deck cut off, one occupied spot, exact deck estimation, insurance +4, and the 18 departures. The independent ten-billion-round run produced 7.398 units/hour with 84.010 units/hour SD.</p>
         </Panel>
         <Panel>
           <h2 className="text-xl font-semibold">Bankroll and penetration</h2>
-          <p className="mt-3 text-sm leading-6 text-zinc-400">The benchmark bankroll for 5% lifetime risk of ruin is about <b className="text-white">1,429 base units</b>. A $10 unit therefore implies roughly $14,290. The spread was approximately break-even with only two decks dealt; the attractive result needs much deeper penetration.</p>
-          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073979</p><p className="text-xs text-zinc-600">EV / round · 10B run</p></div><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-zinc-500">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-zinc-600">EV / round · 500M run</p></div></div>
-          <p className="mt-4 text-xs leading-5 text-amber-200/80">A continuous shuffler has no usable pre-deal count variation and remains a house game. Casino conditions, limits, speed, and tolerance of this spread are not modeled.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">The benchmark bankroll for 5% lifetime risk of ruin is about <b className="text-white">1,429 base units</b>. A $10 unit therefore implies roughly $14,290. The spread was approximately break-even with only two decks dealt; the attractive result needs much deeper penetration.</p>
+          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073979</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 10B run</p></div><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 500M run</p></div></div>
+          <p className="mt-4 text-xs leading-5 text-[var(--warning)]/80">A continuous shuffler has no usable pre-deal count variation and remains a house game. Casino conditions, limits, speed, and tolerance of this spread are not modeled.</p>
         </Panel>
       </div>
       <Panel>
-        <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-emerald-400">Exact effects of removal</p><h2 className="mt-2 text-xl font-semibold">Why Hi-Lo is the practical choice</h2></div><span className="text-xs text-zinc-500">Positive = removal helps player</span></div>
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-10">{eors.map(([rank, eor]) => <div key={rank} className="rounded-xl bg-black/20 p-3 text-center"><b>{rank}</b><span className={`mt-1 block text-xs ${eor.startsWith("+") ? "text-emerald-300" : "text-red-300"}`}>{eor}</span></div>)}</div>
-        <p className="mt-5 text-sm leading-6 text-zinc-400">Rounding these EORs to the simplest balanced level-1 tags produces Hi-Lo exactly. The custom level-6 DDM count raises betting correlation from 0.9779 to 0.9981, but reduced sampled N0 only 5.2% in matched five-billion-round no-index tests. Hi-Lo keeps nearly all the betting power at far lower mental cost.</p>
+        <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--accent)]">Exact effects of removal</p><h2 className="mt-2 text-xl font-semibold">Why Hi-Lo is the practical choice</h2></div><span className="text-xs text-[var(--ink-muted)]">Positive = removal helps player</span></div>
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-10">{eors.map(([rank, eor]) => <div key={rank} className="rounded-xl bg-black/20 p-3 text-center"><b>{rank}</b><span className={`mt-1 block text-xs ${eor.startsWith("+") ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{eor}</span></div>)}</div>
+        <p className="mt-5 text-sm leading-6 text-[var(--ink-muted)]">Rounding these EORs to the simplest balanced level-1 tags produces Hi-Lo exactly. The custom level-6 DDM count raises betting correlation from 0.9779 to 0.9981, but reduced sampled N0 only 5.2% in matched five-billion-round no-index tests. Hi-Lo keeps nearly all the betting power at far lower mental cost.</p>
       </Panel>
     </div>
   );
@@ -130,16 +130,17 @@ function EdgeAndSpread() {
 
 export function DDMLab() {
   const [tab, setTab] = useState<Tab>("game");
+  useEffect(() => { const restore = () => { const value = location.hash.slice(1); if (value in tabLabels) setTab(value as Tab); }; restore(); addEventListener("hashchange", restore); return () => removeEventListener("hashchange", restore); }, []);
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Countable casino game · exact strategy research</p><h1 className="mt-2 text-3xl font-semibold">Double Down Madness</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">Play the unusual one-card blackjack game through a persistent six-deck shoe while the coach monitors Hi-Lo, your 1–16 spread, insurance, strategy, and deviations.</p></div>
-        <a className="min-h-11 text-sm text-emerald-400 hover:underline" href="https://wizardofodds.com/games/blackjack/double-down-madness/" target="_blank" rel="noreferrer">Wizard rules source ↗</a>
+        <div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Countable casino game · exact strategy research</p><h1 className="mt-2 text-3xl font-semibold">Double Down Madness</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-[var(--ink-muted)]">Play the unusual one-card blackjack game through a persistent six-deck shoe while the coach monitors Hi-Lo, your 1–16 spread, insurance, strategy, and deviations.</p></div>
+        <a className="min-h-11 text-sm text-[var(--accent)] hover:underline" href="https://wizardofodds.com/games/blackjack/double-down-madness/" target="_blank" rel="noreferrer">Wizard rules source ↗</a>
       </div>
-      <div className="mobile-scroll-rail sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 -mx-4 mt-4 flex gap-2 overflow-x-auto border-y border-white/[.06] bg-[#0c100d]/95 px-4 py-2 backdrop-blur sm:static sm:mx-0 sm:mt-6 sm:flex-wrap sm:border-0 sm:bg-transparent sm:p-0" role="tablist">
-        {(Object.keys(tabLabels) as Tab[]).map((item) => <GhostButton key={item} role="tab" aria-selected={tab === item} onClick={() => setTab(item)} className={`shrink-0 whitespace-nowrap ${tab === item ? "border-emerald-400/60 bg-emerald-500/15" : ""}`}>{tabLabels[item]}</GhostButton>)}
-      </div>
+      <Tabs label="Double Down Madness sections" panelId="ddm-panel" className="mt-5" value={tab} onChange={(value) => { setTab(value); history.replaceState(null, "", `#${value}`); }} items={(Object.keys(tabLabels) as Tab[]).map((value) => ({ value, label: tabLabels[value] }))} />
+      <div id="ddm-panel" role="tabpanel" aria-label="Double Down Madness section">
       {tab === "game" ? <DDMTableGame /> : tab === "calculator" ? <DDMLongRunCalculator /> : tab === "hand" ? <DDMEvCalculator /> : tab === "strategy" ? <StrategyReference /> : tab === "deviations" ? <DeviationsReference /> : <EdgeAndSpread />}
+      </div>
     </>
   );
 }

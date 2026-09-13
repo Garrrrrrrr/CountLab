@@ -1,3 +1,4 @@
+import { accountStorage } from "@/lib/supabase/accountStorage";
 import { DrillType } from "./storage";
 
 export type LeitnerBox = 1 | 2 | 3 | 4 | 5;
@@ -24,7 +25,7 @@ const BOX_INTERVAL_MS: Record<LeitnerBox, number> = {
 };
 
 const keyFor = (drill: DrillType) => `hilo:leitner:${drill}`;
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 
 function readState(drill: DrillType, store = availableStorage()): Record<string, LeitnerState> {
   if (!store) return {};

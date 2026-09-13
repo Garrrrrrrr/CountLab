@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { ButtonLink } from "./ui";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -12,19 +12,24 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Button, Metric, Panel } from "@/components/ui";
+import { Metric, Panel, Select } from "@/components/ui";
 import { countingMastery } from "@/lib/blackjack/countingTraining";
 import { Session, storage } from "@/lib/statistics/storage";
 
 export default function StatisticsPage() {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [allSessions, setSessions] = useState<Session[]>([]);
   useEffect(() => {
     const load = () => setSessions(storage.sessions());
     load();
     addEventListener("hilo-storage", load);
     return () => removeEventListener("hilo-storage", load);
   }, []);
-  const chart = [...sessions]
+  const [drill, setDrill] = useState("all");
+  const [days, setDays] = useState("30");
+  const [rules, setRules] = useState("all");
+  const sessions = allSessions.filter((session) => (drill === "all" || session.drill === drill) && (days === "all" || new Date(session.date).getTime() >= Date.now() - Number(days) * 86400000) && (rules === "all" || (session.metrics?.rules ?? "Not recorded") === rules));
+  const trendDrill = drill === "all" ? sessions[0]?.drill : drill;
+  const chart = [...sessions.filter((session) => session.drill === trendDrill)]
     .reverse()
     .slice(-20)
     .map((s, i) => ({
@@ -44,7 +49,8 @@ export default function StatisticsPage() {
     ),
   ).map(([name, v]) => ({
     name,
-    accuracy: Math.round((v.correct / v.total) * 100),
+    accuracy: v.total ? Math.round((v.correct / v.total) * 100) : 0,
+    total: v.total,
   }));
   const byCategory = Object.entries(
     sessions.reduce<Record<string, { total: number; correct: number }>>(
@@ -70,7 +76,7 @@ export default function StatisticsPage() {
     const cutoff = Date.now() - days * 86400000;
     const recent = sessions.filter((session) => new Date(session.date).getTime() >= cutoff);
     const total = recent.reduce((sum, session) => sum + session.questions, 0);
-    return total ? Math.round(recent.reduce((sum, session) => sum + session.correct, 0) / total * 100) : 0;
+    return total ? Math.round(recent.reduce((sum, session) => sum + session.correct, 0) / total * 100) : null;
   };
   const counting = sessions.filter((session) => ["Running Count", "True Count", "Deck Estimation", "Full Shoe"].includes(session.drill));
   const numericMetric = (key: string) => counting.map((session) => Number(session.metrics?.[key])).filter(Number.isFinite);
@@ -84,25 +90,25 @@ export default function StatisticsPage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Statistics</h1>
-      <p className="mt-2 text-zinc-400">
+      <p className="mt-2 text-[var(--ink-muted)]">
         Persistent performance history across every training mode.
       </p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3"><Select label="Drill" value={drill} onChange={(event) => setDrill(event.target.value)}><option value="all">All drills</option>{[...new Set(allSessions.map((session) => session.drill))].map((name) => <option key={name}>{name}</option>)}</Select><Select label="Time period" value={days} onChange={(event) => setDays(event.target.value)}><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="all">All history</option></Select><Select label="Table rules" value={rules} onChange={(event) => setRules(event.target.value)}><option value="all">All rules</option>{[...new Set(allSessions.map((session) => String(session.metrics?.rules ?? "Not recorded")))].map((name) => <option key={name}>{name}</option>)}</Select></div>
+      <p className="mt-3 text-sm text-[var(--ink-muted)]" role="status">{sessions.length} sessions · {sessions.reduce((sum, session) => sum + session.questions, 0)} answers. Trends compare {trendDrill ?? "one drill"} only.</p>
       {sessions.length === 0 ? (
         <Panel className="mt-7 py-16 text-center">
-          <p className="text-zinc-400">
-            Complete a drill to start building your history.
+          <p className="text-[var(--ink-muted)]">
+            No sessions match these filters. Choose another period or complete a drill.
           </p>
-          <Link href="/training/running-count">
-            <Button className="mt-5">Start a drill</Button>
-          </Link>
+          <ButtonLink href="/training/running-count"  className="mt-5">Start a drill</ButtonLink>
         </Panel>
       ) : (
         <div className="mt-7 grid gap-5 lg:grid-cols-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-5">
-            <Metric label="7-day accuracy" value={`${accuracySince(7)}%`} />
-            <Metric label="30-day accuracy" value={`${accuracySince(30)}%`} />
-            <Metric label="Best card speed" value={`${Math.max(0, ...cardSpeeds).toFixed(1)}/s`} />
-            <Metric label="Latest deck MAE" value={`${(deckErrors[0] ?? 0).toFixed(2)} decks`} />
+            <Metric label="7-day accuracy" value={accuracySince(7) === null ? "Not measured" : `${accuracySince(7)}%`} />
+            <Metric label="30-day accuracy" value={accuracySince(30) === null ? "Not measured" : `${accuracySince(30)}%`} />
+            <Metric label="Best card speed" value={cardSpeeds.length ? `${Math.max(...cardSpeeds).toFixed(1)}/s` : "Not measured"} />
+            <Metric label="Latest deck MAE" value={deckErrors.length ? `${deckErrors[0].toFixed(2)} decks` : "Not measured"} />
             <Metric label="Counting mastery" value={`${mastery.score}%`} sub={`${perfectShoes} perfect shoes`} />
           </div>
           <Panel>
@@ -115,14 +121,14 @@ export default function StatisticsPage() {
                   <YAxis domain={[0, 100]} stroke="#71717a" />
                   <Tooltip
                     contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
+                      background: "var(--paper-raised)", color: "var(--ink)",
+                      border: "1px solid var(--rule)",
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="accuracy"
-                    stroke="#b5ed5c"
+                    stroke="var(--accent)"
                     strokeWidth={2}
                   />
                 </LineChart>
@@ -139,14 +145,14 @@ export default function StatisticsPage() {
                   <YAxis stroke="#71717a" />
                   <Tooltip
                     contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
+                      background: "var(--paper-raised)", color: "var(--ink)",
+                      border: "1px solid var(--rule)",
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="response"
-                    stroke="#38bdf8"
+                    stroke="var(--info)"
                     strokeWidth={2}
                   />
                 </LineChart>
@@ -163,8 +169,8 @@ export default function StatisticsPage() {
                   <YAxis domain={[0, 100]} stroke="#71717a" />
                   <Tooltip
                     contentStyle={{
-                      background: "#111",
-                      border: "1px solid #333",
+                      background: "var(--paper-raised)", color: "var(--ink)",
+                      border: "1px solid var(--rule)",
                     }}
                   />
                   <Bar
@@ -179,7 +185,7 @@ export default function StatisticsPage() {
           {byCategory.length > 0 && (
             <Panel className="lg:col-span-2">
               <h2 className="font-semibold">Accuracy by decision category</h2>
-              <p className="mb-5 mt-1 text-sm text-zinc-500">
+              <p className="mb-5 mt-1 text-sm text-[var(--ink-muted)]">
                 Lowest-performing categories appear first.
               </p>
               <div className="grid gap-3 md:grid-cols-2">
@@ -192,18 +198,18 @@ export default function StatisticsPage() {
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
                       <div className="h-full bg-emerald-500" style={{ width: `${row.accuracy}%` }} />
                     </div>
-                    <p className="mt-2 text-xs text-zinc-500">{row.total} answers</p>
+                    <p className="mt-2 text-xs text-[var(--ink-muted)]">{row.total} answers</p>
                   </div>
                 ))}
               </div>
             </Panel>
           )}
-          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-zinc-500">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-black/25 px-3 py-2 text-sm"><b className="text-amber-300">{count}</b> {name}</span>)}</div></Panel>}
+          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-[var(--ink-muted)]">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-black/25 px-3 py-2 text-sm"><b className="text-[var(--warning)]">{count}</b> {name}</span>)}</div></Panel>}
           <section className="sr-only" aria-label="Statistics text summary">
             <h2>Performance summary</h2>
             <ul>
               {byDrill.map((row) => (
-                <li key={row.name}>{row.name}: {row.accuracy}% accuracy</li>
+                <li key={row.name}>{row.name}: {row.accuracy}% accuracy across {row.total} answers</li>
               ))}
               {byCategory.map((row) => (
                 <li key={row.name}>{row.name}: {row.accuracy}% across {row.total} answers</li>

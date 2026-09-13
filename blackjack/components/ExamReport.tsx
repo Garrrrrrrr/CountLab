@@ -62,7 +62,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
       <div className="space-y-3">
         <Panel className={passed ? "border-emerald-400/40 bg-emerald-400/[.08]" : "border-amber-400/40 bg-amber-400/[.08]"}>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--ink-muted)]">Verdict</p>
-          <p className={`font-display mt-2 text-4xl font-semibold ${passed ? "text-emerald-300" : "text-amber-300"}`}>
+          <p className={`font-display mt-2 text-4xl font-semibold ${passed ? "text-[var(--accent)]" : "text-[var(--warning)]"}`}>
             {passed ? "Pass" : "Not yet"}
           </p>
           <p className="mt-2 text-sm text-[var(--ink-muted)]">
@@ -116,7 +116,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
                 <span className="block text-sm font-medium">{section.label}</span>
                 <span className="text-xs text-[var(--ink-muted)]">{section.accuracy}% against a {section.passAccuracy}% floor</span>
               </span>
-              <span className="text-emerald-400" aria-hidden="true">→</span>
+              <span className="text-[var(--accent)]" aria-hidden="true">→</span>
             </button>)}
           </div>
         </Panel>}
@@ -127,7 +127,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
             {group.mistakes.map((mistake: Mistake, index: number) => <li key={index} className="rounded-xl bg-black/20 p-3 text-sm">
               <p className="font-medium">{mistake.question}</p>
               <p className="mt-1 text-[var(--ink-muted)]">
-                You said <b className="text-amber-300">{mistake.userAnswer}</b> · correct <b className="text-emerald-300">{mistake.correctAnswer}</b>
+                You said <b className="text-[var(--warning)]">{mistake.userAnswer}</b> · correct <b className="text-[var(--accent)]">{mistake.correctAnswer}</b>
               </p>
               <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">{mistake.explanation}</p>
             </li>)}
@@ -139,7 +139,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
         </Panel>}
 
         <p className="text-xs text-[var(--ink-muted)]">
-          Graded on {summariseRules(config.rules)}. Certifications and lapses are listed on the <Link className="text-emerald-400 hover:underline" href="/practice">practice hub</Link>.
+          Graded on {summariseRules(config.rules)}. Certifications and lapses are listed on the <Link className="text-[var(--accent)] hover:underline" href="/practice">practice hub</Link>.
         </p>
       </div>
     </div>

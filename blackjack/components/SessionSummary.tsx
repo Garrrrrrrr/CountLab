@@ -1,6 +1,6 @@
 "use client";
+import { ButtonLink } from "./ui";
 
-import Link from "next/link";
 import { Session } from "@/lib/statistics/storage";
 import { Button, GhostButton, Panel } from "./ui";
 
@@ -21,13 +21,13 @@ export function SessionSummary({
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <span className="text-xs font-bold uppercase tracking-[.25em] text-emerald-400">Session complete</span>
+        <span className="text-xs font-bold uppercase tracking-[.25em] text-[var(--accent)]">Session complete</span>
         <h1 className="mt-2 text-4xl font-semibold">{session.correct} / {session.questions}</h1>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {metrics.map(([label, value], index) => (
           <div key={label} className={`surface rounded-2xl p-4 ${index === 2 ? "col-span-2 sm:col-span-1" : ""}`}>
-            <p className="text-sm text-zinc-500">{label}</p>
+            <p className="text-sm text-[var(--ink-muted)]">{label}</p>
             <b className="mt-1 block text-2xl">{value}</b>
           </div>
         ))}
@@ -39,8 +39,8 @@ export function SessionSummary({
             {session.mistakes.map((mistake, index) => (
               <div key={index} className="rounded-xl bg-black/20 p-4 text-sm">
                 <b>{mistake.question}</b>
-                <p className="mt-1 text-red-300">You: {mistake.userAnswer} · Correct: {mistake.correctAnswer}</p>
-                <p className="mt-1 text-zinc-400">{mistake.explanation}</p>
+                <p className="mt-1 text-[var(--negative)]">You: {mistake.userAnswer} · Correct: {mistake.correctAnswer}</p>
+                <p className="mt-1 text-[var(--ink-muted)]">{mistake.explanation}</p>
               </div>
             ))}
           </div>
@@ -49,7 +49,7 @@ export function SessionSummary({
       <div className="grid gap-3 sm:flex sm:flex-wrap">
         {onRetry && session.mistakes.length > 0 && <GhostButton className="w-full sm:w-auto" onClick={onRetry}>Retry mistakes</GhostButton>}
         <Button className="w-full sm:w-auto" onClick={onNew}>New session</Button>
-        <Link className="block" href="/dashboard"><GhostButton className="w-full sm:w-auto">Dashboard</GhostButton></Link>
+        <ButtonLink  href="/dashboard"  variant="quiet" className="block w-full sm:w-auto">Dashboard</ButtonLink>
       </div>
     </div>
   );

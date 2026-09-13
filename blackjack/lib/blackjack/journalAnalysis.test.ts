@@ -4,6 +4,7 @@ import { RULE_DELTAS } from "./ruleAdjustments";
 import type { JournalSession } from "./journal";
 import {
   aggregateJournal,
+  bankrollHealth,
   classifySessionAssessment,
   currentBankroll,
   journalByVenue,
@@ -316,5 +317,49 @@ describe("currentBankroll", () => {
     const withoutExpenses = [makeSession({ netResult: 200, expenses: 0 })];
     expect(currentBankroll(withExpenses, [])).toBe(currentBankroll(withoutExpenses, []));
     expect(currentBankroll(withExpenses, [])).toBe(200);
+  });
+});
+
+describe("bankrollHealth", () => {
+  it("reads risk of ruin against the real bankroll instead of a placeholder", () => {
+    const small = bankrollHealth([makeSession()], 2_000)!;
+    const large = bankrollHealth([makeSession()], 50_000)!;
+    expect(small.riskOfRuin).toBeGreaterThan(large.riskOfRuin);
+    expect(large.riskOfRuin).toBeGreaterThanOrEqual(0);
+    expect(small.riskOfRuin).toBeLessThanOrEqual(1);
+  });
+
+  it("recommends a larger unit as the bankroll grows, and flags overbetting through the ratio", () => {
+    const thin = bankrollHealth([makeSession({ bettingUnit: 100 })], 5_000)!;
+    const deep = bankrollHealth([makeSession({ bettingUnit: 100 })], 200_000)!;
+    expect(deep.recommendedUnit).toBeGreaterThan(thin.recommendedUnit);
+    expect(thin.unitRatio!).toBeGreaterThan(1);
+    expect(deep.unitRatio!).toBeLessThan(1);
+  });
+
+  it("holds the target risk it was asked for", () => {
+    const health = bankrollHealth([makeSession()], 20_000, 0.01)!;
+    const atRecommended = bankrollHealth([makeSession({ bettingUnit: health.recommendedUnit })], 20_000, 0.01)!;
+    expect(atRecommended.riskOfRuin).toBeCloseTo(0.01, 3);
+  });
+
+  it("reads the game from the most recently played session, not storage order", () => {
+    const older = makeSession({ id: "old", date: "2026-01-01", bettingUnit: 10 });
+    const newer = makeSession({ id: "new", date: "2026-06-01", bettingUnit: 50 });
+    expect(bankrollHealth([newer, older], 10_000)!.bettingUnit).toBe(50);
+    expect(bankrollHealth([newer, older], 10_000)!.referenceDate).toBe("2026-06-01");
+  });
+
+  it("has nothing to report without sessions or without a bankroll left to risk", () => {
+    expect(bankrollHealth([], 10_000)).toBeNull();
+    expect(bankrollHealth([makeSession()], 0)).toBeNull();
+    expect(bankrollHealth([makeSession()], -500)).toBeNull();
+  });
+
+  it("returns no unit ratio for a game with no positive expectation to size against", () => {
+    const flatNegative = makeSession({ ramp: [{ trueCount: -8, units: 1 }], rules: { ...DEFAULT_ADVANTAGE_RULES, blackjackPayout: 1.2 } });
+    const health = bankrollHealth([flatNegative], 10_000)!;
+    expect(health.riskOfRuin).toBe(1);
+    expect(health.unitRatio).toBeNull();
   });
 });

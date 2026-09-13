@@ -2,13 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
+import { NoticeCenter } from "@/components/NoticeCenter";
 import { AppShell } from "@/components/AppShell";
 import { AuthGate } from "@/components/AuthGate";
 import { AuthProvider } from "@/lib/supabase/AuthProvider";
 import { AnalyticsProvider } from "@/lib/analytics";
-import { AnalyticsConsent } from "@/components/AnalyticsConsent";
-import { InstallPrompt } from "@/components/InstallPrompt";
-import { UpdateToast } from "@/components/UpdateToast";
 
 const SITE_URL = "https://countlab.ca";
 const DESCRIPTION =
@@ -54,12 +52,11 @@ export const viewport: Viewport = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable} ${plexMono.variable}`}>
+      <head><script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem("countlab:theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch{}` }} /></head>
       <body>
         <AuthProvider>
           <AnalyticsProvider>
-            <AnalyticsConsent />
-            <UpdateToast />
-            <InstallPrompt />
+            <NoticeCenter />
             <AuthGate>
               <AppShell>{children}</AppShell>
             </AuthGate>

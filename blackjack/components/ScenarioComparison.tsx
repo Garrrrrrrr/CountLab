@@ -1,5 +1,8 @@
 "use client";
 
+import { ScenarioPicker, scenarioRamp, unsupportedScenario } from "./ScenarioPicker";
+import { templateHandSchedule } from "@/lib/blackjack/cvcxLibrary";
+import type { HandCountPoint } from "@/lib/blackjack/advantage";
 import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, RampPoint, calculateAdvantage, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
@@ -25,6 +28,7 @@ interface ColumnState {
   bankroll: number;
   bettingUnit: number;
   playerHands: number;
+  handsByTrueCount?: HandCountPoint[];
   handsPerHour: number;
   hours: number;
 }
@@ -65,6 +69,7 @@ export function ScenarioComparison() {
       bankroll: column.bankroll,
       bettingUnit: column.bettingUnit,
       playerHands: column.playerHands,
+      handsByTrueCount: column.handsByTrueCount,
       handsPerHour: column.handsPerHour,
       hours: column.hours,
       rules: {
@@ -119,14 +124,15 @@ export function ScenarioComparison() {
 
   return (
     <>
+      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ name, config: c }) => setColumns((current) => [{ ...makeColumn(name), decks: c.decks, dealt: c.dealt, bankroll: c.bankroll, bettingUnit: c.baseBet, handsPerHour: c.handsPerHour, hours: c.hours, dealerHitsSoft17: c.dealerHitsSoft17, doubleAfterSplit: c.doubleAfterSplit, resplitAces: c.resplitAces, lateSurrender: c.lateSurrender, blackjackPayout: c.blackjackPayout, useIndices: c.useIndices !== false, ramp: scenarioRamp(c), handsByTrueCount: templateHandSchedule(c) }, ...current.slice(1)])} />
       <div className="mb-7">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Analyze · Compare</p>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Analyze · Compare</p>
         <h1 className="mt-2 text-3xl font-semibold">Compare Scenarios</h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">
+        <p className="mt-2 max-w-2xl text-[var(--ink-muted)]">
           Set up to four table rules, ramps, and bet sizes side by side and compare their audited hourly EV, trip EV, and risk of ruin on an apples-to-apples basis.
         </p>
       </div>
-      {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Best scenario" value={columns[bestHourlyEv].name} sub="hourly EV" />
           <PinnedStat label="Hourly EV" value={money(results[bestHourlyEv].hourlyEv, 2)} sub="best of these" />
@@ -148,10 +154,10 @@ export function ScenarioComparison() {
                 <input
                   value={column.name}
                   onChange={(event) => updateColumn(column.id, { name: event.target.value })}
-                  className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-zinc-100 outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-[var(--ink)] outline-none"
                 />
                 {columns.length > 1 && (
-                  <button type="button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column.id)} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-zinc-600 hover:bg-red-400/10 hover:text-red-300">
+                  <button type="button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column.id)} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-lg text-[var(--ink-muted)] hover:bg-red-400/10 hover:text-[var(--negative)]">
                     <i className="fa-solid fa-xmark" aria-hidden="true" />
                   </button>
                 )}
@@ -199,8 +205,8 @@ export function ScenarioComparison() {
                 </Select>
               </div>
               {isEstimated(ruleAdjustmentFlagsFromRules(column)) && (
-                <p className="mt-3 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
-                  <i className="fa-solid fa-triangle-exclamation mr-1.5 text-amber-300" aria-hidden="true" />
+                <p className="mt-3 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-[var(--warning)]/80">
+                  <i className="fa-solid fa-triangle-exclamation mr-1.5 text-[var(--warning)]" aria-hidden="true" />
                   {(sumRuleAdjustment(ruleAdjustmentFlagsFromRules(column)) * 100).toFixed(2)}pp literature-estimated edge delta applied for rules away from the audited baseline.
                 </p>
               )}
@@ -219,7 +225,7 @@ export function ScenarioComparison() {
         })}
       </div>
 
-      <p className="mt-6 text-xs leading-5 text-zinc-600">
+      <p className="mt-6 text-xs leading-5 text-[var(--ink-muted)]">
         Each column uses the same audited advantage engine as the Game &amp; Bankroll Lab, run independently per scenario. This is a fast analytical comparison, not a full card-level shoe simulation.
       </p>
     </>

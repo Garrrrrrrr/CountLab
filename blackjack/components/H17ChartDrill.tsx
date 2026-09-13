@@ -193,8 +193,8 @@ export function H17ChartDrill() {
     if (!settled) return focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]";
     const result = gradeByKey.get(cell.key);
     return result?.correct
-      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-      : "border-red-500/50 bg-red-500/15 text-red-200";
+      ? "border-emerald-500/50 bg-emerald-500/15 text-[var(--accent)]"
+      : "border-red-500/50 bg-red-500/15 text-[var(--negative)]";
   }, [entries, feedback, focus, gradeByKey, graded]);
 
   const submit = useCallback(() => {
@@ -232,9 +232,9 @@ export function H17ChartDrill() {
   return (
     <>
       <div className="mb-5 sm:mb-7">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Chart recall</p>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Chart recall</p>
         <h1 className="mt-2 text-3xl font-semibold">H17 Chart</h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">
+        <p className="mt-2 max-w-2xl text-[var(--ink-muted)]">
           Fill in the whole H17 deviation chart from memory. One keystroke per cell — Tab, Enter,
           or an arrow key moves on. Each table&rsquo;s keys are listed above it.
           <span className="hidden sm:inline"> {" "}Hold{" "}<kbd className="rounded border border-white/15 bg-black/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}for the two-part answers (Y/N, Ds) instead of typing two keys.</span>
@@ -268,7 +268,7 @@ export function H17ChartDrill() {
             </Select>
           </div>
         </div>
-        <p className="text-sm text-zinc-500">{total} cells</p>
+        <p className="text-sm text-[var(--ink-muted)]">{total} cells</p>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -280,27 +280,27 @@ export function H17ChartDrill() {
         >
           View H17 reference
         </Link>
-        {!graded && <span className="text-sm text-zinc-500">{grade.answered} / {grade.total} filled</span>}
+        {!graded && <span className="text-sm text-[var(--ink-muted)]">{grade.answered} / {grade.total} filled</span>}
       </div>
 
       {graded && (
         <Panel className="mb-5">
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
             <b className="text-3xl">{grade.correct} / {grade.total}</b>
-            <span className="text-zinc-400">{Math.round((grade.correct / grade.total) * 100)}% correct</span>
-            <span className="text-zinc-500">{grade.wrong} wrong · {grade.skipped} skipped</span>
-            <span className="text-zinc-500">Best run {grade.bestStreak}</span>
+            <span className="text-[var(--ink-muted)]">{Math.round((grade.correct / grade.total) * 100)}% correct</span>
+            <span className="text-[var(--ink-muted)]">{grade.wrong} wrong · {grade.skipped} skipped</span>
+            <span className="text-[var(--ink-muted)]">Best run {grade.bestStreak}</span>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(grade.bySection).map(([label, value]) => (
               <div key={label} className="rounded-xl bg-black/20 p-3">
-                <p className="text-xs text-zinc-500">{label}</p>
+                <p className="text-xs text-[var(--ink-muted)]">{label}</p>
                 <b className="text-lg">{Math.round((value.correct / value.total) * 100)}%</b>
-                <span className="ml-2 text-xs text-zinc-500">{value.correct}/{value.total}</span>
+                <span className="ml-2 text-xs text-[var(--ink-muted)]">{value.correct}/{value.total}</span>
               </div>
             ))}
           </div>
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-4 text-xs text-[var(--ink-muted)]">
             Every wrong cell is marked in red with the chart&rsquo;s answer beneath it.
           </p>
         </Panel>
@@ -310,31 +310,31 @@ export function H17ChartDrill() {
         {sections.map((section, sectionIndex) => (
           <Panel key={section.id}>
             <h2 className="text-lg font-semibold">{section.label}</h2>
-            <ul className="mb-4 mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-zinc-500 sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
+            <ul className="mb-4 mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-[var(--ink-muted)] sm:flex sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-2">
               {sectionLegend(section.id).map((entry) => (
                 <li key={entry.keys.join("+")} className="inline-flex min-w-0 items-center gap-1.5">
                   {entry.combo ? <>
-                    <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400 sm:hidden">{entry.shows}</kbd>
+                    <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)] sm:hidden">{entry.shows}</kbd>
                     <span className="hidden shrink-0 items-center gap-1.5 sm:inline-flex">
                       {entry.keys.map((key, position) => <span key={key} className="inline-flex items-center gap-1.5">
                         {position > 0 && <span aria-hidden="true">+</span>}
-                        <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{key}</kbd>
+                        <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{key}</kbd>
                       </span>)}
                     </span>
-                  </> : <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">{entry.keys[0]}</kbd>}
-                  <span className="text-zinc-600" aria-hidden="true">→</span>
-                  <span className="truncate font-mono text-zinc-300">{entry.shows}</span>
+                  </> : <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{entry.keys[0]}</kbd>}
+                  <span className="text-[var(--ink-muted)]" aria-hidden="true">→</span>
+                  <span className="truncate font-mono text-[var(--ink)]">{entry.shows}</span>
                   <span className="hidden truncate sm:inline">({entry.meaning})</span>
                 </li>
               ))}
               <li className="col-span-2 inline-flex min-w-0 items-center gap-1.5">
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">0–9</kbd>
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">0–9</kbd>
                 <span aria-hidden="true">then</span>
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">+</kbd>
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">+</kbd>
                 <span aria-hidden="true">or</span>
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-zinc-400">−</kbd>
-                <span className="text-zinc-600" aria-hidden="true">→</span>
-                <span className="truncate font-mono text-zinc-300">a true count, e.g. 4+</span>
+                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">−</kbd>
+                <span className="text-[var(--ink-muted)]" aria-hidden="true">→</span>
+                <span className="truncate font-mono text-[var(--ink)]">a true count, e.g. 4+</span>
                 <span className="hidden sm:inline">(deviate at this count or beyond)</span>
               </li>
             </ul>
@@ -352,7 +352,7 @@ export function H17ChartDrill() {
                       Hand
                     </th>
                     {CHART_DEALERS.map((dealer) => (
-                      <th key={dealer} className="px-1 pb-1 text-xs font-semibold text-zinc-500">{dealer}</th>
+                      <th key={dealer} className="px-1 pb-1 text-xs font-semibold text-[var(--ink-muted)]">{dealer}</th>
                     ))}
                   </tr>
                 </thead>
@@ -383,7 +383,7 @@ export function H17ChartDrill() {
                               const result = gradeByKey.get(cell.key);
                               const settled = graded || parseEntry(cell.section, entries[cell.key] ?? "") !== null;
                               if (!settled || !result || result.correct) return null;
-                              return <p className="mt-0.5 font-mono text-[.6rem] leading-none text-emerald-300/80">{result.expected}</p>;
+                              return <p className="mt-0.5 font-mono text-[.6rem] leading-none text-[var(--accent)]/80">{result.expected}</p>;
                             })()}
                           </td>
                         );
@@ -396,7 +396,7 @@ export function H17ChartDrill() {
               {rails[section.id]?.scrollable && !rails[section.id]?.atEnd && (
                 <>
                   <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--paper-raised)] to-transparent" />
-                  <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[.65rem] font-medium text-zinc-300">{rails[section.id].hiddenRight} more →</p>
+                  <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[.65rem] font-medium text-[var(--ink)]">{rails[section.id].hiddenRight} more →</p>
                 </>
               )}
             </div>
@@ -404,7 +404,7 @@ export function H17ChartDrill() {
         ))}
       </div>
 
-      <p className="mt-5 text-xs leading-5 text-zinc-500">
+      <p className="mt-5 text-xs leading-5 text-[var(--ink-muted)]">
         Chart source: Blackjack Apprenticeship, H17 Deviation Chart (2018), with one house addition:
         soft 20 doubles versus 4, 5 and 6 at +6, +5 and +4, the counts where doubling overtakes
         standing. Insurance or even money: take at true count +3 or above.

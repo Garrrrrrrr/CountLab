@@ -16,6 +16,10 @@
   --count-warm: #8a6910;
   --count-hot: #a64225;
   --focus: #3e6e8e;
+  --accent: #176b46;
+  --negative: #b42318;
+  --warning: #805b08;
+  --info: #236787;
   --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   --font-ui: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-data: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -31,6 +35,10 @@
   --count-warm: #d6b13b;
   --count-hot: #df6a47;
   --focus: #6f98ae;
+  --accent: #6ee7b7;
+  --negative: #fca5a5;
+  --warning: #fcd34d;
+  --info: #7dd3fc;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -44,6 +52,10 @@
     --count-warm: #d6b13b;
     --count-hot: #df6a47;
     --focus: #6f98ae;
+    --accent: #6ee7b7;
+    --negative: #fca5a5;
+    --warning: #fcd34d;
+    --info: #7dd3fc;
   }
 }
 * {
@@ -118,19 +130,11 @@ button {
   --ink: #e8eee7;
   --ink-muted: #aebbb3;
   --rule: #2a3a32;
+  --accent: #6ee7b7;
+  --negative: #fca5a5;
+  --warning: #fcd34d;
+  --info: #7dd3fc;
 }
-/* Existing dense screens use Tailwind's zinc text utilities. Keep their
-   semantic hierarchy readable while those screens migrate to the tokens. */
-:root:not([data-theme="dark"]) .text-zinc-100,
-:root:not([data-theme="dark"]) .text-white { color: var(--ink); }
-:root:not([data-theme="dark"]) .text-zinc-200,
-:root:not([data-theme="dark"]) .text-zinc-300 { color: color-mix(in srgb, var(--ink) 82%, var(--paper)); }
-:root:not([data-theme="dark"]) .text-zinc-400,
-:root:not([data-theme="dark"]) .text-zinc-500,
-:root:not([data-theme="dark"]) .text-zinc-600 { color: var(--ink-muted); }
-:root:not([data-theme="dark"]) .border-white\/\[\.06\],
-:root:not([data-theme="dark"]) .border-white\/\[\.07\],
-:root:not([data-theme="dark"]) .border-white\/10 { border-color: var(--rule); }
 .pressable {
   transition:
     transform 0.12s ease-out,
@@ -576,4 +580,16 @@ kbd {
   .field {
     border-color: rgba(255, 255, 255, 0.32);
   }
+}
+
+/* Public content and shared controls use semantic tokens in both themes. */
+a:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 3px;
+}
+@media print {
+  body { background: white; color: black; }
+  aside, header, nav, .no-print, .mobile-action-dock { display: none !important; }
+  #main-content { padding: 0 !important; }
+  .surface { break-inside: avoid; box-shadow: none; }
+  .overflow-x-auto { overflow: visible; }
 }

@@ -1,3 +1,4 @@
+import { accountStorage } from "../supabase/accountStorage";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -35,7 +36,7 @@ vi.mock("../analytics/track", () => ({ track: () => {} }));
 
 const { DEFAULT_SETTINGS, storage } = await import("./storage");
 
-const write = (value: unknown) => localStorage.setItem("hilo:settings", JSON.stringify(value));
+const write = (value: unknown) => accountStorage.setItem("hilo:settings", JSON.stringify(value));
 
 describe("the stored surrender rule", () => {
   beforeEach(() => localStorage.clear());
@@ -45,6 +46,21 @@ describe("the stored surrender rule", () => {
       storage.saveSettings({ ...DEFAULT_SETTINGS, surrender });
       expect(storage.settings().surrender).toBe(surrender);
     }
+  });
+
+  it("keeps unacknowledged local settings when a remote read completes", () => {
+    storage.saveSettings({ ...DEFAULT_SETTINGS, decks: 8 });
+    storage.applyRemoteSettings({ ...DEFAULT_SETTINGS, decks: 6 });
+    expect(storage.settings().decks).toBe(8);
+  });
+
+  it("ignores a read started before a newer local edit, even if that edit is acknowledged", () => {
+    storage.applyRemoteSettings(DEFAULT_SETTINGS);
+    const before = accountStorage.getItem("hilo:settings");
+    storage.saveSettings({ ...DEFAULT_SETTINGS, decks: 8 });
+    accountStorage.setItem("hilo:settings-ack", accountStorage.getItem("hilo:settings")!);
+    storage.applyRemoteSettings(DEFAULT_SETTINGS, before);
+    expect(storage.settings().decks).toBe(8);
   });
 
   /**
@@ -86,7 +102,7 @@ describe("the stored surrender rule", () => {
   it("drops the legacy key on the next save instead of carrying it forever", () => {
     write({ ...DEFAULT_SETTINGS, surrender: undefined, lateSurrender: true });
     storage.saveSettings(storage.settings());
-    const written = JSON.parse(localStorage.getItem("hilo:settings")!);
+    const written = JSON.parse(accountStorage.getItem("hilo:settings")!);
     expect(written.surrender).toBe("late");
     expect("lateSurrender" in written).toBe(false);
   });

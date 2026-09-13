@@ -6,10 +6,10 @@ export default function TermsPage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Terms of Service</h1>
-      <p className="mt-2 text-zinc-400">Last updated August 21, 2026.</p>
+      <p className="mt-2 text-[var(--ink-muted)]">Last updated August 21, 2026.</p>
       <div className="mt-7 space-y-5">
         <Panel>
-          <p className="text-sm leading-6 text-zinc-300">
+          <p className="text-sm leading-6 text-[var(--ink)]">
             CountLab is a personal, non-commercial project for practicing
             Hi-Lo card counting and blackjack basic
             strategy. These terms are written in plain language rather than
@@ -19,7 +19,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">What CountLab is</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             CountLab is an educational and entertainment tool: drills,
             reference material, casino-game tables, and Monte Carlo
             simulations for blackjack strategy and card counting. No real
@@ -31,7 +31,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">No warranty, no guarantee of accuracy</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             CountLab is provided &ldquo;as is,&rdquo; with no warranty of any
             kind. The strategy tables, count indices, and simulation results
             are built from published blackjack theory and are covered by
@@ -48,14 +48,14 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Accounts and guest mode</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             You can use CountLab either by creating an account (email and
             password, or &ldquo;Continue with Google&rdquo;) or by continuing
             as a guest. An account lets your training history, settings, and
             journal sync across devices; guest mode keeps everything on the
             one device you&rsquo;re using and never creates an account
             anywhere. See the{" "}
-            <Link href="/privacy" className="text-emerald-300 hover:underline">
+            <Link href="/privacy" className="text-[var(--accent)] hover:underline">
               Privacy Policy
             </Link>{" "}
             for what each mode stores. You&rsquo;re responsible for keeping
@@ -68,7 +68,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Your data</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             If you&rsquo;re signed in, your table-rule settings, drill
             history, and bankroll/session journal are stored in this
             project&rsquo;s database, scoped to your account only, and cached
@@ -81,7 +81,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Content and third-party references</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             Basic strategy, Hi-Lo counting, and the H17 Pro
             deviation table used on this site are established blackjack
             theory and chart data, not proprietary to CountLab. The Ultimate Texas Hold&rsquo;em and Chase the Flush
@@ -94,7 +94,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Limitation of liability</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             To the fullest extent permitted by law, the maintainer of CountLab
             is not liable
             for any loss or damage &mdash; including gambling losses,
@@ -105,7 +105,7 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Changes</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             These terms may change as the project changes. Continued use
             after an update means you accept the current version. Material
             changes will update the date at the top of this page.
@@ -113,10 +113,10 @@ export default function TermsPage() {
         </Panel>
         <Panel>
           <h2 className="font-semibold">Contact</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             Questions about these terms, or requests to delete your account
             and its data, can be sent to{" "}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="text-emerald-300 hover:underline">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-[var(--accent)] hover:underline">
               {CONTACT_EMAIL}
             </a>
             .

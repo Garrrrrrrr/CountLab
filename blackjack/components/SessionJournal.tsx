@@ -1,17 +1,21 @@
 "use client";
+import { ScenarioPicker, scenarioRamp, unsupportedScenario } from "./ScenarioPicker";
+import { templateHandSchedule } from "@/lib/blackjack/cvcxLibrary";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { calculateCountRows, CountRow, DEFAULT_ADVANTAGE_RULES, fillRampFromTrueCount, HandCountPoint, RAMPS, RampPoint, unitsAt } from "@/lib/blackjack/advantage";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { isEstimated, ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "@/lib/blackjack/ruleAdjustments";
-import { Bankroll, BankrollTransaction, isJournalDate, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
+import { Bankroll, BankrollTransaction, isJournalDate, JOURNAL_PRUNED_EVENT, JournalSession, journalLibrary, sessionsInRange } from "@/lib/blackjack/journal";
 import { track } from "@/lib/analytics/track";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import {
+  BankrollHealth,
   JournalAggregate,
   SessionAssessment,
   aggregateJournal,
+  bankrollHealth,
   classifySessionAssessment,
   currentBankroll,
   journalByVenue,
@@ -54,12 +58,12 @@ const ASSESSMENT_LABEL: Record<SessionAssessment, string> = {
   "outlier-low": "Statistical outlier (low)",
 };
 const ASSESSMENT_COLOR: Record<SessionAssessment, string> = {
-  "insufficient-data": "text-zinc-500",
-  "within-expected-range": "text-zinc-300",
-  "better-than-expected": "text-emerald-300",
-  "worse-than-expected": "text-amber-300",
-  "outlier-high": "text-emerald-300",
-  "outlier-low": "text-red-300",
+  "insufficient-data": "text-[var(--ink-muted)]",
+  "within-expected-range": "text-[var(--ink)]",
+  "better-than-expected": "text-[var(--accent)]",
+  "worse-than-expected": "text-[var(--warning)]",
+  "outlier-high": "text-[var(--accent)]",
+  "outlier-low": "text-[var(--negative)]",
 };
 
 const RANGE_OPTIONS: [number | "all", string][] = [
@@ -81,9 +85,9 @@ function AssessmentBadge({ assessment }: { assessment: SessionAssessment }) {
 function Stat({ label, value, sub, tone = "neutral" }: { label: string; value: string; sub?: string; tone?: "neutral" | "positive" | "negative" }) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-500">{label}</p>
-      <p className={`mt-1 truncate text-sm font-semibold tracking-[-.02em] ${tone === "positive" ? "text-emerald-300" : tone === "negative" ? "text-red-300" : "text-zinc-100"}`}>{value}</p>
-      {sub && <p className="truncate text-[.7rem] text-zinc-500">{sub}</p>}
+      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">{label}</p>
+      <p className={`mt-1 truncate text-sm font-semibold tracking-[-.02em] ${tone === "positive" ? "text-[var(--accent)]" : tone === "negative" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>{value}</p>
+      {sub && <p className="truncate text-[.7rem] text-[var(--ink-muted)]">{sub}</p>}
     </div>
   );
 }
@@ -100,18 +104,56 @@ function LongRunProgress({ aggregate }: { aggregate: JournalAggregate }) {
   return (
     <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[.8rem] font-medium text-zinc-300">Progress into the long run</p>
-        <p className="text-xs text-zinc-500">{hoursLabel(aggregate.totalHours)} of {hoursLabel(aggregate.nZeroHours)} (N₀)</p>
+        <p className="text-[.8rem] font-medium text-[var(--ink)]">Progress into the long run</p>
+        <p className="text-xs text-[var(--ink-muted)]">{hoursLabel(aggregate.totalHours)} of {hoursLabel(aggregate.nZeroHours)} (N₀)</p>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.06]">
         <div className={`h-full rounded-full ${reached ? "bg-emerald-300" : "bg-sky-300/70"}`} style={{ width: `${Math.max(1, progress * 100)}%` }} />
       </div>
-      <p className="mt-2 text-xs leading-5 text-zinc-500">
+      <p className="mt-2 text-xs leading-5 text-[var(--ink-muted)]">
         {reached
           ? "Past N₀: expectation now exceeds one standard deviation, so cumulative results carry real signal about the play."
           : `At ${percent(progress, 0)} of N₀, variance still outweighs expectation — a losing stretch here says little about how well the game is being played.`}
       </p>
     </div>
+  );
+}
+
+/**
+ * What the bankroll on the table actually supports. Every other EV figure on
+ * this page is bankroll-independent by design; ruin risk is not, and it is the
+ * one number that says whether the unit still being played is too big after a
+ * drawdown. Read against the most recent session's game.
+ */
+function BankrollHealthPanel({ health }: { health: BankrollHealth }) {
+  const overbet = health.unitRatio !== null && health.unitRatio > 1;
+  const verdict = health.unitRatio === null
+    ? "This game has no positive expectation, so no unit size makes it survivable."
+    : overbet
+      ? `The ${money(health.bettingUnit, 0)} unit is ${health.unitRatio.toFixed(1)}× what this bankroll supports at ${percent(health.targetRisk, 0)} ruin risk. Drop to ${money(health.recommendedUnit, 0)} or rebuild the roll.`
+      : `The ${money(health.bettingUnit, 0)} unit sits inside what this bankroll supports — ${money(health.recommendedUnit, 0)} would be the full ${percent(health.targetRisk, 0)}-risk size.`;
+  return (
+    <Panel className="mb-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">Bankroll health</p>
+        <p className="text-[.7rem] text-[var(--ink-muted)]">Priced on the game played {shortDate(health.referenceDate)} · not affected by the range filter</p>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        <Stat label="Current bankroll" value={money(health.bankroll, 0)} sub={`${money(health.bettingUnit, 0)} unit · ${Math.floor(health.bankroll / Math.max(1, health.bettingUnit))} units deep`} />
+        <Stat
+          label="Risk of ruin"
+          value={percent(health.riskOfRuin, 1)}
+          tone={health.riskOfRuin > health.targetRisk ? "negative" : "positive"}
+          sub={`Target ${percent(health.targetRisk, 0)}`}
+        />
+        <Stat label={`Unit at ${percent(health.targetRisk, 0)} risk`} value={health.recommendedUnit > 0 && Number.isFinite(health.recommendedUnit) ? money(health.recommendedUnit, 0) : "—"} sub={health.unitRatio === null ? "No positive edge" : `Playing ${health.unitRatio.toFixed(2)}× that`} />
+        <Stat label="Expected $ / hour" value={money(health.hourlyEv, 0)} tone={health.hourlyEv >= 0 ? "positive" : "negative"} sub="At this unit and ramp" />
+      </div>
+      <p className={`mt-3 text-xs leading-5 ${overbet || health.unitRatio === null ? "text-[var(--warning)]/90" : "text-[var(--ink-muted)]"}`}>
+        {(overbet || health.unitRatio === null) && <i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />}
+        {verdict}
+      </p>
+    </Panel>
   );
 }
 
@@ -129,6 +171,7 @@ export function SessionJournal() {
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
   const [shareSession, setShareSession] = useState<JournalSession>();
   const [range, setRange] = useState<number | "all">(30);
+  const [visibleCount, setVisibleCount] = useState(50);
   const [sessionQuery, setSessionQuery] = useState("");
   const [sessionResultFilter, setSessionResultFilter] = useState<"all" | "win" | "loss">("all");
   const [notice, setNotice] = useState<string>();
@@ -136,7 +179,11 @@ export function SessionJournal() {
   const importCsvInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ kind: "session"; id: string; date: string } | { kind: "transaction"; id: string } | { kind: "bankroll"; id: string; name: string }>();
   const [editingSessionId, setEditingSessionId] = useState<string>();
+  const [editingBankrollId, setEditingBankrollId] = useState<string>();
   const [expandedNotesId, setExpandedNotesId] = useState<string>();
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  /** Guards against a double-tap on Log session writing the same result twice. */
+  const lastSubmitRef = useRef(0);
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [location, setLocation] = useState("");
@@ -162,6 +209,7 @@ export function SessionJournal() {
   const [transactionDate, setTransactionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [transactionType, setTransactionType] = useState<"deposit" | "withdrawal">("deposit");
   const [transactionAmount, setTransactionAmount] = useState(500);
+  const [transactionNote, setTransactionNote] = useState("");
   const sessionForm = useFormAnalytics("journal_session");
   const transactionForm = useFormAnalytics("journal_transaction");
 
@@ -174,9 +222,19 @@ export function SessionJournal() {
       setBankrolls(journalLibrary.bankrolls());
     };
     refresh();
+    // Storage is capped, so the oldest sessions can be pruned to make room.
+    // Say so — silently shrinking a career total reads as lost data.
+    const warnPruned = (event: Event) => {
+      const dropped = (event as CustomEvent<number>).detail;
+      setNotice(`Storage limit reached: the ${dropped} oldest record${dropped === 1 ? " was" : "s were"} removed. Export a JSON backup to keep full history.`);
+    };
     addEventListener(journalLibrary.event, refresh);
+    addEventListener(JOURNAL_PRUNED_EVENT, warnPruned);
     track("journal_history_viewed", { kind: "sessions" });
-    return () => removeEventListener(journalLibrary.event, refresh);
+    return () => {
+      removeEventListener(journalLibrary.event, refresh);
+      removeEventListener(JOURNAL_PRUNED_EVENT, warnPruned);
+    };
   }, []);
 
   useEffect(() => {
@@ -218,10 +276,13 @@ export function SessionJournal() {
   const venues = useMemo(() => journalByVenue(inRange), [inRange]);
   const cumulative = useMemo(() => journalCumulativeSeries(inRange), [inRange]);
   const bankroll = useMemo(() => currentBankroll(scopedSessions, scopedTransactions), [scopedSessions, scopedTransactions]);
+  const health: BankrollHealth | null = useMemo(() => bankrollHealth(scopedSessions, bankroll), [scopedSessions, bankroll]);
   const filteredSessions = useMemo(() => {
     const query = sessionQuery.trim().toLowerCase();
     return [...inRange].filter((session) => {
-      if (sessionResultFilter === "win" && session.netResult < 0) return false;
+      // Strictly positive / strictly negative, matching how winRate counts them.
+      // A breakeven session is neither a win nor a loss and shows only under All.
+      if (sessionResultFilter === "win" && session.netResult <= 0) return false;
       if (sessionResultFilter === "loss" && session.netResult >= 0) return false;
       return !query || `${session.date} ${session.location ?? ""} ${session.notes ?? ""}`.toLowerCase().includes(query);
     }).sort((a, b) => b.date.localeCompare(a.date));
@@ -317,6 +378,7 @@ export function SessionJournal() {
   };
   const startEdit = (session: JournalSession) => {
     setEditingSessionId(session.id);
+    setEditingBankrollId(session.bankrollId);
     setDate(session.date);
     setLocation(session.location ?? "");
     setHours(session.hours);
@@ -338,9 +400,15 @@ export function SessionJournal() {
   };
   const cancelEdit = () => {
     setEditingSessionId(undefined);
+    setEditingBankrollId(undefined);
     resetDraftOutcome();
   };
   const logSession = () => {
+    // Two clicks a few hundred milliseconds apart are one intent, not two
+    // sessions. Anything slower is a deliberate second entry and goes through.
+    const now = Date.now();
+    if (now - lastSubmitRef.current < 800) return;
+    lastSubmitRef.current = now;
     sessionForm.submitted();
     if (!sessionDateValid) {
       sessionForm.validationFailed("date", "invalid_date");
@@ -362,8 +430,9 @@ export function SessionJournal() {
       notes: notes.trim() || undefined,
     };
     if (editingSessionId) {
-      journalLibrary.updateSession(editingSessionId, payload);
+      journalLibrary.updateSession(editingSessionId, { ...payload, bankrollId: editingBankrollId });
       setEditingSessionId(undefined);
+      setEditingBankrollId(undefined);
       setNotice("Session updated.");
     } else {
       journalLibrary.addSession({ ...payload, bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
@@ -379,7 +448,8 @@ export function SessionJournal() {
       setNotice("Enter a complete, valid transaction date before recording it.");
       return;
     }
-    journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount), bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
+    journalLibrary.addTransaction({ date: transactionDate, type: transactionType, amount: Math.abs(transactionAmount), note: transactionNote.trim() || undefined, bankrollId: selectedBankrollId === "all" ? undefined : selectedBankrollId });
+    setTransactionNote("");
     setNotice(`${transactionType === "deposit" ? "Deposit" : "Withdrawal"} recorded.`);
     transactionForm.succeeded();
   };
@@ -404,7 +474,8 @@ export function SessionJournal() {
     if (!file) return;
     try {
       const imported = journalLibrary.importData(await file.text());
-      setNotice(`Imported ${imported.sessions} session${imported.sessions === 1 ? "" : "s"} and ${imported.transactions} transaction${imported.transactions === 1 ? "" : "s"}.`);
+      const droppedNote = imported.dropped > 0 ? ` ${imported.dropped} of the oldest record${imported.dropped === 1 ? "" : "s"} did not fit under the storage limit.` : "";
+      setNotice(`Imported ${imported.sessions} session${imported.sessions === 1 ? "" : "s"} and ${imported.transactions} transaction${imported.transactions === 1 ? "" : "s"}.${droppedNote}`);
     } catch (importError) {
       setNotice(importError instanceof Error ? importError.message : "The journal backup could not be imported.");
     } finally {
@@ -445,23 +516,24 @@ export function SessionJournal() {
       ? { value: "Syncing…", sub: "Pushing to your account" }
       : syncStatus === "error"
         ? { value: "Sync failed", sub: "Check your connection" }
-        : { value: "Synced", sub: "Up to date on your account" };
+        : syncStatus === "synced" ? { value: "Synced", sub: "Up to date on your account" } : { value: "Not synced", sub: "Waiting to sync" };
   const performanceStat = aggregate.sessionCount > 0
     ? { value: ASSESSMENT_LABEL[aggregate.assessment], sub: `${money(aggregate.totalActual, 0)} vs ${money(aggregate.totalTheoretical, 0)} EV` }
     : { value: "No data yet", sub: "Log a session to compare" };
 
   return (
     <>
+      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBettingUnit(c.baseBet); setHours(c.hours); setHandsPerHour(c.handsPerHour); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setSpread("Custom"); setHandsByCount(Object.fromEntries(templateHandSchedule(c).map((point) => [point.trueCount, point.hands]))); }} />
       <div className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Journal · Bankroll</p>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Journal · Bankroll</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400 sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--ink-muted)] sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
       </div>
 
       {/* Pinned directly under the app header so the numbers everything else
           exists to produce stay readable while the reader works down the
           page. z-20 keeps it below the z-30 header it tucks under. */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[#0c100d]/95 px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"}`} />
           <PinnedStat label="Draft session EV" value={money(draftOutcome.tripEv, 2)} sub={`± ${money(draftOutcome.standardDeviation, 0)} SD`} />
@@ -473,7 +545,7 @@ export function SessionJournal() {
       <Panel className="mb-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Bankroll</p>
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">Bankroll</p>
             <div className="mt-2 max-w-xs">
               <Select label="" aria-label="Selected bankroll" value={selectedBankrollId} onChange={(event) => setSelectedBankrollId(event.target.value)}>
                 <option value="all">All bankrolls</option>
@@ -482,7 +554,7 @@ export function SessionJournal() {
             </div>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
             <GhostButton onClick={addBankroll} disabled={!newBankrollName.trim()}><i className="fa-solid fa-plus mr-2" />Add</GhostButton>
             {selectedBankrollId !== "all" && (
               <>
@@ -496,7 +568,7 @@ export function SessionJournal() {
                   Rename
                 </GhostButton>
                 <GhostButton
-                  className="text-red-300 hover:bg-red-400/10"
+                  className="text-[var(--negative)] hover:bg-red-400/10"
                   onClick={() => {
                     const current = bankrolls.find((item) => item.id === selectedBankrollId);
                     if (current) setPendingDelete({ kind: "bankroll", id: current.id, name: current.name });
@@ -513,8 +585,8 @@ export function SessionJournal() {
       {lifetime.sessionCount > 0 && (
         <Panel className="mb-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-[.14em] text-zinc-500">Career totals</p>
-            <p className="text-[.7rem] text-zinc-600">All time · {selectedBankrollId === "all" ? "all bankrolls" : bankrolls.find((item) => item.id === selectedBankrollId)?.name} · not affected by the range filter below</p>
+            <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">Career totals</p>
+            <p className="text-[.7rem] text-[var(--ink-muted)]">All time · {selectedBankrollId === "all" ? "all bankrolls" : bankrolls.find((item) => item.id === selectedBankrollId)?.name} · not affected by the range filter below</p>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
             <Stat label="Hours played" value={hoursLabel(lifetime.totalHours)} sub={`${lifetime.sessionCount} session${lifetime.sessionCount === 1 ? "" : "s"}`} />
@@ -527,6 +599,8 @@ export function SessionJournal() {
         </Panel>
       )}
 
+      {health && <BankrollHealthPanel health={health} />}
+
       <div className="space-y-3">
         <Section
           id="log-a-session-section"
@@ -536,11 +610,23 @@ export function SessionJournal() {
           tone="accent"
         >
           <div onChange={() => sessionForm.start("inputs")}>
-            <p className="text-xs text-zinc-500">Start with the date, time, unit, and actual result. Your most recent assumptions stay in place; open Advanced only when the table or spread changed.</p>
+            <p className="text-xs text-[var(--ink-muted)]">Start with the date, time, unit, and actual result. Your most recent assumptions stay in place; open Advanced only when the table or spread changed.</p>
             {editingSessionId && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-sky-100/80">
-                <span><i className="fa-solid fa-pen mr-1.5 text-sky-300" aria-hidden="true" />Editing session from {sessionDateValid ? shortDate(date) : "an incomplete date"}.</span>
-                <button type="button" onClick={cancelEdit} className="font-semibold text-sky-300 hover:text-sky-200">Cancel</button>
+                <span><i className="fa-solid fa-pen mr-1.5 text-[var(--info)]" aria-hidden="true" />Editing session from {sessionDateValid ? shortDate(date) : "an incomplete date"}.</span>
+                <div className="flex items-center gap-2">
+                  {bankrolls.length > 1 && (
+                    <select
+                      aria-label="Bankroll this session belongs to"
+                      value={editingBankrollId ?? ""}
+                      onChange={(event) => setEditingBankrollId(event.target.value)}
+                      className="field min-h-9 rounded-lg px-2 text-xs text-[var(--ink)] outline-none"
+                    >
+                      {bankrolls.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                  )}
+                  <button type="button" onClick={cancelEdit} className="font-semibold text-[var(--info)] hover:text-[var(--info)]">Cancel</button>
+                </div>
               </div>
             )}
             {simulationLibrary.templates().length > 0 && (
@@ -559,13 +645,13 @@ export function SessionJournal() {
                 </Select>
               )}
               <div className="mt-2 flex gap-2">
-                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
                 <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" required aria-invalid={!sessionDateValid} value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none aria-[invalid=true]:border-red-400/50" />{!sessionDateValid && <span role="alert" className="text-xs font-normal text-red-300">Enter a complete, valid date.</span>}</label>
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Casino name (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="e.g. Bellagio" className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none placeholder:text-zinc-600" /></label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Date<input type="date" required aria-invalid={!sessionDateValid} value={date} onChange={(event) => setDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none aria-[invalid=true]:border-red-400/50" />{!sessionDateValid && <span role="alert" className="text-xs font-normal text-[var(--negative)]">Enter a complete, valid date.</span>}</label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Casino name (optional)<input value={location} onChange={(event) => setLocation(event.target.value)} placeholder="e.g. Bellagio" className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
               <Select label="Decks" value={decks} onChange={(event) => { const next = Number(event.target.value) as 6 | 8; setDecks(next); setDealt(GAME_OPTIONS[next][1].dealt); }}><option value={6}>6 decks</option><option value={8}>8 decks</option></Select>
               <Select label="Penetration" value={dealt} onChange={(event) => setDealt(Number(event.target.value))}>{GAME_OPTIONS[decks].map((option) => <option key={option.dealt} value={option.dealt}>{option.dealt} / {decks} dealt</option>)}</Select>
               <NumberField label="Hours played" value={hours} min={0.1} step={0.5} onValueChange={setHours} />
@@ -574,7 +660,7 @@ export function SessionJournal() {
               <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
             </div>
             <details className="group mt-4 rounded-xl border border-white/[.07] bg-black/10" open={Boolean(editingSessionId)}>
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium marker:hidden"><span><i className="fa-solid fa-sliders mr-2 text-sky-300" aria-hidden="true" />Advanced assumptions</span><span className="text-xs font-normal text-zinc-500">Rules, spread, and hands <i className="fa-solid fa-chevron-down ml-1 transition-transform group-open:rotate-180" aria-hidden="true" /></span></summary>
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium marker:hidden"><span><i className="fa-solid fa-sliders mr-2 text-[var(--info)]" aria-hidden="true" />Advanced assumptions</span><span className="text-xs font-normal text-[var(--ink-muted)]">Rules, spread, and hands <i className="fa-solid fa-chevron-down ml-1 transition-transform group-open:rotate-180" aria-hidden="true" /></span></summary>
               <div className="border-t border-white/[.06] p-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
@@ -585,14 +671,14 @@ export function SessionJournal() {
               <Select label="Play variation" value={useIndices ? "indices" : "basic"} onChange={(event) => setUseIndices(event.target.value === "indices")}><option value="indices">H17/S17 Pro indices</option><option value="basic">Basic strategy only</option></Select>
             </div>
             {isEstimated(ruleAdjustmentFlagsFromRules(rules)) && (
-              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-amber-100/80">
-                <i className="fa-solid fa-triangle-exclamation mt-0.5 text-amber-300" aria-hidden="true" />
+              <p className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/15 bg-amber-300/[.06] p-3 text-xs leading-5 text-[var(--warning)]/80">
+                <i className="fa-solid fa-triangle-exclamation mt-0.5 text-[var(--warning)]" aria-hidden="true" />
                 <span>Rules set away from the audited baseline apply a flat literature-estimated {(ruleAdjustment * 100).toFixed(2)}pp edge delta rather than a resimulated audit, the same as the Bankroll Lab.</span>
               </p>
             )}
             <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-zinc-400">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
-              <p className="mb-2 text-xs text-zinc-500">Typing a bet fills the counts it implies: a bet at a negative count carries up to 0, and a bet at a positive count carries to the top, so you never bet more as the count drops or less as it climbs. <b>Zero</b> still applies to one count only — that is how you wong out. Hands falls back to your default above unless overridden per count here.</p>
+              <div className="mb-2 flex items-center justify-between"><p className="text-[.8rem] font-medium text-[var(--ink-muted)]">Bet spread &amp; hands played</p><div className="w-40"><Select label="" aria-label="Ramp preset" value={spread} onChange={(event) => chooseSpread(event.target.value)}>{Object.keys(RAMPS).map((name) => <option key={name}>{name}</option>)}{spread === "Custom" && <option>Custom</option>}</Select></div></div>
+              <p className="mb-2 text-xs text-[var(--ink-muted)]">Typing a bet fills the counts it implies: a bet at a negative count carries up to 0, and a bet at a positive count carries to the top, so you never bet more as the count drops or less as it climbs. <b>Zero</b> still applies to one count only — that is how you wong out. Hands falls back to your default above unless overridden per count here.</p>
               <BetSpreadTable rows={countRows} onBetChange={updateBet} onZeroBet={zeroBet} onHandsChange={updateHands} />
             </div>
               </div>
@@ -601,9 +687,9 @@ export function SessionJournal() {
               <NumberField label="Actual net result" value={netResult} prefix="$" onValueChange={setNetResult} />
               <NumberField label="Expenses (comps, travel)" value={expenses} min={0} prefix="$" onValueChange={setExpenses} />
             </div>
-            <p className="mt-2 text-xs text-zinc-500">Expenses are tracked and totalled separately — they do not move your bankroll or change how this session scores against its EV, because the model prices the table, not the trip.</p>
-            <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-zinc-100 outline-none" /></label>
-            <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-emerald-200">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
+            <p className="mt-2 text-xs text-[var(--ink-muted)]">Expenses are tracked and totalled separately — they do not move your bankroll or change how this session scores against its EV, because the model prices the table, not the trip.</p>
+            <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-[var(--ink)] outline-none" /></label>
+            <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-[var(--accent)]">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
             <Button className="mt-4 hidden w-full lg:block" disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
           </div>
         </Section>
@@ -614,22 +700,22 @@ export function SessionJournal() {
           icon="fa-chart-line"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-zinc-500">Cumulative across logged sessions in range, with a 95% band from combined session variance.</p>
+            <p className="text-xs text-[var(--ink-muted)]">Cumulative across logged sessions in range, with a 95% band from combined session variance.</p>
             <div className="flex gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
               {RANGE_OPTIONS.map(([value, label]) => (
-                <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{label}</button>
+                <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{label}</button>
               ))}
             </div>
           </div>
           {inRange.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-white/[.09] p-8 text-center text-sm text-zinc-500">Log a session to start comparing actual results with theoretical EV.</div>
+            <div className="mt-5 rounded-xl border border-dashed border-white/[.09] p-8 text-center text-sm text-[var(--ink-muted)]">Log a session to start comparing actual results with theoretical EV.</div>
           ) : (
             <>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${hoursLabel(aggregate.totalHours)} · ${aggregate.sessionCount} session${aggregate.sessionCount === 1 ? "" : "s"}`} />
                 <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% CI ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
                 <Metric label="Accumulated SD" value={`± ${money(aggregate.combinedStandardDeviation, 0)}`} sub={aggregate.combinedZ === null ? "No variance to measure yet" : `z = ${aggregate.combinedZ.toFixed(2)}${aggregate.resultPercentile === null ? "" : ` · ${ordinal(Math.round(aggregate.resultPercentile * 100))} percentile`}`} />
-                <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-zinc-500">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
+                <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3 sm:grid-cols-3 lg:grid-cols-4">
                 <Stat label="Actual $ / hour" value={money(aggregate.actualPerHour, 0)} tone={aggregate.actualPerHour >= 0 ? "positive" : "negative"} sub={`Expected ${money(aggregate.theoreticalPerHour, 0)} / hour`} />
@@ -667,18 +753,18 @@ export function SessionJournal() {
           icon="fa-table-list"
         >
           <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
+            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} aria-label="Search journal sessions" placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
             <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
-              {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-emerald-300" : "text-zinc-500 hover:text-zinc-200"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
+              {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
             </div>
           </div>
-          {filteredSessions.length === 0 ? <p className="text-sm text-zinc-600">No sessions match this view.</p> : (
+          {filteredSessions.length === 0 ? <p className="text-sm text-[var(--ink-muted)]">No sessions match this view.</p> : (
             <>
               {/* A 6-column table needs sideways scrolling below md, and its
                   action links are too small to tap reliably, so narrow
                   viewports get one full-width card per session instead. */}
               <div className="grid gap-2.5 md:hidden">
-                {filteredSessions.map((session) => {
+                {filteredSessions.slice(0, visibleCount).map((session) => {
                   const outcome = theoreticalSessionOutcome(session);
                   const z = sessionZScore(session, outcome);
                   return (
@@ -686,30 +772,30 @@ export function SessionJournal() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold">{shortDate(session.date)}</p>
-                          <p className="truncate text-xs text-zinc-600"><span className="text-zinc-500">Casino:</span> {session.location || "Not recorded"}</p>
+                          <p className="truncate text-xs text-[var(--ink-muted)]"><span className="text-[var(--ink-muted)]">Casino:</span> {session.location || "Not recorded"}</p>
                         </div>
                         <AssessmentBadge assessment={classifySessionAssessment(z)} />
                       </div>
                       <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                        <span className={`font-semibold ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</span>
-                        <span className="text-zinc-500">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
+                        <span className={`font-semibold ${session.netResult >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{money(session.netResult, 0)}</span>
+                        <span className="text-[var(--ink-muted)]">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
                       </div>
                       {session.notes && (
                         <div className="mt-3 rounded-lg border border-white/[.07] bg-black/15">
-                          <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-zinc-400 hover:text-zinc-200">
-                            <span><i className="fa-solid fa-note-sticky mr-1.5 text-sky-300" aria-hidden="true" />Session notes</span>
+                          <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)]">
+                            <span><i className="fa-solid fa-note-sticky mr-1.5 text-[var(--info)]" aria-hidden="true" />Session notes</span>
                             <span>{expandedNotesId === session.id ? "Hide" : "View"}</span>
                           </button>
-                          {expandedNotesId === session.id && <p className="whitespace-pre-wrap break-words border-t border-white/[.06] px-3 py-2.5 text-sm leading-6 text-zinc-300">{session.notes}</p>}
+                          {expandedNotesId === session.id && <p className="whitespace-pre-wrap break-words border-t border-white/[.06] px-3 py-2.5 text-sm leading-6 text-[var(--ink)]">{session.notes}</p>}
                         </div>
                       )}
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
-                        <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
-                        <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-zinc-300 hover:bg-white/[.05] disabled:opacity-40">
+                        <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
+                        <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
+                        <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05] disabled:opacity-40">
                           {shoeReplayLoading === session.id ? "Simulating…" : <><i className="fa-solid fa-shuffle mr-1.5" aria-hidden="true" />Shoe</>}
                         </button>
-                        <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-red-300/80 hover:bg-red-400/10"><i className="fa-solid fa-trash mr-1.5" aria-hidden="true" />Delete</button>
+                        <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--negative)]/80 hover:bg-red-400/10"><i className="fa-solid fa-trash mr-1.5" aria-hidden="true" />Delete</button>
                       </div>
                     </div>
                   );
@@ -717,36 +803,36 @@ export function SessionJournal() {
               </div>
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[54rem] text-left text-sm">
-                  <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Casino</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
+                  <thead className="text-[.7rem] uppercase tracking-wide text-[var(--ink-muted)]"><tr><th className="pb-2 pr-3">Date</th><th className="pb-2 pr-3">Casino</th><th className="pb-2 pr-3">Hours</th><th className="pb-2 pr-3 text-right">Actual</th><th className="pb-2 pr-3 text-right">Theoretical EV</th><th className="pb-2 pr-3">Assessment</th><th className="pb-2 text-right">Actions</th></tr></thead>
                   <tbody>
-                    {filteredSessions.map((session) => {
+                    {filteredSessions.slice(0, visibleCount).map((session) => {
                       const outcome = theoreticalSessionOutcome(session);
                       const z = sessionZScore(session, outcome);
                       return (
                         <Fragment key={session.id}>
                           <tr className="border-t border-white/[.06]">
                             <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}</td>
-                            <td className="max-w-48 truncate py-2.5 pr-3 text-zinc-300">{session.location || <span className="text-zinc-600">Not recorded</span>}</td>
+                            <td className="max-w-48 truncate py-2.5 pr-3 text-[var(--ink)]">{session.location || <span className="text-[var(--ink-muted)]">Not recorded</span>}</td>
                             <td className="py-2.5 pr-3">{session.hours}h</td>
-                            <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(session.netResult, 0)}</td>
-                            <td className="py-2.5 pr-3 text-right text-zinc-400">{money(outcome.tripEv, 0)}</td>
+                            <td className={`py-2.5 pr-3 text-right font-medium ${session.netResult >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{money(session.netResult, 0)}</td>
+                            <td className="py-2.5 pr-3 text-right text-[var(--ink-muted)]">{money(outcome.tripEv, 0)}</td>
                             <td className="py-2.5 pr-3"><AssessmentBadge assessment={classifySessionAssessment(z)} /></td>
                             <td className="py-2.5 text-right whitespace-nowrap">
-                              {session.notes && <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="px-2 py-1 text-xs text-zinc-500 hover:text-sky-300">Notes</button>}
-                              <button type="button" onClick={() => startEdit(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Edit</button>
-                              <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300">Share</button>
-                              <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-zinc-500 hover:text-emerald-300 disabled:opacity-40">
+                              {session.notes && <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--info)]">Notes</button>}
+                              <button type="button" onClick={() => startEdit(session)} className="px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--accent)]">Edit</button>
+                              <button type="button" onClick={() => setShareSession(session)} className="px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--accent)]">Share</button>
+                              <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--accent)] disabled:opacity-40">
                                 {shoeReplayLoading === session.id ? "Simulating…" : "Simulate a shoe"}
                               </button>
-                              <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-zinc-600 hover:text-red-300">Delete</button>
+                              <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="px-2 py-1 text-xs text-[var(--ink-muted)] hover:text-[var(--negative)]">Delete</button>
                             </td>
                           </tr>
                           {session.notes && expandedNotesId === session.id && (
                             <tr className="bg-sky-300/[.025]">
                               <td colSpan={7} className="px-3 pb-3 pt-1">
                                 <div className="rounded-lg border border-sky-300/10 bg-black/15 px-3 py-2.5">
-                                  <p className="text-[.68rem] font-semibold uppercase tracking-[.1em] text-zinc-600">Session notes</p>
-                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-zinc-300">{session.notes}</p>
+                                  <p className="text-[.68rem] font-semibold uppercase tracking-[.1em] text-[var(--ink-muted)]">Session notes</p>
+                                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--ink)]">{session.notes}</p>
                                 </div>
                               </td>
                             </tr>
@@ -759,6 +845,7 @@ export function SessionJournal() {
               </div>
             </>
           )}
+          {filteredSessions.length > visibleCount && <GhostButton className="mt-4" onClick={() => setVisibleCount((count) => count + 50)}>Show 50 more sessions ({filteredSessions.length - visibleCount} remaining)</GhostButton>}
         </Section>
 
         {venues.length > 0 && (
@@ -768,10 +855,10 @@ export function SessionJournal() {
             icon="fa-location-dot"
             open={false}
           >
-            <p className="text-xs leading-5 text-zinc-500">Each venue scored against the theoretical EV of the rules and ramp you logged there. A venue running well below its own EV over real hours is worth a second look; over a handful of hours it is still just variance.</p>
+            <p className="text-xs leading-5 text-[var(--ink-muted)]">Each venue scored against the theoretical EV of the rules and ramp you logged there. A venue running well below its own EV over real hours is worth a second look; over a handful of hours it is still just variance.</p>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[40rem] text-left text-sm">
-                <thead className="text-[.7rem] uppercase tracking-wide text-zinc-600">
+                <thead className="text-[.7rem] uppercase tracking-wide text-[var(--ink-muted)]">
                   <tr>
                     <th className="pb-2 pr-3">Venue</th>
                     <th className="pb-2 pr-3 text-right">Hours</th>
@@ -785,13 +872,13 @@ export function SessionJournal() {
                   {venues.map((venue) => (
                     <tr key={venue.location || "unspecified"} className="border-t border-white/[.06]">
                       <td className="py-2.5 pr-3">
-                        {venue.location || <span className="text-zinc-600">No location logged</span>}
-                        <span className="block text-xs text-zinc-600">{venue.sessionCount} session{venue.sessionCount === 1 ? "" : "s"}</span>
+                        {venue.location || <span className="text-[var(--ink-muted)]">No location logged</span>}
+                        <span className="block text-xs text-[var(--ink-muted)]">{venue.sessionCount} session{venue.sessionCount === 1 ? "" : "s"}</span>
                       </td>
-                      <td className="py-2.5 pr-3 text-right text-zinc-400">{hoursLabel(venue.totalHours)}</td>
-                      <td className={`py-2.5 pr-3 text-right font-medium ${venue.totalActual >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(venue.totalActual, 0)}</td>
-                      <td className="py-2.5 pr-3 text-right text-zinc-400">{money(venue.totalTheoretical, 0)}</td>
-                      <td className={`py-2.5 pr-3 text-right ${venue.actualPerHour >= 0 ? "text-emerald-300" : "text-red-300"}`}>{money(venue.actualPerHour, 0)}</td>
+                      <td className="py-2.5 pr-3 text-right text-[var(--ink-muted)]">{hoursLabel(venue.totalHours)}</td>
+                      <td className={`py-2.5 pr-3 text-right font-medium ${venue.totalActual >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{money(venue.totalActual, 0)}</td>
+                      <td className="py-2.5 pr-3 text-right text-[var(--ink-muted)]">{money(venue.totalTheoretical, 0)}</td>
+                      <td className={`py-2.5 pr-3 text-right ${venue.actualPerHour >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{money(venue.actualPerHour, 0)}</td>
                       <td className="py-2.5"><AssessmentBadge assessment={venue.assessment} /></td>
                     </tr>
                   ))}
@@ -806,7 +893,7 @@ export function SessionJournal() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold">Simulated shoes for this session</h2>
-                <p className="mt-1 text-xs leading-5 text-zinc-500">
+                <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">
                   A representative simulation using this session&apos;s rules, ramp, and betting unit — not your actual historical hands. CountLab never recorded the real cards from this session, so this shows what a session like it typically looks like.
                 </p>
               </div>
@@ -828,23 +915,35 @@ export function SessionJournal() {
           icon="fa-money-bill-transfer"
         >
           <div onChange={() => transactionForm.start("inputs")}>
-            <p className="text-xs text-zinc-500">Track money added to or removed from this bankroll separately from table results. Bankroll = session results + deposits − withdrawals; session expenses are reported on their own and never deducted here.</p>
+            <p className="text-xs text-[var(--ink-muted)]">Track money added to or removed from this bankroll separately from table results. Bankroll = session results + deposits − withdrawals; session expenses are reported on their own and never deducted here.</p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-zinc-400">Date<input type="date" required aria-invalid={!transactionDateValid} value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-zinc-100 outline-none aria-[invalid=true]:border-red-400/50" />{!transactionDateValid && <span role="alert" className="text-xs font-normal text-red-300">Enter a complete, valid date.</span>}</label>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Date<input type="date" required aria-invalid={!transactionDateValid} value={transactionDate} onChange={(event) => setTransactionDate(event.target.value)} className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none aria-[invalid=true]:border-red-400/50" />{!transactionDateValid && <span role="alert" className="text-xs font-normal text-[var(--negative)]">Enter a complete, valid date.</span>}</label>
               <Select label="Type" value={transactionType} onChange={(event) => setTransactionType(event.target.value as "deposit" | "withdrawal")}><option value="deposit">Deposit</option><option value="withdrawal">Withdrawal</option></Select>
               <NumberField label="Amount" value={transactionAmount} min={0} prefix="$" onValueChange={setTransactionAmount} />
-              <div className="flex items-end"><GhostButton className="w-full" disabled={!transactionDateValid} onClick={logTransaction}>Record</GhostButton></div>
+              <label className="grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Note (optional)<input value={transactionNote} onChange={(event) => setTransactionNote(event.target.value)} placeholder="e.g. Reload from savings" className="field min-h-11 min-w-0 rounded-xl px-3 text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
+              <div className="flex items-end sm:col-span-3"><GhostButton className="w-full sm:w-auto" disabled={!transactionDateValid} onClick={logTransaction}>Record</GhostButton></div>
             </div>
             {scopedTransactions.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {[...scopedTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12).map((transaction) => (
-                  <span key={transaction.id} className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-1.5 text-xs text-zinc-300">
-                    <span className={transaction.type === "deposit" ? "text-emerald-300" : "text-amber-300"}>{transaction.type === "deposit" ? "+" : "−"}{money(transaction.amount, 0)}</span>
-                    {shortDate(transaction.date)}
-                    <button type="button" aria-label="Delete transaction" onClick={() => setPendingDelete({ kind: "transaction", id: transaction.id })} className="text-zinc-600 hover:text-red-300"><i className="fa-solid fa-xmark" /></button>
-                  </span>
-                ))}
-              </div>
+              <>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {/* Every transaction moves the bankroll figure above, so the
+                      list has to be able to account for all of it rather than
+                      stopping at a dozen with no way to see the rest. */}
+                  {[...scopedTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, showAllTransactions ? undefined : 12).map((transaction) => (
+                    <span key={transaction.id} title={transaction.note} className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-1.5 text-xs text-[var(--ink)]">
+                      <span className={transaction.type === "deposit" ? "text-[var(--accent)]" : "text-[var(--warning)]"}>{transaction.type === "deposit" ? "+" : "−"}{money(transaction.amount, 0)}</span>
+                      {shortDate(transaction.date)}
+                      {transaction.note && <span className="max-w-40 truncate text-[var(--ink-muted)]">{transaction.note}</span>}
+                      <button type="button" aria-label="Delete transaction" onClick={() => setPendingDelete({ kind: "transaction", id: transaction.id })} className="text-[var(--ink-muted)] hover:text-[var(--negative)]"><i className="fa-solid fa-xmark" /></button>
+                    </span>
+                  ))}
+                </div>
+                {scopedTransactions.length > 12 && (
+                  <button type="button" onClick={() => setShowAllTransactions((current) => !current)} className="mt-3 text-xs font-semibold text-[var(--accent)] hover:text-[var(--accent)]">
+                    {showAllTransactions ? "Show recent only" : `Show all ${scopedTransactions.length}`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </Section>
@@ -856,24 +955,24 @@ export function SessionJournal() {
           open={false}
         >
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-            <p className="text-xs leading-5 text-zinc-500">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
+            <p className="text-xs leading-5 text-[var(--ink-muted)]">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={exportJournal} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
-            <button type="button" onClick={() => importInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
+            <button type="button" onClick={exportJournal} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
+            <button type="button" onClick={() => importInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importJournal(event.target.files?.[0])} className="hidden" />
-            <button type="button" onClick={exportSessionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
-            <button type="button" onClick={exportTransactionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
-            <button type="button" onClick={() => importCsvInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
+            <button type="button" onClick={exportSessionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
+            <button type="button" onClick={exportTransactionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
+            <button type="button" onClick={() => importCsvInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
             <input ref={importCsvInputRef} type="file" accept="text/csv,.csv" onChange={(event) => void importSessionsCsv(event.target.files?.[0])} className="hidden" />
-            {notice && <span role="status" className="text-xs text-emerald-300">{notice}</span>}
+            {notice && <span role="status" className="text-xs text-[var(--accent)]">{notice}</span>}
           </div>
         </Section>
       </div>
-      <p className="mt-6 text-xs leading-5 text-zinc-600">Theoretical EV and standard deviation come from the audited true-count profile for the entered rules, ramp and play variation, using the same engine as the Game &amp; Bankroll Lab. They are never fit to your results.</p>
+      <p className="mt-6 text-xs leading-5 text-[var(--ink-muted)]">Theoretical EV and standard deviation come from the audited true-count profile for the entered rules, ramp and play variation, using the same engine as the Game &amp; Bankroll Lab. They are never fit to your results.</p>
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-          <div className="min-w-0 px-2 text-xs"><p className="text-zinc-500">Expected for this session</p><b className="block truncate text-emerald-300">{money(draftOutcome.tripEv, 2)} EV</b></div>
+          <div className="min-w-0 px-2 text-xs"><p className="text-[var(--ink-muted)]">Expected for this session</p><b className="block truncate text-[var(--accent)]">{money(draftOutcome.tripEv, 2)} EV</b></div>
           <Button disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
         </div>
       </MobileActionDock>

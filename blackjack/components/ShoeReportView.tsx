@@ -39,9 +39,9 @@ export function ShoeReportView({
     <div className="space-y-5 pb-24 lg:pb-0">
       <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{eyebrow}</p>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">{eyebrow}</p>
           <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
-          <p className="mt-2 text-zinc-400">{subtitle}</p>
+          <p className="mt-2 text-[var(--ink-muted)]">{subtitle}</p>
         </div>
         {actions && <div className="flex gap-2">{actions}</div>}
       </div>
@@ -54,14 +54,14 @@ export function ShoeReportView({
             ["Duration", durationLabel(report.durationMs)],
             ["Net result", `${report.netResult >= 0 ? "+" : ""}$${report.netResult.toFixed(2)}`],
             ["Decisions", report.decisions],
-          ].map(([label, value]) => <div key={label} className="rounded-xl bg-black/20 p-4"><p className="text-xs uppercase tracking-wide text-zinc-500">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}
+          ].map(([label, value]) => <div key={label} className="rounded-xl bg-black/20 p-4"><p className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {(Object.entries(report.categories) as Array<[FullShoeGradingCategory, { correct: number; total: number; accuracy: number }]>).map(([category, result]) => (
             <div key={category} className="rounded-xl border border-white/[.06] bg-white/[.025] p-4">
               <p className="text-sm font-semibold">{category}</p>
-              <p className="mt-2 text-3xl font-semibold text-emerald-300">{result.accuracy}%</p>
-              <p className="mt-1 text-xs text-zinc-500">{result.correct} of {result.total} correct</p>
+              <p className="mt-2 text-3xl font-semibold text-[var(--accent)]">{result.accuracy}%</p>
+              <p className="mt-1 text-xs text-[var(--ink-muted)]">{result.correct} of {result.total} correct</p>
             </div>
           ))}
         </div>

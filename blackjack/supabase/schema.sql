@@ -89,6 +89,28 @@ create table if not exists full_shoe_reviews (
   created_at timestamptz not null default now()
 );
 
+-- Journal sync conflict resolution, added after the fact. `updated_at` decides
+-- which copy of a row wins when a device pulls while holding an edit it has not
+-- finished pushing; without it the pull always clobbered the local edit.
+-- `deleted_at` makes a deletion something other devices can observe: a hard
+-- delete just looks like a row they still have locally, so they merged it back.
+-- Both are additive and default-safe, so existing rows keep every value.
+alter table journal_bankrolls add column if not exists updated_at timestamptz;
+update journal_bankrolls set updated_at = created_at where updated_at is null;
+alter table journal_bankrolls alter column updated_at set default now();
+alter table journal_bankrolls alter column updated_at set not null;
+alter table journal_bankrolls add column if not exists deleted_at timestamptz;
+alter table journal_sessions add column if not exists updated_at timestamptz;
+update journal_sessions set updated_at = created_at where updated_at is null;
+alter table journal_sessions alter column updated_at set default now();
+alter table journal_sessions alter column updated_at set not null;
+alter table journal_sessions add column if not exists deleted_at timestamptz;
+alter table journal_transactions add column if not exists updated_at timestamptz;
+update journal_transactions set updated_at = created_at where updated_at is null;
+alter table journal_transactions alter column updated_at set default now();
+alter table journal_transactions alter column updated_at set not null;
+alter table journal_transactions add column if not exists deleted_at timestamptz;
+
 create index if not exists drill_sessions_user_id_idx on drill_sessions (user_id);
 create index if not exists drill_progress_user_id_idx on drill_progress (user_id);
 create index if not exists journal_bankrolls_user_id_idx on journal_bankrolls (user_id);
@@ -2002,3 +2024,21 @@ language sql security definer set search_path=public,analytics stable as $$
 $$;
 revoke all on function admin_visitor_profile(text) from public;
 grant execute on function admin_visitor_profile(text) to authenticated;
+
+
+-- Preserve a newer journal revision when delayed/offline clients reconnect.
+create or replace function journal_reject_stale_revision() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  if new.updated_at < old.updated_at or (old.deleted_at is not null and new.deleted_at is null and new.updated_at <= old.updated_at) then
+    raise exception 'A newer journal revision exists. Refresh before retrying.' using errcode = '40001';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists journal_bankroll_revision on journal_bankrolls;
+create trigger journal_bankroll_revision before update on journal_bankrolls for each row execute function journal_reject_stale_revision();
+drop trigger if exists journal_session_revision on journal_sessions;
+create trigger journal_session_revision before update on journal_sessions for each row execute function journal_reject_stale_revision();
+drop trigger if exists journal_transaction_revision on journal_transactions;
+create trigger journal_transaction_revision before update on journal_transactions for each row execute function journal_reject_stale_revision();

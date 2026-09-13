@@ -67,7 +67,7 @@ test.describe("test out", () => {
 
     // The pass is recorded under its own drill so it cannot pollute another
     // drill's history, and carries the verdict the certification is derived from.
-    const session = await page.evaluate(() => JSON.parse(localStorage.getItem("hilo:sessions") ?? "[]")[0]);
+    const session = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:sessions") ?? "[]")[0]);
     expect(session.drill).toBe("Test Out");
     expect(session.metrics.passed).toBe(true);
     expect(session.tags).toContain("test-out");
@@ -117,7 +117,7 @@ test.describe("test out", () => {
   test("a lapsed certification asks to be renewed on the practice hub", async ({ page }) => {
     await page.addInitScript(() => {
       const passedAt = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString();
-      localStorage.setItem("hilo:sessions", JSON.stringify([{
+      localStorage.setItem("countlab:account:guest:hilo:sessions", JSON.stringify([{
         id: "lapsed-exam",
         drill: "Test Out",
         questions: 10,

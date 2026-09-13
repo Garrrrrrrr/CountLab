@@ -45,12 +45,12 @@ export function BetSpreadTable({
         {rows.map((row) => (
           <div key={row.trueCount} className="rounded-xl border border-white/[.07] bg-white/[.02] p-3">
             <div className="flex items-center justify-between gap-3">
-              <span className={`text-base font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}>
+              <span className={`text-base font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>
                 {row.label}
               </span>
-              <span className="text-right text-xs text-zinc-500">
+              <span className="text-right text-xs text-[var(--ink-muted)]">
                 {percent(row.frequency, 2)} freq ·{" "}
-                <span className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{percent(row.advantage, 3, true)}</span>
+                <span className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{percent(row.advantage, 3, true)}</span>
               </span>
             </div>
             <div className="mt-2.5 flex items-center gap-2">
@@ -67,7 +67,7 @@ export function BetSpreadTable({
                 aria-label={`Zero bet at true count ${row.label}`}
                 disabled={row.bet === 0}
                 onClick={() => zeroBet(row.trueCount)}
-                className="min-h-11 shrink-0 rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 text-xs font-semibold text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
+                className="min-h-11 shrink-0 rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 text-xs font-semibold text-[var(--negative)] hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
               >
                 Zero
               </button>
@@ -81,15 +81,15 @@ export function BetSpreadTable({
                     aria-pressed={row.playerHands === count}
                     aria-label={`${count} hands at true count ${row.label}`}
                     onClick={() => onHandsChange(row.trueCount, count)}
-                    className={`min-h-11 min-w-11 rounded-lg border text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : "border-white/[.08] text-zinc-500 hover:bg-white/[.05]"}`}
+                    className={`min-h-11 min-w-11 rounded-lg border text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}
                   >
                     {count}X
                   </button>
                 ))}
               </div>
-              <span className="text-right text-xs text-zinc-500">
+              <span className="text-right text-xs text-[var(--ink-muted)]">
                 {money(row.totalBet, 0)} action ·{" "}
-                <span className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>{money(row.frequency * row.advantage * row.totalBet, 3)}</span>
+                <span className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{money(row.frequency * row.advantage * row.totalBet, 3)}</span>
               </span>
             </div>
           </div>
@@ -97,7 +97,7 @@ export function BetSpreadTable({
       </div>
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] text-right text-sm">
-          <thead className="text-zinc-500">
+          <thead className="text-[var(--ink-muted)]">
             <tr>
               <th className="pb-3 text-left">True count</th>
               <th className="pb-3">Frequency</th>
@@ -112,12 +112,12 @@ export function BetSpreadTable({
             {rows.map((row) => (
               <tr key={row.trueCount} className="border-t border-white/[.06]">
                 <td
-                  className={`py-2.5 text-left font-bold ${row.trueCount < 0 ? "text-red-400" : row.trueCount > 0 ? "text-emerald-300" : "text-zinc-300"}`}
+                  className={`py-2.5 text-left font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}
                 >
                   {row.label}
                 </td>
                 <td>{percent(row.frequency, 2)}</td>
-                <td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>
+                <td className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
                   {percent(row.advantage, 3, true)}
                 </td>
                 <td className="py-2">
@@ -135,7 +135,7 @@ export function BetSpreadTable({
                       aria-label={`Zero bet at true count ${row.label}`}
                       disabled={row.bet === 0}
                       onClick={() => zeroBet(row.trueCount)}
-                      className="min-h-9 rounded-lg border border-red-400/20 bg-red-400/[.06] px-2.5 text-xs font-semibold text-red-300 hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
+                      className="min-h-9 rounded-lg border border-red-400/20 bg-red-400/[.06] px-2.5 text-xs font-semibold text-[var(--negative)] hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
                     >
                       Zero
                     </button>
@@ -150,7 +150,7 @@ export function BetSpreadTable({
                         aria-pressed={row.playerHands === count}
                         aria-label={`${count} hands at true count ${row.label}`}
                         onClick={() => onHandsChange(row.trueCount, count)}
-                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-200" : "border-white/[.08] text-zinc-500 hover:bg-white/[.05]"}`}
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}
                       >
                         {count}X
                       </button>
@@ -158,7 +158,7 @@ export function BetSpreadTable({
                   </div>
                 </td>
                 <td>{money(row.totalBet, 0)}</td>
-                <td className={row.advantage >= 0 ? "text-emerald-300" : "text-red-300"}>
+                <td className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
                   {money(row.frequency * row.advantage * row.totalBet, 3)}
                 </td>
               </tr>

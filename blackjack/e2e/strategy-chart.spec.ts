@@ -14,7 +14,7 @@ test("strategy and index charts stay compact while showing a complete hand secti
   await prepareGuest(page);
   await page.goto("/reference/basic-strategy/");
 
-  await expect(page.getByRole("tab", { name: "Hard totals" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: "Hard totals", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-testid='chart-rail-hard'] tbody td")).toHaveCount(100);
   const strategyCell = page.getByLabel("8 versus dealer 2: Hit");
   await expect(strategyCell).toBeVisible();
@@ -31,17 +31,17 @@ test("strategy and index charts stay compact while showing a complete hand secti
     "Hit when the true count is -1 or lower; otherwise stand.",
   );
 
-  await page.getByRole("tab", { name: "Pairs" }).click();
+  await page.getByRole("button", { name: "Pairs", exact: true }).click();
   await expect(page.locator("[data-testid='chart-rail-pairs'] tbody td")).toHaveCount(100);
 
   await page.getByRole("tab", { name: "H17 chart" }).click();
   await expect(page.getByRole("heading", { name: "H17 deviation chart" })).toBeVisible();
   await expect(page.getByText(/answer key for the H17 chart recall drill/i)).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Hard totals" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("button", { name: "Hard totals", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-testid='h17-reference-rail-hard'] tbody td")).toHaveCount(100);
   await expect(page.getByLabel("16 versus dealer 9: The chart prints 4+: the deviation applies at true count +4 and above.")).toHaveText("4+");
 
-  await page.getByRole("tab", { name: "Late surrender" }).click();
+  await page.getByRole("button", { name: "Late surrender", exact: true }).click();
   await expect(page.locator("[data-testid='h17-reference-rail-surrender'] tbody td")).toHaveCount(40);
   await expect(page.getByLabel("15 versus dealer 10: The chart prints 0-: the deviation applies at any negative running count.")).toHaveText("0-");
 });

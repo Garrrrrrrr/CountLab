@@ -126,7 +126,7 @@ export function UTHTableGame() {
     {phase === "betting" && <Button onClick={deal}>Deal cards</Button>}
     {phase === "preflop" && <><Button onClick={() => { judge("RAISE", "preflop"); finish(4); }}>Raise 4x · ${money(ante * 4)}</Button><GhostButton onClick={() => { judge("RAISE", "preflop"); finish(3); }}>Raise 3x · ${money(ante * 3)}</GhostButton><GhostButton onClick={() => { judge("CHECK", "preflop"); const nextBoard = board.slice(0, 3); setPhase("flop"); setMessage("The flop is open. Raise 2x or check to the river."); requestDecision({ player, board: nextBoard }); }}>Check</GhostButton><GhostButton onClick={() => requestDecision({ player, board: [] }, 256, "solve")} disabled={decisionLoading}>{decisionLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton></>}
     {phase === "flop" && <><Button onClick={() => { judge("RAISE", "flop"); finish(2); }}>Raise 2x · ${money(ante * 2)}</Button><GhostButton onClick={() => { judge("CHECK", "flop"); setPhase("river"); setMessage("Final decision: raise 1x or fold."); requestDecision({ player, board }); }}>Check</GhostButton></>}
-    {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-red-300">Fold</GhostButton></>}
+    {phase === "river" && <><Button onClick={() => { judge("RAISE", "river"); finish(1); }}>Raise 1x · ${money(ante)}</Button><GhostButton onClick={() => { judge("FOLD", "river"); finish(0, true); }} className="text-[var(--negative)]">Fold</GhostButton></>}
     {phase === "result" && <Button onClick={nextRound}>Next round</Button>}
   </>;
 
@@ -135,7 +135,7 @@ export function UTHTableGame() {
       <div className="space-y-5">
         <div ref={tableViewportRef} className="scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <CasinoTable>
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-100/55">Ultimate Texas Hold&apos;em</p><p className="mt-1 text-sm text-emerald-50/80">Bankroll <b className="text-white">${bankroll.toFixed(2)}</b></p></div><span className="rounded-full bg-black/20 px-3 py-1 text-xs text-emerald-100/70">{phase === "betting" ? "Place bets" : phase === "result" ? "Round complete" : "Decision in progress"}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--accent)]/55">Ultimate Texas Hold&apos;em</p><p className="mt-1 text-sm text-emerald-50/80">Bankroll <b className="text-white">${bankroll.toFixed(2)}</b></p></div><span className="rounded-full bg-black/20 px-3 py-1 text-xs text-[var(--accent)]/70">{phase === "betting" ? "Place bets" : phase === "result" ? "Round complete" : "Decision in progress"}</span></div>
           <div className="mt-5"><CardRow label="Dealer" cards={phase === "result" ? cards(dealer) : []} hidden={phase !== "betting" && phase !== "result" ? 2 : 0} empty={phase === "betting" ? 2 : 0} /></div>
           <div className="my-5"><CardRow label="Community" cards={phase === "flop" ? cards(board.slice(0, 3)) : phase === "river" || phase === "result" ? cards(board) : []} empty={phase === "betting" || phase === "preflop" ? 5 : phase === "flop" ? 2 : 0} /></div>
           <div><CardRow label="Your hand" cards={cards(player)} empty={phase === "betting" ? 2 : 0} /></div>
@@ -152,16 +152,16 @@ export function UTHTableGame() {
           )}
         </CasinoTable>
         </div>
-        <Panel><h2 className="mb-4 font-semibold">Chip rack</h2><ChipRack selected={selectedChip} onSelect={setSelectedChip} disabled={locked} /><p className="mt-4 text-center text-xs text-zinc-500">Select a chip, then tap Ante or Trips. Blind always matches Ante.</p></Panel>
+        <Panel><h2 className="mb-4 font-semibold">Chip rack</h2><ChipRack selected={selectedChip} onSelect={setSelectedChip} disabled={locked} /><p className="mt-4 text-center text-xs text-[var(--ink-muted)]">Select a chip, then tap Ante or Trips. Blind always matches Ante.</p></Panel>
       </div>
       <div className="space-y-5">
         <CoachPanel note={note} accuracyLabel={coachStats.total ? `${Math.round((coachStats.correct / coachStats.total) * 100)}% accuracy` : undefined} emptyHint="Your raise/check/fold decisions are checked against the exact solver as you play." />
-        <Panel><h2 className="font-semibold">Session</h2><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-zinc-500">Rounds</p><b className="text-xl">{stats.rounds}</b></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-zinc-500">Wins</p><b className="text-xl">{stats.wins}</b></div><div className="col-span-2 rounded-xl bg-black/20 p-3"><p className="text-xs text-zinc-500">Session net</p><b className={`text-xl ${stats.net >= 0 ? "text-emerald-300" : "text-red-300"}`}>{stats.net >= 0 ? "+" : ""}${stats.net.toFixed(2)}</b></div></div><div className="mt-4"><NumberField label="Reset bankroll" value={bankroll} min={1} prefix="$" disabled={locked} onValueChange={setBankroll} /></div></Panel>
+        <Panel><h2 className="font-semibold">Session</h2><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Rounds</p><b className="text-xl">{stats.rounds}</b></div><div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Wins</p><b className="text-xl">{stats.wins}</b></div><div className="col-span-2 rounded-xl bg-black/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Session net</p><b className={`text-xl ${stats.net >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{stats.net >= 0 ? "+" : ""}${stats.net.toFixed(2)}</b></div></div><div className="mt-4"><NumberField label="Reset bankroll" value={bankroll} min={1} prefix="$" disabled={locked} onValueChange={setBankroll} /></div></Panel>
         <Panel><h2 className="mb-4 font-semibold">Round history</h2><GameHistory rows={history} /></Panel>
-        <Panel><h2 className="font-semibold">Table rules</h2><ul className="mt-3 space-y-2 text-xs leading-5 text-zinc-500"><li>• Ante and Blind are equal mandatory bets.</li><li>• Raise 3x/4x preflop, 2x after the flop, or 1x after the river.</li><li>• Dealer qualifies with a pair or better; Ante pushes when the dealer fails to qualify.</li><li>• Trips pays independently using the standard 50/40/30/8/7/4/3 schedule.</li></ul></Panel>
+        <Panel><h2 className="font-semibold">Table rules</h2><ul className="mt-3 space-y-2 text-xs leading-5 text-[var(--ink-muted)]"><li>• Ante and Blind are equal mandatory bets.</li><li>• Raise 3x/4x preflop, 2x after the flop, or 1x after the river.</li><li>• Dealer qualifies with a pair or better; Ante pushes when the dealer fails to qualify.</li><li>• Trips pays independently using the standard 50/40/30/8/7/4/3 schedule.</li></ul></Panel>
       </div>
       <MobileActionDock label="Ultimate Texas Hold'em actions">
-        <p className="mb-2 truncate px-1 text-xs text-zinc-400">{message}</p>
+        <p className="mb-2 truncate px-1 text-xs text-[var(--ink-muted)]">{message}</p>
         <div className="grid grid-cols-2 gap-2 [&>button]:w-full">{actionButtons}</div>
       </MobileActionDock>
     </div>

@@ -61,9 +61,9 @@ export function PracticeChecklist() {
   return (
     <>
       <div className="mb-5 sm:mb-7">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Daily practice</p>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Daily practice</p>
         <h1 className="mt-2 text-3xl font-semibold">Today&rsquo;s checklist</h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">
+        <p className="mt-2 max-w-2xl text-[var(--ink-muted)]">
           A day&rsquo;s work, in order. Items that measure a drill fill in by themselves as you
           practise &mdash; the rest happen away from the screen, so tick those yourself. Everything
           resets at midnight UTC.
@@ -73,10 +73,10 @@ export function PracticeChecklist() {
       <Panel className="mb-5">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
           <b className="text-3xl">{ready ? `${day.completed} / ${day.total}` : "—"}</b>
-          <span className="text-zinc-400">{ready ? `${pct}% of today done` : "Loading…"}</span>
+          <span className="text-[var(--ink-muted)]">{ready ? `${pct}% of today done` : "Loading…"}</span>
           {streakDays > 0 && (
-            <span className="text-amber-200">
-              <i className="fa-solid fa-fire mr-1.5 text-amber-300" aria-hidden="true" />
+            <span className="text-[var(--warning)]">
+              <i className="fa-solid fa-fire mr-1.5 text-[var(--warning)]" aria-hidden="true" />
               {streakDays}-day streak
             </span>
           )}
@@ -95,7 +95,7 @@ export function PracticeChecklist() {
           />
         </div>
         {allDone && ready && (
-          <p className="mt-3 text-sm text-emerald-300">
+          <p className="mt-3 text-sm text-[var(--accent)]">
             Everything done for today. Anything past this point is a bonus.
           </p>
         )}
@@ -138,15 +138,15 @@ export function PracticeChecklist() {
                     )}
 
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium ${entry.done ? "text-emerald-200" : "text-zinc-100"}`}>
+                      <p className={`text-sm font-medium ${entry.done ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>
                         {item.label}
                         {manual && (
-                          <span className="ml-2 rounded-full border border-white/10 px-2 py-px text-[.6rem] uppercase tracking-[.12em] text-zinc-500">
+                          <span className="ml-2 rounded-full border border-white/10 px-2 py-px text-[.6rem] uppercase tracking-[.12em] text-[var(--ink-muted)]">
                             Off-app
                           </span>
                         )}
                       </p>
-                      {item.detail && <p className="mt-0.5 text-xs leading-5 text-zinc-500">{item.detail}</p>}
+                      {item.detail && <p className="mt-0.5 text-xs leading-5 text-[var(--ink-muted)]">{item.detail}</p>}
                       {!manual && (
                         <div className="mt-2 flex items-center gap-2">
                           <div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-white/[.07]">
@@ -155,7 +155,7 @@ export function PracticeChecklist() {
                               style={{ width: `${Math.round((entry.current / entry.target) * 100)}%` }}
                             />
                           </div>
-                          <span className="shrink-0 font-mono text-[.68rem] text-zinc-500">
+                          <span className="shrink-0 font-mono text-[.68rem] text-[var(--ink-muted)]">
                             {progressLabel(entry)}
                           </span>
                         </div>
@@ -165,7 +165,7 @@ export function PracticeChecklist() {
                     {item.href && !entry.done && (
                       <Link
                         href={item.href}
-                        className="pressable shrink-0 rounded-xl border border-white/[.09] bg-white/[.055] px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-white/[.1]"
+                        className="pressable shrink-0 rounded-xl border border-white/[.09] bg-white/[.055] px-3 py-1.5 text-xs font-medium text-[var(--ink)] hover:bg-white/[.1]"
                       >
                         Practise
                       </Link>
@@ -178,7 +178,7 @@ export function PracticeChecklist() {
         ))}
       </div>
 
-      <p className="mt-5 text-xs leading-5 text-zinc-500">
+      <p className="mt-5 text-xs leading-5 text-[var(--ink-muted)]">
         Training routine adapted from Blackjack Apprenticeship&rsquo;s Card-Counting Motivator
         Checklist (2019). Daily targets for the full shoe and true count sets are CountLab&rsquo;s
         own &mdash; the original prescribes no number for those. Off-app items are recorded on this

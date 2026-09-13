@@ -1,3 +1,4 @@
+import { accountStorage, accountGeneration, accountScope, scopedStorage } from "@/lib/supabase/accountStorage";
 import type { FullShoeLiveRound, FullShoeMode, FullShoeReport } from "./fullShoeSession";
 import type { SurrenderRule } from "../statistics/storage";
 import { supabase } from "../supabase/client";
@@ -51,7 +52,7 @@ const MAX_REMOTE_SHOES = 50;
 /** Leave a margin below Supabase's 30 full_shoe_reviews-insert/minute limit when pushing a backlog. */
 const PUSH_WRITE_INTERVAL_MS = 2_100;
 
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const FULL_SHOE_MODES: readonly FullShoeMode[] = ["coached", "checkout"];
 const COMPLETION_REASONS: readonly SavedShoeHeader["completionReason"][] = ["shoe-complete", "ended"];
@@ -159,6 +160,9 @@ const wait = (milliseconds: number) => new Promise<void>((resolve) => setTimeout
 function pushShoe(shoe: SavedShoe) {
   const user = getCurrentUser();
   if (!user || !shoe.rounds) return Promise.resolve();
+  const cache = scopedStorage(accountScope());
+  const ack = `countlab:shoe-ack:${shoe.id}`;
+  if (cache.getItem(ack) === shoe.savedAt) return Promise.resolve();
   return observeApiRequest("supabase", "full_shoe_review_upsert", supabase
     .from("full_shoe_reviews")
     .upsert({
@@ -171,7 +175,7 @@ function pushShoe(shoe: SavedShoe) {
       report: shoe.report,
       rounds: shoe.rounds,
     }))
-    .then(({ error }) => { if (error) console.error("[countlab] failed to sync full shoe review", error); });
+    .then(({ error }) => { if (error) throw new Error(error.message); cache.setItem(ack, shoe.savedAt); });
 }
 
 function deleteRemoteShoe(id: string) {
@@ -209,7 +213,8 @@ export const shoeLibrary = {
   save(shoe: SavedShoeInput, store?: StorageLike, now = new Date()): SavedShoe {
     const record: SavedShoe = { ...shoe, id: createId(), savedAt: now.toISOString() };
     write([record, ...this.shoes(store)], store);
-    pushShoe(record);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("countlab:sync-pending"));
+    void pushShoe(record).catch((error) => { console.error("[countlab] shoe sync failed", error); window.dispatchEvent(new Event("countlab-journal-sync-error")); });
     pruneRemoteShoes();
     return record;
   },
@@ -228,6 +233,7 @@ export const shoeLibrary = {
       if (error) console.error("[countlab] failed to load full shoe review rounds", error);
       return undefined;
     }
+    if (getCurrentUser()?.id !== user.id) return undefined;
     const rounds = (data as { rounds: FullShoeLiveRound[] }).rounds;
     write(this.shoes(store).map((shoe) => shoe.id === id ? { ...shoe, rounds } : shoe), store);
     return rounds;
@@ -248,8 +254,11 @@ export const shoeLibrary = {
   },
   /** Pushes everything cached locally (e.g. from browsing as a guest) up to the newly signed-in account. */
   async pushAllToRemote(store?: StorageLike) {
-    const shoes = this.shoes(store);
+    const generation = accountGeneration();
+    const cache = scopedStorage(accountScope());
+    const shoes = this.shoes(store).filter((shoe) => shoe.rounds && cache.getItem(`countlab:shoe-ack:${shoe.id}`) !== shoe.savedAt);
     for (let index = 0; index < shoes.length; index++) {
+      if (generation !== accountGeneration()) return;
       await pushShoe(shoes[index]);
       if (index < shoes.length - 1) await wait(PUSH_WRITE_INTERVAL_MS);
     }

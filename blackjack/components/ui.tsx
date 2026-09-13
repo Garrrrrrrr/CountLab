@@ -1,5 +1,7 @@
 "use client";
-import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
+import type { ComponentProps } from "react";
+import { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, useId, useEffect, useLayoutEffect, useRef, useState } from "react";
 export const Panel = ({
   children,
   className = "",
@@ -20,7 +22,7 @@ export const Button = ({
   <button
     data-enter-action="true"
     {...props}
-    className={`pressable min-h-11 rounded-lg border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 font-semibold text-[var(--paper)] shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "danger" ? "border-red-700 bg-red-700 text-white" : variant === "quiet" ? "border-[var(--rule)] bg-transparent text-[var(--ink)]" : ""} ${size === "compact" ? "min-h-9 px-3 py-1.5 text-sm" : ""} ${className}`}
+    className={`pressable min-h-11 rounded-lg border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 font-semibold text-[var(--paper)] shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "danger" ? "border-red-700 bg-red-700 !text-white" : variant === "quiet" ? "border-[var(--rule)] bg-transparent text-[var(--ink)]" : ""} ${size === "compact" ? "min-h-9 px-3 py-1.5 text-sm" : ""} ${className}`}
   />
 );
 export const GhostButton = ({
@@ -114,7 +116,7 @@ export function NumberField({
     <div
       className={`field flex min-h-11 w-full min-w-0 items-center rounded-xl ${focused ? "field-active" : ""} ${className}`}
     >
-      {prefix && <span className="pl-3 text-zinc-500">{prefix}</span>}
+      {prefix && <span className="pl-3 text-[var(--ink-muted)]">{prefix}</span>}
       <input
         aria-label={ariaLabel ?? label}
         disabled={disabled}
@@ -134,7 +136,7 @@ export function NumberField({
           }
         }}
         onBlur={commit}
-        className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[.9rem] text-zinc-100 outline-none disabled:opacity-50"
+        className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[.9rem] text-[var(--ink)] outline-none disabled:opacity-50"
       />
     </div>
   );
@@ -171,7 +173,7 @@ export const Switch = ({
       onClick={() => onChange(!checked)}
       className={`pressable flex min-h-11 w-full min-w-0 items-center justify-between gap-3 rounded-lg border px-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:cursor-not-allowed disabled:opacity-40 ${checked ? "border-[var(--count-low)] bg-[color:color-mix(in_srgb,var(--count-low)_12%,transparent)]" : "border-[var(--rule)] bg-[var(--paper)] hover:border-[var(--ink-muted)]"}`}
     >
-      <span className={checked ? "text-[var(--count-low)]" : "text-[var(--ink-muted)]"}>{checked ? "On" : "Off"}</span>
+      <span className={checked ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}>{checked ? "On" : "Off"}</span>
       <span aria-hidden="true" className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors ${checked ? "border-[var(--count-low)] bg-[var(--count-low)]" : "border-[var(--rule)] bg-[var(--paper-raised)]"}`}>
         <span
           className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-[0_2px_7px_rgba(0,0,0,.35)] transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`}
@@ -187,8 +189,17 @@ export function Badge({ children, tone = "neutral", className = "" }: { children
   const color = tone === "cold" ? "var(--count-cold)" : tone === "warm" ? "var(--count-warm)" : tone === "hot" ? "var(--count-hot)" : "var(--ink-muted)";
   return <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${className}`} style={{ borderColor: color, color }}>{children}</span>;
 }
-export function Tabs<T extends string>({ value, onChange, items, label = "Sections", className = "" }: { value: T; onChange: (value: T) => void; items: ReadonlyArray<{ value: T; label: string }>; label?: string; className?: string }) {
-  return <div role="tablist" aria-label={label} className={`mobile-scroll-rail flex gap-2 overflow-x-auto border-b border-[var(--rule)] pb-2 sm:flex-wrap ${className}`}>{items.map((item) => <GhostButton key={item.value} role="tab" aria-selected={value === item.value} onClick={() => onChange(item.value)} className={`shrink-0 whitespace-nowrap ${value === item.value ? "border-slate-950 bg-slate-950 !text-white hover:bg-slate-900" : ""}`}>{item.label}</GhostButton>)}</div>;
+export function Tabs<T extends string>({ value, onChange, items, label = "Sections", className = "", panelId }: { value: T; onChange: (value: T) => void; items: ReadonlyArray<{ value: T; label: string }>; label?: string; className?: string; panelId?: string }) {
+  const id = useId();
+  useEffect(() => { if (panelId) document.getElementById(panelId)?.setAttribute("aria-labelledby", `${id}-${value}`); }, [panelId, id, value]);
+  return <div role={panelId ? "tablist" : "group"} aria-label={label} className={`mobile-scroll-rail flex gap-2 overflow-x-auto border-b border-[var(--rule)] pb-2 sm:flex-wrap ${className}`} onKeyDown={(event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const index = items.findIndex((item) => item.value === value);
+    const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
+    onChange(items[next].value);
+    event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
+  }}>{items.map((item) => <GhostButton key={item.value} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className={`shrink-0 whitespace-nowrap ${value === item.value ? "border-[var(--ink)] bg-[var(--ink)] !text-[var(--paper)]" : ""}`}>{item.label}</GhostButton>)}</div>;
 }
 export function StickyBar({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-[var(--rule)] bg-[var(--paper-raised)]/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border ${className}`}>{children}</div>;
@@ -241,16 +252,16 @@ export function Section({
     <details ref={details} id={id} open={open} className="surface group rounded-2xl border border-white/[.07]">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-emerald-300" : "bg-sky-300/10 text-sky-300"}`}
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-[var(--accent)]" : "bg-sky-300/10 text-[var(--info)]"}`}
         >
           <i className={`fa-solid ${icon}`} aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold">{title}</h2>
-          <p className="truncate text-xs text-zinc-500">{summary}</p>
+          <p className="truncate text-xs text-[var(--ink-muted)]">{summary}</p>
         </div>
         <i
-          className="fa-solid fa-chevron-down shrink-0 text-xs text-zinc-500 transition-transform group-open:rotate-180"
+          className="fa-solid fa-chevron-down shrink-0 text-xs text-[var(--ink-muted)] transition-transform group-open:rotate-180"
           aria-hidden="true"
         />
       </summary>
@@ -270,13 +281,13 @@ export function PinnedStat({
 }) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-zinc-500">
+      <p className="truncate text-[.7rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">
         {label}
       </p>
-      <p className="mt-0.5 truncate text-base font-semibold leading-tight tracking-[-.025em] text-white sm:text-lg">
+      <p className="mt-0.5 truncate text-base font-semibold leading-tight tracking-[-.025em] text-[var(--ink)] sm:text-lg">
         {value}
       </p>
-      <p className="truncate text-[.7rem] font-medium text-emerald-400">{sub}</p>
+      <p className="truncate text-[.7rem] font-medium text-[var(--accent)]">{sub}</p>
     </div>
   );
 }
@@ -290,12 +301,16 @@ export const Metric = ({
   sub?: string;
 }) => (
   <Panel className="group">
-    <p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-zinc-500">
+    <p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">
       {label}
     </p>
-    <p className="mt-2 text-[1.65rem] font-semibold leading-none tracking-[-.035em] text-white">
+    <p className="mt-2 text-[1.65rem] font-semibold leading-none tracking-[-.035em] text-[var(--ink)]">
       {value}
     </p>
-    {sub && <p className="mt-2 text-xs font-medium text-emerald-400">{sub}</p>}
+    {sub && <p className="mt-2 text-xs font-medium text-[var(--accent)]">{sub}</p>}
   </Panel>
 );
+
+export function ButtonLink({ className = "", variant = "primary", ...props }: ComponentProps<typeof Link> & { variant?: "primary" | "quiet" }) {
+  return <Link {...props} className={`pressable inline-flex min-h-11 items-center justify-center rounded-lg border px-4 py-2.5 font-semibold ${variant === "primary" ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]" : "border-[var(--rule)] bg-[var(--paper-raised)] text-[var(--ink)]"} ${className}`} />;
+}

@@ -1,3 +1,4 @@
+import { accountStorage } from "@/lib/supabase/accountStorage";
 import { dayKey } from "./practiceChecklist";
 
 /**
@@ -24,7 +25,7 @@ const RETAINED_DAYS = 60;
 type TickRecord = Record<string, string[]>;
 
 const availableStorage = (): StorageLike | undefined =>
-  typeof window === "undefined" ? undefined : window.localStorage;
+  typeof window === "undefined" ? undefined : accountStorage;
 
 function read(store: StorageLike | undefined): TickRecord {
   if (!store) return {};

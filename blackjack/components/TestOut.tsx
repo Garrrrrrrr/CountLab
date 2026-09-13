@@ -163,9 +163,9 @@ export default function TestOut() {
         <h2 className="font-display text-2xl font-semibold">{meta.label}</h2>
         <p className="mt-2 text-[var(--ink-muted)]">{meta.description}</p>
         <dl className="mt-5 grid grid-cols-3 gap-3 text-center">
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-zinc-500">Length</dt><dd className="mt-1 font-semibold">{stage.questions} {unit}{stage.questions === 1 ? "" : "s"}</dd></div>
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-zinc-500">Time</dt><dd className="mt-1 font-semibold">{stage.timeLimitSeconds === null ? "Untimed" : formatClock(stage.timeLimitSeconds)}</dd></div>
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-zinc-500">Pass mark</dt><dd className="mt-1 font-semibold">{stage.passAccuracy}%</dd></div>
+          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Length</dt><dd className="mt-1 font-semibold">{stage.questions} {unit}{stage.questions === 1 ? "" : "s"}</dd></div>
+          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Time</dt><dd className="mt-1 font-semibold">{stage.timeLimitSeconds === null ? "Untimed" : formatClock(stage.timeLimitSeconds)}</dd></div>
+          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Pass mark</dt><dd className="mt-1 font-semibold">{stage.passAccuracy}%</dd></div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-2">
           <Button className="min-h-11" onClick={() => setPhase("running")}>Start {meta.label.toLowerCase()}</Button>
@@ -299,11 +299,11 @@ export default function TestOut() {
           <p className="mt-2 text-sm text-[var(--ink-muted)]">{summarise(config)}</p>
           <ul className="mt-4 space-y-2">
             {enabledSections(config).map((section, order) => <li key={section.id} className="flex items-center justify-between gap-2 rounded-xl bg-black/20 px-3 py-2 text-sm">
-              <span className="truncate"><span className="text-zinc-500">{order + 1}.</span> {sectionMeta(section.id).label}</span>
+              <span className="truncate"><span className="text-[var(--ink-muted)]">{order + 1}.</span> {sectionMeta(section.id).label}</span>
               <Badge tone="cold">{section.questions}{sectionMeta(section.id).unit === "rounds" ? "R" : "Q"}</Badge>
             </li>)}
           </ul>
-          {problems.length > 0 && <ul className="mt-4 space-y-1 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+          {problems.length > 0 && <ul className="mt-4 space-y-1 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-[var(--warning)]">
             {problems.map((problem) => <li key={`${problem.field}:${problem.message}`}>{problem.message}</li>)}
           </ul>}
           <Button className="mt-5 min-h-11 w-full" disabled={problems.length > 0} onClick={start}>Start exam</Button>

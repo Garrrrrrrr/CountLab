@@ -1,3 +1,4 @@
+import { accountStorage } from "@/lib/supabase/accountStorage";
 import type { HandCountPoint, RampPoint } from "./advantage";
 
 export interface CvcxTemplateConfig {
@@ -61,7 +62,7 @@ const TEMPLATES_KEY = "countlab:cvcx-templates:v1";
 const LIBRARY_EVENT = "countlab-cvcx-library";
 const MAX_TEMPLATES = 20;
 
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const validConfig = (value: unknown): value is CvcxTemplateConfig => {
   if (!value || typeof value !== "object") return false;

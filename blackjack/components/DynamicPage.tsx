@@ -1,8 +1,9 @@
 "use client";
+import { ButtonLink } from "./ui";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ComponentType, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button, GhostButton, Metric, Panel, Select, Switch } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import {
@@ -18,12 +19,15 @@ import { evaluateChecklist } from "@/lib/blackjack/practiceChecklist";
 import { checklistStore } from "@/lib/blackjack/practiceChecklistStore";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { analytics } from "@/lib/analytics";
+import { AccountDataTools } from "./AccountDataTools";
+import { HomePage } from "./HomePage";
+import { ROUTE_DESCRIPTIONS } from "@/lib/routes";
 import { LEGACY_REDIRECTS } from "@/lib/routes";
 
 function PageLoading() {
   return (
     <Panel className="flex min-h-[50vh] items-center justify-center">
-      <div className="flex items-center gap-3 text-sm font-medium text-emerald-100/70">
+      <div className="flex items-center gap-3 text-sm font-medium text-[var(--accent)]/70">
         <i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />
         Loading…
       </div>
@@ -53,9 +57,9 @@ const H17ChartDrill = dynamicPage(() => import("@/components/H17ChartDrill").the
 const PracticeChecklist = dynamicPage(() => import("@/components/PracticeChecklist").then((m) => ({ default: m.PracticeChecklist })));
 const StatisticsPage = dynamicPage(() => import("@/components/StatisticsPage"));
 const StrategyChartPage = dynamic(() => import("@/components/StrategyChartPage"), { loading: PageLoading });
-const PracticeHub = dynamicPage(() => import("@/components/PracticeHub"));
-const TermsPage = dynamicPage(() => import("@/components/TermsPage"));
-const PrivacyPage = dynamicPage(() => import("@/components/PrivacyPage"));
+const PracticeHub = dynamic(() => import("@/components/PracticeHub"), { loading: PageLoading });
+const TermsPage = dynamic(() => import("@/components/TermsPage"), { loading: PageLoading });
+const PrivacyPage = dynamic(() => import("@/components/PrivacyPage"), { loading: PageLoading });
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
 function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -107,25 +111,23 @@ function Dashboard() {
     .filter((item) => item.attempts > 0)
     .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts);
   const focus = practiced[0];
-  const primaryHref = focus ? drillLinks[focus.name] : "/training/full-shoe";
-  const primaryLabel = focus ? `Practice ${focus.name}` : "Start a full shoe";
+  const primaryHref = focus ? drillLinks[focus.name] : "/training/running-count";
+  const primaryLabel = focus ? `Practice ${focus.name}` : "Try a counting drill";
   return (
     <>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">
             Training overview
           </p>
           <h1 className="mt-2 text-3xl font-semibold">Dashboard</h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-2 text-[var(--ink-muted)]">
             Build speed, accuracy, and confidence, one shoe at a time.
           </p>
         </div>
-        <Link href={primaryHref}>
-          <Button>
+        <ButtonLink href={primaryHref} >
             {primaryLabel} <span className="ml-2">→</span>
-          </Button>
-        </Link>
+          </ButtonLink>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="Sessions completed" value={sessions.length} />
@@ -137,18 +139,16 @@ function Dashboard() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h2 className="font-semibold">
-              <i className="fa-solid fa-list-check mr-2 text-emerald-300" aria-hidden="true" />
+              <i className="fa-solid fa-list-check mr-2 text-[var(--accent)]" aria-hidden="true" />
               Today&rsquo;s checklist
             </h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-1 text-sm text-[var(--ink-muted)]">
               {checklist.completed === checklist.total
                 ? "Every item done. Anything more today is a bonus."
                 : `${checklist.completed} of ${checklist.total} done — ${checklist.items.find((entry) => !entry.done)!.item.label.toLowerCase()} next.`}
             </p>
           </div>
-          <Link href="/training/checklist">
-            <GhostButton className="px-3 py-1.5 text-sm">Open checklist</GhostButton>
-          </Link>
+          <ButtonLink href="/training/checklist"  variant="quiet" className="px-3 py-1.5 text-sm">Open checklist</ButtonLink>
         </div>
         <div
           className="mt-3 h-2 overflow-hidden rounded-full bg-white/[.07]"
@@ -170,16 +170,16 @@ function Dashboard() {
             <div>
               <h2 className="font-semibold">
                 {streak.currentStreakDays > 0 ? (
-                  <><i className="fa-solid fa-fire mr-2 text-amber-300" aria-hidden="true" />{streak.currentStreakDays}-day streak</>
+                  <><i className="fa-solid fa-fire mr-2 text-[var(--warning)]" aria-hidden="true" />{streak.currentStreakDays}-day streak</>
                 ) : (
                   "Practice streak"
                 )}
               </h2>
-              <p className="mt-1 text-xs text-zinc-500">Best run: {streak.bestStreakDays} day{streak.bestStreakDays === 1 ? "" : "s"} · {streak.practiceDaysThisWeek} day{streak.practiceDaysThisWeek === 1 ? "" : "s"} this week</p>
+              <p className="mt-1 text-xs text-[var(--ink-muted)]">Best run: {streak.bestStreakDays} day{streak.bestStreakDays === 1 ? "" : "s"} · {streak.practiceDaysThisWeek} day{streak.practiceDaysThisWeek === 1 ? "" : "s"} this week</p>
             </div>
             {milestones.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {milestones.map((milestone) => <span key={milestone.id} className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300"><i className="fa-solid fa-medal mr-1.5" aria-hidden="true" />{milestone.label}</span>)}
+                {milestones.map((milestone) => <span key={milestone.id} className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-[var(--accent)]"><i className="fa-solid fa-medal mr-1.5" aria-hidden="true" />{milestone.label}</span>)}
               </div>
             )}
           </div>
@@ -196,61 +196,61 @@ function Dashboard() {
       )}
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
         <Panel className="border border-emerald-400/15 bg-emerald-400/[.035]">
-          <p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-400">Recommended next</p>
-          <h2 className="mt-3 text-xl font-semibold">{focus ? `Strengthen ${focus.name}` : "Learn the complete workflow"}</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">
+          <p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--accent)]">Recommended next</p>
+          <h2 className="mt-3 text-xl font-semibold">{focus ? `Strengthen ${focus.name}` : "Start with the running count"}</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">
             {focus
               ? `${focus.accuracy}% accuracy across ${focus.attempts} answers makes this your clearest improvement opportunity.`
-              : "Practice counting, betting, strategy, and deviations together in a realistic shoe."}
+              : "Take a short counting drill, then build toward strategy and a complete shoe. Experienced players can choose any drill in Practice."}
           </p>
-          <Link href={primaryHref}><Button className="mt-5">{primaryLabel}</Button></Link>
+          <ButtonLink href={primaryHref}  className="mt-5">{primaryLabel}</ButtonLink>
         </Panel>
         <Panel>
           <h2 className="text-lg font-semibold">Analysis workspace</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">Build a game, size the bankroll and ramp, then stress-test session variance without re-entering the same concepts across separate calculators.</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Build a game, size the bankroll and ramp, then stress-test session variance without re-entering the same concepts across separate calculators.</p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/cvcx"><GhostButton>Build a game</GhostButton></Link>
-            <Link href="/simulation"><GhostButton>Simulate sessions</GhostButton></Link>
+            <ButtonLink href="/cvcx"  variant="quiet">Build a game</ButtonLink>
+            <ButtonLink href="/simulation"  variant="quiet">Simulate sessions</ButtonLink>
           </div>
         </Panel>
       </div>
       <section className="mt-6">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div><p className="text-xs font-bold uppercase tracking-[.16em] text-emerald-400">Casino games</p><h2 className="mt-2 text-xl font-semibold">Play, practice, or analyze</h2></div>
-          <p className="text-sm text-zinc-500">Separate games with their own bankrolls, chips, rules, and solvers.</p>
+          <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--accent)]">Casino games</p><h2 className="mt-2 text-xl font-semibold">Play, practice, or analyze</h2></div>
+          <p className="text-sm text-[var(--ink-muted)]">Separate games with their own bankrolls, chips, rules, and solvers.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Link href="/double-down-madness" className="pressable surface group rounded-[1.35rem] p-5 hover:border-emerald-400/25 sm:p-6">
-            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400/10 text-amber-300"><i className="fa-solid fa-bolt" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-zinc-600 transition group-hover:translate-x-1 group-hover:text-emerald-300" aria-hidden="true" /></div>
+            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-amber-400/10 text-[var(--warning)]"><i className="fa-solid fa-bolt" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-[var(--ink-muted)] transition group-hover:translate-x-1 group-hover:text-[var(--accent)]" aria-hidden="true" /></div>
             <h3 className="mt-5 text-lg font-semibold">Double Down Madness</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Play a persistent six-deck shoe with live Hi-Lo coaching for strategy, deviations, insurance, and the optimized spread.</p>
-            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-emerald-400">Open DDM table</span>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Play a persistent six-deck shoe with live Hi-Lo coaching for strategy, deviations, insurance, and the optimized spread.</p>
+            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]">Open DDM table</span>
           </Link>
           <Link href="/ultimate-texas-holdem" className="pressable surface group rounded-[1.35rem] p-5 hover:border-emerald-400/25 sm:p-6">
-            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-400/10 text-emerald-300"><i className="fa-solid fa-clover" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-zinc-600 transition group-hover:translate-x-1 group-hover:text-emerald-300" aria-hidden="true" /></div>
+            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-400/10 text-[var(--accent)]"><i className="fa-solid fa-clover" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-[var(--ink-muted)] transition group-hover:translate-x-1 group-hover:text-[var(--accent)]" aria-hidden="true" /></div>
             <h3 className="mt-5 text-lg font-semibold">Ultimate Texas Hold&apos;em</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Play a complete chip-based table, study basic strategy, or inspect exact late-stage decisions.</p>
-            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-emerald-400">Open UTH table</span>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Play a complete chip-based table, study basic strategy, or inspect exact late-stage decisions.</p>
+            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]">Open UTH table</span>
           </Link>
           <Link href="/chase-flush" className="pressable surface group rounded-[1.35rem] p-5 hover:border-emerald-400/25 sm:p-6">
-            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-sky-400/10 text-sky-300"><i className="fa-solid fa-diamond" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-zinc-600 transition group-hover:translate-x-1 group-hover:text-emerald-300" aria-hidden="true" /></div>
+            <div className="flex items-start justify-between gap-4"><span className="grid h-11 w-11 place-items-center rounded-xl bg-sky-400/10 text-[var(--info)]"><i className="fa-solid fa-diamond" aria-hidden="true" /></span><i className="fa-solid fa-arrow-right text-[var(--ink-muted)] transition group-hover:translate-x-1 group-hover:text-[var(--accent)]" aria-hidden="true" /></div>
             <h3 className="mt-5 text-lg font-semibold">Chase the Flush</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">Play staged 3x/2x/1x rounds with chips and exposed-card schedules, or open the exact solver.</p>
-            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-emerald-400">Open Chase table</span>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">Play staged 3x/2x/1x rounds with chips and exposed-card schedules, or open the exact solver.</p>
+            <span className="mt-4 inline-block text-xs font-semibold uppercase tracking-[.12em] text-[var(--accent)]">Open Chase table</span>
           </Link>
         </div>
       </section>
       <Panel className="mt-6">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Recent training</h2>
-          <Link href="/statistics" className="text-sm text-emerald-400">
+          <Link href="/statistics" className="text-sm text-[var(--accent)]">
             View statistics
           </Link>
         </div>
         {sessions.length ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-zinc-500">
+              <thead className="text-[var(--ink-muted)]">
                 <tr>
                   {[
                     "Drill",
@@ -270,9 +270,9 @@ function Dashboard() {
                   <tr key={s.id} className="border-t border-white/[.06]">
                     <td className="py-4 font-medium">{s.drill}</td>
                     <td>{s.questions}</td>
-                    <td className="text-emerald-400">{s.accuracy}%</td>
+                    <td className="text-[var(--accent)]">{s.accuracy}%</td>
                     <td>{(s.averageResponseTime / 1000).toFixed(1)}s</td>
-                    <td className="text-zinc-500">
+                    <td className="text-[var(--ink-muted)]">
                       {new Date(s.date).toLocaleDateString()}
                     </td>
                   </tr>
@@ -281,7 +281,7 @@ function Dashboard() {
             </table>
           </div>
         ) : (
-          <div className="py-10 text-center text-zinc-500">
+          <div className="py-10 text-center text-[var(--ink-muted)]">
             Your completed sessions will appear here.
           </div>
         )}
@@ -293,7 +293,7 @@ export function HiLoReference() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Hi-Lo System</h1>
-      <p className="mt-2 text-zinc-400">
+      <p className="mt-2 text-[var(--ink-muted)]">
         A balanced, level-one counting system.
       </p>
       <div className="mt-7 grid gap-4 md:grid-cols-3">
@@ -304,12 +304,12 @@ export function HiLoReference() {
         ].map(([v, r, l]) => (
           <Panel key={v} className="text-center">
             <span
-              className={`text-4xl font-bold ${v === "+1" ? "text-emerald-400" : v === "−1" ? "text-red-400" : "text-zinc-300"}`}
+              className={`text-4xl font-bold ${v === "+1" ? "text-[var(--accent)]" : v === "−1" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}
             >
               {v}
             </span>
             <p className="my-5 text-2xl tracking-widest">{r}</p>
-            <small className="text-zinc-500">{l}</small>
+            <small className="text-[var(--ink-muted)]">{l}</small>
           </Panel>
         ))}
       </div>
@@ -334,7 +334,7 @@ export function HiLoReference() {
         ].map(([a, b]) => (
           <Panel key={a}>
             <h2 className="font-semibold">{a}</h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">{b}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{b}</p>
           </Panel>
         ))}
       </div>
@@ -344,6 +344,7 @@ export function HiLoReference() {
 function SettingsPage() {
   const { user, signOut, exitGuest, syncStatus } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
+    [pendingImport, setPendingImport] = useState<{ raw: string; count: number }>(),
     [saved, setSaved] = useState(false),
     [dataMessage, setDataMessage] = useState(""),
     [analyticsEnabled, setAnalyticsEnabled] = useState(true),
@@ -366,13 +367,13 @@ function SettingsPage() {
   return (
     <>
       <h1 className="text-3xl font-semibold">Settings</h1>
-      <p className="mt-2 text-zinc-400">
+      <p className="mt-2 text-[var(--ink-muted)]">
         Defaults are saved locally on this device.
       </p>
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         <Panel>
           <h2 className="mb-2 font-semibold">Appearance</h2>
-          <p className="mb-5 text-sm text-zinc-500">Choose the register that is easiest on your eyes. System follows your device.</p>
+          <p className="mb-5 text-sm text-[var(--ink-muted)]">Choose the register that is easiest on your eyes. System follows your device.</p>
           <Select label="Theme" value={s.theme} onChange={(event) => update("theme", event.target.value as Settings["theme"])}>
             <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
           </Select>
@@ -467,7 +468,7 @@ function SettingsPage() {
           <h2 className="mb-5 font-semibold">Counting defaults</h2>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
             <b>Hi-Lo ✓</b>
-            <p className="text-sm text-zinc-400">Balanced level-one system</p>
+            <p className="text-sm text-[var(--ink-muted)]">Balanced level-one system</p>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Select label="Running-count preset" value={s.countingPreset} onChange={(e) => update("countingPreset", e.target.value as Settings["countingPreset"])}>
@@ -486,7 +487,7 @@ function SettingsPage() {
               {[0.5, 0.6, 0.7, 0.75, 0.8, 0.85].map((value) => <option key={value} value={value}>{Math.round(value * 100)}%</option>)}
             </Select>
           </div>
-          <p className="mt-4 text-xs leading-5 text-zinc-500">Floor rounds toward negative infinity: -1.2 becomes -2. Truncate rounds toward zero: -1.2 becomes -1. Pick the method that matches the indices you train.</p>
+          <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Floor rounds toward negative infinity: -1.2 becomes -2. Truncate rounds toward zero: -1.2 becomes -1. Pick the method that matches the indices you train.</p>
         </Panel>
         <Panel className="lg:col-span-2">
           <h2 className="mb-4 font-semibold">Experience</h2>
@@ -510,18 +511,18 @@ function SettingsPage() {
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Privacy</h2>
           <label className="mt-4 flex items-start justify-between gap-5 rounded-xl bg-black/20 p-4">
-            <span><b className="block text-sm">Privacy-minimized product analytics</b><span className="mt-1 block text-xs leading-5 text-zinc-500">Helps improve drills and reliability. No email, notes, passwords, exact bankrolls, or advertising identifiers are collected.</span></span>
+            <span><b className="block text-sm">Privacy-minimized product analytics</b><span className="mt-1 block text-xs leading-5 text-[var(--ink-muted)]">Helps improve drills and reliability. No email, notes, passwords, exact bankrolls, or advertising identifiers are collected.</span></span>
             <input type="checkbox" checked={analyticsEnabled} onChange={(event) => { const enabled = event.target.checked; setAnalyticsEnabled(enabled); analytics.setConsent(enabled, "settings"); }} className="mt-1 h-5 w-5 shrink-0 accent-emerald-500" />
           </label>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Link href="/privacy" className="text-xs text-emerald-300 hover:underline">Review the analytics and retention policy</Link>
+            <Link href="/privacy" className="text-xs text-[var(--accent)] hover:underline">Review the analytics and retention policy</Link>
             <GhostButton className="px-3 py-1 text-xs" disabled={analyticsDeleting} onClick={() => setConfirmingAnalyticsDelete(true)}>{analyticsDeleting ? "Deleting…" : "Delete analytics history"}</GhostButton>
           </div>
-          {analyticsMessage && <p aria-live="polite" className="mt-3 text-xs text-emerald-300">{analyticsMessage}</p>}
+          {analyticsMessage && <p aria-live="polite" className="mt-3 text-xs text-[var(--accent)]">{analyticsMessage}</p>}
         </Panel>
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Training data</h2>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--ink-muted)]">
             Download a portable JSON backup or restore one on this device. It
             covers settings, drill history and progress, the session journal,
             saved scenarios and simulation runs, and venue presets.
@@ -554,9 +555,10 @@ function SettingsPage() {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 try {
-                  const { namespaces } = storage.importData(await file.text());
-                  setS(storage.settings());
-                  setDataMessage(`Imported ${storage.sessions().length} sessions${namespaces ? ` and ${namespaces} saved collection${namespaces === 1 ? "" : "s"}` : ""}. Reload to pick up restored journal and scenario data.`);
+                  const raw = await file.text();
+                  const parsed = JSON.parse(raw);
+                  if (!Array.isArray(parsed.sessions)) throw new Error("The backup has no training session list.");
+                  setPendingImport({ raw, count: parsed.sessions.length });
                 } catch (error) {
                   setDataMessage(error instanceof Error ? error.message : "Import failed");
                 }
@@ -577,25 +579,25 @@ function SettingsPage() {
               Export CSV
             </GhostButton>
           </div>
-          <p className="mt-3 text-xs leading-5 text-zinc-500">CSV export covers drill sessions only — a spreadsheet-friendly summary with no mistake or category detail — and is export-only. JSON stays the format to restore from.</p>
+          <p className="mt-3 text-xs leading-5 text-[var(--ink-muted)]">CSV export covers drill sessions only — a spreadsheet-friendly summary with no mistake or category detail — and is export-only. JSON stays the format to restore from.</p>
           {dataMessage && (
-            <p aria-live="polite" className="mt-3 text-sm text-emerald-300">
+            <p aria-live="polite" className="mt-3 text-sm text-[var(--accent)]">
               {dataMessage}
             </p>
           )}
         </Panel>
         <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Access</h2>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--ink-muted)]">
             {user
-              ? <>Signed in as <span className="text-zinc-300">{user.email}</span>. Your data syncs to this account.</>
+              ? <>Signed in as <span className="text-[var(--ink)]">{user.email}</span>. Your data syncs to this account.</>
               : "Browsing as a guest. Your data is saved on this device only — sign in to back it up and sync it across devices."}
           </p>
           {user && (
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">
               {syncStatus === "syncing" && <><i className="fa-solid fa-arrows-rotate mr-1.5 animate-spin" aria-hidden="true" />Syncing…</>}
-              {syncStatus === "synced" && <><i className="fa-solid fa-check mr-1.5 text-emerald-400" aria-hidden="true" />Synced — journal, drills, and settings are up to date on this account.</>}
-              {syncStatus === "error" && <span className="text-amber-300"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Sync failed — check your connection and reload.</span>}
+              {syncStatus === "synced" && <><i className="fa-solid fa-check mr-1.5 text-[var(--accent)]" aria-hidden="true" />Synced — journal, drills, and settings are up to date on this account.</>}
+              {syncStatus === "error" && <span className="text-[var(--warning)]"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Sync failed — check your connection and reload.</span>}
               {syncStatus === "idle" && "Not synced yet."}
             </p>
           )}
@@ -610,13 +612,19 @@ function SettingsPage() {
               Sign in
             </GhostButton>
           )}
-          <p className="mt-4 text-xs text-zinc-500">
-            <Link href="/terms" className="hover:text-zinc-300">Terms of Service</Link>
+          <p className="mt-4 text-xs text-[var(--ink-muted)]">
+            <Link href="/terms" className="hover:text-[var(--ink)]">Terms of Service</Link>
             {" · "}
-            <Link href="/privacy" className="hover:text-zinc-300">Privacy Policy</Link>
+            <Link href="/privacy" className="hover:text-[var(--ink)]">Privacy Policy</Link>
           </p>
         </Panel>
       </div>
+      <AccountDataTools />
+      <ConfirmModal open={!!pendingImport} title="Import this backup?" description={`${pendingImport?.count ?? 0} training sessions and any included saved collections will be merged. Matching IDs use the backup version; unrelated history is kept. Export a backup first if you want to retain both versions.`} confirmLabel="Import backup" onCancel={() => setPendingImport(undefined)} onConfirm={() => {
+        if (!pendingImport) return;
+        try { const result = storage.importData(pendingImport.raw); setS(storage.settings()); setDataMessage(`Imported ${result.sessions} training sessions and ${result.namespaces} saved collections.`); } catch (error) { setDataMessage(error instanceof Error ? error.message : "Import failed. Existing history was preserved."); }
+        setPendingImport(undefined);
+      }} />
       <ConfirmModal
         open={confirmingAnalyticsDelete}
         title="Delete analytics history?"
@@ -643,10 +651,8 @@ function LegacyRedirect({ to }: { to: string }) {
   }, [router, to]);
   return (
     <Panel className="py-20 text-center">
-      <p className="text-zinc-400">This page moved to the Game &amp; Bankroll Lab.</p>
-      <Link href={to}>
-        <Button className="mt-5">Continue</Button>
-      </Link>
+      <p className="text-[var(--ink-muted)]">This page moved to the Game &amp; Bankroll Lab.</p>
+      <ButtonLink href={to}  className="mt-5">Continue</ButtonLink>
     </Panel>
   );
 }
@@ -657,25 +663,23 @@ function NotFound() {
   return (
     <Panel className="py-20 text-center">
       <h1 className="text-3xl font-semibold">Page not found</h1>
-      <Link href="/dashboard">
-        <Button className="mt-5">Back to dashboard</Button>
-      </Link>
+      <ButtonLink href="/dashboard"  className="mt-5">Back to dashboard</ButtonLink>
     </Panel>
   );
 }
 const AREA_PAGES = {
-  practice: { title: "Practice", description: "Build automatic counting, playing, and table-decision habits.", items: [["Full Shoe", "/training/full-shoe", "fa-shoe-prints"], ["Running Count", "/training/running-count", "fa-bolt"], ["True Count", "/training/true-count", "fa-divide"], ["Basic Strategy", "/training/basic-strategy", "fa-layer-group"], ["Index Deviations", "/training/deviations", "fa-code-branch"], ["H17 Chart", "/training/h17-chart", "fa-table-cells"], ["Deck Estimation", "/training/deck-estimation", "fa-ruler"], ["Counting Benchmark", "/training/benchmark", "fa-medal"], ["Proficiency Test", "/training/proficiency-test", "fa-award"], ["Daily Checklist", "/training/checklist", "fa-list-check"]] },
   analyze: { title: "Analyze", description: "Model an edge, a bet ramp, a session, and the bankroll behind it.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
   play: { title: "Games", description: "Take the concepts to the felt in focused table-game practice.", items: [["Double Down Madness", "/double-down-madness", "fa-bolt"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"], ["Chase the Flush", "/chase-flush", "fa-diamond"]] },
 } as const;
 function AreaLanding({ area }: { area: keyof typeof AREA_PAGES }) {
   const page = AREA_PAGES[area];
-  return <><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--ink-muted)]">CountLab workspace</p><h1 className="font-display mt-2 text-3xl font-semibold">{page.title}</h1><p className="mt-2 max-w-2xl text-[var(--ink-muted)]">{page.description}</p><div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{page.items.map(([name, href, icon]) => <Link key={href} href={href} className="pressable surface group flex min-h-28 items-center gap-4 rounded-xl p-5 hover:border-[var(--ink-muted)]"><i className={`fa-solid ${icon} grid h-10 w-10 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]`} /><span><b className="block">{name}</b><span className="mt-1 block text-xs text-[var(--ink-muted)]">Open tool <i className="fa-solid fa-arrow-right ml-1" /></span></span></Link>)}</div></>;
+  return <><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--ink-muted)]">CountLab workspace</p><h1 className="font-display mt-2 text-3xl font-semibold">{page.title}</h1><p className="mt-2 max-w-2xl text-[var(--ink-muted)]">{page.description}</p><div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{page.items.map(([name, href, icon]) => <Link key={href} href={href} className="pressable surface group flex min-h-28 items-center gap-4 rounded-xl p-5 hover:border-[var(--ink-muted)]"><i className={`fa-solid ${icon} grid h-10 w-10 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]`} /><span><b className="block">{name}</b><span className="mt-1 block text-xs text-[var(--ink-muted)]">{ROUTE_DESCRIPTIONS[href] ?? "Explore this game and its strategy."} <i className="fa-solid fa-arrow-right ml-1" /></span></span></Link>)}</div></>;
 }
-export default function DynamicPage() {
-  const p = useParams<{ slug?: string[] }>(),
-    path = (p.slug || ["dashboard"]).join("/");
+export default function DynamicPage({ route = "dashboard" }: { route?: string }) {
+  const path = route;
   const pages: Record<string, React.ReactNode> = {
+    "": <HomePage />,
+    signin: <Dashboard />,
     dashboard: <Dashboard />,
     practice: <PracticeHub />,
     analyze: <AreaLanding area="analyze" />,
@@ -710,5 +714,5 @@ export default function DynamicPage() {
   };
   const redirect = LEGACY_REDIRECTS[path];
   if (redirect) return <LegacyRedirect to={redirect} />;
-  return pages[path] || <NotFound />;
+  return path in pages ? pages[path] : <NotFound />;
 }

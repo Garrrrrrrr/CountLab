@@ -642,9 +642,9 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
   if (phase === "setup") return (
     <div className="mt-5 pb-24 lg:pb-0">
       <div className="mb-5">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Casino session setup</p>
+        <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Casino session setup</p>
         <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Take a seat at the Madness table</h2>
-        <p className="mt-2 max-w-3xl text-zinc-400">Choose the shoe, the shared bankroll, how many players sit down, and the ramp the coach grades you against. One card starts every hand and you may keep doubling until you stand.</p>
+        <p className="mt-2 max-w-3xl text-[var(--ink-muted)]">Choose the shoe, the shared bankroll, how many players sit down, and the ramp the coach grades you against. One card starts every hand and you may keep doubling until you stand.</p>
       </div>
       <div className="grid gap-5 xl:grid-cols-3">
         <Panel>
@@ -665,7 +665,7 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
               <option value="peek">Face up every hand</option>
             </Select>
           </div>
-          <div className="mt-5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-emerald-100">
+          <div className="mt-5 rounded-xl border border-emerald-400/15 bg-emerald-400/[.06] p-4 text-xs leading-5 text-[var(--accent)]">
             <b className="mb-2 block uppercase tracking-wider">Fixed Madness rules</b>
             One card to start · unlimited doubles · a lone ace takes exactly one card · dealer hits soft 17 · dealer 22 pushes · blackjack pays 3:2, suited 2:1 · insurance pays 2:1.
           </div>
@@ -681,9 +681,9 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
               {[1, 2, 3, 4, 5].map((value) => <option key={value} value={value}>{value} player{value === 1 ? "" : "s"}</option>)}
             </Select>
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Card animations</span><input type="checkbox" checked={animations} onChange={(event) => setAnimations(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
-            <div className="flex items-center justify-between gap-4 rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Fast mode</b><small className="text-zinc-500">Shorter casino pauses</small></span><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} onClick={() => setFastMode((value) => !value)} className={`pressable flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ${fastMode ? "justify-end bg-emerald-400" : "justify-start bg-zinc-700"}`}><span className="h-6 w-6 rounded-full bg-white shadow" /></button></div>
+            <div className="flex items-center justify-between gap-4 rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Fast mode</b><small className="text-[var(--ink-muted)]">Shorter casino pauses</small></span><button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} onClick={() => setFastMode((value) => !value)} className={`pressable flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ${fastMode ? "justify-end bg-emerald-400" : "justify-start bg-zinc-700"}`}><span className="h-6 w-6 rounded-full bg-white shadow" /></button></div>
             <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span>Sound effects</span><input type="checkbox" checked={soundEnabled} onChange={(event) => setSoundEnabled(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
-            <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Strategy hint</b><small className="text-zinc-500">Names the chart play before you act</small></span><input type="checkbox" checked={coachHints} onChange={(event) => setCoachHints(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
+            <label className="flex items-center justify-between rounded-xl bg-black/20 p-3"><span><b className="block font-medium">Strategy hint</b><small className="text-[var(--ink-muted)]">Names the chart play before you act</small></span><input type="checkbox" checked={coachHints} onChange={(event) => setCoachHints(event.target.checked)} className="h-5 w-5 accent-emerald-400" /></label>
           </div>
         </Panel>
         <Panel>
@@ -698,12 +698,12 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
             </Select>
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               {[0, 1, 2, 3, 4, 5].map((level) => <div key={level} className="rounded-lg bg-black/20 p-2">
-                <span className="text-zinc-500">TC {level === 0 ? "≤0" : signed(level)}</span>
+                <span className="text-[var(--ink-muted)]">TC {level === 0 ? "≤0" : signed(level)}</span>
                 <b className="mt-1 block text-sm">{spreadUnits(spread, level)}u</b>
-                <span className="text-[.65rem] text-zinc-600">${money(unit * spreadUnits(spread, level))}</span>
+                <span className="text-[.65rem] text-[var(--ink-muted)]">${money(unit * spreadUnits(spread, level))}</span>
               </div>)}
             </div>
-            <p className="text-xs leading-5 text-zinc-500">The 1–16 ramp is the benchmark spread from the solver: 1/3/7/11/15/16 units. The coach flags missed increases and oversized bets on every occupied spot.</p>
+            <p className="text-xs leading-5 text-[var(--ink-muted)]">The 1–16 ramp is the benchmark spread from the solver: 1/3/7/11/15/16 units. The coach flags missed increases and oversized bets on every occupied spot.</p>
           </div>
         </Panel>
       </div>
@@ -739,11 +739,11 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
     <div className="mt-5 pb-24 lg:pb-0 2xl:-mx-6">
       <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-5 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">Shoe {shoeNumber} · Round {round} · {decks}D H17 · {SPREAD_LABELS[spread]} spread</p>
+          <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Shoe {shoeNumber} · Round {round} · {decks}D H17 · {SPREAD_LABELS[spread]} spread</p>
           <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Double Down Madness table</h2>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} title="Toggle fast dealing" disabled={dealing} onClick={() => setFastMode((value) => !value)} className={`pressable flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40 ${fastMode ? "border-amber-300/40 bg-amber-300/15 text-amber-200" : "border-white/10 bg-white/[.05] text-zinc-400"}`}>
+          <button type="button" role="switch" aria-label="Fast dealing mode" aria-checked={fastMode} title="Toggle fast dealing" disabled={dealing} onClick={() => setFastMode((value) => !value)} className={`pressable flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-semibold disabled:opacity-40 ${fastMode ? "border-amber-300/40 bg-amber-300/15 text-[var(--warning)]" : "border-white/10 bg-white/[.05] text-[var(--ink-muted)]"}`}>
             <i className="fa-solid fa-bolt" aria-hidden="true" /><span className="hidden sm:inline">Fast</span><span className={`h-2 w-2 rounded-full ${fastMode ? "bg-amber-300" : "bg-zinc-600"}`} />
           </button>
           <GhostButton disabled={dealing} className="px-3 text-sm sm:px-4" onClick={() => setPhase("setup")}>End</GhostButton>
@@ -752,11 +752,11 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
 
       <div className="casino-stat-strip mobile-scroll-rail -mx-4 mb-4 flex gap-px overflow-x-auto px-4 py-1 sm:mx-0 sm:mb-5 sm:grid sm:grid-cols-4 sm:gap-px sm:overflow-hidden sm:px-1 xl:grid-cols-7">
         {metrics.map(({ label, value, intel }) => <div key={label} className="casino-stat relative min-w-[8.25rem] snap-start px-3 py-2 sm:min-w-0">
-          <p className="pr-7 text-[.67rem] uppercase tracking-wider text-zinc-500">{label}</p>
-          {intel && <button type="button" aria-label={`${visibleIntel[intel] ? "Hide" : "Reveal"} ${label.toLowerCase()}`} aria-pressed={Boolean(visibleIntel[intel])} onClick={() => setVisibleIntel((shown) => ({ ...shown, [intel]: !shown[intel] }))} className="pressable absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-full text-xs text-zinc-500 hover:bg-white/10 hover:text-emerald-300">
+          <p className="pr-7 text-[.67rem] uppercase tracking-wider text-[var(--ink-muted)]">{label}</p>
+          {intel && <button type="button" aria-label={`${visibleIntel[intel] ? "Hide" : "Reveal"} ${label.toLowerCase()}`} aria-pressed={Boolean(visibleIntel[intel])} onClick={() => setVisibleIntel((shown) => ({ ...shown, [intel]: !shown[intel] }))} className="pressable absolute right-2.5 top-2 grid h-7 w-7 place-items-center rounded-full text-xs text-[var(--ink-muted)] hover:bg-white/10 hover:text-[var(--accent)]">
             <i aria-hidden="true" className={`fas ${visibleIntel[intel] ? "fa-eye-slash" : "fa-eye"}`} />
           </button>}
-          <p className={`mt-1 truncate text-lg font-semibold sm:text-xl ${intel && !visibleIntel[intel] ? "select-none tracking-[.18em] text-zinc-600" : ""}`}>{intel && !visibleIntel[intel] ? "•••" : value}</p>
+          <p className={`mt-1 truncate text-lg font-semibold sm:text-xl ${intel && !visibleIntel[intel] ? "select-none tracking-[.18em] text-[var(--ink-muted)]" : ""}`}>{intel && !visibleIntel[intel] ? "•••" : value}</p>
         </div>)}
       </div>
 
@@ -821,12 +821,12 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
                           </div>)}
                         </div>
                         <p className="mt-1 text-[.62rem] font-semibold">${money(hand.bet)} · {handLabel(hand.cards)}</p>
-                        {hand.doubles > 0 && <span className="text-[.55rem] font-bold uppercase text-amber-200/70">{hand.doubles}× doubled</span>}
-                        {hand.status !== "playing" && <span className="ml-1 text-[.55rem] font-bold uppercase text-emerald-100/55">{hand.status}</span>}
+                        {hand.doubles > 0 && <span className="text-[.55rem] font-bold uppercase text-[var(--warning)]/70">{hand.doubles}× doubled</span>}
+                        {hand.status !== "playing" && <span className="ml-1 text-[.55rem] font-bold uppercase text-[var(--accent)]/55">{hand.status}</span>}
                       </div> : <div className={`casino-bet-circle mx-auto grid h-20 w-20 place-items-center rounded-full ${selected ? "casino-bet-circle-selected" : ""}`}>
-                        {bet > 0 ? <div key={`${spot}-${bet}`} className={`casino-chip-drop grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-xs font-black shadow-[0_8px_18px_#0008] ${chipColorClasses(bet)}`}>{chipLabel(bet)}</div> : <span className="text-[.6rem] font-semibold uppercase text-emerald-100/35">Bet</span>}
+                        {bet > 0 ? <div key={`${spot}-${bet}`} className={`casino-chip-drop grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-xs font-black shadow-[0_8px_18px_#0008] ${chipColorClasses(bet)}`}>{chipLabel(bet)}</div> : <span className="text-[.6rem] font-semibold uppercase text-[var(--accent)]/35">Bet</span>}
                       </div>}
-                      {phase === "bet" && bet > 0 && <p className={`mt-2 text-[.6rem] font-semibold ${bet === expectedWager ? "text-emerald-200" : "text-amber-200"}`}>${money(bet)} · {bet === expectedWager ? "On ramp" : `Target $${money(expectedWager)}`}</p>}
+                      {phase === "bet" && bet > 0 && <p className={`mt-2 text-[.6rem] font-semibold ${bet === expectedWager ? "text-[var(--accent)]" : "text-[var(--warning)]"}`}>${money(bet)} · {bet === expectedWager ? "On ramp" : `Target $${money(expectedWager)}`}</p>}
                     </button>;
                   })}
                 </div>
@@ -834,16 +834,16 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
             </div>
 
             <div className="casino-control-rail relative p-3 sm:p-4">
-              <p aria-live="polite" className="mb-4 text-center text-sm text-zinc-200">{roundMessage}</p>
+              <p aria-live="polite" className="mb-4 text-center text-sm text-[var(--ink)]">{roundMessage}</p>
               {phase === "bet" && <div>
                 <div className="mb-4 flex flex-wrap items-center justify-center gap-3">
-                  <span className="text-sm text-zinc-400">Selected: spot {selectedSpot + 1}</span>
+                  <span className="text-sm text-[var(--ink-muted)]">Selected: spot {selectedSpot + 1}</span>
                   <strong className="text-3xl">${money(wagers[selectedSpot])}</strong>
-                  <span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-emerald-200">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${money(totalWager)} total</span>
+                  <span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-[var(--accent)]">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${money(totalWager)} total</span>
                 </div>
                 {players > 1 && <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-zinc-500">Spot owner</span>
-                  {Array.from({ length: players }, (_, player) => <button key={player} type="button" aria-pressed={spotOwners[selectedSpot] === player} onClick={() => setSpotOwners((owners) => owners.map((owner, spot) => (spot === selectedSpot ? player : owner)))} className={`pressable min-h-10 rounded-full px-3 text-sm font-semibold ${spotOwners[selectedSpot] === player ? "bg-emerald-300 text-emerald-950" : "border border-white/10 bg-white/[.05] text-zinc-300"}`}>Player {player + 1}</button>)}
+                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]">Spot owner</span>
+                  {Array.from({ length: players }, (_, player) => <button key={player} type="button" aria-pressed={spotOwners[selectedSpot] === player} onClick={() => setSpotOwners((owners) => owners.map((owner, spot) => (spot === selectedSpot ? player : owner)))} className={`pressable min-h-10 rounded-full px-3 text-sm font-semibold ${spotOwners[selectedSpot] === player ? "bg-emerald-300 text-emerald-950" : "border border-white/10 bg-white/[.05] text-[var(--ink)]"}`}>Player {player + 1}</button>)}
                 </div>}
                 <div className="casino-chip-rail mx-auto flex max-w-2xl flex-wrap items-end justify-center gap-2 rounded-[1.4rem] p-2 sm:gap-3 sm:p-3">
                   {chipValues.map((value) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs xl:h-[4.5rem] xl:w-[4.5rem] xl:text-sm ${chipColorClasses(value)}`}>{chipLabel(value)}</button>)}
@@ -864,7 +864,7 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
                 </div>
               </div>}
               {phase === "insurance" && <div className="hidden text-center lg:block">
-                <p className="mb-3 text-sm text-amber-200">Dealer shows an ace. Insurance costs half the base bet on every spot and pays 2 to 1.</p>
+                <p className="mb-3 text-sm text-[var(--warning)]">Dealer shows an ace. Insurance costs half the base bet on every spot and pays 2 to 1.</p>
                 <div className="flex flex-wrap justify-center gap-3">
                   <GhostButton disabled={dealing} onClick={() => chooseInsurance(false)}>Decline insurance</GhostButton>
                   <Button disabled={dealing || available < insuranceTotal} onClick={() => chooseInsurance(true)}>Insure all spots for ${money(insuranceTotal)}</Button>
@@ -875,15 +875,15 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
                   {playButtons}
                   <GhostButton disabled={dealing || evLoading} className="w-full sm:w-auto" onClick={() => requestEv(current)}>{evLoading ? "Solving…" : "Calculate exact EV"}</GhostButton>
                 </div>
-                {hint && <p className="mt-3 text-center text-xs text-amber-200">Coach hint: {ACTION_NAMES[hint.action]}{hint.deviation ? ` · departure at TC ${signed(hint.deviation.threshold)}` : " · chart play"}</p>}
+                {hint && <p className="mt-3 text-center text-xs text-[var(--warning)]">Coach hint: {ACTION_NAMES[hint.action]}{hint.deviation ? ` · departure at TC ${signed(hint.deviation.threshold)}` : " · chart play"}</p>}
                 {(evLoading || evEntries) && <EvMetrics
                   evs={evEntries}
                   loading={evLoading}
                   note={evResult ? `Removal-exact enumeration over the ${evResult.unseenCards} unseen cards, conditioned on the dealer already peeking${evResult.dealerBlackjackProbability > 0 ? ` (${(evResult.dealerBlackjackProbability * 100).toFixed(2)}% blackjack risk was priced out)` : ""}. Best action: ${ACTION_NAMES[evResult.action]}. Solved in ${Math.round(evDuration)} ms.` : undefined}
                 />}
-                {evError && <p className="mt-3 text-center text-xs text-red-300">{evError}</p>}
+                {evError && <p className="mt-3 text-center text-xs text-[var(--negative)]">{evError}</p>}
               </>}
-              {(phase === "dealing" || phase === "dealer") && <div className="hidden min-h-12 items-center justify-center gap-3 text-sm font-medium text-emerald-100/70 lg:flex"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing" : "Cards in motion"}</div>}
+              {(phase === "dealing" || phase === "dealer") && <div className="hidden min-h-12 items-center justify-center gap-3 text-sm font-medium text-[var(--accent)]/70 lg:flex"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing" : "Cards in motion"}</div>}
               {phase === "shoe-end" && <div className="hidden text-center lg:block">
                 <p className="mb-4 text-2xl font-semibold">Session result: {bankroll >= startingBankroll ? "+" : "−"}${Math.abs(bankroll - startingBankroll).toFixed(2)}</p>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -899,13 +899,13 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
           <Panel>
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Discard tray</p>
-                <div className="mt-1 flex items-center gap-2 text-sm text-zinc-300">
-                  <span className={!visibleIntel.discard ? "select-none tracking-[.16em] text-zinc-600" : ""}>{visibleIntel.discard ? `${(discarded / 52).toFixed(2)} decks seen` : "•••"}</span>
-                  <button type="button" aria-label={`${visibleIntel.discard ? "Hide" : "Reveal"} exact discard amount`} aria-pressed={Boolean(visibleIntel.discard)} onClick={() => setVisibleIntel((shown) => ({ ...shown, discard: !shown.discard }))} className="pressable grid h-7 w-7 place-items-center rounded-full text-xs text-zinc-500 hover:bg-white/10 hover:text-emerald-300"><i aria-hidden="true" className={`fas ${visibleIntel.discard ? "fa-eye-slash" : "fa-eye"}`} /></button>
+                <p className="text-xs font-bold uppercase tracking-wider text-[var(--ink-muted)]">Discard tray</p>
+                <div className="mt-1 flex items-center gap-2 text-sm text-[var(--ink)]">
+                  <span className={!visibleIntel.discard ? "select-none tracking-[.16em] text-[var(--ink-muted)]" : ""}>{visibleIntel.discard ? `${(discarded / 52).toFixed(2)} decks seen` : "•••"}</span>
+                  <button type="button" aria-label={`${visibleIntel.discard ? "Hide" : "Reveal"} exact discard amount`} aria-pressed={Boolean(visibleIntel.discard)} onClick={() => setVisibleIntel((shown) => ({ ...shown, discard: !shown.discard }))} className="pressable grid h-7 w-7 place-items-center rounded-full text-xs text-[var(--ink-muted)] hover:bg-white/10 hover:text-[var(--accent)]"><i aria-hidden="true" className={`fas ${visibleIntel.discard ? "fa-eye-slash" : "fa-eye"}`} /></button>
                 </div>
               </div>
-              <span className="text-xs text-zinc-500">Cut at {Math.round(penetration * 100)}%</span>
+              <span className="text-xs text-[var(--ink-muted)]">Cut at {Math.round(penetration * 100)}%</span>
             </div>
             <div className="mt-4 flex h-32 items-end rounded-b-2xl border-x-4 border-b-4 border-zinc-500/60 bg-black/25 p-2 sm:h-48">
               <div className="w-full rounded-sm bg-[repeating-linear-gradient(0deg,#f4f1e8,#f4f1e8_2px,#aaa_3px)] shadow-[0_0_25px_#0008] transition-[height] duration-500" style={{ height: `${Math.max(2, Math.min(100, (discarded / Math.max(1, cutCard)) * 100))}%` }} />
@@ -918,15 +918,15 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
             emptyHint="The coach grades the pre-deal spread, insurance at +4, the one-card and continued-play charts, and all 18 selected departures."
           >
             <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-              {(Object.entries(stats) as Array<[CoachCategory, { correct: number; total: number }]>).map(([category, value]) => <div key={category} className="rounded-lg bg-black/20 p-2"><span className="capitalize text-zinc-500">{category}</span><b className="float-right">{value.correct}/{value.total}</b></div>)}
+              {(Object.entries(stats) as Array<[CoachCategory, { correct: number; total: number }]>).map(([category, value]) => <div key={category} className="rounded-lg bg-black/20 p-2"><span className="capitalize text-[var(--ink-muted)]">{category}</span><b className="float-right">{value.correct}/{value.total}</b></div>)}
             </div>
           </CoachPanel>
           <Panel className="md:col-span-2 2xl:col-span-1">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Session</h3>
-              <span className={bankroll >= startingBankroll ? "text-emerald-300" : "text-red-300"}>{bankroll >= startingBankroll ? "+" : "−"}${Math.abs(bankroll - startingBankroll).toFixed(2)}</span>
+              <span className={bankroll >= startingBankroll ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{bankroll >= startingBankroll ? "+" : "−"}${Math.abs(bankroll - startingBankroll).toFixed(2)}</span>
             </div>
-            <p className="mt-2 text-xs text-zinc-500">{history.length} round{history.length === 1 ? "" : "s"} · {history.filter((row) => row.net > 0).length} profitable</p>
+            <p className="mt-2 text-xs text-[var(--ink-muted)]">{history.length} round{history.length === 1 ? "" : "s"} · {history.filter((row) => row.net > 0).length} profitable</p>
             <div className="mt-4"><GameHistory rows={history} /></div>
           </Panel>
         </div>
@@ -935,14 +935,14 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
       {phase === "bet" && <MobileActionDock label="Betting actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2">
-            <p className="text-[.65rem] uppercase tracking-wider text-zinc-500">Spot {selectedSpot + 1} · {occupiedSpots} active</p>
+            <p className="text-[.65rem] uppercase tracking-wider text-[var(--ink-muted)]">Spot {selectedSpot + 1} · {occupiedSpots} active</p>
             <p className="truncate text-sm font-semibold">${money(wagers[selectedSpot])} selected · ${money(totalWager)} total</p>
           </div>
           <Button disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal</Button>
         </div>
       </MobileActionDock>}
       {phase === "insurance" && <MobileActionDock label="Insurance decision">
-        <p className="mb-2 px-1 text-xs text-zinc-400">Dealer shows an ace. Choose before the peek.</p>
+        <p className="mb-2 px-1 text-xs text-[var(--ink-muted)]">Dealer shows an ace. Choose before the peek.</p>
         <div className="grid grid-cols-2 gap-2">
           <GhostButton disabled={dealing} onClick={() => chooseInsurance(false)}>No insurance</GhostButton>
           <Button disabled={dealing || available < insuranceTotal} onClick={() => chooseInsurance(true)}>Insure · ${money(insuranceTotal)}</Button>
@@ -950,13 +950,13 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
       </MobileActionDock>}
       {phase === "play" && current?.status === "playing" && <MobileActionDock label={`Actions for player ${current.player + 1}, spot ${current.spot + 1}`}>
         <div className="mb-2 flex items-center justify-between gap-2 px-1 text-xs">
-          <span className="text-zinc-400">P{current.player + 1} · Spot {current.spot + 1}</span>
+          <span className="text-[var(--ink-muted)]">P{current.player + 1} · Spot {current.spot + 1}</span>
           <b>{handLabel(current.cards)} · ${money(current.bet)}</b>
         </div>
         <div className="grid grid-cols-2 gap-2">{playButtons}</div>
-        {hint && <p className="mt-2 px-1 text-center text-[.7rem] text-amber-200">Hint: {ACTION_NAMES[hint.action]}{hint.deviation ? ` · TC ${signed(hint.deviation.threshold)} departure` : ""}</p>}
+        {hint && <p className="mt-2 px-1 text-center text-[.7rem] text-[var(--warning)]">Hint: {ACTION_NAMES[hint.action]}{hint.deviation ? ` · TC ${signed(hint.deviation.threshold)} departure` : ""}</p>}
       </MobileActionDock>}
-      {(phase === "dealing" || phase === "dealer") && <MobileActionDock label="Table status" className="text-center text-sm text-emerald-100/75"><i className="fa-solid fa-circle-notch mr-2 animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing…" : "Cards in motion…"}</MobileActionDock>}
+      {(phase === "dealing" || phase === "dealer") && <MobileActionDock label="Table status" className="text-center text-sm text-[var(--accent)]/75"><i className="fa-solid fa-circle-notch mr-2 animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing…" : "Cards in motion…"}</MobileActionDock>}
       {phase === "shoe-end" && <MobileActionDock label="Shoe complete">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <p className="px-2 text-sm font-semibold">Result {bankroll >= startingBankroll ? "+" : "−"}${Math.abs(bankroll - startingBankroll).toFixed(2)}</p>

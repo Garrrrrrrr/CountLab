@@ -67,7 +67,7 @@ const ACTION_STYLE: Record<Action, string> = {
 const INDEX_TAG_STYLE: Record<Action, string> = {
   H: "bg-sky-950 text-white ring-1 ring-white/80",
   S: "bg-slate-950 text-white ring-1 ring-white/80",
-  D: "bg-amber-950 text-amber-100 ring-1 ring-white/80",
+  D: "bg-amber-950 text-[var(--warning)] ring-1 ring-white/80",
   P: "bg-violet-950 text-violet-100 ring-1 ring-white/80",
   R: "bg-rose-950 text-rose-100 ring-1 ring-white/80",
 };
@@ -87,7 +87,7 @@ const H17_TOKEN_STYLE: Record<string, string> = {
   H: ACTION_STYLE.H,
   S: ACTION_STYLE.S,
   D: ACTION_STYLE.D,
-  Ds: "border-amber-700 bg-amber-950 text-amber-100",
+  Ds: "border-amber-700 bg-amber-950 text-[var(--warning)]",
   SUR: ACTION_STYLE.R,
   index: "border-[var(--count-warm)] bg-[var(--count-warm)] text-slate-950",
 };
@@ -388,9 +388,10 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
   };
 
   return (
-    <main className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
-      <h1 className="mb-3 font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : tab === "deviations" ? "Index deviation chart" : "H17 deviation chart"}</h1>
+    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-[100rem] flex-col px-3 py-4 sm:px-5 lg:px-6">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h1 className="font-display text-2xl text-[var(--ink)] sm:text-3xl">{tab === "strategy" ? "Basic strategy chart" : tab === "deviations" ? "Index deviation chart" : "H17 deviation chart"}</h1>
 
+      <button type="button" onClick={() => window.print()} className="no-print min-h-11 shrink-0 rounded-lg border border-[var(--rule)] px-4 text-sm">Print or save chart as PDF</button></div>
       {tab !== "h17" && <details className="surface mb-3 rounded-[1.35rem]">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 text-sm marker:hidden sm:px-5">
           <span className="font-semibold text-[var(--ink)]">Table rules</span>
@@ -447,6 +448,8 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
       </details>}
 
       <Tabs
+        panelId="reference-panel"
+        label="Reference charts"
         value={tab}
         onChange={setTab}
         items={[
@@ -456,6 +459,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
         ]}
         className="mb-3"
       />
+      <div id="reference-panel" role="tabpanel" aria-label="Selected reference chart">
       {tab === "h17" ? (
         <Tabs
           value={h17Section}
@@ -511,7 +515,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
             <p className="mt-2 rounded-lg border border-[var(--count-warm)]/25 bg-[color:color-mix(in_srgb,var(--count-warm)_10%,transparent)] px-3 py-2 text-sm text-[var(--ink)]">
               Insurance: take at TC +3 or above.
             </p>
-            <p className="mt-2 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-sky-700 dark:text-sky-300">H</span> = basic strategy; <span className="rounded-sm bg-slate-950 px-0.5 py-px font-data font-bold text-white ring-1 ring-white/80">S +2</span> = stand at TC +2 or above.</p>
+            <p className="mt-2 text-xs text-[var(--ink-muted)]"><span className="font-data font-bold text-sky-700 dark:text-[var(--info)]">H</span> = basic strategy; <span className="rounded-sm bg-slate-950 px-0.5 py-px font-data font-bold text-white ring-1 ring-white/80">S +2</span> = stand at TC +2 or above.</p>
             {rules.decks !== 6 && <p className="mt-2 text-xs text-[var(--ink-muted)]">The indices shown are the 4–8 deck sets.</p>}
           </Panel>
 
@@ -574,6 +578,7 @@ export default function StrategyChartPage({ initialTab = "strategy" }: { initial
           </p>
         </div>
       )}
-    </main>
+      </div>
+    </div>
   );
 }

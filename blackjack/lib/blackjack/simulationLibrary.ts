@@ -1,3 +1,4 @@
+import { accountStorage } from "@/lib/supabase/accountStorage";
 import type { SessionSimulationConfig, SessionSimulationResult } from "./sessionSimulation";
 
 export interface SavedSimulationRun {
@@ -32,7 +33,7 @@ const LIBRARY_EVENT = "countlab-simulation-library";
 const MAX_RUNS = 40;
 const MAX_TEMPLATES = 20;
 
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : window.localStorage;
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const validConfig = (value: unknown): value is SessionSimulationConfig => {
   if (!value || typeof value !== "object") return false;

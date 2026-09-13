@@ -70,7 +70,7 @@ export function ShareCard({ session, outcome, bankrollName, onClose }: { session
           <GhostButton onClick={() => void share()} disabled={!ready}>
             <i className="fa-solid fa-share-nodes mr-2" />Share
           </GhostButton>
-          {notice && <span role="status" className="text-xs text-zinc-400">{notice}</span>}
+          {notice && <span role="status" className="text-xs text-[var(--ink-muted)]">{notice}</span>}
         </div>
       </div>
     </ConfirmModal>

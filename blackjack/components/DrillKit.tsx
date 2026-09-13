@@ -12,7 +12,7 @@ import { Button, GhostButton } from "./ui";
 export const inputClass = "field min-h-11 w-full rounded-xl px-3 text-center text-lg text-white outline-none";
 
 export function Heading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
-  return <div className="mb-5 sm:mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-emerald-400">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-zinc-400">{description}</p></div>;
+  return <div className="mb-5 sm:mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-[var(--ink-muted)]">{description}</p></div>;
 }
 
 export function addCategory(all: Record<string, { correct: number; total: number }>, key: string, correct: boolean) {
@@ -30,10 +30,10 @@ export function TrayVisual({ totalDecks, remainingDecks, style = "green", landma
   return <div>
     <div aria-label={`${discarded.toFixed(2)} decks discarded, ${remainingDecks.toFixed(2)} decks remaining`} className="relative h-40 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-inner [perspective:500px]">
       <div className={`absolute inset-x-3 bottom-2 rounded-lg bg-gradient-to-t ${colors} transition-[height] duration-500`} style={{ height: `calc(${fill}% - 8px)` }} />
-      {landmarks && [25, 50, 75].map((value) => <div key={value} className="absolute inset-x-0 border-t border-dashed border-white/20" style={{ bottom: `${value}%` }}><span className="absolute right-2 -top-4 text-[10px] text-zinc-500">{value}% discarded</span></div>)}
+      {landmarks && [25, 50, 75].map((value) => <div key={value} className="absolute inset-x-0 border-t border-dashed border-white/20" style={{ bottom: `${value}%` }}><span className="absolute right-2 -top-4 text-[10px] text-[var(--ink-muted)]">{value}% discarded</span></div>)}
       <div className="absolute inset-0 rounded-2xl ring-8 ring-black/20 [transform:rotateX(-4deg)]" />
     </div>
-    <div className="mt-2 flex justify-between text-xs text-zinc-500"><span>Discard tray</span><span>Fill shows cards already dealt</span></div>
+    <div className="mt-2 flex justify-between text-xs text-[var(--ink-muted)]"><span>Discard tray</span><span>Fill shows cards already dealt</span></div>
   </div>;
 }
 

@@ -3,8 +3,9 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
-import { pullRemoteData, pullRemoteJournalData, pushLocalDataToRemote } from "./sync";
+import { pullRemoteData, pushLocalDataToRemote } from "./sync";
 import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
+import { accountGeneration, migrateLegacyData } from "./accountStorage";
 import { setCurrentUser } from "./currentUser";
 import { analytics, observeApiRequest, type EventPropertyMap } from "../analytics";
 import { settleWithTimeout } from "@/lib/pwa/settleWithTimeout";
@@ -44,7 +45,7 @@ interface AuthState {
   loading: boolean;
   guest: boolean;
   passwordRecovery: boolean;
-  /** Reflects the most recent push/pull against Supabase; "error" only covers outright failures (e.g. offline), not row-level errors that are logged but otherwise swallowed. */
+  /** Only acknowledged uploads and successful reads count as synced. */
   syncStatus: SyncStatus;
   continueAsGuest(): void;
   exitGuest(): void;
@@ -67,90 +68,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
 
   useEffect(() => {
-    setGuest(localStorage.getItem(GUEST_KEY) === "1");
     let cancelled = false;
-    const runSync = (work: () => Promise<void>) => {
-      setSyncStatus("syncing");
-      work()
-        .then(() => { if (!cancelled) setSyncStatus("synced"); })
-        .catch((error) => {
-          console.error("[countlab] sync failed", error);
-          if (!cancelled) setSyncStatus("error");
-        });
+    let authEventSeen = false;
+    const preserveLegacy = () => {
+      try { migrateLegacyData(); }
+      catch (error) { console.error("[countlab] legacy history retained for recovery", error); }
     };
-    // AuthGate returns nothing while loading. A rejected or stalled session
-    // request (notably an offline expired-token cold start) must not blank it.
-    settleWithTimeout(
-      supabase.auth.getSession(),
-      sessionTimeoutMs(),
-      { data: { session: null } } as Awaited<ReturnType<typeof supabase.auth.getSession>>,
-    ).then(({ data }) => {
+    const apply = (next: User | null) => {
       if (cancelled) return;
-      setCurrentUser(data.session?.user ?? null);
-      setUser(data.session?.user ?? null);
+      setCurrentUser(next);
+      setUser(next);
       setLoading(false);
-      if (data.session?.user) {
-        // Retry any writes that failed while this device was offline or while
-        // the remote schema was being upgraded before merging its remote copy.
-        runSync(() => pushLocalDataToRemote().then(() => pullRemoteData(data.session!.user.id)));
-      }
-      const oauthIntent = sessionStorage.getItem(OAUTH_INTENT_KEY);
-      if (data.session?.user && oauthIntent === "sign-in") analytics.track("login_succeeded", { method: "google" });
-      if (oauthIntent) sessionStorage.removeItem(OAUTH_INTENT_KEY);
-    });
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      setCurrentUser(session?.user ?? null);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (event === "SIGNED_IN" && session?.user) {
-        // Any data recorded while browsing as a guest belongs to this account now.
-        // Push before pulling, so the pull's merge sees rows this device just
-        // wrote instead of racing a pull that started before the push landed.
-        runSync(() => pushLocalDataToRemote().then(() => pullRemoteData(session.user.id)));
-        localStorage.removeItem(GUEST_KEY);
-        setGuest(false);
-      }
-      if (event === "SIGNED_OUT") {
-        // Keep the device cache until a confirmed upload. Clearing it here can
-        // permanently lose journal entries when a background write failed.
-        setSyncStatus("idle");
-      }
-      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
-      if (event === "TOKEN_REFRESHED" && !session) analytics.track("auth_session_expired", { reason: "refresh_failed" });
-    });
-    const showJournalSyncError = () => { if (!cancelled) setSyncStatus("error"); };
-    addEventListener(JOURNAL_SYNC_ERROR_EVENT, showJournalSyncError);
-    return () => {
-      cancelled = true;
-      subscription.subscription.unsubscribe();
-      removeEventListener(JOURNAL_SYNC_ERROR_EVENT, showJournalSyncError);
+      if (next) { localStorage.removeItem(GUEST_KEY); setGuest(false); }
+      else setGuest(localStorage.getItem(GUEST_KEY) === "1");
     };
+    // Old shared caches require explicit recovery regardless of the current login.
+    settleWithTimeout(supabase.auth.getSession(), sessionTimeoutMs(),
+      { data: { session: null } } as Awaited<ReturnType<typeof supabase.auth.getSession>>)
+      .then(({ data }) => {
+        if (cancelled) return;
+        preserveLegacy();
+        if (!authEventSeen) apply(data.session?.user ?? null);
+        const intent = sessionStorage.getItem(OAUTH_INTENT_KEY);
+        if (data.session?.user && intent === "sign-in") analytics.track("login_succeeded", { method: "google" });
+        sessionStorage.removeItem(OAUTH_INTENT_KEY);
+      });
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      authEventSeen = true;
+      // A login is not evidence of ownership of the old shared cache.
+      preserveLegacy();
+      apply(session?.user ?? null);
+      if (event === "PASSWORD_RECOVERY") setPasswordRecovery(true);
+      if (event === "SIGNED_OUT") setPasswordRecovery(false);
+    });
+    return () => { cancelled = true; subscription.subscription.unsubscribe(); };
   }, []);
 
-  // Reconcile journal edits made on another device without requiring a page
-  // reload. Poll only while this tab is visible; returning to the tab pulls
-  // immediately, so background tabs do not create needless API traffic.
   useEffect(() => {
-    if (!user) return;
-    let refreshInFlight = false;
-    const refreshJournal = () => {
-      // Offline the pull can only fail, and each attempt drags the supabase
-      // client through its own retry budget. Wait for the connection instead.
-      if (document.hidden || refreshInFlight || navigator.onLine === false) return;
-      refreshInFlight = true;
-      pullRemoteJournalData(user.id)
-        .catch((error) => console.error("[countlab] journal refresh failed", error))
-        .finally(() => { refreshInFlight = false; });
+    if (!user) { setSyncStatus("idle"); return; }
+    const generation = accountGeneration();
+    let cancelled = false, inFlight = false, requested = false;
+    const current = () => !cancelled && generation === accountGeneration();
+    const reconcile = async () => {
+      if (!current() || document.hidden) return;
+      if (inFlight) { requested = true; return; }
+      if (navigator.onLine === false) { setSyncStatus("error"); return; }
+      inFlight = true;
+      requested = false;
+      setSyncStatus("syncing");
+      try {
+        let pushError: unknown;
+        try { await pushLocalDataToRemote(); } catch (error) { pushError = error; }
+        if (!current()) return;
+        await pullRemoteData(user.id);
+        if (pushError) throw pushError;
+        if (current() && !requested) setSyncStatus("synced");
+      } catch (error) {
+        if (current()) { console.error("[countlab] sync failed", error); setSyncStatus("error"); }
+      } finally {
+        inFlight = false;
+        if (requested && current()) void reconcile();
+      }
     };
-    const onVisibilityChange = () => { if (!document.hidden) refreshJournal(); };
-    const interval = window.setInterval(refreshJournal, 20_000);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    // Reconnecting should not wait out the rest of the poll interval.
-    window.addEventListener("online", refreshJournal);
+    let pendingTimer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => { void reconcile(); };
+    const pending = () => {
+      if (!current()) return;
+      setSyncStatus("syncing");
+      if (inFlight) requested = true;
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(refresh, 500);
+    };
+    const failed = () => { if (current()) setSyncStatus("error"); };
+    refresh();
+    const interval = window.setInterval(refresh, 20_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
+    window.addEventListener("countlab:sync-request", refresh);
+    window.addEventListener("countlab:sync-pending", pending);
+    window.addEventListener(JOURNAL_SYNC_ERROR_EVENT, failed);
     return () => {
+      cancelled = true;
+      clearTimeout(pendingTimer);
+      window.removeEventListener("countlab:sync-pending", pending);
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("online", refreshJournal);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("countlab:sync-request", refresh);
+      window.removeEventListener(JOURNAL_SYNC_ERROR_EVENT, failed);
     };
   }, [user]);
 
@@ -228,7 +234,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}><div key={user?.id ?? "guest"}>{children}</div></AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

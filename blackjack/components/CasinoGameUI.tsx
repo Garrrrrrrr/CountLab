@@ -83,10 +83,10 @@ export function BetSpot({
         onClick={onAdd}
         className={`pressable mx-auto grid h-20 w-20 place-items-center rounded-full border-2 text-center sm:h-24 sm:w-24 ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
       >
-        <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-zinc-500">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
+        <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
       </button>
-      {detail && <p className="mt-1 text-[.65rem] text-zinc-500">{detail}</p>}
-      {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-11 px-2 text-xs text-zinc-500 hover:text-white">Clear</button>}
+      {detail && <p className="mt-1 text-[.65rem] text-[var(--ink-muted)]">{detail}</p>}
+      {!locked && amount > 0 && onClear && <button type="button" onClick={onClear} className="mt-1 min-h-11 px-2 text-xs text-[var(--ink-muted)] hover:text-white">Clear</button>}
     </div>
   );
 }
@@ -104,7 +104,7 @@ export function CardRow({
 }) {
   return (
     <div className="text-center">
-      <p className="mb-2 text-[.65rem] font-bold uppercase tracking-[.18em] text-emerald-100/55">{label}</p>
+      <p className="mb-2 text-[.65rem] font-bold uppercase tracking-[.18em] text-[var(--accent)]/55">{label}</p>
       <div className="flex min-h-20 justify-start gap-1.5 overflow-x-auto pb-2 sm:justify-center sm:gap-2">
         {cards.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} size="table" animated dealIndex={index} fast />)}
         {Array.from({ length: hidden }, (_, index) => <PlayingCard key={`hidden-${index}`} hidden size="table" animated dealIndex={cards.length + index} fast />)}
@@ -149,18 +149,18 @@ export function CoachPanel({
   return (
     <Panel>
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Live coach</p>
-        {accuracyLabel && <span className="text-xs text-zinc-500">{accuracyLabel}</span>}
+        <p className="text-xs font-bold uppercase tracking-wider text-[var(--ink-muted)]">Live coach</p>
+        {accuracyLabel && <span className="text-xs text-[var(--ink-muted)]">{accuracyLabel}</span>}
       </div>
       {note ? (
         <div aria-live="polite" className={`mt-3 rounded-xl border p-4 ${note.ok ? "border-emerald-400/30 bg-emerald-400/[.07]" : "border-red-400/30 bg-red-400/[.07]"}`}>
-          <p className={`font-semibold ${note.ok ? "text-emerald-300" : "text-red-300"}`}>{note.ok ? "✓" : "!"} {note.title}</p>
-          <p className="mt-2 text-xs leading-5 text-zinc-300">{note.detail}</p>
+          <p className={`font-semibold ${note.ok ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{note.ok ? "✓" : "!"} {note.title}</p>
+          <p className="mt-2 text-xs leading-5 text-[var(--ink)]">{note.detail}</p>
         </div>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-zinc-400">{emptyHint}</p>
+        <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">{emptyHint}</p>
       )}
-      {pending && <p className="mt-2 text-xs text-amber-300">Coach is still calculating this decision…</p>}
+      {pending && <p className="mt-2 text-xs text-[var(--warning)]">Coach is still calculating this decision…</p>}
       {children}
     </Panel>
   );
@@ -179,7 +179,7 @@ export function EvMetrics({
   if (!loading && !entries.length) return null;
   return (
     <div className="mt-4">
-      {loading && !entries.length && <p className="text-sm text-zinc-400"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" /> Calculating EV…</p>}
+      {loading && !entries.length && <p className="text-sm text-[var(--ink-muted)]"><i className="fa-solid fa-circle-notch animate-spin" aria-hidden="true" /> Calculating EV…</p>}
       {entries.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {entries.map(([action, ev]) => (
@@ -187,7 +187,7 @@ export function EvMetrics({
           ))}
         </div>
       )}
-      {note && entries.length > 0 && <p className="mt-3 text-xs leading-5 text-zinc-500">{note}</p>}
+      {note && entries.length > 0 && <p className="mt-3 text-xs leading-5 text-[var(--ink-muted)]">{note}</p>}
     </div>
   );
 }
@@ -197,10 +197,10 @@ export function GameHistory({ rows }: { rows: GameHistoryRow[] }) {
     <div className="space-y-2">
       {rows.length ? rows.slice(0, 8).map((row) => (
         <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/20 p-3 text-sm">
-          <div><b>{row.result}</b><p className="mt-0.5 text-xs text-zinc-500">{row.detail}</p></div>
-          <div className="text-right"><b className={row.net >= 0 ? "text-emerald-300" : "text-red-300"}>{row.net >= 0 ? "+" : ""}${row.net.toFixed(2)}</b><p className="text-xs text-zinc-600">${row.bankroll.toFixed(2)}</p></div>
+          <div><b>{row.result}</b><p className="mt-0.5 text-xs text-[var(--ink-muted)]">{row.detail}</p></div>
+          <div className="text-right"><b className={row.net >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{row.net >= 0 ? "+" : ""}${row.net.toFixed(2)}</b><p className="text-xs text-[var(--ink-muted)]">${row.bankroll.toFixed(2)}</p></div>
         </div>
-      )) : <p className="py-8 text-center text-sm text-zinc-600">Completed rounds will appear here.</p>}
+      )) : <p className="py-8 text-center text-sm text-[var(--ink-muted)]">Completed rounds will appear here.</p>}
     </div>
   );
 }

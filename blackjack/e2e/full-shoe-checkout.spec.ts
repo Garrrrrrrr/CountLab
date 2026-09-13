@@ -6,7 +6,7 @@ async function prepareGuest(page: Page) {
     localStorage.setItem("countlab:analytics:consent_seen", "1");
     localStorage.setItem("countlab:analytics:consent", "denied");
     localStorage.setItem("countlab-install-dismissed", "1");
-    localStorage.setItem("hilo:settings", JSON.stringify({ surrender: "early" }));
+    localStorage.setItem("countlab:account:guest:hilo:settings", JSON.stringify({ surrender: "early" }));
   });
 }
 
@@ -58,7 +58,7 @@ test("checkout stays silent, completes a stacked shoe, and saves its report", as
   await expect(game.getByText("Decision review").first()).toBeVisible();
   await expect(game.getByText(/\$5 → 1 × \$10/).first()).toBeVisible();
 
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hilo:sessions") || "[]"));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:sessions") || "[]"));
   expect(saved[0]).toMatchObject({ drill: "Full Shoe", metrics: { mode: "checkout", stacked: true }, tags: ["checkout", "stacked", "early"] });
 
   // The grader strip marks the round whose wager was deliberately underbet,
@@ -198,7 +198,7 @@ test("custom ramp values grade and persist when the player ends the session earl
   await expect(game.getByRole("heading", { name: "Session Ended" })).toBeVisible();
   await expect(game.getByText("0 of 1 correct").first()).toBeVisible();
 
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("hilo:sessions") || "[]"));
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:sessions") || "[]"));
   expect(saved[0]).toMatchObject({
     drill: "Full Shoe",
     questions: 1,

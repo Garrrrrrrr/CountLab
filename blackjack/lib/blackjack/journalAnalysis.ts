@@ -1,4 +1,4 @@
-import { calculateAdvantage } from "./advantage";
+import { calculateAdvantage, recommendUnit } from "./advantage";
 import type { JournalSession } from "./journal";
 
 const Z95 = 1.95996398454;
@@ -242,6 +242,59 @@ export function journalCumulativeSeries(sessions: JournalSession[]): JournalCumu
       upper: Math.round(theoretical + Z95 * standardDeviation),
     };
   });
+}
+
+export interface BankrollHealth {
+  /** Bankroll the read is taken against: realized table results plus deposits and withdrawals. */
+  bankroll: number;
+  /** The unit actually being played, from the most recent session. */
+  bettingUnit: number;
+  /** Chance of losing the whole bankroll playing this game at this unit forever. */
+  riskOfRuin: number;
+  /** Unit that would hold ruin risk at `targetRisk` for this bankroll. */
+  recommendedUnit: number;
+  /** Current unit divided by the recommended one. Above 1 is overbetting the bankroll. */
+  unitRatio: number | null;
+  hourlyEv: number;
+  targetRisk: number;
+  /** The session the rules, ramp, pace and unit were read from. */
+  referenceDate: string;
+}
+
+/**
+ * What the bankroll actually supports right now, as opposed to what was
+ * assumed when the ramp was chosen. `theoreticalSessionOutcome` deliberately
+ * passes bankroll 0 because trip EV and SD do not depend on it — but risk of
+ * ruin does, and the journal is the one place that knows the real figure.
+ * The most recent session stands in for "the game currently being played";
+ * with no sessions, or with nothing left to risk, there is no read to give.
+ */
+export function bankrollHealth(sessions: JournalSession[], bankroll: number, targetRisk = 0.05): BankrollHealth | null {
+  const reference = orderSessions(sessions).at(-1);
+  if (!reference || !(bankroll > 0)) return null;
+  const result = calculateAdvantage({
+    bankroll,
+    bettingUnit: reference.bettingUnit,
+    playerHands: reference.playerHands,
+    handsByTrueCount: reference.handsByTrueCount,
+    handsPerHour: reference.handsPerHour,
+    hours: reference.hours,
+    rules: reference.rules,
+    ramp: reference.ramp,
+  });
+  const recommended = recommendUnit(bankroll, targetRisk, reference.rules, reference.ramp, reference.playerHands, reference.handsByTrueCount);
+  return {
+    bankroll,
+    bettingUnit: reference.bettingUnit,
+    riskOfRuin: result.riskOfRuin,
+    recommendedUnit: recommended,
+    // A game with no positive expectation has no unit that makes it safe, so
+    // there is no meaningful ratio to quote against it.
+    unitRatio: recommended > 0 && Number.isFinite(recommended) ? reference.bettingUnit / recommended : null,
+    hourlyEv: result.hourlyEv,
+    targetRisk,
+    referenceDate: reference.date,
+  };
 }
 
 /**
