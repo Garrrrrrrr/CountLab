@@ -191,6 +191,10 @@ export function Badge({ children, tone = "neutral", className = "" }: { children
 }
 export function Tabs<T extends string>({ value, onChange, items, label = "Sections", className = "", panelId }: { value: T; onChange: (value: T) => void; items: ReadonlyArray<{ value: T; label: string }>; label?: string; className?: string; panelId?: string }) {
   const id = useId();
+  // Public pages render these controls before their JavaScript arrives. Keep
+  // them unfocusable until hydration has attached the keyboard handlers.
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
   useEffect(() => { if (panelId) document.getElementById(panelId)?.setAttribute("aria-labelledby", `${id}-${value}`); }, [panelId, id, value]);
   return <div role={panelId ? "tablist" : "group"} aria-label={label} className={`mobile-scroll-rail flex gap-2 overflow-x-auto border-b border-[var(--rule)] pb-2 sm:flex-wrap ${className}`} onKeyDown={(event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -199,7 +203,7 @@ export function Tabs<T extends string>({ value, onChange, items, label = "Sectio
     const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
     onChange(items[next].value);
     event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
-  }}>{items.map((item) => <GhostButton key={item.value} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className={`shrink-0 whitespace-nowrap ${value === item.value ? "border-[var(--ink)] bg-[var(--ink)] !text-[var(--paper)]" : ""}`}>{item.label}</GhostButton>)}</div>;
+  }}>{items.map((item) => <GhostButton key={item.value} disabled={!ready} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className={`shrink-0 whitespace-nowrap ${value === item.value ? "border-[var(--ink)] bg-[var(--ink)] !text-[var(--paper)]" : ""}`}>{item.label}</GhostButton>)}</div>;
 }
 export function StickyBar({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-[var(--rule)] bg-[var(--paper-raised)]/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border ${className}`}>{children}</div>;

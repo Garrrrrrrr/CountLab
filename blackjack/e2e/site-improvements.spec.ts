@@ -24,12 +24,41 @@ test("reference tabs support arrow keys and link to their panel", async ({ page 
   await prepare(page);
   await page.goto("/reference/");
   const strategy = page.getByRole("tab", { name: "Strategy", exact: true });
+  await expect(strategy).toBeEnabled();
   await strategy.focus();
-  await page.keyboard.press("ArrowRight");
+  await expect(strategy).toBeFocused();
+  await strategy.press("ArrowRight");
   const deviations = page.getByRole("tab", { name: "Index deviations" });
   await expect(deviations).toBeFocused();
   await expect(deviations).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tabpanel")).toBeVisible();
+});
+
+test("reference tabs wait for their keyboard handlers when JavaScript is delayed", async ({ page }) => {
+  await prepare(page);
+  let releaseScripts!: () => void;
+  const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
+  await page.route(/\/_next\/.*\.js(?:\?.*)?$/, async (route) => {
+    await scriptsReady;
+    await route.continue();
+  });
+  try {
+    await page.goto("/reference/", { waitUntil: "commit" });
+    const strategy = page.getByRole("tab", { name: "Strategy", exact: true });
+    await expect(strategy).toBeVisible();
+    await expect(strategy).toBeDisabled();
+    releaseScripts();
+    await expect(strategy).toBeEnabled();
+    await strategy.focus();
+    await strategy.press("ArrowRight");
+    const deviations = page.getByRole("tab", { name: "Index deviations" });
+    await expect(deviations).toBeFocused();
+    await expect(deviations).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel")).toHaveAccessibleName("Index deviations");
+  } finally {
+    releaseScripts();
+    await page.unrouteAll({ behavior: "wait" });
+  }
 });
 
 test("tool search contains focus and navigates the selected keyboard result", async ({ page }) => {
