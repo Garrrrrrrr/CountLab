@@ -3,7 +3,7 @@
 import type { User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { supabase } from "./client";
-import { pullRemoteData, pushLocalDataToRemote } from "./sync";
+import { pullRemoteData, pullRemoteJournalData, pushLocalDataToRemote } from "./sync";
 import { JOURNAL_SYNC_ERROR_EVENT } from "../blackjack/journal";
 import { accountGeneration, migrateLegacyData } from "./accountStorage";
 import { setCurrentUser } from "./currentUser";
@@ -24,6 +24,8 @@ const OAUTH_INTENT_KEY = "countlab:auth-intent";
  */
 const SESSION_TIMEOUT_MS = 8000;
 const OFFLINE_SESSION_TIMEOUT_MS = 1200;
+/** Cross-device journal changes do not need sub-minute polling. */
+const JOURNAL_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const sessionTimeoutMs = () =>
   typeof navigator !== "undefined" && navigator.onLine === false ? OFFLINE_SESSION_TIMEOUT_MS : SESSION_TIMEOUT_MS;
@@ -108,44 +110,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) { setSyncStatus("idle"); return; }
     const generation = accountGeneration();
-    let cancelled = false, inFlight = false, requested = false;
+    type SyncWork = "upload" | "journal" | "full";
+    const priority: Record<SyncWork, number> = { upload: 1, journal: 2, full: 3 };
+    let cancelled = false, inFlight = false, requested: SyncWork | undefined;
+    let lastFullSyncAt = 0;
     const current = () => !cancelled && generation === accountGeneration();
-    const reconcile = async () => {
-      if (!current() || document.hidden) return;
-      if (inFlight) { requested = true; return; }
+    const queue = (work: SyncWork) => {
+      if (!requested || priority[work] > priority[requested]) requested = work;
+    };
+    const run = async (work: SyncWork) => {
+      if (!current() || (work !== "upload" && document.hidden)) return;
+      if (inFlight) { queue(work); return; }
       if (navigator.onLine === false) { setSyncStatus("error"); return; }
       inFlight = true;
-      requested = false;
       setSyncStatus("syncing");
       try {
-        let pushError: unknown;
-        try { await pushLocalDataToRemote(); } catch (error) { pushError = error; }
-        if (!current()) return;
-        await pullRemoteData(user.id);
-        if (pushError) throw pushError;
+        if (work === "full") {
+          // A full pass is reserved for sign-in, reconnect, explicit imports,
+          // and a foreground return after the refresh window has elapsed.
+          let pushError: unknown;
+          try { await pushLocalDataToRemote(); } catch (error) { pushError = error; }
+          if (!current()) return;
+          await pullRemoteData(user.id);
+          lastFullSyncAt = Date.now();
+          if (pushError) throw pushError;
+        } else if (work === "journal") {
+          // Journal refresh subsumes a queued upload so concurrent local edits
+          // cannot lose their retry when higher-priority pull work is queued.
+          let pushError: unknown;
+          try { await pushLocalDataToRemote(); } catch (error) { pushError = error; }
+          if (!current()) return;
+          await pullRemoteJournalData(user.id);
+          if (pushError) throw pushError;
+        } else {
+          // Local mutations already know exactly what changed. Retry pending
+          // writes without rereading every remote table afterward.
+          await pushLocalDataToRemote();
+        }
         if (current() && !requested) setSyncStatus("synced");
       } catch (error) {
         if (current()) { console.error("[countlab] sync failed", error); setSyncStatus("error"); }
       } finally {
         inFlight = false;
-        if (requested && current()) void reconcile();
+        const next = requested;
+        requested = undefined;
+        if (next && current()) void run(next);
       }
     };
     let pendingTimer: ReturnType<typeof setTimeout> | undefined;
-    const refresh = () => { void reconcile(); };
+    const fullSync = () => { void run("full"); };
+    const refreshJournal = () => { void run("journal"); };
+    const refreshAfterForeground = () => {
+      if (document.hidden) return;
+      if (Date.now() - lastFullSyncAt >= JOURNAL_REFRESH_INTERVAL_MS) fullSync();
+      else refreshJournal();
+    };
     const pending = () => {
       if (!current()) return;
       setSyncStatus("syncing");
-      if (inFlight) requested = true;
       clearTimeout(pendingTimer);
-      pendingTimer = setTimeout(refresh, 500);
+      pendingTimer = setTimeout(() => { void run("upload"); }, 500);
     };
     const failed = () => { if (current()) setSyncStatus("error"); };
-    refresh();
-    const interval = window.setInterval(refresh, 20_000);
-    document.addEventListener("visibilitychange", refresh);
-    window.addEventListener("online", refresh);
-    window.addEventListener("countlab:sync-request", refresh);
+    fullSync();
+    const interval = window.setInterval(refreshJournal, JOURNAL_REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshAfterForeground);
+    window.addEventListener("online", fullSync);
+    window.addEventListener("countlab:sync-request", fullSync);
     window.addEventListener("countlab:sync-pending", pending);
     window.addEventListener(JOURNAL_SYNC_ERROR_EVENT, failed);
     return () => {
@@ -153,9 +184,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(pendingTimer);
       window.removeEventListener("countlab:sync-pending", pending);
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", refresh);
-      window.removeEventListener("online", refresh);
-      window.removeEventListener("countlab:sync-request", refresh);
+      document.removeEventListener("visibilitychange", refreshAfterForeground);
+      window.removeEventListener("online", fullSync);
+      window.removeEventListener("countlab:sync-request", fullSync);
       window.removeEventListener(JOURNAL_SYNC_ERROR_EVENT, failed);
     };
   }, [user]);

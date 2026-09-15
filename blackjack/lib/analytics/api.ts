@@ -7,6 +7,11 @@ interface ApiResult {
   status?: number;
 }
 
+interface ApiObservationOptions {
+  /** Background reads can keep failure telemetry without writing a success event for every poll. */
+  trackSuccess?: boolean;
+}
+
 const category = (result: ApiResult): "auth" | "rate_limit" | "network" | "server" | "validation" | "other" => {
   const status = result.status ?? result.error?.status ?? 0;
   const message = `${result.error?.code ?? ""} ${result.error?.message ?? ""}`.toLowerCase();
@@ -23,6 +28,7 @@ export async function observeApiRequest<T extends ApiResult>(
   service: Service,
   operation: string,
   request: PromiseLike<T>,
+  options: ApiObservationOptions = {},
 ): Promise<T> {
   const started = performance.now();
   try {
@@ -30,7 +36,7 @@ export async function observeApiRequest<T extends ApiResult>(
     const duration_ms = Math.max(0, Math.round(performance.now() - started));
     if (result.error) {
       analytics.track("api_request_failed", { service, operation, duration_ms, error_category: category(result) });
-    } else {
+    } else if (options.trackSuccess !== false) {
       analytics.track("api_request_completed", { service, operation, duration_ms, status: result.status ?? 200 });
     }
     return result;

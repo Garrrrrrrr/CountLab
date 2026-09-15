@@ -22,15 +22,15 @@ export async function pullRemoteData(userId: string): Promise<void> {
   const generation = accountGeneration();
   const settingsBeforeRead = accountStorage.getItem("hilo:settings");
   const [settingsRes, sessionsRes, progressRes, bankrollsRes, journalSessionsRes, transactionsRes, shoeHeadersRes] = await Promise.all([
-    observeApiRequest("supabase", "sync_settings_read", supabase.from("settings").select("data").eq("user_id", userId).maybeSingle()),
-    allRows((from, to) => observeApiRequest("supabase", "sync_drill_sessions_read", supabase.from("drill_sessions").select("*").eq("user_id", userId).order("id").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "sync_drill_progress_read", supabase.from("drill_progress").select("*").eq("user_id", userId).order("drill").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "sync_journal_bankrolls_read", supabase.from("journal_bankrolls").select("*").eq("user_id", userId).order("id").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "sync_journal_sessions_read", supabase.from("journal_sessions").select("*").eq("user_id", userId).order("id").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "sync_journal_transactions_read", supabase.from("journal_transactions").select("*").eq("user_id", userId).order("id").range(from, to))),
+    observeApiRequest("supabase", "sync_settings_read", supabase.from("settings").select("data").eq("user_id", userId).maybeSingle(), { trackSuccess: false }),
+    allRows((from, to) => observeApiRequest("supabase", "sync_drill_sessions_read", supabase.from("drill_sessions").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "sync_drill_progress_read", supabase.from("drill_progress").select("*").eq("user_id", userId).order("drill").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "sync_journal_bankrolls_read", supabase.from("journal_bankrolls").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "sync_journal_sessions_read", supabase.from("journal_sessions").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "sync_journal_transactions_read", supabase.from("journal_transactions").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
     // Headers only: `rounds` holds every card and decision of a shoe, so it is
     // fetched one row at a time when a shoe is actually opened for review.
-    allRows((from, to) => observeApiRequest("supabase", "sync_full_shoe_reviews_read", supabase.from("full_shoe_reviews").select("id, saved_at, mode, completion_reason, table_rules, report").eq("user_id", userId).order("id").range(from, to))),
+    allRows((from, to) => observeApiRequest("supabase", "sync_full_shoe_reviews_read", supabase.from("full_shoe_reviews").select("id, saved_at, mode, completion_reason, table_rules, report").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
   ]);
 
   if (generation !== accountGeneration() || getCurrentUser()?.id !== userId) return;
@@ -135,9 +135,9 @@ export async function pullRemoteData(userId: string): Promise<void> {
 export async function pullRemoteJournalData(userId: string): Promise<void> {
   const generation = accountGeneration();
   const [bankrollsRes, journalSessionsRes, transactionsRes] = await Promise.all([
-    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_bankrolls", supabase.from("journal_bankrolls").select("*").eq("user_id", userId).order("id").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_sessions", supabase.from("journal_sessions").select("*").eq("user_id", userId).order("id").range(from, to))),
-    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_transactions", supabase.from("journal_transactions").select("*").eq("user_id", userId).order("id").range(from, to))),
+    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_bankrolls", supabase.from("journal_bankrolls").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_sessions", supabase.from("journal_sessions").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
+    allRows((from, to) => observeApiRequest("supabase", "journal_refresh_transactions", supabase.from("journal_transactions").select("*").eq("user_id", userId).order("id").range(from, to), { trackSuccess: false })),
   ]);
 
   if (generation !== accountGeneration() || getCurrentUser()?.id !== userId) return;
