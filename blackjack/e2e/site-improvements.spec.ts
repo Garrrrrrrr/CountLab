@@ -61,7 +61,8 @@ test("reference tabs wait for their keyboard handlers when JavaScript is delayed
   }
 });
 
-test("tool search contains focus and navigates the selected keyboard result", async ({ page }) => {
+test("tool search contains focus and navigates the selected keyboard result", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "The keyboard shortcut is desktop-only; mobile uses the visible navigation control.");
   await prepare(page);
   await page.goto("/");
   await page.keyboard.press("Control+k");
