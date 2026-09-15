@@ -1,4 +1,5 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 import { accountStorage } from "@/lib/supabase/accountStorage";
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Button, GhostButton, Metric, Panel, Select, Tabs } from "@/components/ui";
@@ -86,27 +87,17 @@ function CardBox({ target, title, cards, capacity, onClick, active, onActivate, 
 }
 export function UTHLab() {
     const [tab, setTab] = useState<Tab>("game"), [stage, setStage] = useState<Stage>(5), [target, setTarget] = useState<Target>("player"), [pickerSuit, setPickerSuit] = useState<SuitCode>("s"), [exposed, setExposed] = useState(true), [player, setPlayer] = useState(() => [parseCard("As"), parseCard("Qs")]), [dealer, setDealer] = useState(() => [parseCard("Kh")]), [board, setBoard] = useState(() => [parseCard("Js"), parseCard("8s"), parseCard("3c"), parseCard("2d"), parseCard("7h")]), [result, setResult] = useState<Result>(), [error, setError] = useState(""), [loading, setLoading] = useState(false), [samples, setSamples] = useState(256), [ante, setAnte] = useState(25), [rounds, setRounds] = useState(40), [setupLoaded, setSetupLoaded] = useState(false);
-    const worker = useRef<Worker | null>(null), request = useRef(0), selected = useMemo(() => new Set([...player, ...dealer, ...board]), [player, dealer, board]);
-    const connectWorker = () => {
-        const instance = new Worker(new URL("../workers/uth.worker.ts", import.meta.url));
-        worker.current = instance;
-        instance.onmessage = (event: MessageEvent<Result & {
-            id: number;
-            error?: string;
-        }>) => {
-            if (instance !== worker.current || event.data.id !== request.current)
-                return;
+    const request = useRef(0), selected = useMemo(() => new Set([...player, ...dealer, ...board]), [player, dealer, board]);
+    const worker = useCalculationWorker(
+        () => new Worker(new URL("../workers/uth.worker.ts", import.meta.url)),
+        (event: MessageEvent<Result & { id: number; error?: string }>) => {
+            if (event.data.id !== request.current) return;
             setLoading(false);
-            if (event.data.error)
-                setError(event.data.error);
-            else
-                setResult(event.data);
-        };
-        instance.onerror = () => { if (instance !== worker.current)
-            return; setLoading(false); setError("Calculation stopped unexpectedly. Try again."); instance.terminate(); worker.current = null; };
-        return instance;
-    };
-    useEffect(() => () => worker.current?.terminate(), []);
+            if (event.data.error) setError(event.data.error);
+            else setResult(event.data);
+        },
+        (message) => { setLoading(false); setError(message); },
+    );
     useEffect(() => { const saved = readUTHSetup(); if (saved) {
         if (!location.hash)
             setTab(saved.tab);
@@ -128,7 +119,7 @@ export function UTHLab() {
     catch { /* Persistence is optional when storage is unavailable. */ } }, [ante, board, dealer, exposed, pickerSuit, player, rounds, samples, setupLoaded, stage, tab, target]);
     useEffect(() => { const restore = () => { const value = location.hash.slice(1); if (["game", "strategy", "analyzer", "simulation"].includes(value))
         setTab(value as Tab); }; restore(); window.addEventListener("hashchange", restore); return () => window.removeEventListener("hashchange", restore); }, []);
-    const clear = () => { request.current++; worker.current?.terminate(); worker.current = null; setLoading(false); setResult(undefined); setError(""); };
+    const clear = () => { request.current++; worker.terminate(); setLoading(false); setResult(undefined); setError(""); };
     const changeStage = (value: Stage) => { setStage(value); setBoard(cards => cards.slice(0, value)); setTarget("board"); clear(); };
     const remove = (card: number) => { setPlayer(x => x.filter(c => c !== card)); setDealer(x => x.filter(c => c !== card)); setBoard(x => x.filter(c => c !== card)); clear(); };
     const add = (card: number) => { if (selected.has(card))
@@ -147,7 +138,7 @@ export function UTHLab() {
     const analyze = () => { if (player.length !== 2)
         return setError("Select exactly two player cards."); if (board.length !== stage)
         return setError(`Select exactly ${stage} community cards.`); if (exposed && dealer.length !== 1)
-        return setError("Select exactly one exposed dealer card."); setLoading(true); setError(""); setResult(undefined); (worker.current ?? connectWorker()).postMessage({ id: ++request.current, state: { player, board, ...(exposed ? { dealerVisible: dealer[0] } : {}) }, samples }); };
+        return setError("Select exactly one exposed dealer card."); setLoading(true); setError(""); setResult(undefined); worker.postMessage({ id: ++request.current, state: { player, board, ...(exposed ? { dealerVisible: dealer[0] } : {}) }, samples }); };
     return <>
     <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Exact late-stage EV and exposed-card research</p><h1 className="mt-2 text-3xl font-semibold">Ultimate Texas Hold&apos;em</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-[var(--ink-muted)]">Analyze standard UTH or condition every legal decision on exactly one exposed dealer card—never the hidden card.</p></div><a className="min-h-11 text-sm text-[var(--accent)] hover:underline" href="https://wizardofodds.com/games/ultimate-texas-hold-em/" target="_blank" rel="noreferrer">Wizard rules source ↗</a></div>
     <Tabs label="Ultimate Texas Hold'em sections" panelId="uth-panel" value={tab} onChange={(value) => { setTab(value); history.replaceState(null, "", `#${value}`); }} items={[{ value: "game", label: "Play" }, { value: "strategy", label: "Strategy" }, { value: "analyzer", label: "Analyzer" }, { value: "simulation", label: "Hourly figures" }]} className="mt-5"/>

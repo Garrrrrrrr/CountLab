@@ -45,8 +45,8 @@ jobs:
           npx playwright install --with-deps chromium
           npm test
           npm run lint
-          npm run test:e2e
           npm run build
+          npm run test:e2e
       - name: Assemble site
         run: |
           mkdir -p _site
@@ -61,3 +61,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify deployed calculations
+        working-directory: blackjack
+        env:
+          COUNTLAB_E2E_URL: https://countlab.ca
+        run: npx playwright test e2e/production-regressions.spec.ts --project=desktop-chromium --grep "service worker allow" --retries=2

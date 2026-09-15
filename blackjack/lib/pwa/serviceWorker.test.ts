@@ -212,3 +212,23 @@ describe("sw.js offline fetch", () => {
     expect(response.type).toBe("error");
   });
 });
+
+
+describe("worker bootstrap responses", () => {
+  it.each(["worker", "sharedworker"])("preserves the request fragment for a cached %s", async (destination) => {
+    const worker = loadWorker("abc123", cacheStorage);
+    const url = `${ORIGIN}/_next/static/chunks/solver.js`;
+    const response = new Response("worker code", { headers: { "content-type": "text/javascript" } });
+    // Real network/cache responses carry the fetch URL, without #params.
+    Object.defineProperty(response, "url", { value: url });
+    await (await cacheStorage.open("countlab-abc123")).put(url, response);
+    online = false;
+    const request = new Request(url);
+    Object.defineProperty(request, "destination", { value: destination });
+    const result = (await worker.dispatch("fetch", request))!;
+    expect(result.url).toBe("");
+    expect(result.status).toBe(200);
+    expect(result.headers.get("content-type")).toBe("text/javascript");
+    expect(await result.text()).toBe("worker code");
+  });
+});

@@ -1,4 +1,5 @@
 "use client";
+import { CALCULATION_ERROR } from "@/lib/useCalculationWorker";
 import { accountStorage } from "@/lib/supabase/accountStorage";
 
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -159,14 +160,31 @@ export function ChaseFlushLab() {
     try{accountStorage.setItem(CHASE_SETUP_KEY,JSON.stringify({mode,stage,target,pickerSuit,player,dealer,board,policy,sixCardPayout} satisfies SavedChaseSetup));}catch{/* Persistence is optional when storage is unavailable. */}
   },[board,dealer,mode,pickerSuit,player,policy,setupLoaded,sixCardPayout,stage,target]);
 
-  useEffect(() => {
+  const stopWorkers = useCallback(() => {
+    for (const instance of workers.current) instance.terminate();
+    workers.current = [];
+  }, []);
+  useEffect(() => stopWorkers, [stopWorkers]);
+  const failCalculation = useCallback((message: string) => {
+    requestId.current += 1;
+    stopWorkers();
+    openingJob.current = undefined;
+    solveJob.current = undefined;
+    setLoading(false);
+    setProvisional(undefined);
+    setPracticeChoice(undefined);
+    setError(message);
+  }, [stopWorkers]);
+  const connectWorkers = useCallback(() => {
+    if (workers.current.length) return;
+
     const workerCount=window.innerWidth<768?2:Math.min(4,Math.max(2,navigator.hardwareConcurrency||2));
-    const instances=Array.from({length:workerCount},()=>new Worker(new URL("../workers/chaseFlush.worker.ts",import.meta.url)));
-    workers.current=instances;
+    const instances = workers.current;
+    for (let index = 0; index < workerCount; index += 1) instances.push(new Worker(new URL("../workers/chaseFlush.worker.ts", import.meta.url)));
     for(const instance of instances)instance.onmessage=(event:MessageEvent<WorkerResponse>)=>{
       const data=event.data;
       if(data.id!==requestId.current)return;
-      if(data.error){setLoading(false);setError(data.error);return;}
+      if(data.error){failCalculation(data.error);return;}
       if("kind" in data&&data.kind==="provisional"){
         setProvisional(data.decision);
         return;
@@ -190,8 +208,16 @@ export function ChaseFlushLab() {
       const job=solveJob.current;
       if(job?.id===data.id){void writeExactDecision(exactKey(job.informed,job.sixCardPayout),completed.informed);if(completed.normal)void writeExactDecision(exactKey(job.normal,job.sixCardPayout),completed.normal);}
     };
-    return()=>{for(const instance of instances)instance.terminate();workers.current=[];};
-  }, []);
+    for (const instance of instances) {
+      const fail = (event: Event) => {
+        if (!workers.current.includes(instance)) return;
+        event.preventDefault();
+        failCalculation(CALCULATION_ERROR);
+      };
+      instance.onerror = fail;
+      instance.onmessageerror = fail;
+    }
+  }, [failCalculation]);
 
   useEffect(() => {
     if (!result || !practiceChoice) return;
@@ -213,6 +239,7 @@ export function ChaseFlushLab() {
 
   useEffect(() => { const restore = () => { const value = location.hash.slice(1); if (["game", "analyze", "practice", "strategy", "research"].includes(value)) setMode(value as typeof mode); }; restore(); addEventListener("hashchange", restore); return () => removeEventListener("hashchange", restore); }, []);
   const clearResult = () => {
+    stopWorkers();
     requestId.current++;
     openingJob.current=undefined;
     solveJob.current=undefined;
@@ -275,7 +302,6 @@ export function ChaseFlushLab() {
     if (player.length !== 3) return setError("Select exactly three player cards.");
     if (board.length !== stage) return setError(`Select exactly ${stage} community cards for this stage.`);
     if (informationActive && dealer.length !== 1) return setError("Select the exposed dealer card for this information policy.");
-    if (!workers.current.length) return setError("The calculation workers are not ready yet.");
     const id = ++requestId.current;
     const samples = 1; // Direct UI decisions are exhaustive; retained for worker API compatibility.
     const base:InfoState = { player, board };
@@ -291,6 +317,8 @@ export function ChaseFlushLab() {
     if(informedCached&&(omitNormal||normalCached)){
       setResult({informed:informedCached,normal:omitNormal?undefined:normalCached,stability:0,stableAction:true,source:"cache"});setLoading(false);return;
     }
+    try {
+    connectWorkers();
     if(stage===0){
       const pool=workers.current,totalRemaining=52-player.length-(informed.dealerVisible===undefined?0:1),totalBoards=totalRemaining*(totalRemaining-1)*(totalRemaining-2)*(totalRemaining-3)/24;
       // Array(length) is sparse, and Array.prototype.every skips empty slots.
@@ -302,7 +330,8 @@ export function ChaseFlushLab() {
     }
     solveJob.current={id,informed,normal,omitNormal,sixCardPayout};
     workers.current[0].postMessage({id,kind:"solve",informed,normal,samples,sixCardPayout});
-  }, [board, dealer, informationActive, player, sixCardPayout, stage]);
+    } catch { failCalculation(CALCULATION_ERROR); }
+  }, [board, dealer, informationActive, player, sixCardPayout, stage, connectWorkers, failCalculation]);
 
   const choosePractice = (action: string) => {
     if (loading || practiceChoice) return;
@@ -401,6 +430,7 @@ export function ChaseFlushLab() {
                   <div className="grid grid-cols-2 gap-2">{availableActions(stage).map((action) => <GhostButton className="w-full" key={action} disabled={loading || Boolean(practiceChoice)} onClick={() => choosePractice(action)}>{action.toUpperCase()}</GhostButton>)}</div>
                 </div>
               )}
+              {loading && <GhostButton className="mt-3" onClick={clearResult}>Cancel calculation</GhostButton>}
               {error && <p role="alert" className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-[var(--negative)]">{error}</p>}
             </Panel>
 

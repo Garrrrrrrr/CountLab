@@ -49,6 +49,8 @@ export function SessionSummary({
       <div className="grid gap-3 sm:flex sm:flex-wrap">
         {onRetry && session.mistakes.length > 0 && <GhostButton className="w-full sm:w-auto" onClick={onRetry}>Retry mistakes</GhostButton>}
         <Button className="w-full sm:w-auto" onClick={onNew}>New session</Button>
+        {session.drill === "Running Count" && <ButtonLink href="/training/basic-strategy" variant="quiet">Next: Basic strategy</ButtonLink>}
+        {session.drill === "Basic Strategy" && <ButtonLink href="/training/true-count" variant="quiet">Next: True count</ButtonLink>}
         <ButtonLink  href="/dashboard"  variant="quiet" className="block w-full sm:w-auto">Dashboard</ButtonLink>
       </div>
     </div>

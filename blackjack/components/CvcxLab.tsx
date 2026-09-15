@@ -505,7 +505,6 @@ export function CvcxLab() {
 
   return (
     <>
-      <ScenarioPicker onLoad={loadCvcxTemplate} current={currentCvcxConfig} />
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">
@@ -521,6 +520,7 @@ export function CvcxLab() {
           {decks}D · {dealt} dealt · Hi-Lo
         </div>
       </div>
+      <ScenarioPicker onLoad={loadCvcxTemplate} current={currentCvcxConfig} />
 
       {/* Pinned directly under the app header so the four numbers everything
           else exists to produce stay readable while the reader works down the

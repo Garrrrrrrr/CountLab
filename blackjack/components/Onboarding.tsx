@@ -20,7 +20,7 @@ interface ChecklistItem {
 
 const ITEMS: ChecklistItem[] = [
   { id: "rules", label: "Set your table rules", href: "/settings", autoDone: () => accountStorage.getItem("countlab:onboarding-rules-saved") === "1" },
-  { id: "drill", label: "Try a counting drill", href: "/training/true-count", autoDone: () => storage.sessions().length > 0 },
+  { id: "drill", label: "Try a counting drill", href: "/training/running-count?session=starter", autoDone: () => storage.sessions().length > 0 },
   { id: "journal", label: "Log your first session", href: "/journal", autoDone: () => journalLibrary.sessions().length > 0 },
   { id: "bankroll", label: "Build a bankroll and bet ramp", href: "/cvcx", autoDone: () => cvcxLibrary.templates().length > 0 },
 ];

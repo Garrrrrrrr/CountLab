@@ -523,12 +523,12 @@ export function SessionJournal() {
 
   return (
     <>
-      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBettingUnit(c.baseBet); setHours(c.hours); setHandsPerHour(c.handsPerHour); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setSpread("Custom"); setHandsByCount(Object.fromEntries(templateHandSchedule(c).map((point) => [point.trueCount, point.hands]))); }} />
       <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Journal · Bankroll</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-.03em] sm:text-4xl">Session Journal</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--ink-muted)] sm:text-base">Log real results and compare them against the theoretical EV for the exact rules and ramp you played, not a generic benchmark.</p>
       </div>
+      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBettingUnit(c.baseBet); setHours(c.hours); setHandsPerHour(c.handsPerHour); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setSpread("Custom"); setHandsByCount(Object.fromEntries(templateHandSchedule(c).map((point) => [point.trueCount, point.hands]))); }} />
 
       {/* Pinned directly under the app header so the numbers everything else
           exists to produce stay readable while the reader works down the
@@ -554,7 +554,7 @@ export function SessionJournal() {
             </div>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
+            <label className="grid min-w-0 flex-1 gap-2 text-sm text-[var(--ink-muted)]">New bankroll name<input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
             <GhostButton onClick={addBankroll} disabled={!newBankrollName.trim()}><i className="fa-solid fa-plus mr-2" />Add</GhostButton>
             {selectedBankrollId !== "all" && (
               <>
@@ -645,7 +645,7 @@ export function SessionJournal() {
                 </Select>
               )}
               <div className="mt-2 flex gap-2">
-                <input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
+                <label className="grid min-w-0 flex-1 gap-2 text-sm text-[var(--ink-muted)]">Venue name<input value={venuePresetName} onChange={(event) => setVenuePresetName(event.target.value)} placeholder="Venue name (e.g. Downtown casino)" className="field min-h-11 min-w-0 flex-1 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
                 <GhostButton onClick={saveVenuePreset} disabled={!venuePresetName.trim()}>Save venue</GhostButton>
               </div>
             </div>
@@ -700,7 +700,7 @@ export function SessionJournal() {
           icon="fa-chart-line"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-[var(--ink-muted)]">Cumulative across logged sessions in range, with a 95% band from combined session variance.</p>
+            <p className="text-xs text-[var(--ink-muted)]">Cumulative net results for the selected sessions. The 95% modeled outcome band combines variance using each session’s saved rules, ramp, and duration; it is not a confidence interval for average EV.</p>
             <div className="flex gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
               {RANGE_OPTIONS.map(([value, label]) => (
                 <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{label}</button>
@@ -713,7 +713,7 @@ export function SessionJournal() {
             <>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${hoursLabel(aggregate.totalHours)} · ${aggregate.sessionCount} session${aggregate.sessionCount === 1 ? "" : "s"}`} />
-                <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% CI ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
+                <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% modeled outcome range ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
                 <Metric label="Accumulated SD" value={`± ${money(aggregate.combinedStandardDeviation, 0)}`} sub={aggregate.combinedZ === null ? "No variance to measure yet" : `z = ${aggregate.combinedZ.toFixed(2)}${aggregate.resultPercentile === null ? "" : ` · ${ordinal(Math.round(aggregate.resultPercentile * 100))} percentile`}`} />
                 <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
               </div>
@@ -753,7 +753,7 @@ export function SessionJournal() {
           icon="fa-table-list"
         >
           <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} aria-label="Search journal sessions" placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" />
+            <label className="grid min-w-0 flex-1 gap-2 text-sm text-[var(--ink-muted)]">Search journal sessions<input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} aria-label="Search journal sessions" placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
             <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
               {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
             </div>

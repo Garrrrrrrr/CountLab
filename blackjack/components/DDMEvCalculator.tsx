@@ -1,6 +1,7 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button, GhostButton, NumberField, Panel, Select } from "@/components/ui";
 import { ACTION_NAMES, handValue, hiLoTag, recommendAction, trueCount, type DDMAction, type DDMCard, type DDMRank } from "@/lib/ddm/engine";
 import type { ExactEvInput, ExactEvResult } from "@/lib/ddm/exactEv";
@@ -28,13 +29,11 @@ export function DDMEvCalculator() {
   const [durationMs, setDurationMs] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const worker = useRef<Worker | undefined>(undefined);
   const requestId = useRef(0);
 
-  useEffect(() => {
-    const instance = new Worker(new URL("../workers/ddmExact.worker.ts", import.meta.url));
-    worker.current = instance;
-    instance.onmessage = (event: MessageEvent<WorkerResponse>) => {
+  const worker = useCalculationWorker(
+    () => new Worker(new URL("../workers/ddmExact.worker.ts", import.meta.url)),
+    (event: MessageEvent<WorkerResponse>) => {
       if (event.data.id !== requestId.current) return;
       setLoading(false);
       setDurationMs(event.data.durationMs);
@@ -45,11 +44,12 @@ export function DDMEvCalculator() {
         setError("");
         setResult(event.data.result);
       }
-    };
-    return () => instance.terminate();
-  }, []);
+    },
+    (message) => { setLoading(false); setError(message); },
+  );
 
   const invalidate = () => {
+    worker.terminate();
     requestId.current += 1;
     setLoading(false);
     setResult(undefined);
@@ -67,14 +67,13 @@ export function DDMEvCalculator() {
   const value = player.length ? handValue(player.map(virtualCard)) : undefined;
 
   const calculate = () => {
-    if (!worker.current) return;
     if (!player.length) return setError("Add at least one player card.");
     if (value?.bust) return setError("The selected player hand is already busted.");
     const id = ++requestId.current;
     setLoading(true);
     setError("");
     setResult(undefined);
-    worker.current.postMessage({ id, input: { decks, player, dealerUp, deadCards } satisfies ExactEvInput });
+    worker.postMessage({ id, input: { decks, player, dealerUp, deadCards } satisfies ExactEvInput });
   };
 
   const setDead = (rank: DDMRank, raw: number) => {
@@ -136,7 +135,7 @@ export function DDMEvCalculator() {
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[var(--ink-muted)]"><span>RC <b className="text-[var(--ink)]">{runningCount >= 0 ? "+" : ""}{runningCount}</b></span><span>TC <b className="text-[var(--ink)]">{tc >= 0 ? "+" : ""}{tc}</b></span><span>{decks * 52 - exposedCount} unseen cards</span><span>Chart play <b className="text-[var(--ink)]">{strategy ? ACTION_NAMES[strategy.action] : "—"}</b></span></div>
         </Panel>
 
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl bg-[var(--paper-raised)] p-2 shadow-2xl backdrop-blur lg:static lg:bg-transparent lg:p-0 lg:shadow-none"><Button className="w-full sm:w-auto" onClick={calculate} disabled={loading}>{loading ? "Enumerating every continuation…" : "Calculate exact EV"}</Button></div>
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 rounded-2xl bg-[var(--paper-raised)] p-2 shadow-2xl backdrop-blur lg:static lg:bg-transparent lg:p-0 lg:shadow-none"><Button className="w-full sm:w-auto" onClick={calculate} disabled={loading}>{loading ? "Enumerating every continuation…" : "Calculate exact EV"}</Button>{loading && <GhostButton className="ml-2" onClick={invalidate}>Cancel calculation</GhostButton>}</div>
         {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-400/[.06] p-4 text-sm text-[var(--negative)]">{error}</p>}
       </div>
 

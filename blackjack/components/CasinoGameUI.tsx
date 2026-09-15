@@ -103,12 +103,12 @@ export function CardRow({
   empty?: number;
 }) {
   return (
-    <div className="text-center">
+    <div className="min-w-0 text-center">
       <p className="mb-2 text-[.65rem] font-bold uppercase tracking-[.18em] text-[var(--accent)]/55">{label}</p>
       <div className="flex min-h-20 justify-start gap-1.5 overflow-x-auto pb-2 sm:justify-center sm:gap-2">
         {cards.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} size="table" animated dealIndex={index} fast />)}
         {Array.from({ length: hidden }, (_, index) => <PlayingCard key={`hidden-${index}`} hidden size="table" animated dealIndex={cards.length + index} fast />)}
-        {Array.from({ length: empty }, (_, index) => <div key={`empty-${index}`} className="h-20 w-14 rounded-xl border border-dashed border-white/10 lg:h-28 lg:w-20 2xl:h-32 2xl:w-24" />)}
+        {Array.from({ length: empty }, (_, index) => <div key={`empty-${index}`} className="h-20 w-14 shrink-0 rounded-xl border border-dashed border-white/10 lg:h-28 lg:w-20 2xl:h-32 2xl:w-24" />)}
       </div>
     </div>
   );
@@ -116,7 +116,7 @@ export function CardRow({
 
 export function CasinoTable({ children }: { children: ReactNode }) {
   return (
-    <section className="relative overflow-hidden rounded-[1.5rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_20%,#176144_0%,#0d3b2b_48%,#08271e_100%)] p-3 shadow-[inset_0_0_90px_#0007,0_24px_70px_#0006] sm:rounded-[2rem] sm:p-6 lg:p-8">
+    <section className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-emerald-200/15 bg-[radial-gradient(circle_at_50%_20%,#176144_0%,#0d3b2b_48%,#08271e_100%)] p-3 shadow-[inset_0_0_90px_#0007,0_24px_70px_#0006] sm:rounded-[2rem] sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-3 rounded-[1.5rem] border border-amber-100/10" />
       <div className="relative">{children}</div>
     </section>

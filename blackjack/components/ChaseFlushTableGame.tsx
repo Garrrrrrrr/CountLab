@@ -1,4 +1,5 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 import { useEffect, useRef, useState } from "react";
 import { Button, GhostButton, MobileActionDock, NumberField, Panel, Select } from "@/components/ui";
 import {
@@ -61,26 +62,25 @@ export function ChaseFlushTableGame({
     [coachStats, setCoachStats] = useState({ correct: 0, total: 0 }),
     [decision, setDecision] = useState<Decision>(),
     [decisionLoading, setDecisionLoading] = useState(false);
+  const [decisionError, setDecisionError] = useState("");
   const locked = phase !== "betting";
   const cards = (values: number[]) => values.map((card) => gameCard(card, cardName));
   const revealAt = (target: Phase) => reveal === "all" && target !== "betting" || reveal === "from2" && ["board", "river"].includes(target) || reveal === "final" && target === "river";
   const revealDealer = revealAt(phase);
-  const worker = useRef<Worker | undefined>(undefined);
   const requestId = useRef(0);
   const tableViewportRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const instance = new Worker(new URL("../workers/chaseFlush.worker.ts", import.meta.url));
-    worker.current = instance;
-    instance.onmessage = (event: MessageEvent<WorkerResponse>) => {
+  const worker = useCalculationWorker(
+    () => new Worker(new URL("../workers/chaseFlush.worker.ts", import.meta.url)),
+    (event: MessageEvent<WorkerResponse>) => {
       if (event.data.id !== requestId.current) return;
       setDecisionLoading(false);
-      if (event.data.error) return;
+      if (event.data.error) { setDecisionError(event.data.error); return; }
       const resolved = event.data.kind === "provisional" ? event.data.decision : event.data.informed;
       if (resolved) setDecision(resolved);
-    };
-    return () => instance.terminate();
-  }, []);
+    },
+    (message) => { setDecisionLoading(false); setDecisionError(message); },
+  );
   useEffect(() => {
     if (phase === "betting" || !matchMedia("(max-width: 1023px)").matches) return;
     const frame = requestAnimationFrame(() => tableViewportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -88,15 +88,17 @@ export function ChaseFlushTableGame({
   }, [phase]);
 
   const requestDecision = (state: InfoState, samples: number) => {
-    if (!worker.current) return;
+    worker.terminate();
+    setDecisionError("");
     setDecisionLoading(true);
     setDecision(undefined);
     const id = ++requestId.current;
-    if (state.board.length === 0) worker.current.postMessage({ id, kind: "provisional", state, samples, sixCardPayout });
-    else worker.current.postMessage({ id, informed: state, normal: state, samples, sixCardPayout });
+    if (state.board.length === 0) worker.postMessage({ id, kind: "provisional", state, samples, sixCardPayout });
+    else worker.postMessage({ id, informed: state, normal: state, samples, sixCardPayout });
   };
 
   const deal = () => {
+    worker.terminate(); requestId.current += 1; setDecisionLoading(false); setDecisionError("");
     if (ante <= 0) return setMessage("Place an Ante first.");
     if (ante * 5 > bankroll) return setMessage(`Keep at least $${money(ante * 5)} available for Ante, X-Tra, and a possible 3x All-In bet.`);
     const deck = shuffledDeck();
@@ -124,6 +126,7 @@ export function ChaseFlushTableGame({
     track("chase_flush_decision", { street, choice, expected, ok, method: decision.method });
   };
   const finish = (multiplier: number, folded = false) => {
+    worker.terminate(); requestId.current += 1; setDecisionLoading(false); setDecisionError("");
     const playerCards = [...player, ...board];
     const dealerCards = [...dealer, ...board];
     const breakdown = folded ? foldBreakdown() : settleBreakdown(playerCards, dealerCards, multiplier, sixCardPayout);
@@ -154,7 +157,7 @@ export function ChaseFlushTableGame({
   </>;
 
   return (
-    <div className="mt-5 grid gap-5 pb-24 lg:pb-0 xl:grid-cols-[1fr_320px]">
+    <div className="mt-5 grid grid-cols-1 gap-5 pb-24 lg:pb-0 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
         <div ref={tableViewportRef} className="scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <CasinoTable>
@@ -170,7 +173,8 @@ export function ChaseFlushTableGame({
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 hidden flex-wrap justify-center gap-2 lg:flex">{actionButtons}</div>
           {(phase === "opening" || phase === "board" || phase === "river") && (
-            <EvMetrics evs={decision?.evs} loading={decisionLoading} note="Opening EV is a Monte Carlo estimate (the exact opening solve is too slow for live play); the second decision and final call are exact." />
+            <>{decisionError && <div role="alert" className="mb-3 text-sm text-[var(--negative)]">{decisionError}<GhostButton className="ml-2" onClick={() => { setDecisionError(""); setDecisionLoading(true); worker.retry(); }}>Retry calculation</GhostButton></div>}
+            <EvMetrics evs={decision?.evs} loading={decisionLoading} note="Opening EV is a Monte Carlo estimate (the exact opening solve is too slow for live play); the second decision and final call are exact." /></>
           )}
         </CasinoTable>
         </div>

@@ -1,0 +1,892 @@
+﻿[
+    {
+        "name":  "simulation-shoes",
+        "route":  "/simulation/",
+        "url":  "https://countlab.ca/simulation/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Session Simulator",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "simulation-fast",
+        "route":  "/simulation/",
+        "url":  "https://countlab.ca/simulation/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Session Simulator",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "uth-analyzer",
+        "route":  "/ultimate-texas-holdem/#analyzer",
+        "url":  "https://countlab.ca/ultimate-texas-holdem/#analyzer",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Ultimate Texas Hold\u0027em",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Analyzer",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "uth-deal",
+        "route":  "/ultimate-texas-holdem/#game",
+        "url":  "https://countlab.ca/ultimate-texas-holdem/#game",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Ultimate Texas Hold\u0027em",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Play",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "uth-strategy",
+        "route":  "/ultimate-texas-holdem/#strategy",
+        "url":  "https://countlab.ca/ultimate-texas-holdem/#strategy",
+        "errors":  [
+
+                   ],
+        "actionError":  "page.goto: Timeout 7000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://countlab.ca/ultimate-texas-holdem/#strategy\", waiting until \"networkidle\"\u001b[22m\n",
+        "styles":  [
+                       {
+                           "text":  "Ultimate Texas Hold\u0027em",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Strategy",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "uth-hourly",
+        "route":  "/ultimate-texas-holdem/#simulation",
+        "url":  "https://countlab.ca/ultimate-texas-holdem/#simulation",
+        "errors":  [
+
+                   ],
+        "actionError":  "page.goto: Timeout 7000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://countlab.ca/ultimate-texas-holdem/#simulation\", waiting until \"networkidle\"\u001b[22m\n",
+        "styles":  [
+                       {
+                           "text":  "Ultimate Texas Hold\u0027em",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Hourly figures",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-deal",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Play",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-analyzer",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/#analyze",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Analyzer",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       },
+                       {
+                           "text":  "Board\n2x or check",
+                           "color":  "rgb(110, 231, 183)",
+                           "background":  "rgba(16, 185, 129, 0.15)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-practice",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/#practice",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Practice",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       },
+                       {
+                           "text":  "Board\n2x or check",
+                           "color":  "rgb(110, 231, 183)",
+                           "background":  "rgba(16, 185, 129, 0.15)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-strategy",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/#strategy",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Strategy",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-research",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/#research",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Research",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-buyin",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Play Game",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-ev",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/#calculator",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "EV Calculator",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-hand",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/#hand",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Hand EV Analyzer",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-strategy",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/#strategy",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Strategy",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-deviations",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/#deviations",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Deviations",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "ddm-edge",
+        "route":  "/double-down-madness/",
+        "url":  "https://countlab.ca/double-down-madness/#edge",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Double Down Madness",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Edge \u0026 Spread",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(16, 25, 21)"
+                       }
+                   ]
+    },
+    {
+        "name":  "full-shoe-buyin",
+        "route":  "/training/full-shoe/",
+        "url":  "https://countlab.ca/training/full-shoe/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Full Shoe Blackjack",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "running-count-start",
+        "route":  "/training/running-count/",
+        "url":  "https://countlab.ca/training/running-count/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Running Count",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "true-count-start",
+        "route":  "/training/true-count/",
+        "url":  "https://countlab.ca/training/true-count/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "True Count",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "deck-estimation-start",
+        "route":  "/training/deck-estimation/",
+        "url":  "https://countlab.ca/training/deck-estimation/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Deck Estimation",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "basic-strategy-answer",
+        "route":  "/training/basic-strategy/",
+        "url":  "https://countlab.ca/training/basic-strategy/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Basic Strategy",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "deviation-answer",
+        "route":  "/training/deviations/",
+        "url":  "https://countlab.ca/training/deviations/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Hi-Lo Deviations",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "exam-start",
+        "route":  "/training/test-out/",
+        "url":  "https://countlab.ca/training/test-out/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Section 1 of 7",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "scenario-trip",
+        "route":  "/cvcx/",
+        "url":  "https://countlab.ca/trip-planner/?scenario=65d85e78-f4f1-4493-9322-c40ee5a988f7",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Trip Bankroll Planner",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "reference-keyboard",
+        "route":  "/reference/",
+        "url":  "https://countlab.ca/reference/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Index deviation chart",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Index deviations",
+                           "color":  "rgb(236, 239, 232)",
+                           "background":  "rgb(246, 248, 243)"
+                       }
+                   ]
+    },
+    {
+        "name":  "tool-search",
+        "route":  "/",
+        "url":  "https://countlab.ca/trip-planner/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Trip Bankroll Planner",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "chase-calculate",
+        "route":  "/chase-flush/",
+        "url":  "https://countlab.ca/chase-flush/#analyze",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       },
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Chase the Flush Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Analyzer",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       },
+                       {
+                           "text":  "Board\n2x or check",
+                           "color":  "rgb(110, 231, 183)",
+                           "background":  "rgba(16, 185, 129, 0.15)"
+                       }
+                   ]
+    },
+    {
+        "name":  "journal-save",
+        "route":  "/journal/",
+        "url":  "https://countlab.ca/journal/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Session Journal",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "h17-answer",
+        "route":  "/training/h17-chart/",
+        "url":  "https://countlab.ca/training/h17-chart/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "H17 Chart",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "deviation-statistics",
+        "route":  "/training/deviations/",
+        "url":  "https://countlab.ca/statistics/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Statistics",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "dark-reference",
+        "route":  "/settings/",
+        "url":  "https://countlab.ca/reference/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Basic strategy chart",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Strategy",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "guest-signin",
+        "route":  "/settings/",
+        "url":  "https://countlab.ca/settings/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+
+                   ]
+    },
+    {
+        "name":  "true-count-input",
+        "route":  "/training/true-count/",
+        "url":  "https://countlab.ca/training/true-count/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "True Count",
+                           "color":  "rgb(22, 33, 28)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "dark-game",
+        "route":  "/ultimate-texas-holdem/",
+        "url":  "https://countlab.ca/ultimate-texas-holdem/",
+        "errors":  [
+                       {
+                           "message":  "Missing worker bootstrap config",
+                           "stack":  "Error: Missing worker bootstrap config\n    at r (https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:50)\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:328\n    at https://countlab.ca/_next/static/chunks/turbopack-worker-2ru9m5gbh1na6.js:1:847"
+                       }
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Ultimate Texas Hold\u0027em",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Play",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "legacy-analysis",
+        "route":  "/analysis/",
+        "url":  "https://countlab.ca/cvcx/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Game \u0026 Bankroll Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "legacy-bankroll",
+        "route":  "/bankroll/",
+        "url":  "https://countlab.ca/cvcx/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Game \u0026 Bankroll Lab",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "legacy-strategy",
+        "route":  "/reference/basic-strategy/",
+        "url":  "https://countlab.ca/reference/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Basic strategy chart",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       },
+                       {
+                           "text":  "Strategy",
+                           "color":  "rgb(16, 25, 21)",
+                           "background":  "rgb(22, 33, 28)"
+                       }
+                   ]
+    },
+    {
+        "name":  "legacy-proficiency",
+        "route":  "/training/proficiency-test/",
+        "url":  "https://countlab.ca/training/test-out/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Test Out",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    },
+    {
+        "name":  "unknown-route",
+        "route":  "/audit-missing-page/",
+        "url":  "https://countlab.ca/audit-missing-page/",
+        "errors":  [
+
+                   ],
+        "actionError":  null,
+        "styles":  [
+                       {
+                           "text":  "Page not found",
+                           "color":  "rgb(232, 238, 231)",
+                           "background":  "rgba(0, 0, 0, 0)"
+                       }
+                   ]
+    }
+]

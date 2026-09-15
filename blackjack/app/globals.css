@@ -125,6 +125,7 @@ button {
 .font-data, .font-mono, table, [data-count], .count-rule { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .floor {
   color-scheme: dark;
+  background: var(--paper);
   --paper: #101915;
   --paper-raised: #16211c;
   --ink: #e8eee7;

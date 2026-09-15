@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Run `npm test`, `npm run lint`, and `npm run build` before release. The production build is a static export in `out/`, deployed by this repo's own GitHub Pages workflow (`.github/workflows/deploy.yml`) to `countlab.ca`.
+Run `npm test`, `npm run lint`, `npm run build`, then `npm run test:e2e` before release. Browser tests serve the actual static export on port 3100; build first. Install Chromium with `npx playwright install chromium` in CI (local tests use Chrome). Set `COUNTLAB_E2E_DEV=1` to test the development server instead. The production build is a static export in `out/`, deployed by this repo's own GitHub Pages workflow (`.github/workflows/deploy.yml`) to `countlab.ca`.
 
 ## Accounts (Supabase)
 
@@ -17,8 +17,7 @@ CountLab is a fully static export with no server, so auth runs entirely
 client-side against Supabase (`@supabase/supabase-js`) — email/password
 sign-up and sign-in, no server-side session needed. `lib/supabase/client.ts`
 builds the browser client from two public env vars, and
-`lib/supabase/AuthProvider.tsx` + `components/AuthGate.tsx` gate every route
-except `/terms` and `/privacy` behind a signed-in Supabase user.
+`lib/supabase/AuthProvider.tsx` + `components/AuthGate.tsx` allow public discovery and reference routes, and offer account or guest access to the workspace. Admin access requires an authorized account. Guest history stays separate until explicitly imported from Settings.
 
 Per-account data (trainer settings, drill session history, bankroll/Kelly
 journal) is cached in `localStorage` for instant reads and synced to Supabase

@@ -9,7 +9,7 @@ import { Button, GhostButton } from "./ui";
  * heading, tray, keypad and tally helper. Importing them from there would have
  * pulled every drill into the exam's bundle, so they live here instead.
  */
-export const inputClass = "field min-h-11 w-full rounded-xl px-3 text-center text-lg text-white outline-none";
+export const inputClass = "field min-h-11 w-full rounded-xl px-3 text-center text-lg text-[var(--ink)] outline-none";
 
 export function Heading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
   return <div className="mb-5 sm:mb-7"><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold">{title}</h1><p data-mobile-compact-description className="mt-2 max-w-3xl text-[var(--ink-muted)]">{description}</p></div>;

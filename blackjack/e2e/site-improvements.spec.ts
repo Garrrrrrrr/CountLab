@@ -106,6 +106,7 @@ test("a saved scenario carries its inputs from the Lab into trip planning", asyn
   if (!await bankroll.isVisible()) await page.locator("summary").filter({ hasText: "Bankroll" }).first().click();
   await bankroll.fill("12345");
   const scenario = page.getByRole("region", { name: "Shared analysis scenario" });
+  await scenario.locator("summary").click();
   await scenario.getByRole("textbox", { name: "Scenario name" }).fill("Weekend test");
   await scenario.getByRole("button", { name: "Save shared scenario" }).click();
   await scenario.getByRole("link", { name: /Plan trip/ }).click();

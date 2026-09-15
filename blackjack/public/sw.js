@@ -90,7 +90,17 @@ function cacheFirst(event, cacheName) {
         // resolving undefined, which would throw inside respondWith.
         .catch(() => Response.error());
     }),
-  );
+  ).then((response) => {
+    // A cached/network Response carries the fetched URL without its fragment.
+    // For worker entrypoints that URL replaces WorkerLocation, losing the
+    // #params bootstrap used by Turbopack. A synthetic response preserves the
+    // original worker URL while still serving the same cached bytes offline.
+    // https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith
+    if ((event.request.destination === "worker" || event.request.destination === "sharedworker") && response.ok) {
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers: response.headers });
+    }
+    return response;
+  });
 }
 
 self.addEventListener("fetch", (event) => {

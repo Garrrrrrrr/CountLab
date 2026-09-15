@@ -111,7 +111,7 @@ function Dashboard() {
     .filter((item) => item.attempts > 0)
     .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts);
   const focus = practiced[0];
-  const primaryHref = focus ? drillLinks[focus.name] : "/training/running-count";
+  const primaryHref = focus ? drillLinks[focus.name] : "/training/running-count?session=starter";
   const primaryLabel = focus ? `Practice ${focus.name}` : "Try a counting drill";
   return (
     <>
@@ -135,6 +135,7 @@ function Dashboard() {
         <Metric label="Overall accuracy" value={`${totals.avg}%`} />
         <Metric label="Best streak" value={totals.best} />
       </div>
+      {sessions.length > 0 && (
       <Panel className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -164,6 +165,7 @@ function Dashboard() {
           />
         </div>
       </Panel>
+      )}
       {sessions.length > 0 && (
         <Panel className="mt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -668,7 +670,7 @@ function NotFound() {
   );
 }
 const AREA_PAGES = {
-  analyze: { title: "Analyze", description: "Model an edge, a bet ramp, a session, and the bankroll behind it.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
+  analyze: { title: "Analyze", description: "Start in the Game & Bankroll Lab and save a scenario. Simulate it, compare alternatives or plan a trip, then record actual results in the Journal.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
   play: { title: "Games", description: "Take the concepts to the felt in focused table-game practice.", items: [["Double Down Madness", "/double-down-madness", "fa-bolt"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"], ["Chase the Flush", "/chase-flush", "fa-diamond"]] },
 } as const;
 function AreaLanding({ area }: { area: keyof typeof AREA_PAGES }) {

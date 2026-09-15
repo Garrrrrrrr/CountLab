@@ -10,7 +10,7 @@ export function HomePage() {
       <h1 className="mt-5 max-w-3xl font-display text-4xl font-semibold sm:text-6xl">Build the skills.<br />Understand the numbers.</h1>
       <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--ink-muted)]">Practice card counting, learn strategy, and explore how your game and bet spread affect expected results and bankroll risk.</p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/training/running-count" onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-12 items-center rounded-xl bg-[var(--ink)] px-5 font-semibold text-[var(--paper)]">Try a counting drill →</Link>
+        <Link href="/training/running-count?session=starter" onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-12 items-center rounded-xl bg-[var(--ink)] px-5 font-semibold text-[var(--paper)]">Try a counting drill →</Link>
         <Link href="/reference" className="inline-flex min-h-12 items-center rounded-xl border border-[var(--rule)] px-5 font-semibold">Explore strategy charts</Link>
       </div>
       <p className="mt-4 text-sm text-[var(--ink-muted)]">Free to try. Guest progress stays on this device; an account adds backup and sync.</p>

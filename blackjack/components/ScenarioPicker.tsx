@@ -40,11 +40,16 @@ export function ScenarioPicker({ onLoad, current, unsupported, disabled = false 
   }, []);
   const chosen = templates.find((entry) => entry.id === selected);
   return <section className="surface no-print mb-5 rounded-xl p-4" aria-label="Shared analysis scenario">
+    <details>
+      <summary className="cursor-pointer py-1 text-sm font-semibold">Saved scenarios{chosen ? ` · ${chosen.name}` : " · load or save a setup"}</summary>
+      <p className="my-3 text-sm text-[var(--ink-muted)]">A scenario is a saved snapshot. Load it to replace this tool’s inputs. Destination links use the saved snapshot; edits here do not travel automatically. Save a new snapshot in the Lab to carry changes forward.</p>
     <div className="flex flex-wrap items-end gap-3">
-      <div className="min-w-48 flex-1"><Select label="Saved scenario" value={selected} onChange={(event) => setSelected(event.target.value)}><option value="">Choose a scenario from the Lab</option>{templates.map((entry) => <option value={entry.id} key={entry.id}>{entry.name}</option>)}</Select></div>
+      <div className="min-w-0 flex-1"><Select label="Saved scenario" disabled={disabled} value={selected} onChange={(event) => setSelected(event.target.value)}><option value="">Choose a scenario from the Lab</option>{templates.map((entry) => <option value={entry.id} key={entry.id}>{entry.name}</option>)}</Select></div>
       <GhostButton disabled={disabled || !chosen} onClick={() => { if (!chosen) return; const reason = unsupported?.(chosen.config); if (reason) { setNotice(reason); return; } onLoad(chosen); setNotice(`Loaded ${chosen.name}. Current inputs replaced; saved scenario unchanged.`); }}>Load scenario</GhostButton>
-      {current && <><label className="grid gap-2 text-sm">Scenario name<input className="field min-h-11 rounded-lg px-3" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Weekend 6-deck game" /></label><GhostButton onClick={() => { const saved = cvcxLibrary.saveTemplate(current(), name); setSelected(saved.id); setNotice(`Saved ${saved.name}. Use a destination below to carry it forward.`); }}>Save shared scenario</GhostButton></>}
+      {current && <><label className="grid min-w-0 gap-2 text-sm">Scenario name<input className="field min-h-11 rounded-lg px-3" value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Weekend 6-deck game" /></label><GhostButton disabled={disabled} onClick={() => { const saved = cvcxLibrary.saveTemplate(current(), name); setSelected(saved.id); setNotice(`Saved ${saved.name}. Use a destination below to carry it forward.`); }}>Save shared scenario</GhostButton></>}
     </div>
+    </details>
+    {chosen && <p className="mt-3 text-xs text-[var(--ink-muted)]">Open saved snapshot: {chosen.name}</p>}
     {chosen && <div className="mt-3 flex flex-wrap gap-4 text-sm">{[["Lab", "/cvcx"], ["Simulate", "/simulation"], ["Compare", "/compare"], ["Plan trip", "/trip-planner"], ["Journal", "/journal"]].map(([label, href]) => <Link key={href} className="inline-flex min-h-9 items-center text-[var(--accent)] underline" href={`${href}?scenario=${encodeURIComponent(chosen.id)}`}>{label} →</Link>)}</div>}
     {notice && <p role="status" className="mt-3 text-sm text-[var(--ink-muted)]">{notice}</p>}
   </section>;

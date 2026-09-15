@@ -124,7 +124,6 @@ export function ScenarioComparison() {
 
   return (
     <>
-      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ name, config: c }) => setColumns((current) => [{ ...makeColumn(name), decks: c.decks, dealt: c.dealt, bankroll: c.bankroll, bettingUnit: c.baseBet, handsPerHour: c.handsPerHour, hours: c.hours, dealerHitsSoft17: c.dealerHitsSoft17, doubleAfterSplit: c.doubleAfterSplit, resplitAces: c.resplitAces, lateSurrender: c.lateSurrender, blackjackPayout: c.blackjackPayout, useIndices: c.useIndices !== false, ramp: scenarioRamp(c), handsByTrueCount: templateHandSchedule(c) }, ...current.slice(1)])} />
       <div className="mb-7">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Analyze · Compare</p>
         <h1 className="mt-2 text-3xl font-semibold">Compare Scenarios</h1>
@@ -132,6 +131,7 @@ export function ScenarioComparison() {
           Set up to four table rules, ramps, and bet sizes side by side and compare their audited hourly EV, trip EV, and risk of ruin on an apples-to-apples basis.
         </p>
       </div>
+      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ name, config: c }) => setColumns((current) => [{ ...makeColumn(name), decks: c.decks, dealt: c.dealt, bankroll: c.bankroll, bettingUnit: c.baseBet, handsPerHour: c.handsPerHour, hours: c.hours, dealerHitsSoft17: c.dealerHitsSoft17, doubleAfterSplit: c.doubleAfterSplit, resplitAces: c.resplitAces, lateSurrender: c.lateSurrender, blackjackPayout: c.blackjackPayout, useIndices: c.useIndices !== false, ramp: scenarioRamp(c), handsByTrueCount: templateHandSchedule(c) }, ...current.slice(1)])} />
       {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Best scenario" value={columns[bestHourlyEv].name} sub="hourly EV" />

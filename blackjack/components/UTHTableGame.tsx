@@ -1,4 +1,5 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 import { useEffect, useRef, useState } from "react";
 import { Button, GhostButton, MobileActionDock, NumberField, Panel } from "@/components/ui";
 import { cardName, evaluate, referenceOpening, settle, type UTHDecision, type UTHState } from "@/lib/uth/engine";
@@ -41,22 +42,22 @@ export function UTHTableGame() {
     [coachStats, setCoachStats] = useState({ correct: 0, total: 0 }),
     [decision, setDecision] = useState<UTHDecision>(),
     [decisionLoading, setDecisionLoading] = useState(false);
+  const [decisionError, setDecisionError] = useState("");
   const locked = phase !== "betting";
   const cards = (values: number[]) => values.map((card) => gameCard(card, cardName));
-  const worker = useRef<Worker | undefined>(undefined);
   const requestId = useRef(0);
   const tableViewportRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const instance = new Worker(new URL("../workers/uth.worker.ts", import.meta.url));
-    worker.current = instance;
-    instance.onmessage = (event: MessageEvent<WorkerResponse>) => {
+  const worker = useCalculationWorker(
+    () => new Worker(new URL("../workers/uth.worker.ts", import.meta.url)),
+    (event: MessageEvent<WorkerResponse>) => {
       if (event.data.id !== requestId.current) return;
       setDecisionLoading(false);
-      if (!event.data.error) setDecision(event.data.normal);
-    };
-    return () => instance.terminate();
-  }, []);
+      if (event.data.error) setDecisionError(event.data.error);
+      else setDecision(event.data.normal);
+    },
+    (message) => { setDecisionLoading(false); setDecisionError(message); },
+  );
   useEffect(() => {
     if (phase === "betting" || !matchMedia("(max-width: 1023px)").matches) return;
     const frame = requestAnimationFrame(() => tableViewportRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -64,14 +65,16 @@ export function UTHTableGame() {
   }, [phase]);
 
   const requestDecision = (state: UTHState, samples = 256, mode?: "solve") => {
-    if (!worker.current) return;
+    worker.terminate();
     if (mode === "solve") track("uth_ev_requested", { boardCards: state.board.length });
+    setDecisionError("");
     setDecisionLoading(true);
     setDecision(undefined);
-    worker.current.postMessage({ id: ++requestId.current, state, samples, mode });
+    worker.postMessage({ id: ++requestId.current, state, samples, mode });
   };
 
   const deal = () => {
+    worker.terminate(); requestId.current += 1; setDecisionLoading(false); setDecisionError("");
     if (ante <= 0) return setMessage("Place an Ante first.");
     if (ante * 6 + trips > bankroll) return setMessage(`Keep at least $${money(ante * 6 + trips)} available for Ante, Blind, and a possible 4x Play bet.`);
     const deck = shuffledDeck();
@@ -100,6 +103,7 @@ export function UTHTableGame() {
     track("uth_decision", { street, choice, expected, ok, method: decision.method });
   };
   const finish = (multiplier: number, folded = false) => {
+    worker.terminate(); requestId.current += 1; setDecisionLoading(false); setDecisionError("");
     const playerHand = evaluate([...player, ...board]);
     const dealerHand = evaluate([...dealer, ...board]);
     const mainNet = folded ? -2 * ante : settle(playerHand, dealerHand, multiplier) * ante;
@@ -131,7 +135,7 @@ export function UTHTableGame() {
   </>;
 
   return (
-    <div className="mt-5 grid gap-5 pb-24 lg:pb-0 xl:grid-cols-[1fr_320px]">
+    <div className="mt-5 grid grid-cols-1 gap-5 pb-24 lg:pb-0 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-5">
         <div ref={tableViewportRef} className="scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <CasinoTable>
@@ -148,7 +152,8 @@ export function UTHTableGame() {
           <div aria-live="polite" className="mx-auto mt-5 max-w-2xl rounded-xl bg-black/25 p-3 text-center text-sm text-emerald-50/80">{message}</div>
           <div className="mt-5 hidden flex-wrap justify-center gap-2 lg:flex">{actionButtons}</div>
           {(phase === "preflop" || phase === "flop" || phase === "river") && (
-            <EvMetrics evs={decision?.evs} loading={decisionLoading} note={decision && Object.keys(decision.evs).length ? "River and flop EV are exact; opening EV requires the Calculate EV button." : undefined} />
+            <>{decisionError && <div role="alert" className="mb-3 text-sm text-[var(--negative)]">{decisionError}<GhostButton className="ml-2" onClick={() => { setDecisionError(""); setDecisionLoading(true); worker.retry(); }}>Retry calculation</GhostButton></div>}
+            <EvMetrics evs={decision?.evs} loading={decisionLoading} note={decision && Object.keys(decision.evs).length ? "River and flop EV are exact; opening EV requires the Calculate EV button." : undefined} /></>
           )}
         </CasinoTable>
         </div>

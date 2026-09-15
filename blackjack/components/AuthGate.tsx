@@ -208,13 +208,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         {mode === "sign-in" && !passwordRecovery && <button type="button" onClick={() => { setMode("reset-request"); setError(undefined); setInfo(undefined); }} className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Forgot password?</button>}
         {mode === "reset-request" && !passwordRecovery && <button type="button" onClick={() => { setMode("sign-in"); setError(undefined); setInfo(undefined); }} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Back to sign in</button>}
         {passwordRecovery && <button type="button" onClick={cancelPasswordRecovery} className="mt-3 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]">Cancel</button>}
-        {!passwordRecovery && mode !== "reset-request" && <button
-          type="button"
-          onClick={() => { formAnalytics.succeeded(); continueAsGuest(); }}
-          className="mt-2 min-h-11 w-full rounded-xl px-3 text-center text-xs text-[var(--ink-muted)] hover:bg-white/[.05] hover:text-[var(--ink)]"
-        >
-          Continue as guest — data stays on this device only
-        </button>}
+        {!passwordRecovery && <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Guest progress stays on this device. After signing in, open Settings to preview and import this device’s guest history. Nothing transfers automatically.</p>}
         <p className="mt-5 text-center text-xs text-[var(--ink-muted)]">
           <Link href="/terms" className="hover:text-[var(--ink-muted)]">Terms</Link>
           {" · "}

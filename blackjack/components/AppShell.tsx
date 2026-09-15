@@ -155,16 +155,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="space-y-5">
           <div className="space-y-1">
-            <Link onClick={() => setOpen(false)} href="/dashboard" className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === "/dashboard" ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className="fa-solid fa-house w-4 text-center text-[.78rem]" />Dashboard</Link>
+            <Link onClick={() => setOpen(false)} href="/dashboard" aria-current={path === "/dashboard" ? "page" : undefined} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === "/dashboard" ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className="fa-solid fa-house w-4 text-center text-[.78rem]" />Dashboard</Link>
             {areas.map(([name, href, icon]) => {
               const active = path === href || areaPaths[name].has(path);
-              return <Link onClick={() => setOpen(false)} key={href} href={href} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>;
+              return <Link onClick={() => setOpen(false)} key={href} href={href} aria-current={active ? (path === href ? "page" : "location") : undefined} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>;
             })}
           </div>
-          <button type="button" onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-white/[.08] bg-white/[.04] px-3 text-sm text-[var(--ink)] hover:bg-white/[.08]"><span><i className="fa-solid fa-magnifying-glass mr-2" />Find a tool</span><kbd>⌘K</kbd></button>
+          <button type="button" onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-white/[.08] bg-white/[.04] px-3 text-sm text-[var(--ink)] hover:bg-white/[.08]"><span><i className="fa-solid fa-magnifying-glass mr-2" />Find a tool</span><kbd>Ctrl / ⌘ K</kbd></button>
           <div className="border-t border-white/[.06] pt-4">
             <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Utility</p>
-            {destinations.filter(([, href, , area]) => area === "Utility" && href !== "/dashboard").map(([name, href, icon]) => <Link onClick={() => setOpen(false)} key={href} href={href} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>)}
+            {destinations.filter(([, href, , area]) => area === "Utility" && href !== "/dashboard").map(([name, href, icon]) => <Link onClick={() => setOpen(false)} key={href} href={href} aria-current={path === href ? "page" : undefined} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>)}
           </div>
           {isAdmin && (
             <div>
@@ -217,7 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <span className="sm:hidden">{rules.dealerHitsSoft17 ? "H17" : "S17"}</span>
             <span className="hidden sm:inline">
-              <span className="mr-1.5 text-[var(--ink-muted)]">Drills</span>{rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {SURRENDER_BADGE[rules.surrender]}
+              <span className="mr-1.5 text-[var(--ink-muted)]">Training</span>{rules.dealerHitsSoft17 ? "H17" : "S17"} · {rules.doubleAfterSplit ? "DAS" : "No DAS"} · {rules.resplitAces ? "RSA" : "No RSA"} · {SURRENDER_BADGE[rules.surrender]}
             </span>
           </Link>
         </header>

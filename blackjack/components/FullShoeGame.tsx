@@ -1,4 +1,5 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 
 import Image from "next/image";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
@@ -157,6 +158,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const [reviewLoading, setReviewLoading] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<SavedShoe>();
   const [evLoading, setEvLoading] = useState(false);
+  const [evError, setEvError] = useState("");
   const shoe = useRef<BlackjackShoe | undefined>(undefined);
   const statsRef = useRef(emptyFullShoeScore());
   const handHistoryRef = useRef<FullShoeLiveRound[]>([]);
@@ -166,7 +168,6 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const sessionSaved = useRef(false);
   const bankrollRef = useRef(1000);
   const activeRef = useRef(active);
-  const evWorker = useRef<Worker | undefined>(undefined);
   const evRequestId = useRef(0);
   const evSignatureRef = useRef("");
   const tableRef = useRef<HTMLDivElement>(null);
@@ -201,16 +202,16 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       setNote(undefined);
     }
   }, [mode]);
-  useEffect(() => {
-    const worker = new Worker(new URL("../workers/blackjackEv.worker.ts", import.meta.url));
-    evWorker.current = worker;
-    worker.onmessage = (event: MessageEvent<{ id: number; result?: LiveEvResult; error?: string }>) => {
+  const evWorker = useCalculationWorker(
+    () => new Worker(new URL("../workers/blackjackEv.worker.ts", import.meta.url)),
+    (event: MessageEvent<{ id: number; result?: LiveEvResult; error?: string }>) => {
       if (event.data.id !== evRequestId.current) return;
       setEvLoading(false);
+      if (event.data.error) setEvError(event.data.error);
       if (event.data.result) setEvResult(event.data.result);
-    };
-    return () => worker.terminate();
-  }, []);
+    },
+    (message) => { setEvLoading(false); setEvError(message); },
+  );
   const casinoPause = async (milliseconds: number) => {
     await pause(animations ? milliseconds * (fastMode ? 0.35 : 1) : 40);
     while (!activeRef.current) await pause(100);
@@ -729,13 +730,14 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
   const handSignature = (hand: PlayerHand) => `${hand.cards.map((c) => c.rank).join(",")}|${dealer.map((c) => c.rank).join(",")}|${holePeek}`;
 
   const requestEv = (hand: PlayerHand) => {
-    if (!evWorker.current || !shoe.current || !dealer[0]) return;
+    if (!shoe.current || !dealer[0]) return;
     track("full_shoe_ev_requested", { total: calculateHandValue(hand.cards), tc });
     evSignatureRef.current = handSignature(hand);
     const id = ++evRequestId.current;
+    setEvError("");
     setEvLoading(true);
     setEvResult(undefined);
-    evWorker.current.postMessage({
+    evWorker.postMessage({
       id,
       request: {
         playerCards: hand.cards,
@@ -757,6 +759,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
 
   const currentCardCount = hands[activeHand]?.cards.length;
   useEffect(() => {
+    evWorker.terminate();
+    evRequestId.current += 1;
+    setEvError("");
+    setEvLoading(false);
     if (phase !== "play" || !current) return;
     setEvResult(undefined);
     setEvLoading(false);
@@ -1305,6 +1311,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
               {legalActions(current).map((action) => <Button disabled={dealing} className="w-full sm:w-auto" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}
               {mode === "coached" && <GhostButton disabled={dealing || evLoading} className="col-span-2 w-full sm:w-auto" onClick={() => requestEv(current)}>{evLoading ? "Calculating EV…" : "Calculate EV"}</GhostButton>}
             </div>}
+            {evError && <p role="alert" className="text-sm text-[var(--negative)]">{evError}</p>}
             {mode === "coached" && phase === "play" && current && (evLoading || (evResult && evSignatureRef.current === handSignature(current))) && (
               <EvMetrics
                 evs={evResult && evSignatureRef.current === handSignature(current) ? evResult.evs : undefined}

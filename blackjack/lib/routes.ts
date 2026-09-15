@@ -72,6 +72,9 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   "/practice": "Start with running count, learn strategy, and combine your skills in a full shoe.",
   "/analyze": "Build a game, test its variance, compare alternatives, and plan a trip.",
   "/play": "Practice Double Down Madness, Ultimate Texas Hold'em, and Chase the Flush.",
+  "/double-down-madness": "Practice one-card blackjack, repeated doubles, and composition-dependent decisions through a full shoe.",
+  "/ultimate-texas-holdem": "Learn when to raise, check, or fold, and compare standard play with exposed-card analysis.",
+  "/chase-flush": "Practice flush decisions across three betting stages and analyze the value of one exposed dealer card.",
   "/reference": "Interactive basic strategy and index deviation charts with explicit table rules.",
 };
 export function routeInfo(path: string) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 import { ScenarioPicker, scenarioRamp, unsupportedScenario } from "./ScenarioPicker";
 import { templateHandSchedule } from "@/lib/blackjack/cvcxLibrary";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +72,6 @@ export function SessionSimulator() {
   const [deviationGroups, setDeviationGroups] = useState<DeviationGroup[]>(["h17-pro"]);
   const [shoeResult, setShoeResult] = useState<ShoeSimulationResult>();
   const [selectedShoeIndex, setSelectedShoeIndex] = useState<number>();
-  const shoeWorkerRef = useRef<Worker | undefined>(undefined);
   const shoeRequestId = useRef(0);
   const [analysisName, setAnalysisName] = useState("");
   const [templateName, setTemplateName] = useState("");
@@ -83,7 +83,6 @@ export function SessionSimulator() {
   const [pendingDelete, setPendingDelete] = useState<{ kind: "template"; id: string; name: string } | { kind: "run"; id: string; name: string }>();
   const [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]);
   const [venuePresetName, setVenuePresetName] = useState("");
-  const workerRef = useRef<Worker | undefined>(undefined);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const requestId = useRef(0);
   const runStartedAt = useRef(0);
@@ -93,7 +92,6 @@ export function SessionSimulator() {
   const shoeConfig = useMemo<ShoeSimulationConfig>(() => ({ bankroll, bettingUnit: unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed: hashSeed(seed.trim() || "countlab"), rules, ramp, deviationGroups }), [bankroll, unit, playerHands, roundsPerHour, handsToSimulate, highSpeed, seed, rules, ramp, deviationGroups]);
   const comparedRuns = useMemo(() => selectedRunIds.map((id) => savedRuns.find((run) => run.id === id)).filter((run): run is SavedSimulationRun => Boolean(run)), [savedRuns, selectedRunIds]);
 
-  useEffect(() => () => { workerRef.current?.terminate(); shoeWorkerRef.current?.terminate(); }, []);
   useEffect(() => {
     const refresh = () => {
       setSavedRuns(simulationLibrary.runs());
@@ -110,10 +108,9 @@ export function SessionSimulator() {
     return () => removeEventListener(venuePresetLibrary.event, refresh);
   }, []);
 
-  const getWorker = () => {
-    if (!workerRef.current) {
-      const worker = new Worker(new URL("../workers/sessionSimulation.worker.ts", import.meta.url));
-      worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+  const worker = useCalculationWorker(
+    () => new Worker(new URL("../workers/sessionSimulation.worker.ts", import.meta.url)),
+    (event: MessageEvent<WorkerMessage>) => {
         const message = event.data;
         if (message.id !== requestId.current) return;
         if (message.kind === "progress") setProgress(message.completed / message.total);
@@ -137,27 +134,22 @@ export function SessionSimulator() {
         }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
         if (message.kind === "error") { setError(message.error); setRunning(false); track("simulation_worker_failed", { mode: "session", durationMs: Date.now() - runStartedAt.current }); }
-      };
-      workerRef.current = worker;
-    }
-    return workerRef.current;
-  };
+    },
+    (message) => { pendingRun.current = undefined; setError(message); setRunning(false); setProgress(0); },
+  );
 
-  const getShoeWorker = () => {
-    if (!shoeWorkerRef.current) {
-      const worker = new Worker(new URL("../workers/shoeSimulation.worker.ts", import.meta.url));
-      worker.onmessage = (event: MessageEvent<ShoeWorkerMessage>) => {
+  const shoeWorker = useCalculationWorker(
+    () => new Worker(new URL("../workers/shoeSimulation.worker.ts", import.meta.url)),
+    (event: MessageEvent<ShoeWorkerMessage>) => {
         const message = event.data;
         if (message.id !== shoeRequestId.current) return;
         if (message.kind === "progress") setProgress(message.completed / message.total);
         if (message.kind === "result") { setShoeResult(message.result); setSelectedShoeIndex(undefined); setProgress(1); setRunning(false); track("shoe_simulation_completed", { totalShoes: message.result.totalShoes, totalHands: message.result.totalHands, totalProfit: message.result.totalProfit, avPerHour: message.result.avPerHour, durationMs: Date.now() - runStartedAt.current }); }
         if (message.kind === "cancelled") { setRunning(false); setProgress(0); }
         if (message.kind === "error") { setError(message.error); setRunning(false); track("simulation_worker_failed", { mode: "shoe", durationMs: Date.now() - runStartedAt.current }); }
-      };
-      shoeWorkerRef.current = worker;
-    }
-    return shoeWorkerRef.current;
-  };
+    },
+    (message) => { pendingRun.current = undefined; setError(message); setRunning(false); setProgress(0); },
+  );
 
   const run = () => {
     setError(undefined); setProgress(0); setRunning(true); runStartedAt.current = Date.now();
@@ -165,18 +157,23 @@ export function SessionSimulator() {
       const id = ++requestId.current;
       pendingRun.current = { config, name: analysisName };
       setResult(undefined);
-      getWorker().postMessage({ kind: "start", id, config });
+      worker.postMessage({ kind: "start", id, config });
       track("session_simulation_run", { rounds: config.rounds, paths: config.paths, bankroll: config.bankroll, bettingUnit: config.bettingUnit });
     } else {
       const id = ++shoeRequestId.current;
       setShoeResult(undefined);
-      getShoeWorker().postMessage({ kind: "start", id, config: shoeConfig });
+      shoeWorker.postMessage({ kind: "start", id, config: shoeConfig });
       track("shoe_simulation_run", { handsToSimulate: shoeConfig.handsToSimulate, bankroll: shoeConfig.bankroll });
     }
   };
   const cancel = () => {
-    workerRef.current?.postMessage({ kind: "cancel", id: requestId.current });
-    shoeWorkerRef.current?.postMessage({ kind: "cancel", id: shoeRequestId.current });
+    worker.terminate();
+    shoeWorker.terminate();
+    requestId.current += 1;
+    shoeRequestId.current += 1;
+    pendingRun.current = undefined;
+    setRunning(false);
+    setProgress(0);
     track("simulation_cancelled", { mode, durationMs: Date.now() - runStartedAt.current });
   };
   const chooseSpread = (name: string) => {
@@ -264,7 +261,6 @@ export function SessionSimulator() {
 
   return (
     <>
-      <ScenarioPicker disabled={running} unsupported={(config) => unsupportedScenario(config, true)} onLoad={({ name, config: c }) => { setBankroll(c.bankroll); setUnit(c.baseBet); setRoundsPerHour(c.handsPerHour); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); setDecks(c.decks); setDealt(c.dealt); setRamp(scenarioRamp(c)); setSpread("Custom"); setAnalysisName(name); setDeviationGroups(c.useIndices === false ? [] : ["h17-pro"]); setResult(undefined); setShoeResult(undefined); }} />
       <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Analysis · Monte Carlo</p>
@@ -276,6 +272,7 @@ export function SessionSimulator() {
           <span className="rounded-full border border-emerald-300/15 bg-emerald-300/[.06] px-3 py-1.5 text-[var(--accent)]">Card-level shoes by default</span>
         </div>
       </div>
+      <ScenarioPicker disabled={running} unsupported={(config) => unsupportedScenario(config, true)} onLoad={({ name, config: c }) => { setBankroll(c.bankroll); setUnit(c.baseBet); setRoundsPerHour(c.handsPerHour); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); setDecks(c.decks); setDealt(c.dealt); setRamp(scenarioRamp(c)); setSpread("Custom"); setAnalysisName(name); setDeviationGroups(c.useIndices === false ? [] : ["h17-pro"]); setResult(undefined); setShoeResult(undefined); }} />
 
       {mode === "profile" && result && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">

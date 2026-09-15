@@ -1,0 +1,270 @@
+﻿[
+    {
+        "route":  "/",
+        "status":  200,
+        "title":  "Blackjack practice and analysis · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/dashboard",
+        "status":  200,
+        "title":  "Dashboard · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/signin",
+        "status":  200,
+        "title":  "Sign in · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/practice",
+        "status":  200,
+        "title":  "Practice · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/analyze",
+        "status":  200,
+        "title":  "Analyze · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/play",
+        "status":  200,
+        "title":  "Games · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/cvcx",
+        "status":  200,
+        "title":  "Game \u0026 Bankroll Lab · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/simulation",
+        "status":  200,
+        "title":  "Session Simulator · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/journal",
+        "status":  200,
+        "title":  "Session Journal · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/compare",
+        "status":  200,
+        "title":  "Compare Scenarios · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/trip-planner",
+        "status":  200,
+        "title":  "Trip Planner · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/bet-spread-recommender",
+        "status":  200,
+        "title":  "Bet Spread Recommender · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/double-down-madness",
+        "status":  200,
+        "title":  "Double Down Madness · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/chase-flush",
+        "status":  200,
+        "title":  "Chase the Flush · CountLab",
+        "errors":  [
+                       "Missing worker bootstrap config",
+                       "Missing worker bootstrap config",
+                       "Missing worker bootstrap config",
+                       "Missing worker bootstrap config",
+                       "Missing worker bootstrap config"
+                   ]
+    },
+    {
+        "route":  "/ultimate-texas-holdem",
+        "status":  200,
+        "title":  "Ultimate Texas Hold\u0027em · CountLab",
+        "errors":  [
+                       "Missing worker bootstrap config"
+                   ]
+    },
+    {
+        "route":  "/training/checklist",
+        "status":  200,
+        "title":  "Daily Checklist · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/running-count",
+        "status":  200,
+        "title":  "Running Count · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/true-count",
+        "status":  200,
+        "title":  "True Count · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/basic-strategy",
+        "status":  200,
+        "title":  "Basic Strategy · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/deviations",
+        "status":  200,
+        "title":  "Deviations · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/h17-chart",
+        "status":  200,
+        "title":  "H17 Chart · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/full-shoe",
+        "status":  200,
+        "title":  "Full Shoe · CountLab",
+        "errors":  [
+                       "Missing worker bootstrap config"
+                   ]
+    },
+    {
+        "route":  "/training/deck-estimation",
+        "status":  200,
+        "title":  "Deck Estimation · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/benchmark",
+        "status":  200,
+        "title":  "Counting Benchmark · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/training/test-out",
+        "status":  200,
+        "title":  "Test Out · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/reference",
+        "status":  200,
+        "title":  "Strategy charts · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/reference/deviations",
+        "status":  200,
+        "title":  "Index deviation chart · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/reference/h17-chart",
+        "status":  200,
+        "title":  "H17 deviation chart · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/statistics",
+        "status":  200,
+        "title":  "Statistics · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/settings",
+        "status":  200,
+        "title":  "Settings · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/terms",
+        "status":  200,
+        "title":  "Terms of Service · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/privacy",
+        "status":  200,
+        "title":  "Privacy Policy · CountLab",
+        "errors":  [
+
+                   ]
+    },
+    {
+        "route":  "/admin",
+        "status":  200,
+        "title":  "Product analytics · CountLab",
+        "errors":  [
+
+                   ]
+    }
+]

@@ -140,7 +140,7 @@ export function BankrollRecommender() {
           <PinnedStat label="Hourly EV" value={money(recommendation.hourlyEv)} sub={`RoR ${(recommendation.risk * 100).toFixed(2)}%`} />
         </div>
       </div>}
-      <div className="grid gap-5 lg:grid-cols-[380px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <Section title="Targets" summary={`${money(bankroll, 0)} bankroll · ${money(minimumBet, 0)} minimum · ${(targetRisk * 100).toFixed(1)}% RoR`} icon="fa-bullseye" collapseOnMobile>
           <div className="grid gap-4">
             <NumberField
@@ -218,13 +218,13 @@ export function BankrollRecommender() {
             {decks}D · {dealt}/{decks} penetration · {playerHands} simultaneous hand{playerHands === 1 ? "" : "s"} · H17 · DAS · RSA · LS · Peek · 3:2 · audited H17 Pro policy
           </div>
         </Section>
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Panel className="md:overflow-x-auto">
             <h2 className="mb-4 font-semibold">Candidate spreads</h2>
             <div className="space-y-3 md:hidden">
               {candidates.map((candidate) => (
                 <article key={candidate.name} className="rounded-2xl bg-black/20 p-4">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><p className="text-xs text-[var(--ink-muted)]">Spread</p><b className="text-xl">{candidate.name}</b></div>
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-[var(--accent)]" : "bg-amber-400/10 text-[var(--warning)]"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
                   </div>
@@ -312,7 +312,7 @@ export function BankrollRecommender() {
                     RoR {(recommendation.risk * 100).toFixed(2)}%
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:hidden">
+                <div className="grid grid-cols-1 min-[375px]:grid-cols-2 gap-2 sm:hidden">
                   {recommendation.bets.map((item) => (
                     <div key={item.label} className="flex items-center justify-between rounded-xl bg-black/20 p-3">
                       <span className="text-sm text-[var(--ink-muted)]">TC {item.label}</span>

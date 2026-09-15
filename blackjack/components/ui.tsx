@@ -9,7 +9,7 @@ export const Panel = ({
   children: ReactNode;
   className?: string;
 }) => (
-  <section className={`surface rounded-[1.35rem] p-4 sm:p-5 md:p-6 ${className}`}>
+  <section className={`surface min-w-0 rounded-[1.35rem] p-4 sm:p-5 md:p-6 ${className}`}>
     {children}
   </section>
 );
@@ -22,16 +22,17 @@ export const Button = ({
   <button
     data-enter-action="true"
     {...props}
-    className={`pressable min-h-11 rounded-lg border border-[var(--ink)] bg-[var(--ink)] px-4 py-2.5 font-semibold text-[var(--paper)] shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "danger" ? "border-red-700 bg-red-700 !text-white" : variant === "quiet" ? "border-[var(--rule)] bg-transparent text-[var(--ink)]" : ""} ${size === "compact" ? "min-h-9 px-3 py-1.5 text-sm" : ""} ${className}`}
+    className={`pressable min-h-11 rounded-lg border px-4 py-2.5 font-semibold shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "danger" ? "border-red-700 bg-red-700 text-white" : variant === "quiet" ? "border-[var(--rule)] bg-transparent text-[var(--ink)]" : "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]"} ${size === "compact" ? "min-h-9 px-3 py-1.5 text-sm" : ""} ${className}`}
   />
 );
 export const GhostButton = ({
   className = "",
+  selected = false,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) => (
+}: ButtonHTMLAttributes<HTMLButtonElement> & { selected?: boolean }) => (
   <button
     {...props}
-    className={`pressable min-h-11 rounded-lg border border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 font-medium text-[var(--ink)] shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] hover:bg-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+    className={`pressable min-h-11 rounded-lg border px-4 py-2.5 font-medium shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-40 ${selected ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] hover:opacity-90" : "border-[var(--rule)] bg-[var(--paper-raised)] text-[var(--ink)] hover:bg-[var(--paper)]"} ${className}`}
   />
 );
 export const MobileActionDock = ({
@@ -196,14 +197,14 @@ export function Tabs<T extends string>({ value, onChange, items, label = "Sectio
   const [ready, setReady] = useState(false);
   useEffect(() => { setReady(true); }, []);
   useEffect(() => { if (panelId) document.getElementById(panelId)?.setAttribute("aria-labelledby", `${id}-${value}`); }, [panelId, id, value]);
-  return <div role={panelId ? "tablist" : "group"} aria-label={label} className={`mobile-scroll-rail flex gap-2 overflow-x-auto border-b border-[var(--rule)] pb-2 sm:flex-wrap ${className}`} onKeyDown={(event) => {
+  return <><p className="mt-3 text-xs text-[var(--ink-muted)] sm:hidden">Swipe tabs to see more sections.</p><div role={panelId ? "tablist" : "group"} aria-label={label} className={`mobile-scroll-rail flex gap-2 overflow-x-auto border-b border-[var(--rule)] pb-2 sm:flex-wrap ${className}`} onKeyDown={(event) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
     const index = items.findIndex((item) => item.value === value);
     const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
     onChange(items[next].value);
     event.currentTarget.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
-  }}>{items.map((item) => <GhostButton key={item.value} disabled={!ready} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className={`shrink-0 whitespace-nowrap ${value === item.value ? "border-[var(--ink)] bg-[var(--ink)] !text-[var(--paper)]" : ""}`}>{item.label}</GhostButton>)}</div>;
+  }}>{items.map((item) => <GhostButton key={item.value} selected={value === item.value} disabled={!ready} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className="shrink-0 whitespace-nowrap">{item.label}</GhostButton>)}</div></>;
 }
 export function StickyBar({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-[var(--rule)] bg-[var(--paper-raised)]/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border ${className}`}>{children}</div>;
@@ -253,7 +254,7 @@ export function Section({
     }
   }, [collapseOnMobile]);
   return (
-    <details ref={details} id={id} open={open} className="surface group rounded-2xl border border-white/[.07]">
+    <details ref={details} id={id} open={open} className="surface group min-w-0 rounded-2xl border border-white/[.07]">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-[var(--accent)]" : "bg-sky-300/10 text-[var(--info)]"}`}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { accountStorage } from "@/lib/supabase/accountStorage";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import Link from "next/link";
 import { CertificationStatus } from "./CertificationStatus";
@@ -12,7 +13,7 @@ const LANES: Array<{ title: string; description: string; icon: string; drills: D
     { name: "Running Count", href: "/training/running-count", icon: "fa-bolt", description: "Keep the Hi-Lo running count through a stream of cards." },
     { name: "True Count", href: "/training/true-count", icon: "fa-divide", description: "Convert the running count with the decks remaining." },
     { name: "Deck Estimation", href: "/training/deck-estimation", icon: "fa-ruler", description: "Estimate penetration before you divide." },
-    { name: "Counting Benchmark", href: "/training/benchmark", icon: "fa-medal", description: "Measure speed and accuracy under a consistent test." },
+    { name: "Counting Benchmark", href: "/training/benchmark", icon: "fa-medal", description: "Review recent speed and accuracy, then open the drill that needs work." },
   ] },
   { title: "Make the right play", description: "Learn the decision, then pressure-test it hand by hand.", icon: "fa-table-cells", drills: [
     { name: "Basic Strategy", href: "/training/basic-strategy", icon: "fa-layer-group", description: "Turn every standard blackjack decision into reflex." },
@@ -38,6 +39,7 @@ function DrillCard({ drill }: { drill: Drill }) {
 
 export default function PracticeHub() {
   const [experience, setExperience] = useState("beginner");
+  useEffect(() => { if (accountStorage.getItem("countlab:onboarding-experience") === "experienced") setExperience("experienced"); }, []);
   const { user, continueAsGuest } = useAuth();
   return <div className="mx-auto max-w-[90rem]">
     <div className="grid gap-5 rounded-[1.75rem] border border-emerald-400/20 bg-[radial-gradient(circle_at_top_right,rgba(52,211,153,.16),transparent_42%),var(--paper-raised)] p-5 sm:p-7 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -45,8 +47,8 @@ export default function PracticeHub() {
       <Link onClick={() => { if (!user) continueAsGuest(); }} href="/training/full-shoe" className="pressable inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 font-semibold text-emerald-950 hover:bg-emerald-200"><i className="fa-solid fa-play" aria-hidden="true" />Start a full shoe</Link>
     </div>
     <section className="surface mt-5 rounded-2xl p-5" aria-label="Suggested practice session">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your next 10 minutes</h2><div className="flex gap-2">{["beginner", "experienced"].map((level) => <button key={level} aria-pressed={experience === level} onClick={() => setExperience(level)} className="min-h-11 rounded-lg border border-[var(--rule)] px-3 capitalize">{level}</button>)}</div></div>
-      <ol className="mt-4 grid list-inside list-decimal gap-3 sm:grid-cols-3">{(experience === "beginner" ? [["Running count · 3 min", "/training/running-count"], ["Basic strategy · 4 min", "/training/basic-strategy"], ["True count · 3 min", "/training/true-count"]] : [["Counting benchmark · 2 min", "/training/benchmark"], ["Index deviations · 3 min", "/training/deviations"], ["Full shoe · 5 min", "/training/full-shoe"]]).map(([label, href]) => <li key={href}><Link href={href} onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-11 items-center text-[var(--accent)] underline">{label}</Link></li>)}</ol>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">Your next practice session</h2><div className="flex gap-2">{["beginner", "experienced"].map((level) => <button key={level} aria-pressed={experience === level} onClick={() => { setExperience(level); accountStorage.setItem("countlab:onboarding-experience", level); }} className={`min-h-11 rounded-lg border px-3 capitalize ${experience === level ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]" : "border-[var(--rule)]"}`}>{level}</button>)}</div></div>
+      <ol className="mt-4 grid list-inside list-decimal gap-3 sm:grid-cols-3">{(experience === "beginner" ? [["Running count · 20 cards", "/training/running-count?session=starter"], ["Basic strategy · 4 min", "/training/basic-strategy"], ["True count · 3 min", "/training/true-count"]] : [["Review counting progress", "/training/benchmark"], ["Index deviations · 3 min", "/training/deviations"], ["Full shoe · 5 min", "/training/full-shoe"]]).map(([label, href]) => <li key={href}><Link href={href} onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-11 items-center text-[var(--accent)] underline">{label}</Link></li>)}</ol>
     </section>
     <div className="mt-7 space-y-8">{LANES.map((lane) => <section key={lane.title} aria-labelledby={lane.title.replaceAll(" ", "-").toLowerCase()}>
       <div className="mb-3 flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]"><i className={`fa-solid ${lane.icon}`} aria-hidden="true" /></span><div><h2 id={lane.title.replaceAll(" ", "-").toLowerCase()} className="font-display text-xl font-semibold">{lane.title}</h2><p className="text-sm text-[var(--ink-muted)]">{lane.description}</p></div></div>

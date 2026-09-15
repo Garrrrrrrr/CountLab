@@ -77,7 +77,6 @@ export function TripPlanner() {
 
   return (
     <>
-      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBankroll(c.bankroll); setBettingUnit(c.baseBet); setHandsPerHour(c.handsPerHour); setTripHours(c.hours); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setHandsSchedule(templateHandSchedule(c)); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); }} />
       <div className="mb-7">
         <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Analyze · Plan</p>
         <h1 className="mt-2 text-3xl font-semibold">Trip Bankroll Planner</h1>
@@ -85,6 +84,7 @@ export function TripPlanner() {
           Estimate how a specific bankroll holds up over a trip of a given length: chance of busting, chance of finishing ahead, and how a loss or a win goal is likely to play out.
         </p>
       </div>
+      <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBankroll(c.bankroll); setBettingUnit(c.baseBet); setHandsPerHour(c.handsPerHour); setTripHours(c.hours); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setHandsSchedule(templateHandSchedule(c)); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); }} />
 
       <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
@@ -145,9 +145,10 @@ export function TripPlanner() {
         <div className="space-y-5">
           <Panel>
             <h2 className="font-semibold">Trip outlook</h2>
+            <p className="mt-2 text-xs leading-5 text-[var(--ink-muted)]">{decks} decks, {dealt} dealt; {dealerHitsSoft17 ? "H17" : "S17"}, {doubleAfterSplit ? "DAS" : "no DAS"}, {resplitAces ? "RSA" : "no RSA"}, {lateSurrender ? "late surrender" : "no surrender"}, {blackjackPayout === 1.5 ? "3:2" : "6:5"}; {useIndices ? "with indices" : "basic strategy"}. {tripHours} hours at {handsPerHour} rounds/hour, {money(bettingUnit)} unit.</p>
             <p className="mt-1 text-xs leading-5 text-[var(--warning)]/80"><i className="fa-solid fa-triangle-exclamation mr-1.5" aria-hidden="true" />Analytical (normal-approximation) estimate, not a Monte Carlo simulation. It can understate ruin probability very close to a zero bankroll.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Metric label="Expected ending bankroll" value={money(plan.expectedEndingBankroll, 0)} sub={`95% CI ${money(plan.ci95Low, 0)} to ${money(plan.ci95High, 0)}`} />
+              <Metric label="Expected ending bankroll" value={money(plan.expectedEndingBankroll, 0)} sub={`95% modeled outcome range ${money(plan.ci95Low, 0)} to ${money(plan.ci95High, 0)}`} />
               <Metric label="Trip EV" value={money(plan.tripEv, 0)} sub={`± ${money(plan.standardDeviation, 0)} SD`} />
               <Metric label="Chance of finishing ahead" value={percent(plan.chanceOfProfit)} />
               <Metric label="Chance of busting the trip" value={percent(plan.bustProbability)} sub="crosses zero bankroll at any point" />

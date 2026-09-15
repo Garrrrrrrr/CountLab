@@ -1,4 +1,5 @@
 "use client";
+import { useCalculationWorker } from "@/lib/useCalculationWorker";
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
@@ -163,7 +164,6 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
   const exposedRef = useRef<number[]>(Array(11).fill(0));
   const bankrollRef = useRef(1000);
   const activeRef = useRef(active);
-  const evWorker = useRef<Worker | undefined>(undefined);
   const evRequestId = useRef(0);
   const evSignatureRef = useRef("");
   const tableRef = useRef<HTMLDivElement>(null);
@@ -174,10 +174,9 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
     activeRef.current = active;
   }, [active]);
 
-  useEffect(() => {
-    const worker = new Worker(new URL("../workers/ddmExact.worker.ts", import.meta.url));
-    evWorker.current = worker;
-    worker.onmessage = (event: MessageEvent<{ id: number; result?: ExactEvResult; error?: string; durationMs: number }>) => {
+  const evWorker = useCalculationWorker(
+    () => new Worker(new URL("../workers/ddmExact.worker.ts", import.meta.url)),
+    (event: MessageEvent<{ id: number; result?: ExactEvResult; error?: string; durationMs: number }>) => {
       if (event.data.id !== evRequestId.current) return;
       setEvLoading(false);
       setEvDuration(event.data.durationMs);
@@ -188,9 +187,9 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
         setEvError("");
         setEvResult(event.data.result);
       }
-    };
-    return () => worker.terminate();
-  }, []);
+    },
+    (message) => { setEvLoading(false); setEvError(message); },
+  );
 
   const casinoPause = async (milliseconds: number) => {
     await pause(animations ? milliseconds * (fastMode ? 0.35 : 1) : 40);
@@ -253,11 +252,12 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
 
   const currentCardCount = hands[activeHand]?.cards.length;
   useEffect(() => {
+    evWorker.terminate();
     evRequestId.current += 1;
     setEvResult(undefined);
     setEvLoading(false);
     setEvError("");
-  }, [phase, activeHand, currentCardCount]);
+  }, [phase, activeHand, currentCardCount, evWorker]);
 
   const expose = (cards: readonly DDMCard[]) => {
     const next = [...exposedRef.current];
@@ -566,7 +566,7 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
   const handSignature = (hand: DDMHand) => `${hand.cards.map((card) => card.id).join(",")}|${dealerUp?.id ?? ""}`;
 
   const requestEv = (hand: DDMHand) => {
-    if (!evWorker.current || !dealerUp) return;
+    if (!dealerUp) return;
     // The solver removes this hand and the upcard itself, and it keeps the hole
     // card in the unseen composition so the answer is peek-conditioned.
     const deadCards = Array.from({ length: 10 }, (_, index) => {
@@ -579,7 +579,7 @@ export function DDMTableGame({ active = true }: { active?: boolean }) {
     setEvResult(undefined);
     setEvError("");
     track("ddm_ev_requested", { total: handValue(hand.cards).total, tc });
-    evWorker.current.postMessage({
+    evWorker.postMessage({
       id,
       input: { decks, player: hand.cards.map((card) => card.rank), dealerUp: dealerUp.rank, deadCards } satisfies ExactEvInput,
     });
