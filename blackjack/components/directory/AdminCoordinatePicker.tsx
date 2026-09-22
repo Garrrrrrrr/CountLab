@@ -48,6 +48,7 @@ export function AdminCoordinatePicker({
     let map: import("maplibre-gl").Map | undefined;
     import("maplibre-gl").then((module) => {
       if (disposed || !mapElement.current) return;
+      module.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.js");
       const instance = new module.Map({
         container: mapElement.current,
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`,

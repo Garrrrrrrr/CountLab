@@ -1,6 +1,7 @@
 node_modules/
 .next/
 out/
+public/vendor/maplibre/
 coverage/
 playwright-report/
 test-results/

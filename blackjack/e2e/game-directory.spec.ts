@@ -34,6 +34,14 @@ test("anonymous visitor can browse and open a direct directory game link", async
   await page.route((url) => url.pathname.endsWith("/rest/v1/directory_locations"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(location) }));
   await page.route((url) => url.pathname.endsWith("/rest/v1/directory_games"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([game]) }));
   await page.route((url) => url.pathname.endsWith("/rest/v1/directory_notes"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  if (process.env.NEXT_PUBLIC_MAPTILER_KEY) {
+    // The browser key accepts the production origin, even when this test runs
+    // against a localhost export in CI.
+    await page.route("https://api.maptiler.com/**", async (route) => {
+      const response = await route.fetch({ headers: { ...route.request().headers(), origin: "https://countlab.ca", referer: "https://countlab.ca/directory/" } });
+      await route.fulfill({ response });
+    });
+  }
 
   await page.goto("/directory/");
   await expect(page.getByRole("heading", { name: "Game directory" })).toBeVisible();
@@ -41,6 +49,7 @@ test("anonymous visitor can browse and open a direct directory game link", async
   if (process.env.NEXT_PUBLIC_MAPTILER_KEY) {
     const map = page.getByRole("img", { name: "Map of directory locations" });
     await expect(map).toBeVisible();
+    await expect(map).toHaveAttribute("data-map-loaded", "true", { timeout: 15000 });
     const dimensions = await map.boundingBox();
     expect(dimensions?.width).toBeGreaterThan(800);
     expect(dimensions?.height).toBeGreaterThan(600);

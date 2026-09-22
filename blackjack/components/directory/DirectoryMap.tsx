@@ -17,8 +17,10 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
   useEffect(() => {
     if (!host.current || !key) return;
     let disposed = false;
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
     void import("maplibre-gl").then((mod) => {
       if (disposed || !host.current) return;
+      mod.setWorkerUrl("/vendor/maplibre/maplibre-gl-worker.js");
       const instance = new mod.Map({
         container: host.current,
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`,
@@ -30,11 +32,13 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
         attributionControl: false,
       });
       map.current = instance;
+      loadTimer = setTimeout(() => setError("The map is taking too long to load. Browse locations in the list."), 15000);
       instance.addControl(new mod.NavigationControl(), "top-right");
       instance.addControl(new mod.FullscreenControl(), "top-right");
       instance.addControl(new mod.AttributionControl({ compact: true }), "bottom-right");
-      instance.on("error", () => setError("Map tiles are unavailable. The list remains available."));
+      instance.on("error", () => { clearTimeout(loadTimer); setError("Map tiles are unavailable. The list remains available."); });
       instance.on("load", () => {
+        clearTimeout(loadTimer);
         instance.addSource("directory-locations", { type: "geojson", data: { type: "FeatureCollection", features: [] }, cluster: true, clusterRadius: 45 });
         instance.addLayer({ id: "clusters", type: "circle", source: "directory-locations", filter: ["has", "point_count"], paint: { "circle-color": "#65c875", "circle-radius": ["step", ["get", "point_count"], 17, 20, 23, 100, 29], "circle-stroke-color": "#112010", "circle-stroke-width": 2 } });
         instance.addLayer({ id: "cluster-count", type: "symbol", source: "directory-locations", filter: ["has", "point_count"], layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 }, paint: { "text-color": "#112010" } });
@@ -54,7 +58,7 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
         setLoaded(true);
       });
     }).catch(() => setError("The map could not load. The list remains available."));
-    return () => { disposed = true; map.current?.remove(); map.current = null; setLoaded(false); };
+    return () => { disposed = true; clearTimeout(loadTimer); map.current?.remove(); map.current = null; setLoaded(false); };
   }, [onSelect]);
 
   useEffect(() => {
@@ -77,5 +81,5 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
   useEffect(() => { if (active) map.current?.resize(); }, [active]);
 
   if (!key) return <div className="grid h-[calc(100dvh-10rem)] min-h-96 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-6 text-center text-sm text-[var(--ink-muted)]">Map is unavailable. Browse locations in the list.</div>;
-  return <div className="relative h-[calc(100dvh-10rem)] min-h-96 max-h-[70rem] overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="h-full w-full" aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
+  return <div className="relative h-[calc(100dvh-10rem)] min-h-96 max-h-[70rem] overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="h-full w-full" data-map-loaded={loaded} aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
 }

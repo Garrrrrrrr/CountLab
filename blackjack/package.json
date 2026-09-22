@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/stage-maplibre-worker.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/stage-maplibre-worker.mjs",
     "build": "next build",
     "postbuild": "tsx scripts/stamp-sw-version.ts",
     "generate:ddm-buckets": "tsx scripts/generate-ddm-profile-buckets.ts",
