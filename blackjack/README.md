@@ -75,6 +75,42 @@ insert into admin_users (user_id) select id from auth.users where email = 'you@e
 The nav only shows the "Analytics" link once `is_admin()` returns true for
 the signed-in user.
 
+### Game directory
+
+`/directory/` is readable by everyone. `/admin/directory/` lets users on the
+existing `admin_users` allowlist add, edit, publish, delete, restore, and
+permanently remove locations and game offerings. The site remains a static
+export: directory records are read live from Supabase, so adding a location
+does not require a rebuild. Apply `supabase/schema.sql` to a new installation,
+or `supabase/migrations/20260922_game_directory.sql` to an existing one before
+using these routes. The Pages workflow does not apply SQL migrations.
+
+For maps and address search, set `NEXT_PUBLIC_MAPTILER_KEY` in
+`blackjack/.env.local` during development and as a GitHub Actions repository
+variable for deployment. Restrict the public browser key to the site's domains
+in MapTiler and choose a plan that permits the intended traffic. The directory
+list and manual location entry still work when no map key is configured.
+
+To prepare the supplied September 2026 CBJN file, install PyMuPDF in the
+local Python environment and run this from the repository root:
+
+```bash
+python -m pip install pymupdf
+python blackjack/scripts/directory/import_cbjn.py original_132.pdf --out tmp/directory/cbjn-2026-09-staging.json
+```
+
+The JSON is private and gitignored. After deploying the site, sign in as an
+admin, open `/admin/directory/`, choose **Import review**, and select
+`tmp/directory/cbjn-2026-09-staging.json` in **Private staging JSON**. Existing
+batch decisions survive a repeated upload. Select **Approve rows without
+warnings**, review the flagged rows individually, then select **Apply reviewed
+rows as drafts**. Once the batch says `applied`, enter the publication permission
+reference, type `PUBLISH`, and select **Publish approved import**. Publication
+can be retried if a connection interruption leaves only some records published.
+Keep the PDF and staging JSON out of the website build. Location and game
+reports retain their reported month; import time is not a claim that conditions
+were verified then.
+
 Apply `supabase/schema.sql` before deploying the Edge Functions. The Pages
 workflow does not migrate the database. Then configure these server-only Edge
 secrets and deploy both functions:

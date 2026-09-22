@@ -23,6 +23,7 @@ import { AccountDataTools } from "./AccountDataTools";
 import { HomePage } from "./HomePage";
 import { ROUTE_DESCRIPTIONS } from "@/lib/routes";
 import { LEGACY_REDIRECTS } from "@/lib/routes";
+import { AdminImportPanel } from "@/components/directory/AdminImportPanel";
 
 function PageLoading() {
   return (
@@ -61,6 +62,8 @@ const PracticeHub = dynamic(() => import("@/components/PracticeHub"), { loading:
 const TermsPage = dynamic(() => import("@/components/TermsPage"), { loading: PageLoading });
 const PrivacyPage = dynamic(() => import("@/components/PrivacyPage"), { loading: PageLoading });
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
+const AdminDirectory = dynamic(() => import("@/components/directory/AdminDirectory").then((m) => m.AdminDirectory), { loading: PageLoading });
+const DirectoryPage = dynamicPage(() => import("@/components/directory/DirectoryPage").then((m) => ({ default: m.DirectoryPage })));
 function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [checklistTicks, setChecklistTicks] = useState<string[]>([]);
@@ -670,7 +673,7 @@ function NotFound() {
   );
 }
 const AREA_PAGES = {
-  analyze: { title: "Analyze", description: "Start in the Game & Bankroll Lab and save a scenario. Simulate it, compare alternatives or plan a trip, then record actual results in the Journal.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
+  analyze: { title: "Analyze", description: "Start in the Game & Bankroll Lab and save a scenario. Simulate it, compare alternatives or plan a trip, then record actual results in the Journal.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Game Directory", "/directory", "fa-map-location-dot"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
   play: { title: "Games", description: "Take the concepts to the felt in focused table-game practice.", items: [["Double Down Madness", "/double-down-madness", "fa-bolt"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"], ["Chase the Flush", "/chase-flush", "fa-diamond"]] },
 } as const;
 function AreaLanding({ area }: { area: keyof typeof AREA_PAGES }) {
@@ -685,6 +688,7 @@ export default function DynamicPage({ route = "dashboard" }: { route?: string })
     dashboard: <Dashboard />,
     practice: <PracticeHub />,
     analyze: <AreaLanding area="analyze" />,
+    directory: <DirectoryPage />,
     play: <AreaLanding area="play" />,
     cvcx: <CvcxLab />,
     simulation: <SessionSimulator />,
@@ -713,6 +717,7 @@ export default function DynamicPage({ route = "dashboard" }: { route?: string })
     terms: <TermsPage />,
     privacy: <PrivacyPage />,
     admin: <AdminPage />,
+    "admin/directory": <AdminDirectory importPanel={<AdminImportPanel />} />,
   };
   const redirect = LEGACY_REDIRECTS[path];
   if (redirect) return <LegacyRedirect to={redirect} />;

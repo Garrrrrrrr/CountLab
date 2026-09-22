@@ -34,6 +34,9 @@ import { Button, CountRule, GhostButton, NumberField, PinnedStat, Section, Selec
 import { ConfirmModal } from "./ConfirmModal";
 import { BetSpreadTable } from "./BetSpreadTable";
 import { venuePresetLibrary, VenuePreset } from "@/lib/blackjack/venuePresets";
+import { getDirectoryLocation } from "@/lib/directory/queries";
+import { directoryGameToLab } from "@/lib/directory/labCompatibility";
+import { monthLabel } from "@/lib/directory/format";
 
 /** The seventeen true-count buckets the audited coefficients are keyed on. */
 const TRUE_COUNTS = Array.from({ length: 17 }, (_, index) => index - 8);
@@ -256,7 +259,8 @@ export function CvcxLab() {
     [pendingDeleteTemplate, setPendingDeleteTemplate] = useState<CvcxTemplate>(),
     [venuePresets, setVenuePresets] = useState<VenuePreset[]>([]),
     [venuePresetName, setVenuePresetName] = useState(""),
-    [cvcxNotice, setCvcxNotice] = useState<string>();
+    [cvcxNotice, setCvcxNotice] = useState<string>(),
+    [directoryHandoff, setDirectoryHandoff] = useState<{ title: string; detail: string; error: boolean } | null>(null);
 
   useEffect(() => {
     const refresh = () => setCvcxTemplates(cvcxLibrary.templates());
@@ -269,6 +273,45 @@ export function CvcxLab() {
     refresh();
     addEventListener(venuePresetLibrary.event, refresh);
     return () => removeEventListener(venuePresetLibrary.event, refresh);
+  }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const locationId = params.get("directoryLocation");
+    const gameId = params.get("directoryGame");
+    if (!locationId || !gameId) return;
+    let active = true;
+    setDirectoryHandoff({ title: "Loading directory game", detail: "Checking the published rules before applying them.", error: false });
+    getDirectoryLocation(locationId).then((data) => {
+      if (!active) return;
+      const game = data?.games.find((item) => item.id === gameId);
+      if (!data || !game) {
+        setDirectoryHandoff({ title: "Directory game unavailable", detail: "This game is unpublished or no longer available. The lab is showing its own default scenario.", error: true });
+        return;
+      }
+      const transfer = directoryGameToLab(game);
+      if (!transfer.config) {
+        setDirectoryHandoff({ title: "Directory game could not be loaded", detail: `${transfer.reasons.join(" ")} The lab is showing its own default scenario.`, error: true });
+        return;
+      }
+      const config = transfer.config;
+      setDecks(config.decks);
+      setDealt(config.dealt);
+      setBaseBet(config.baseBet);
+      setDealerHitsSoft17(config.dealerHitsSoft17);
+      setDoubleAfterSplit(config.doubleAfterSplit);
+      setResplitAces(config.resplitAces);
+      setLateSurrender(config.lateSurrender);
+      setEuropeanNoHoleCard(config.europeanNoHoleCard);
+      setBlackjackPayout(config.blackjackPayout);
+      setDoubleRule(config.doubleRule);
+      setWongInAt(null);
+      setUseIndices(false);
+      setCvcxTemplateName(`${data.location.name} · ${game.decks}D`);
+      setDirectoryHandoff({ title: `Loaded ${data.location.name}`, detail: `${monthLabel(game.reported_month)}. Supported rules and the table minimum were applied. Basic strategy and play-all entry are selected; choose a counting strategy and bet ramp for your analysis. ${transfer.notes.join(" ")}`, error: false });
+    }).catch(() => {
+      if (active) setDirectoryHandoff({ title: "Directory game unavailable", detail: "The game could not be fetched. The lab is showing its own default scenario.", error: true });
+    });
+    return () => { active = false; };
   }, []);
 
   const ruleFlags = useMemo(
@@ -520,6 +563,7 @@ export function CvcxLab() {
           {decks}D · {dealt} dealt · Hi-Lo
         </div>
       </div>
+      {directoryHandoff && <div role={directoryHandoff.error ? "alert" : "status"} className={`mb-5 rounded-xl border p-4 text-sm ${directoryHandoff.error ? "border-amber-300/30 text-[var(--warning)]" : "border-emerald-400/30 text-[var(--ink)]"}`}><strong>{directoryHandoff.title}</strong><p className="mt-1 text-[var(--ink-muted)]">{directoryHandoff.detail}</p></div>}
       <ScenarioPicker onLoad={loadCvcxTemplate} current={currentCvcxConfig} />
 
       {/* Pinned directly under the app header so the four numbers everything

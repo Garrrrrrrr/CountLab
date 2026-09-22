@@ -180,6 +180,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                   <i className="fa-solid fa-chart-simple w-4 text-center text-[.78rem]" />
                   Analytics
                 </Link>
+                <Link
+                  onClick={() => setOpen(false)}
+                  href="/admin/directory"
+                  aria-current={path === "/admin/directory" ? "page" : undefined}
+                  className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === "/admin/directory" ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}
+                >
+                  <i className="fa-solid fa-map-location-dot w-4 text-center text-[.78rem]" />
+                  Game directory
+                </Link>
               </div>
             </div>
           )}

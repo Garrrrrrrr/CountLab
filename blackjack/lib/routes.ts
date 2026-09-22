@@ -21,6 +21,7 @@ export const ROUTES: string[][] = [
   ["signin"],
   ["practice"],
   ["analyze"],
+  ["directory"],
   ["play"],
   ["cvcx"],
   ["simulation"],
@@ -49,13 +50,14 @@ export const ROUTES: string[][] = [
   ["terms"],
   ["privacy"],
   ["admin"],
+  ["admin", "directory"],
   ...Object.keys(LEGACY_REDIRECTS).map((route) => route.split("/")),
 ];
 
 export type Destination = readonly [name: string, href: string, icon: string, area: "Practice" | "Analyze" | "Games" | "Reference" | "Utility"];
 export const TOOL_ROUTES: readonly Destination[] = [
   ["Full Shoe", "/training/full-shoe", "fa-shoe-prints", "Practice"], ["Daily Checklist", "/training/checklist", "fa-list-check", "Practice"], ["Running Count", "/training/running-count", "fa-bolt", "Practice"], ["True Count", "/training/true-count", "fa-divide", "Practice"], ["Basic Strategy", "/training/basic-strategy", "fa-layer-group", "Practice"], ["Deviations", "/training/deviations", "fa-code-branch", "Practice"], ["H17 Chart", "/training/h17-chart", "fa-table-cells", "Practice"], ["Deck Estimation", "/training/deck-estimation", "fa-ruler", "Practice"], ["Counting Benchmark", "/training/benchmark", "fa-medal", "Practice"], ["Test Out", "/training/test-out", "fa-award", "Practice"],
-  ["Game & Bankroll Lab", "/cvcx", "fa-chart-area", "Analyze"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group", "Analyze"], ["Session Simulator", "/simulation", "fa-wave-square", "Analyze"], ["Session Journal", "/journal", "fa-book", "Analyze"], ["Compare Scenarios", "/compare", "fa-code-compare", "Analyze"], ["Trip Planner", "/trip-planner", "fa-plane-departure", "Analyze"],
+  ["Game & Bankroll Lab", "/cvcx", "fa-chart-area", "Analyze"], ["Game Directory", "/directory", "fa-map-location-dot", "Analyze"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group", "Analyze"], ["Session Simulator", "/simulation", "fa-wave-square", "Analyze"], ["Session Journal", "/journal", "fa-book", "Analyze"], ["Compare Scenarios", "/compare", "fa-code-compare", "Analyze"], ["Trip Planner", "/trip-planner", "fa-plane-departure", "Analyze"],
   ["Double Down Madness", "/double-down-madness", "fa-bolt", "Games"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover", "Games"], ["Chase the Flush", "/chase-flush", "fa-diamond", "Games"],
   ["Strategy charts", "/reference", "fa-table-cells", "Reference"],
   ["Dashboard", "/dashboard", "fa-house", "Utility"], ["Statistics", "/statistics", "fa-chart-line", "Utility"], ["Settings", "/settings", "fa-gear", "Utility"],
@@ -64,6 +66,7 @@ export const TOOL_ROUTES: readonly Destination[] = [
 export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   "/": "Practice blackjack counting, learn the right decisions, and explore bankroll risk with free interactive tools.",
   "/cvcx": "Build a table profile and bet ramp, then compare expected return, bankroll requirements, and risk.",
+  "/directory": "Find published casino games by location, table limits, reported rules, and report date.",
   "/bet-spread-recommender": "Compare candidate spreads for your bankroll and preferred risk level.",
   "/simulation": "Stress-test a saved game through reproducible simulations and inspect possible outcomes.",
   "/journal": "Record sessions and transactions, then compare actual results with your expected performance.",
@@ -81,4 +84,4 @@ export function routeInfo(path: string) {
   const title = TOOL_ROUTES.find((entry) => entry[1] === path)?.[0] ?? ({ "/": "Blackjack practice and analysis", "/signin": "Sign in", "/practice": "Practice", "/analyze": "Analyze", "/play": "Games", "/terms": "Terms of Service", "/privacy": "Privacy Policy", "/admin": "Product analytics", "/reference/deviations": "Index deviation chart", "/reference/h17-chart": "H17 deviation chart" } as Record<string, string>)[path] ?? path.split("/").filter(Boolean).join(" \u00b7 ");
   return { title, description: ROUTE_DESCRIPTIONS[path] ?? `${title}: interactive blackjack practice and analysis in CountLab.` };
 }
-export const isPublicRoute = (path: string) => ["/", "/practice", "/analyze", "/play", "/terms", "/privacy"].includes(path) || path === "/reference" || path.startsWith("/reference/");
+export const isPublicRoute = (path: string) => ["/", "/practice", "/analyze", "/directory", "/play", "/terms", "/privacy"].includes(path) || path === "/reference" || path.startsWith("/reference/");

@@ -35,6 +35,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_MAPTILER_KEY: ${{ vars.NEXT_PUBLIC_MAPTILER_KEY }}
           NEXT_PUBLIC_APP_VERSION: "1.0.0"
           NEXT_PUBLIC_COMMIT_SHA: ${{ github.sha }}
           NEXT_PUBLIC_ANALYTICS_ENV: production
