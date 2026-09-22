@@ -103,8 +103,10 @@ The JSON is private and gitignored. After deploying the site, sign in as an
 admin, open `/admin/directory/`, choose **Import review**, and select
 `tmp/directory/cbjn-2026-09-staging.json` in **Private staging JSON**. Existing
 batch decisions survive a repeated upload. Select **Approve rows without
-warnings**, review the flagged rows individually, then select **Apply reviewed
-rows as drafts**. Once the batch says `applied`, enter the publication permission
+warnings** and review flagged rows individually, or select **Approve all pending
+rows (including warnings)** to import them for later correction. Parser warnings
+remain visible in the batch. Then select **Apply reviewed rows as drafts**. Once
+the batch says `applied`, enter the publication permission
 reference, type `PUBLISH`, and select **Publish approved import**. Publication
 can be retried if a connection interruption leaves only some records published.
 Keep the PDF and staging JSON out of the website build. Location and game

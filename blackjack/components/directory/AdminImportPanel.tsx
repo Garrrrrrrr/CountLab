@@ -178,18 +178,26 @@ export function AdminImportPanel() {
     setBusy(false);
   };
 
-  const approveClean = async () => {
-    if (!selectedId) return;
-    const ids = rows.filter((row) => row.decision === "pending" && (!row.validation_issues || row.validation_issues.length === 0)).map((row) => row.id);
+  const approvePending = async (includeWarnings: boolean) => {
+    if (!selectedId || !selected || !["staged", "reviewing"].includes(selected.status)) return;
+    const ids = rows.filter((row) => row.decision === "pending" && (includeWarnings || !row.validation_issues?.length)).map((row) => row.id);
     setBusy(true); setError("");
     try {
       for (const group of chunk(ids, 100)) {
-        const { error: failure } = await supabase.from("directory_import_rows").update({ decision: "approve", reviewed_at: new Date().toISOString() }).eq("batch_id", selectedId).in("id", group);
+        const { error: failure } = await supabase.from("directory_import_rows").update({
+          decision: "approve", reviewed_at: new Date().toISOString(),
+          decision_reason: includeWarnings ? "Bulk approved; parser warnings retained where present for later correction" : null,
+        }).eq("batch_id", selectedId).in("id", group);
         if (failure) throw failure;
       }
       await refreshRows(selectedId);
-      setNotice(`Approved ${ids.length} rows without parser warnings. Review the remaining rows individually.`);
-    } catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+      setNotice(includeWarnings
+        ? `Approved ${ids.length} pending rows, including flagged rows. Parser warnings remain visible in this batch.`
+        : `Approved ${ids.length} rows without parser warnings. Review or bulk approve the remaining rows.`);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : String(failure));
+      await refreshRows(selectedId).catch(() => undefined);
+    }
     finally { setBusy(false); }
   };
 
@@ -310,7 +318,8 @@ export function AdminImportPanel() {
       {error && <p role="alert" className="mt-3 text-sm text-[var(--negative)]">{error}</p>}{notice && <p role="status" className="mt-3 text-sm text-[var(--accent)]">{notice}</p>}
     </Panel>
     <Panel><div className="flex flex-wrap items-end justify-between gap-3"><label className="grid gap-1 text-sm">Import batch<select className={editorClass} value={selectedId ?? ""} onChange={(event) => setSelectedId(event.target.value || null)}><option value="">Choose a batch</option>{batches.map((batch) => <option key={batch.id} value={batch.id}>{String(batch.summary?.game_rows ?? "?")} games · {batch.file_sha256.slice(0, 12)} · {batch.status}</option>)}</select></label>{selected && <span className="text-sm text-[var(--ink-muted)]">{rows.length} staged · {pendingCount} pending · {issueCount} flagged · {selected.status}</span>}</div>
-      {selected && selected.status !== "applied" && <div className="mt-4 flex flex-wrap gap-2"><GhostButton disabled={busy || !["staged", "reviewing"].includes(selected.status) || !rows.some((row) => row.decision === "pending" && !row.validation_issues?.length)} onClick={() => void approveClean()}>Approve rows without warnings</GhostButton><Button disabled={busy || !rows.length || pendingCount > 0 || rows.some((row) => row.decision === "conflict")} onClick={() => void apply()}>Apply reviewed rows as drafts</Button></div>}
+      {selected && selected.status !== "applied" && <div className="mt-4 flex flex-wrap gap-2"><GhostButton disabled={busy || !["staged", "reviewing"].includes(selected.status) || !rows.some((row) => row.decision === "pending" && !row.validation_issues?.length)} onClick={() => void approvePending(false)}>Approve rows without warnings</GhostButton><GhostButton disabled={busy || !["staged", "reviewing"].includes(selected.status) || pendingCount === 0} onClick={() => void approvePending(true)}>Approve all pending rows (including warnings)</GhostButton><Button disabled={busy || !rows.length || pendingCount > 0 || rows.some((row) => row.decision === "conflict")} onClick={() => void apply()}>Apply reviewed rows as drafts</Button></div>}
+      {selected && issueCount > 0 && <p className="mt-2 text-xs text-[var(--ink-muted)]">Bulk approval keeps {issueCount} parser warning{issueCount === 1 ? "" : "s"} in the batch. After import, edit any incorrect location or game in the Locations tab.</p>}
       {selected && <p className="mt-2 text-xs text-[var(--ink-muted)]">A repeat upload resumes missing rows and preserves existing decisions. Approved rows remain unpublished after import.</p>}
     </Panel>
     {selected?.status === "applied" && source && <Panel><h3 className="text-lg font-semibold">Publish reviewed import</h3>
