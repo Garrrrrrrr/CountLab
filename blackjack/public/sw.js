@@ -111,21 +111,23 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    // Cache-first: every exported route is precached, so going to the network
-    // first only bought a doomed round trip on every offline page load. A deploy
-    // still reaches the user, via the new worker's cache and the update prompt.
+    // A cached HTML shell can reference chunks that GitHub Pages removed on the
+    // next deploy. Prefer the current page online and retain the offline copy.
     event.respondWith(
-      caches.match(request, { ignoreSearch: true }).then((cached) => {
-        if (cached) return cached;
-        return fetch(request)
-          .then((response) => {
-            const copy = response.clone();
-            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)));
-            return response;
-          })
-          .catch(() => caches.match(OFFLINE_URL).then((offline) => offline || Response.error()));
-      }),
+      fetch(request)
+        .then((response) => {
+          if (response.ok) event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone())));
+          return response;
+        })
+        .catch(() => caches.match(request, { ignoreSearch: true }).then((cached) => cached || caches.match(OFFLINE_URL).then((offline) => offline || Response.error()))),
     );
+    return;
+  }
+
+  // RSC navigation payloads describe the current build's chunks. Never keep an
+  // older payload in the offline cache after a deployment.
+  if (request.headers.has("RSC") || url.searchParams.has("_rsc")) {
+    event.respondWith(fetch(request));
     return;
   }
 

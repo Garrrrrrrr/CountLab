@@ -24,10 +24,14 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
         style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${encodeURIComponent(key)}`,
         center: [-100, 39],
         zoom: 3,
+        scrollZoom: true,
+        dragPan: true,
+        touchZoomRotate: true,
         attributionControl: false,
       });
       map.current = instance;
       instance.addControl(new mod.NavigationControl(), "top-right");
+      instance.addControl(new mod.FullscreenControl(), "top-right");
       instance.addControl(new mod.AttributionControl({ compact: true }), "bottom-right");
       instance.on("error", () => setError("Map tiles are unavailable. The list remains available."));
       instance.on("load", () => {
@@ -72,6 +76,6 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
 
   useEffect(() => { if (active) map.current?.resize(); }, [active]);
 
-  if (!key) return <div className="grid min-h-64 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-6 text-center text-sm text-[var(--ink-muted)]">Map is unavailable. Browse locations in the list.</div>;
-  return <div className="relative min-h-64 overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="absolute inset-0" aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
+  if (!key) return <div className="grid h-[calc(100dvh-10rem)] min-h-96 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-6 text-center text-sm text-[var(--ink-muted)]">Map is unavailable. Browse locations in the list.</div>;
+  return <div className="relative h-[calc(100dvh-10rem)] min-h-96 max-h-[70rem] overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="absolute inset-0" aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
 }

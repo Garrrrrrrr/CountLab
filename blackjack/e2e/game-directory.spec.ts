@@ -5,7 +5,7 @@ const gameId = "22222222-2222-4222-8222-222222222222";
 const location = {
   id: locationId, name: "Test Casino", aliases: [], operator: null, country: "US",
   subdivision: "NV", city: "Reno", address: "1 Test Way", website: null,
-  latitude: null, longitude: null, coordinate_quality: "unknown", coordinate_source: null,
+  latitude: 39.5296, longitude: -119.8138, coordinate_quality: "verified", coordinate_source: "test fixture",
   operating_status: "open", game_availability: "reported", publication_status: "published",
   published_at: "2026-09-01T00:00:00Z", version: 1, deleted_at: null,
   created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
@@ -37,6 +37,18 @@ test("anonymous visitor can browse and open a direct directory game link", async
 
   await page.goto("/directory/");
   await expect(page.getByRole("heading", { name: "Game directory" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Map", exact: true })).toHaveAttribute("aria-pressed", "true");
+  if (process.env.NEXT_PUBLIC_MAPTILER_KEY) {
+    const map = page.getByRole("img", { name: "Map of directory locations" });
+    await expect(map).toBeVisible();
+    const dimensions = await map.boundingBox();
+    expect(dimensions?.width).toBeGreaterThan(800);
+    expect(dimensions?.height).toBeGreaterThan(600);
+    await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
+  } else {
+    await expect(page.getByText("Map is unavailable. Browse locations in the list.")).toBeVisible();
+  }
+  await page.getByRole("button", { name: "List", exact: true }).click();
   await expect(page.getByRole("button", { name: /Test Casino/ })).toBeVisible();
   await page.goto(`/directory/?location=${locationId}`);
   await expect(page.getByRole("heading", { name: "Test Casino" })).toBeVisible();

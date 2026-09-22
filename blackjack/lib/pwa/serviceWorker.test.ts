@@ -163,7 +163,7 @@ describe("sw.js activate", () => {
 });
 
 describe("sw.js offline fetch", () => {
-  it("serves a precached route without touching the network", async () => {
+  it("falls back to a precached route when the network is unavailable", async () => {
     const worker = loadWorker("abc123", cacheStorage);
     await worker.dispatch("install");
     online = false;
@@ -172,8 +172,16 @@ describe("sw.js offline fetch", () => {
 
     const response = await worker.dispatch("fetch", navigation("/training/deck-estimation/"));
     expect(await (await response!).text()).toBe("body:/training/deck-estimation/");
-    // The point of cache-first: no doomed round trip on every offline page load.
-    expect(mock.mock.calls.length).toBe(before);
+    expect(mock.mock.calls.length).toBe(before + 1);
+  });
+
+  it("uses the current HTML online even when an older page is cached", async () => {
+    const worker = loadWorker("abc123", cacheStorage);
+    await worker.dispatch("install");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("current deployment", { status: 200 })));
+
+    const response = await worker.dispatch("fetch", navigation("/training/deck-estimation/"));
+    expect(await (await response!).text()).toBe("current deployment");
   });
 
   it("serves drill photos offline", async () => {
