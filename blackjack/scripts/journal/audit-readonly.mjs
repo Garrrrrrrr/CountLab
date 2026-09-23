@@ -27,7 +27,11 @@ if (mode === "collect") {
     query("select * from public.journal_sessions order by user_id, date, id"),
     query("select * from public.journal_transactions order by user_id, date, id"),
   ]);
-  const data = gzipSync(Buffer.from(JSON.stringify({ capturedAt: new Date().toISOString(), users, bankrolls, sessions, transactions })));
+  const backupsResponse = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(project)}/database/backups`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const backups = backupsResponse.ok ? await backupsResponse.json() : { status: backupsResponse.status };
+  const data = gzipSync(Buffer.from(JSON.stringify({ capturedAt: new Date().toISOString(), users, bankrolls, sessions, transactions, backups })));
   const key = randomBytes(32);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
@@ -39,7 +43,7 @@ if (mode === "collect") {
   console.log("Encrypted read-only journal snapshot created.");
 } else {
   const privateKey = await readFile("tmp/journal-audit/private.pem");
-  const sealed = await readFile("tmp/journal-audit/snapshot.enc");
+  const sealed = await readFile("tmp/journal-audit/journal-snapshot.enc");
   if (sealed.subarray(0, 5).toString() !== "CLJA1") throw new Error("Invalid journal snapshot.");
   const wrappedKey = sealed.subarray(5, 389); // 3072-bit RSA key
   const iv = sealed.subarray(389, 401);
