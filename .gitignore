@@ -7,6 +7,7 @@ es10_surrender_chart.png
 # Licensed source and local review output for the game directory.
 /original_132.pdf
 /tmp/directory/
+/tmp/journal-audit/
 
 # Stray installs from running a package runner outside blackjack/.
 /node_modules/
