@@ -14,16 +14,28 @@ try { osm = JSON.parse(await readFile(resolve(process.argv[3] ?? "../tmp/directo
 let layercake = [];
 let reviewedLayercake = {};
 let reviewedMapTiler = {};
+let reviewedName = {};
+let nameCache = {};
 try { layercake = JSON.parse(await readFile(resolve("../tmp/directory/layercake-casinos.json"), "utf8")); } catch { /* Layercake cache is optional. */ }
+try {
+  const named = JSON.parse(await readFile(resolve("../tmp/directory/layercake-casino-resorts.json"), "utf8"));
+  layercake = [...new Map([...layercake, ...named].map((item) => [`${item.type}/${item.id}`, item])).values()];
+} catch { /* Named resort cache is optional. */ }
+try {
+  const hotels = JSON.parse(await readFile(resolve("../tmp/directory/layercake-hotels.json"), "utf8"));
+  layercake = [...new Map([...layercake, ...hotels].map((item) => [`${item.type}/${item.id}`, item])).values()];
+} catch { /* Hotel cache is optional. */ }
 try { reviewedLayercake = JSON.parse(await readFile(resolve("../tmp/directory/layercake-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
 try { reviewedMapTiler = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { reviewedName = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-name-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { nameCache = JSON.parse(await readFile(resolve("../tmp/directory/cbjn-2026-09-staging-name-cache.json"), "utf8")); } catch { /* Name query cache is optional. */ }
 
 const normalize = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   .replace(/[&'’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 const stop = new Set(["casino", "hotel", "resort", "the", "and", "at", "club", "lodge", "gaming", "inc", "llc"]);
 const tokens = (value) => normalize(value).split(" ").filter((token) => token.length > 2 && !stop.has(token));
 const countryNames = { US: "united states", CA: "canada", PR: "puerto rico", BS: "bahamas" };
-const subdivisionNames = { AZ:"arizona", CA:"california", CO:"colorado", FL:"florida", GA:"georgia", IA:"iowa", IL:"illinois", IN:"indiana", KS:"kansas", LA:"louisiana", MD:"maryland", ME:"maine", MI:"michigan", MN:"minnesota", MO:"missouri", MS:"mississippi", ND:"north dakota", NE:"nebraska", NM:"new mexico", NV:"nevada", NY:"new york", OK:"oklahoma", OR:"oregon", PA:"pennsylvania", RI:"rhode island", SD:"south dakota", VA:"virginia", WA:"washington", WI:"wisconsin", AB:"alberta", BC:"british columbia", MB:"manitoba", NB:"new brunswick", NS:"nova scotia", ON:"ontario", QC:"quebec", SK:"saskatchewan" };
+const subdivisionNames = { AZ:"arizona", CA:"california", CO:"colorado", DE:"delaware", FL:"florida", GA:"georgia", IA:"iowa", IL:"illinois", IN:"indiana", KS:"kansas", LA:"louisiana", MD:"maryland", ME:"maine", MI:"michigan", MN:"minnesota", MO:"missouri", MS:"mississippi", ND:"north dakota", NE:"nebraska", NM:"new mexico", NV:"nevada", NY:"new york", OK:"oklahoma", OR:"oregon", PA:"pennsylvania", RI:"rhode island", SD:"south dakota", VA:"virginia", WA:"washington", WI:"wisconsin", AB:"alberta", BC:"british columbia", MB:"manitoba", NB:"new brunswick", NS:"nova scotia", ON:"ontario", QC:"quebec", SK:"saskatchewan" };
 const venueWords = /\b(casino|hotel|resort|lodge|club|gaming|racino|poker|raceway|saloon|inn|bingo)\b/i;
 const administrative = /\b(museum|library|school|preschool|university|church|cemetery|parking|airport|bus stop|train station|transit station|fire station|hospital|mall|office|city hall|spa|barbecue|cafe|restaurant|market|apartments?|dentist|dental|kids|beach club|showroom|fitness|pool|garage|rink|theatre|theater)\b/i;
 const venueSubdivision = /\b(poker room|sportsbook|spa tower|suite|restaurant|bar|lounge|gift shop)\b/i;
@@ -91,7 +103,7 @@ function coordinateFromNearbyOsm(location) {
 function coordinateFromReviewedLayercake(location) {
   const id = reviewedLayercake[location.source_location_key];
   if (!id) return null;
-  const matches = layercake.filter((item) => item.id === id && item.amenity === "casino" && item.name?.length
+  const matches = layercake.filter((item) => item.id === id && item.name?.length
     && Number.isFinite(item.lon) && Number.isFinite(item.lat));
   if (matches.length !== 1) throw new Error(`Reviewed OSM feature ${id} is missing or ambiguous`);
   const item = matches[0];
@@ -103,13 +115,13 @@ function coordinateFromReviewedLayercake(location) {
     source: `OpenStreetMap ${item.type}/${item.id} via OpenStreetMap US Layercake` };
 }
 
-function coordinateFromReviewedMapTiler(location, decision) {
-  const requested = reviewedMapTiler[location.source_location_key];
+function coordinateFromReviewedMapTiler(location, candidatesForReview, selections) {
+  const requested = selections[location.source_location_key];
   if (!requested) return null;
   const [name, qualifier] = requested.split("|");
   const country = normalize(countryNames[location.country] ?? location.country);
   const region = normalize(subdivisionNames[location.subdivision] ?? location.subdivision);
-  const matching = (decision?.candidates ?? []).filter((candidate) => {
+  const matching = (candidatesForReview ?? []).filter((candidate) => {
     const label = normalize(candidate.text);
     const place = normalize(candidate.place_name);
     return label.startsWith(normalize(name)) && (!qualifier || place.includes(normalize(qualifier)))
@@ -173,7 +185,9 @@ for (const location of staged.locations) {
   // Recheck every venue-level result. The first pass intentionally left some
   // similarly named POIs for review (for example a casino spa or parking lot);
   // only named casino/resort/hotel POIs survive this stricter audit.
-  const online = coordinateFromReviewedLayercake(location) ?? coordinateFromReviewedMapTiler(location, decision)
+  const online = coordinateFromReviewedLayercake(location)
+    ?? coordinateFromReviewedMapTiler(location, decision?.candidates, reviewedMapTiler)
+    ?? coordinateFromReviewedMapTiler(location, nameCache[location.source_location_key], reviewedName)
     ?? coordinateFromOsm(location) ?? coordinateFromMapTiler(location, decision)
     ?? coordinateFromNearbyVenue(location, decision) ?? coordinateFromNearbyOsm(location);
   if (online) {
