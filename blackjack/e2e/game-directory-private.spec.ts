@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const locationId = "33333333-3333-4333-8333-333333333333";
+const supabaseProject = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co").hostname.split(".")[0];
 const location = {
   id: locationId, name: "Private Draft Casino", aliases: [], operator: null, country: "US",
   subdivision: "NV", city: "Reno", address: "1 Test Way", website: null,
@@ -24,14 +25,14 @@ const game = {
 
 test("signed-in admin sees private draft casino on the map", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium" || !process.env.NEXT_PUBLIC_MAPTILER_KEY, "Map key and desktop required.");
-  await page.addInitScript(() => {
+  await page.addInitScript(({ supabaseProject }) => {
     const expires = Math.floor(Date.now() / 1000) + 3600;
     const user = { id: "55555555-5555-4555-8555-555555555555", aud: "authenticated", role: "authenticated", email: "admin@example.com", app_metadata: {}, user_metadata: {}, created_at: "2026-09-01T00:00:00Z" };
     const payload = btoa(JSON.stringify({ sub: user.id, aud: "authenticated", role: "authenticated", exp: expires })).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-    localStorage.setItem("sb-placeholder-auth-token", JSON.stringify({ access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.test`, token_type: "bearer", expires_in: 3600, expires_at: expires, refresh_token: "test", user }));
+    localStorage.setItem(`sb-${supabaseProject}-auth-token`, JSON.stringify({ access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.test`, token_type: "bearer", expires_in: 3600, expires_at: expires, refresh_token: "test", user }));
     localStorage.setItem("countlab:analytics:consent_seen", "1");
     localStorage.setItem("countlab:analytics:consent", "denied");
-  });
+  }, { supabaseProject });
   await page.route((url) => url.pathname.endsWith("/rest/v1/rpc/is_admin"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: "true" }));
   await page.route((url) => url.pathname.endsWith("/rest/v1/directory_locations"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: route.request().headers().accept?.includes("object+json") ? JSON.stringify(location) : JSON.stringify([location]) }));
   await page.route((url) => url.pathname.endsWith("/rest/v1/directory_games"), (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([game]) }));
@@ -50,4 +51,5 @@ test("signed-in admin sees private draft casino on the map", async ({ page }, te
   await page.getByRole("button", { name: "List", exact: true }).click();
   await page.getByRole("button", { name: /Private Draft Casino/ }).click();
   await expect(page.getByRole("heading", { name: "Private Draft Casino" })).toBeVisible();
+  await page.unrouteAll({ behavior: "ignoreErrors" });
 });
