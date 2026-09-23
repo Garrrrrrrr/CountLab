@@ -21,7 +21,6 @@ type ParsedImport = {
   rows: ParsedRow[];
 };
 type Batch = { id: string; source_id: string | null; file_sha256: string; parser_version: string; status: string; summary: Record<string, unknown> | null; created_at: string };
-type ImportSource = { id: string; label: string; publication_clearance: "private" | "public"; clearance_note: string | null };
 type StagedRow = ParsedRow & {
   id: string;
   batch_id: string;
@@ -69,9 +68,6 @@ export function AdminImportPanel() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rows, setRows] = useState<StagedRow[]>([]);
-  const [source, setSource] = useState<ImportSource | null>(null);
-  const [clearanceNote, setClearanceNote] = useState("");
-  const [publishConfirmation, setPublishConfirmation] = useState("");
   const [filter, setFilter] = useState<"pending" | "issues" | "all">("pending");
   const [page, setPage] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,7 +80,6 @@ export function AdminImportPanel() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const selected = batches.find((batch) => batch.id === selectedId);
-  const selectedSourceId = selected?.source_id;
 
   const refreshBatches = useCallback(async () => {
     const { data, error: failure } = await supabase.from("directory_import_batches").select("id,source_id,file_sha256,parser_version,status,summary,created_at").order("created_at", { ascending: false }).limit(50);
@@ -103,18 +98,6 @@ export function AdminImportPanel() {
     setRows([]); setPage(0);
     refreshRows(selectedId).catch((failure) => setError(failure.message));
   }, [isAdmin, selectedId, refreshRows]);
-  useEffect(() => {
-    setSource(null); setClearanceNote(""); setPublishConfirmation("");
-    if (!isAdmin || !selectedSourceId) return;
-    let active = true;
-    supabase.from("directory_sources").select("id,label,publication_clearance,clearance_note")
-      .eq("id", selectedSourceId).single().then(({ data, error: failure }) => {
-        if (!active) return;
-        if (failure) setError(failure.message);
-        else { setSource(data as ImportSource); setClearanceNote(data.clearance_note ?? ""); }
-      });
-    return () => { active = false; };
-  }, [isAdmin, selectedSourceId]);
 
   const upload = async (file: File) => {
     setBusy(true); setError(""); setNotice("");
@@ -254,55 +237,12 @@ export function AdminImportPanel() {
         if (calls > 100) throw new Error("Import needs more than 100 chunks. Reload the batch before retrying.");
       } while (remaining > 0);
       await refreshBatches(); await refreshRows(selected.id);
-      setNotice("Imported approved rows as private drafts. Publication requires source clearance.");
+      setNotice("Imported approved rows as private drafts.");
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       await Promise.allSettled([refreshBatches(), refreshRows(selected.id)]);
     }
     finally { setBusy(false); }
-  };
-
-  const publishApproved = async () => {
-    if (!selected || selected.status !== "applied" || !source || source.id !== selected.source_id) return;
-    const note = clearanceNote.trim();
-    if (!note) { setError("Enter a reference to the permission that allows public publication."); return; }
-    if (publishConfirmation.trim() !== "PUBLISH") { setError("Type PUBLISH to confirm publication."); return; }
-    const appliedRows = rows.filter((row) => row.decision === "applied");
-    if (!appliedRows.length || rows.some((row) => row.decision !== "applied" && row.decision !== "reject")) {
-      setError("The import must be fully reviewed and applied before publication."); return;
-    }
-    const locationIds = [...new Set(appliedRows.map((row) => row.applied_location_id).filter((id): id is string => !!id))];
-    const gameIds = [...new Set(appliedRows.map((row) => row.applied_game_id).filter((id): id is string => !!id))];
-    setBusy(true); setError(""); setNotice("");
-    try {
-      const clearance = await supabase.from("directory_sources")
-        .update({ publication_clearance: "public", clearance_note: note })
-        .eq("id", source.id).select("id,label,publication_clearance,clearance_note").single();
-      if (clearance.error) throw clearance.error;
-      setSource(clearance.data as ImportSource);
-      let gamesPublished = 0;
-      for (const ids of chunk(gameIds, 50)) {
-        const result = await supabase.from("directory_games").update({ publication_status: "published" })
-          .eq("source_id", source.id).eq("publication_status", "draft").is("deleted_at", null)
-          .in("id", ids).select("id");
-        if (result.error) throw result.error;
-        gamesPublished += result.data?.length ?? 0;
-        setNotice(`Publishing games: ${gamesPublished} newly visible after locations are published.`);
-      }
-      let locationsPublished = 0;
-      for (const ids of chunk(locationIds, 50)) {
-        const result = await supabase.from("directory_locations").update({ publication_status: "published" })
-          .eq("source_id", source.id).eq("publication_status", "draft").is("deleted_at", null)
-          .in("id", ids).select("id");
-        if (result.error) throw result.error;
-        locationsPublished += result.data?.length ?? 0;
-        setNotice(`Publishing locations: ${locationsPublished} newly visible.`);
-      }
-      setPublishConfirmation("");
-      setNotice(`Published ${locationsPublished} locations and ${gamesPublished} games from this import. Already published records were skipped.`);
-    } catch (failure) {
-      setError(`${failure instanceof Error ? failure.message : String(failure)} Some records may already be published; retry this action to finish.`);
-    } finally { setBusy(false); }
   };
 
   const visibleRows = useMemo(() => rows.filter((row) => filter === "all" || filter === "pending" && row.decision === "pending" || filter === "issues" && row.validation_issues?.length), [rows, filter]);
@@ -313,7 +253,7 @@ export function AdminImportPanel() {
   if (isAdmin === null) return <Panel>Checking admin access…</Panel>;
   if (!isAdmin) return <Panel>Admin access is required.</Panel>;
   return <div className="space-y-4">
-    <Panel><h2 className="text-xl font-semibold">CBJN import review</h2><p className="mt-2 text-sm text-[var(--ink-muted)]">Load the private JSON produced by <code>blackjack/scripts/directory/import_cbjn.py</code>. This stage stores drafts and source evidence for admin review. Publication requires source clearance.</p>
+    <Panel><h2 className="text-xl font-semibold">CBJN import review</h2><p className="mt-2 text-sm text-[var(--ink-muted)]">Load the private JSON produced by <code>blackjack/scripts/directory/import_cbjn.py</code>. Reviewed records stay as private drafts for the signed-in admin directory.</p>
       <label className="mt-4 block text-sm font-medium">Private staging JSON<input type="file" accept=".json,application/json" disabled={busy} className="mt-2 block w-full text-sm" onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload(file); event.target.value = ""; }} /></label>
       {error && <p role="alert" className="mt-3 text-sm text-[var(--negative)]">{error}</p>}{notice && <p role="status" className="mt-3 text-sm text-[var(--accent)]">{notice}</p>}
     </Panel>
@@ -322,12 +262,7 @@ export function AdminImportPanel() {
       {selected && issueCount > 0 && <p className="mt-2 text-xs text-[var(--ink-muted)]">Bulk approval keeps {issueCount} parser warning{issueCount === 1 ? "" : "s"} in the batch. After import, edit any incorrect location or game in the Locations tab.</p>}
       {selected && <p className="mt-2 text-xs text-[var(--ink-muted)]">A repeat upload resumes missing rows and preserves existing decisions. Approved rows remain unpublished after import.</p>}
     </Panel>
-    {selected?.status === "applied" && source && <Panel><h3 className="text-lg font-semibold">Publish reviewed import</h3>
-      <p className="mt-2 text-sm text-[var(--ink-muted)]">{source.label} is {source.publication_clearance === "public" ? "cleared for publication" : "currently private"}. This action records permission and publishes the approved games and locations from this batch. Rejected rows and unrelated records stay unchanged.</p>
-      <label className="mt-4 block text-sm font-medium">Permission reference or approval details<input className={`${editorClass} mt-2`} value={clearanceNote} onChange={(event) => setClearanceNote(event.target.value)} placeholder="For example, written approval from the publisher and date" /></label>
-      <label className="mt-4 block text-sm font-medium">Type PUBLISH to confirm<input className={`${editorClass} mt-2`} value={publishConfirmation} onChange={(event) => setPublishConfirmation(event.target.value)} /></label>
-      <Button className="mt-4" disabled={busy || !rows.some((row) => row.decision === "applied") || !clearanceNote.trim() || publishConfirmation.trim() !== "PUBLISH"} onClick={() => void publishApproved()}>Publish approved import</Button>
-    </Panel>}
+    {selected?.status === "applied" && <Panel><p className="text-sm text-[var(--ink-muted)]">This batch is available to signed-in admins as private drafts. It has not been published.</p></Panel>}
     {selected && <Panel><div className="flex flex-wrap items-end justify-between gap-3"><label className="grid gap-1 text-sm">Show<select className={editorClass} value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setPage(0); }}><option value="pending">Pending</option><option value="issues">Parser warnings</option><option value="all">All rows</option></select></label><span className="text-sm text-[var(--ink-muted)]">{visibleRows.length} rows</span></div>
       <div className="mt-4 space-y-3">{shownRows.map((row) => <div key={row.id} className="rounded-xl border border-[var(--rule)] p-3"><div className="flex flex-wrap justify-between gap-2"><div><strong className="text-sm">Page {row.page_number} · {String(row.normalized_location.name ?? row.raw_location)}</strong><p className="text-xs text-[var(--ink-muted)]">{row.region} · {row.source_row_key} · {row.decision}</p></div><GhostButton disabled={busy} onClick={() => { setEditingId(editingId === row.id ? null : row.id); setLocationJson(JSON.stringify(row.normalized_location, null, 2)); setGameJson(JSON.stringify(row.normalized_game, null, 2)); setMatchLocationId(row.matched_location_id ?? ""); setMatchGameId(row.matched_game_id ?? ""); setReason(row.decision_reason ?? ""); }}>{editingId === row.id ? "Close" : "Review"}</GhostButton></div>
         {row.validation_issues?.length > 0 && <p className="mt-2 text-xs text-[var(--negative)]">{row.validation_issues.join("; ")}</p>}

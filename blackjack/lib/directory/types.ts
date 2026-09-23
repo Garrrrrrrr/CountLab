@@ -67,7 +67,7 @@ export interface DirectoryNote {
   created_at: string;
 }
 
-export interface DirectorySearchLocation extends Pick<DirectoryLocation, "id" | "name" | "aliases" | "operator" | "country" | "subdivision" | "city" | "address" | "website" | "latitude" | "longitude" | "coordinate_quality" | "operating_status" | "game_availability" | "updated_at"> {
+export interface DirectorySearchLocation extends Pick<DirectoryLocation, "id" | "name" | "aliases" | "operator" | "country" | "subdivision" | "city" | "address" | "website" | "latitude" | "longitude" | "coordinate_quality" | "coordinate_source" | "operating_status" | "game_availability" | "updated_at"> {
   game_count: number;
   earliest_min_bet?: number | null;
   latest_reported_month?: string | null;

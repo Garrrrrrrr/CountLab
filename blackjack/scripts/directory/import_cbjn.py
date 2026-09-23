@@ -133,6 +133,8 @@ def location_geo(locality: str | None, page_number: int) -> dict[str, Any]:
         if match:
             province = match.group("province")
             city = match.group("city")
+            if city.startswith("Tahoe, South ("):
+                city = "Tahoe, South (Stateline)"
             if province in {"BS", "PR"}:
                 province = None
         else:
@@ -210,6 +212,7 @@ def parse_pdf(path: Path) -> dict[str, Any]:
     current_columns: dict[str, float] | None = None
     for page_index in range(2, 52):
         page_number = page_index + 1
+        active_locality = None
         lines = page_lines(pdf[page_index])
         try:
             col = columns(lines)
@@ -245,7 +248,7 @@ def parse_pdf(path: Path) -> dict[str, Any]:
             month = parse_month(raw_line)
             bold_locality = not vegas and any(item.bold and item.x < col["casino"] - 3 and item.x >= col["location"] - 3 for item in line)
             bold_name_present = any(item.bold and col["casino"] - 4 <= item.x < col["tables"] for item in line)
-            if bold_locality and locality:
+            if bold_locality and locality and locality.lower() != "location":
                 active_locality = locality
             if month:
                 active_month = month
@@ -333,6 +336,14 @@ def parse_pdf(path: Path) -> dict[str, Any]:
                 bold_name = clean(" ".join(item.text for item in line if item.bold and col["casino"] - 4 <= item.x < col["tables"]))
                 if bold_name and bold_name.lower() not in {"casino", "las vegas"} and not bold_name[0].islower():
                     heading = bold_name
+                    # The locality often starts on the same row as the first
+                    # casino in a group. Its label is not always bold, so the
+                    # generic bold-locality check above can miss it and carry
+                    # the column header ("Location") into the venue instead.
+                    if (locality and re.match(r"^[A-Z]{2}:\s*[^:]+$", locality)
+                            and len(locality) < 55
+                            and (not active_locality or not active_locality.startswith(locality))):
+                        active_locality = locality
                     geo = location_geo(active_locality, page_number)
                     active = {
                         "name": location_name(heading), "raw_heading": heading,

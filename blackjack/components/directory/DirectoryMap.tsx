@@ -32,7 +32,7 @@ function casinoIcon(fill: string): ImageData {
   return context.getImageData(0, 0, canvas.width, canvas.height);
 }
 
-export function DirectoryMap({ locations, selectedId, onSelect, active }: { locations: DirectorySearchLocation[]; selectedId: string | null; onSelect: (id: string) => void; active: boolean }) {
+export function DirectoryMap({ locations, selectedId, onSelect, onClusterSelect, active }: { locations: DirectorySearchLocation[]; selectedId: string | null; onSelect: (id: string) => void; onClusterSelect: (ids: string[]) => void; active: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +78,12 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
           const features = instance.queryRenderedFeatures(event.point, { layers: ["clusters"] });
           const clusterId = features[0]?.properties?.cluster_id;
           const source = instance.getSource("directory-locations") as import("maplibre-gl").GeoJSONSource;
-          if (typeof clusterId === "number") void source.getClusterExpansionZoom(clusterId).then((zoom) => instance.easeTo({ center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number], zoom }));
+          if (typeof clusterId !== "number") return;
+          void source.getClusterLeaves(clusterId, 10000, 0).then((leaves) => {
+            const ids = leaves.map((leaf) => leaf.properties?.id).filter((id): id is string => typeof id === "string");
+            if (ids.length) onClusterSelect(ids);
+          });
+          void source.getClusterExpansionZoom(clusterId).then((zoom) => instance.easeTo({ center: (features[0].geometry as GeoJSON.Point).coordinates as [number, number], zoom }));
         });
         for (const layer of ["locations", "clusters"]) {
           instance.on("mouseenter", layer, () => { instance.getCanvas().style.cursor = "pointer"; });
@@ -89,7 +94,7 @@ export function DirectoryMap({ locations, selectedId, onSelect, active }: { loca
       });
     }).catch(() => setError("The map could not load. The list remains available."));
     return () => { disposed = true; clearTimeout(loadTimer); map.current?.remove(); map.current = null; setLoaded(false); };
-  }, [onSelect]);
+  }, [onClusterSelect, onSelect]);
 
   useEffect(() => {
     const source = map.current?.getSource("directory-locations") as import("maplibre-gl").GeoJSONSource | undefined;

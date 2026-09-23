@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { DirectoryDetail } from "./DirectoryDetail";
 import { DIRECTORY_PAGE_SIZE, searchDirectory, searchDirectoryMap } from "@/lib/directory/queries";
+import { loadPrivateDirectory, searchPrivateDirectory, type PrivateDirectoryData } from "@/lib/directory/privateDirectory";
+import { useIsAdmin } from "@/lib/supabase/admin";
+import { useAuth } from "@/lib/supabase/AuthProvider";
 import { label, money, monthLabel } from "@/lib/directory/format";
 import type { DirectoryFilters, DirectorySearchLocation } from "@/lib/directory/types";
 
@@ -25,6 +28,8 @@ function readFilters(params: URLSearchParams): DirectoryFilters {
 }
 
 function DirectoryContent() {
+  const { loading: authLoading } = useAuth();
+  const isAdmin = useIsAdmin();
   const router = useRouter();
   const searchParams = useSearchParams();
   const serialized = searchParams.toString();
@@ -39,33 +44,47 @@ function DirectoryContent() {
   const page = Math.max(0, Number.parseInt(params.get("page") || "1", 10) - 1 || 0);
   const requestedSort = params.get("sort") || "name";
   const [query, setQuery] = useState(filters.q ?? "");
-  const [results, setResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
-  const [mapResults, setMapResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
-  const [mapLoading, setMapLoading] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [publicResults, setPublicResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
+  const [publicMapResults, setPublicMapResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
+  const [publicMapLoading, setPublicMapLoading] = useState(false);
+  const [publicMapError, setPublicMapError] = useState<string | null>(null);
+  const [privateData, setPrivateData] = useState<PrivateDirectoryData | null>(null);
+  const [privateLoading, setPrivateLoading] = useState(false);
+  const [privateError, setPrivateError] = useState<string | null>(null);
+  const [publicLoading, setPublicLoading] = useState(true);
+  const [publicError, setPublicError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [view, setView] = useState<"list" | "map">(selectedId ? "list" : "map");
+  const [clusterIds, setClusterIds] = useState<string[]>([]);
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const sort = requestedSort === "distance" && !position ? "name" : requestedSort;
   const requestFilters = useMemo(() => sort === "distance" && position ? { ...filters, latitude: position.lat, longitude: position.lon } : filters, [filters, sort, position]);
   useEffect(() => setQuery(filters.q ?? ""), [filters.q]);
   useEffect(() => {
+    if (authLoading || isAdmin !== false) return;
     let active = true;
-    setLoading(true); setError(null);
-    searchDirectory(requestFilters, page, sort === "min_bet" && !filters.currency ? "name" : sort).then((data) => { if (active) setResults(data); }).catch(() => { if (active) setError("The directory could not load. Check your connection and try again."); }).finally(() => { if (active) setLoading(false); });
+    setPublicLoading(true); setPublicError(null);
+    searchDirectory(requestFilters, page, sort === "min_bet" && !filters.currency ? "name" : sort).then((data) => { if (active) setPublicResults(data); }).catch(() => { if (active) setPublicError("The directory could not load. Check your connection and try again."); }).finally(() => { if (active) setPublicLoading(false); });
     return () => { active = false; };
-  }, [requestFilters, filters.currency, page, sort, retry]);
+  }, [authLoading, isAdmin, requestFilters, filters.currency, page, sort, retry]);
   useEffect(() => {
-    if (view !== "map") return;
+    if (authLoading || view !== "map" || isAdmin !== false) return;
     let active = true;
-    setMapLoading(true); setMapError(null);
-    setMapResults({ total: 0, locations: [] });
-    searchDirectoryMap(filters).then((data) => { if (active) setMapResults(data); }).catch(() => { if (active) setMapError("The casino markers could not load. Try again or use the list."); }).finally(() => { if (active) setMapLoading(false); });
+    setPublicMapLoading(true); setPublicMapError(null);
+    setPublicMapResults({ total: 0, locations: [] });
+    searchDirectoryMap(filters).then((data) => { if (active) setPublicMapResults(data); }).catch(() => { if (active) setPublicMapError("The casino markers could not load. Try again or use the list."); }).finally(() => { if (active) setPublicMapLoading(false); });
     return () => { active = false; };
-  }, [filters, retry, view]);
+  }, [authLoading, filters, isAdmin, retry, view]);
+  useEffect(() => {
+    if (authLoading || isAdmin !== true) { setPrivateData(null); return; }
+    let active = true;
+    setPrivateLoading(true); setPrivateError(null);
+    loadPrivateDirectory().then((data) => { if (active) setPrivateData(data); })
+      .catch(() => { if (active) setPrivateError("The private directory could not load. Check your connection and try again."); })
+      .finally(() => { if (active) setPrivateLoading(false); });
+    return () => { active = false; };
+  }, [authLoading, isAdmin, retry]);
 
   const update = useCallback((changes: Record<string, string | null>) => {
     const next = new URLSearchParams(window.location.search);
@@ -75,7 +94,9 @@ function DirectoryContent() {
     router.replace(`/directory${value ? `?${value}` : ""}`, { scroll: false });
   }, [router]);
   const select = useCallback((id: string) => { setView("list"); update({ location: id }); }, [update]);
-  const selectFromMap = useCallback((id: string) => update({ location: id }), [update]);
+  const selectFromMap = useCallback((id: string) => { setClusterIds([]); update({ location: id }); }, [update]);
+  const selectCluster = useCallback((ids: string[]) => { setClusterIds(ids); update({ location: null }); }, [update]);
+  useEffect(() => setClusterIds([]), [filterParams, isAdmin]);
   const nearby = () => {
     setLocationError(null);
     if (!navigator.geolocation) { setLocationError("Location is not available on this device."); return; }
@@ -87,11 +108,22 @@ function DirectoryContent() {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(position.lat * rad) * Math.cos(location.latitude * rad) * Math.sin(dLon / 2) ** 2;
     return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
+  const privateLocations = useMemo(() => privateData ? searchPrivateDirectory(privateData, requestFilters, sort) : [], [privateData, requestFilters, sort]);
+  const results = isAdmin === true ? { total: privateLocations.length, locations: privateLocations.slice(page * DIRECTORY_PAGE_SIZE, (page + 1) * DIRECTORY_PAGE_SIZE) } : publicResults;
+  const mapResults = isAdmin === true ? { total: privateLocations.length, locations: privateLocations } : publicMapResults;
+  const awaitingPrivate = isAdmin === true && !privateData && !privateError;
+  const loading = authLoading || isAdmin === null || (isAdmin === true ? privateLoading || awaitingPrivate : publicLoading);
+  const error = isAdmin === true ? privateError : publicError;
+  const mapLoading = authLoading || isAdmin === null || (isAdmin === true ? privateLoading || awaitingPrivate : publicMapLoading);
+  const mapError = isAdmin === true ? privateError : publicMapError;
   const locations = results.locations;
   const mappedCount = mapResults.locations.filter((location) => ["verified", "approximate"].includes(location.coordinate_quality ?? "") && location.latitude != null && location.longitude != null).length;
+  const clusterLocations = clusterIds.map((id) => mapResults.locations.find((location) => location.id === id)).filter((location): location is DirectorySearchLocation => !!location);
   const totalPages = Math.max(1, Math.ceil(results.total / DIRECTORY_PAGE_SIZE));
+  const privateView = isAdmin === true;
 
   return <div><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Explore real tables</p><h1 className="mt-2 text-3xl font-semibold">Game directory</h1><p className="mt-2 max-w-2xl text-sm text-[var(--ink-muted)]">Find reported blackjack and Spanish 21 games by venue and rules. Reports describe conditions at a point in time.</p></div></div>
+    {isAdmin === true && <p className="mb-4 rounded-lg border border-[var(--accent)]/40 bg-[var(--paper-raised)] p-3 text-sm">Private admin view. Draft locations and games are visible only to signed-in admins. No source records are published from this view.</p>}
     <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); update({ q: query.trim() || null }); }}><label htmlFor="directory-search" className="sr-only">Search locations</label><input id="directory-search" className={`${inputClass} max-w-xl`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Casino, city, province, or country" /><button type="submit" className="min-h-11 rounded-lg bg-[var(--accent)] px-4 font-semibold text-[#112010]">Search</button></form>
     <div className="mt-4 grid gap-3 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4 sm:grid-cols-2 xl:grid-cols-4">
       <Field label="Game"><select className={inputClass} value={params.get("game_type") ?? ""} onChange={(e) => update({ game_type: e.target.value })}><option value="">Any game</option><option value="blackjack">Blackjack</option><option value="spanish_21">Spanish 21</option></select></Field>
@@ -109,8 +141,18 @@ function DirectoryContent() {
     </div>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3 text-sm text-[var(--ink-muted)]"><span role="status">{loading ? "Searching…" : `${results.total} location${results.total === 1 ? "" : "s"}`}</span><button type="button" className="text-[var(--accent)] underline" onClick={nearby}>Near me</button>{locationError && <span role="alert">{locationError}</span>}</div><div className="flex gap-2" role="group" aria-label="Directory view"><button type="button" onClick={() => setView("map")} aria-pressed={view === "map"} className="min-h-11 rounded-lg border border-[var(--rule)] px-4">Map</button><button type="button" onClick={() => setView("list")} aria-pressed={view === "list"} className="min-h-11 rounded-lg border border-[var(--rule)] px-4">List</button></div></div>
     {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 p-4">{error} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}
-    <div className={view === "map" ? "mt-4" : "hidden"}><div className="relative"><DirectoryMap locations={mapResults.locations} selectedId={selectedId} onSelect={selectFromMap} active={view === "map"} />{selectedId && <aside aria-label="Selected casino details" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl bg-[var(--paper)] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(34rem,48%)]"><DirectoryDetail id={selectedId} onClose={() => update({ location: null })} backLabel="Back to map" /></aside>}{mapLoading && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">Loading casino markers…</p>}{mapError && <p role="alert" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{mapError} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}{!mapLoading && !mapError && mapResults.total === 0 && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">No published casinos are available for these filters yet.</p>}</div><p className="mt-2 text-xs text-[var(--ink-muted)]">Scroll to zoom, drag to pan, or use the map controls. Click a casino icon to see its details. Green pins mark verified locations; amber pins mark approximate locations. {mapLoading ? "Loading published locations…" : `${mappedCount} of ${mapResults.total} matching locations have map coordinates.`}</p></div>
-    <div className={view === "list" ? "mt-4" : "hidden"}>{selectedId ? <DirectoryDetail id={selectedId} onClose={() => update({ location: null })} /> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{!loading && !error && locations.length === 0 && <p className="rounded-xl border border-[var(--rule)] p-6">No published locations match these filters.</p>}{locations.map((location) => <button key={location.id} type="button" onClick={() => select(location.id)} className="block w-full rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-4 text-left transition hover:border-[var(--accent)]"><span className="flex flex-wrap items-start justify-between gap-2"><strong className="text-lg">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{location.game_count} game{location.game_count === 1 ? "" : "s"}</span></span><span className="mt-1 block text-sm text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span><span className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--ink-muted)]"><span>{filters.currency && location.earliest_min_bet != null ? `From ${money(location.earliest_min_bet, filters.currency)}` : "Limits in details"}</span><span>{monthLabel(location.latest_reported_month)}</span>{position && Number.isFinite(distance(location)) && <span>{distance(location)} km away</span>}<span>{label(location.operating_status)}</span></span></button>)}</div>}
+    <div className={view === "map" ? "mt-4" : "hidden"}>
+      <div className="relative">
+        <DirectoryMap locations={mapResults.locations} selectedId={selectedId} onSelect={selectFromMap} onClusterSelect={selectCluster} active={view === "map"} />
+        {selectedId && <aside aria-label="Selected casino details" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl bg-[var(--paper)] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(34rem,48%)]"><DirectoryDetail id={selectedId} onClose={() => update({ location: null })} backLabel="Back to map" /></aside>}
+        {!selectedId && clusterLocations.length > 0 && <aside aria-label="Casinos at this map location" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(28rem,42%)]"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">{clusterLocations.length} casinos nearby</h2><button type="button" className="min-h-11 text-sm text-[var(--accent)]" onClick={() => setClusterIds([])}>Close</button></div><div className="mt-3 grid gap-2">{clusterLocations.map((location) => <button key={location.id} type="button" onClick={() => selectFromMap(location.id)} className="rounded-lg border border-[var(--rule)] p-3 text-left hover:border-[var(--accent)]"><strong className="block">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span></button>)}</div></aside>}
+        {mapLoading && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">Loading casino markers…</p>}
+        {mapError && <p role="alert" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{mapError} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}
+        {!mapLoading && !mapError && mapResults.total === 0 && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{privateView ? "No private casino records are available yet. Import reviewed drafts in Admin." : "No published casinos are available for these filters yet."}</p>}
+      </div>
+      <p className="mt-2 text-xs text-[var(--ink-muted)]">Scroll to zoom, drag to pan, or use the map controls. Click a casino icon to see its details. Green pins mark verified locations; amber pins mark approximate locations. {privateView && "Private venues without a confirmed venue coordinate stay in the list until reviewed."} {mapLoading ? `Loading ${privateView ? "private" : "published"} locations…` : `${mappedCount} of ${mapResults.total} matching locations have map coordinates.`}</p>
+    </div>
+    <div className={view === "list" ? "mt-4" : "hidden"}>{selectedId ? <DirectoryDetail id={selectedId} onClose={() => update({ location: null })} /> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{!loading && !error && locations.length === 0 && <p className="rounded-xl border border-[var(--rule)] p-6">{privateView ? "No private locations match these filters." : "No published locations match these filters."}</p>}{locations.map((location) => <button key={location.id} type="button" onClick={() => select(location.id)} className="block w-full rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-4 text-left transition hover:border-[var(--accent)]"><span className="flex flex-wrap items-start justify-between gap-2"><strong className="text-lg">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{location.game_count} game{location.game_count === 1 ? "" : "s"}</span></span><span className="mt-1 block text-sm text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span><span className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--ink-muted)]"><span>{filters.currency && location.earliest_min_bet != null ? `From ${money(location.earliest_min_bet, filters.currency)}` : "Limits in details"}</span><span>{monthLabel(location.latest_reported_month)}</span>{position && Number.isFinite(distance(location)) && <span>{distance(location)} km away</span>}<span>{label(location.operating_status)}</span></span></button>)}</div>}
       {!selectedId && results.total > DIRECTORY_PAGE_SIZE && <nav aria-label="Directory pages" className="mt-4 flex items-center justify-between gap-3"><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page === 0} onClick={() => update({ page: String(page) })}>Previous</button><span className="text-sm">Page {page + 1} of {totalPages}</span><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => update({ page: String(page + 2) })}>Next</button></nav>}</div>
   </div>;
 }

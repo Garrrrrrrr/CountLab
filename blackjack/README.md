@@ -77,11 +77,12 @@ the signed-in user.
 
 ### Game directory
 
-`/directory/` is readable by everyone. `/admin/directory/` lets users on the
-existing `admin_users` allowlist add, edit, publish, delete, restore, and
-permanently remove locations and game offerings. The site remains a static
-export: directory records are read live from Supabase, so adding a location
-does not require a rebuild. Apply `supabase/schema.sql` to a new installation,
+`/directory/` shows published records to everyone and also shows private drafts
+to signed-in users on the `admin_users` allowlist. Supabase row-level security
+keeps those drafts inaccessible to other visitors. `/admin/directory/` lets
+admins import, review, edit, delete, restore, and remove locations and games.
+The site remains a static export: directory records are read live from Supabase,
+so adding a location does not require a rebuild. Apply `supabase/schema.sql` to a new installation,
 or `supabase/migrations/20260922_game_directory.sql` to an existing one before
 using these routes. The Pages workflow does not apply SQL migrations.
 
@@ -99,16 +100,27 @@ python -m pip install pymupdf
 python blackjack/scripts/directory/import_cbjn.py original_132.pdf --out tmp/directory/cbjn-2026-09-staging.json
 ```
 
-The JSON is private and gitignored. After deploying the site, sign in as an
+The JSON is private and gitignored. To investigate venue coordinates online for
+review, run `NEXT_PUBLIC_MAPTILER_KEY=... node blackjack/scripts/directory/geocode-staging.mjs tmp/directory/cbjn-2026-09-staging.json`.
+The script writes a private `-geocoded.json` file and a `-coordinate-review.json`
+report. Then run `node blackjack/scripts/directory/merge-exact-coordinates.mjs
+tmp/directory/cbjn-2026-09-staging.json tmp/directory/osm-casinos.json`.
+The optional private OSM cache is produced by
+`node blackjack/scripts/directory/fetch-osm-casinos.mjs
+tmp/directory/osm-casinos.json`.
+That second step keeps only named venue POIs confirmed by the online results;
+city centers, city halls, and other administrative points are never used. Any
+venue without a confirmed venue POI stays without map coordinates for manual
+review. MapTiler requests include venue names and addresses, not game rules.
+After deploying the site, sign in as an
 admin, open `/admin/directory/`, choose **Import review**, and select
-`tmp/directory/cbjn-2026-09-staging.json` in **Private staging JSON**. Existing
+the private staging JSON in **Private staging JSON**. Existing
 batch decisions survive a repeated upload. Select **Approve rows without
 warnings** and review flagged rows individually, or select **Approve all pending
 rows (including warnings)** to import them for later correction. Parser warnings
-remain visible in the batch. Then select **Apply reviewed rows as drafts**. Once
-the batch says `applied`, enter the publication permission
-reference, type `PUBLISH`, and select **Publish approved import**. Publication
-can be retried if a connection interruption leaves only some records published.
+remain visible in the batch. Then select **Apply reviewed rows as drafts**. The
+drafts appear only in the signed-in admin directory; no public publication step
+is part of this private import.
 Keep the PDF and staging JSON out of the website build. Location and game
 reports retain their reported month; import time is not a claim that conditions
 were verified then.
