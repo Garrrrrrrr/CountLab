@@ -54,6 +54,15 @@ test("anonymous visitor can browse and open a direct directory game link", async
     expect(dimensions?.width).toBeGreaterThan(800);
     expect(dimensions?.height).toBeGreaterThan(600);
     await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
+    await expect(map).toHaveAttribute("data-map-marker-count", "1");
+    await page.waitForTimeout(1000);
+    await map.click({ position: { x: Math.round(dimensions!.width / 2), y: Math.round(dimensions!.height / 2) - 18 } });
+    await expect(page.getByRole("complementary", { name: "Selected casino details" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Test Casino" })).toBeVisible();
+    await expect(map).toHaveAttribute("data-map-marker-count", "1");
+    await expect(page.getByRole("button", { name: "Map", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Back to map" }).click();
+    await expect(page.getByRole("complementary", { name: "Selected casino details" })).toHaveCount(0);
   } else {
     await expect(page.getByText("Map is unavailable. Browse locations in the list.")).toBeVisible();
   }
@@ -65,4 +74,33 @@ test("anonymous visitor can browse and open a direct directory game link", async
   await page.getByRole("link", { name: /Analyze this game/ }).click();
   await page.getByRole("button", { name: "Try CountLab as a guest" }).click();
   await expect(page.getByText("Loaded Test Casino")).toBeVisible();
+});
+
+test("map loads casinos beyond the first directory page", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium" || !process.env.NEXT_PUBLIC_MAPTILER_KEY, "Map key and desktop required.");
+  const locations = Array.from({ length: 101 }, (_, index) => ({
+    ...location,
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    name: `Casino ${index + 1}`,
+    longitude: -125 + index * 0.45,
+    latitude: 35 + (index % 10),
+    coordinate_quality: index === 100 ? "approximate" : "verified",
+    game_count: 1,
+  }));
+  const offsets: number[] = [];
+  await page.route((url) => url.pathname.endsWith("/rest/v1/rpc/directory_search"), (route) => {
+    const request = route.request().postDataJSON() as { p_offset: number; p_limit: number };
+    offsets.push(request.p_offset);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ total: locations.length, locations: locations.slice(request.p_offset, request.p_offset + request.p_limit) }) });
+  });
+  await page.route("https://api.maptiler.com/**", async (route) => {
+    const response = await route.fetch({ headers: { ...route.request().headers(), origin: "https://countlab.ca", referer: "https://countlab.ca/directory/" } });
+    await route.fulfill({ response });
+  });
+  await page.goto("/directory/");
+  const map = page.getByRole("img", { name: "Map of directory locations" });
+  await expect(map).toHaveAttribute("data-map-loaded", "true", { timeout: 15000 });
+  await expect(map).toHaveAttribute("data-map-marker-count", "101");
+  expect(offsets).toContain(100);
+  await expect(page.getByText("101 of 101 matching locations have map coordinates.", { exact: false })).toBeVisible();
 });

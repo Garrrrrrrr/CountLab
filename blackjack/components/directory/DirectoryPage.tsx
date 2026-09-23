@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { DirectoryDetail } from "./DirectoryDetail";
-import { DIRECTORY_PAGE_SIZE, searchDirectory } from "@/lib/directory/queries";
+import { DIRECTORY_PAGE_SIZE, searchDirectory, searchDirectoryMap } from "@/lib/directory/queries";
 import { label, money, monthLabel } from "@/lib/directory/format";
 import type { DirectoryFilters, DirectorySearchLocation } from "@/lib/directory/types";
 
@@ -29,12 +29,20 @@ function DirectoryContent() {
   const searchParams = useSearchParams();
   const serialized = searchParams.toString();
   const params = useMemo(() => new URLSearchParams(serialized), [serialized]);
-  const filters = useMemo(() => readFilters(params), [params]);
+  const filterParams = useMemo(() => {
+    const next = new URLSearchParams(serialized);
+    for (const key of ["location", "page", "sort"]) next.delete(key);
+    return next.toString();
+  }, [serialized]);
+  const filters = useMemo(() => readFilters(new URLSearchParams(filterParams)), [filterParams]);
   const selectedId = params.get("location");
   const page = Math.max(0, Number.parseInt(params.get("page") || "1", 10) - 1 || 0);
   const requestedSort = params.get("sort") || "name";
   const [query, setQuery] = useState(filters.q ?? "");
   const [results, setResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
+  const [mapResults, setMapResults] = useState<{ total: number; locations: DirectorySearchLocation[] }>({ total: 0, locations: [] });
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
@@ -50,6 +58,14 @@ function DirectoryContent() {
     searchDirectory(requestFilters, page, sort === "min_bet" && !filters.currency ? "name" : sort).then((data) => { if (active) setResults(data); }).catch(() => { if (active) setError("The directory could not load. Check your connection and try again."); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [requestFilters, filters.currency, page, sort, retry]);
+  useEffect(() => {
+    if (view !== "map") return;
+    let active = true;
+    setMapLoading(true); setMapError(null);
+    setMapResults({ total: 0, locations: [] });
+    searchDirectoryMap(filters).then((data) => { if (active) setMapResults(data); }).catch(() => { if (active) setMapError("The casino markers could not load. Try again or use the list."); }).finally(() => { if (active) setMapLoading(false); });
+    return () => { active = false; };
+  }, [filters, retry, view]);
 
   const update = useCallback((changes: Record<string, string | null>) => {
     const next = new URLSearchParams(window.location.search);
@@ -59,6 +75,7 @@ function DirectoryContent() {
     router.replace(`/directory${value ? `?${value}` : ""}`, { scroll: false });
   }, [router]);
   const select = useCallback((id: string) => { setView("list"); update({ location: id }); }, [update]);
+  const selectFromMap = useCallback((id: string) => update({ location: id }), [update]);
   const nearby = () => {
     setLocationError(null);
     if (!navigator.geolocation) { setLocationError("Location is not available on this device."); return; }
@@ -71,6 +88,7 @@ function DirectoryContent() {
     return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
   const locations = results.locations;
+  const mappedCount = mapResults.locations.filter((location) => ["verified", "approximate"].includes(location.coordinate_quality ?? "") && location.latitude != null && location.longitude != null).length;
   const totalPages = Math.max(1, Math.ceil(results.total / DIRECTORY_PAGE_SIZE));
 
   return <div><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Explore real tables</p><h1 className="mt-2 text-3xl font-semibold">Game directory</h1><p className="mt-2 max-w-2xl text-sm text-[var(--ink-muted)]">Find reported blackjack and Spanish 21 games by venue and rules. Reports describe conditions at a point in time.</p></div></div>
@@ -91,7 +109,7 @@ function DirectoryContent() {
     </div>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3 text-sm text-[var(--ink-muted)]"><span role="status">{loading ? "Searching…" : `${results.total} location${results.total === 1 ? "" : "s"}`}</span><button type="button" className="text-[var(--accent)] underline" onClick={nearby}>Near me</button>{locationError && <span role="alert">{locationError}</span>}</div><div className="flex gap-2" role="group" aria-label="Directory view"><button type="button" onClick={() => setView("map")} aria-pressed={view === "map"} className="min-h-11 rounded-lg border border-[var(--rule)] px-4">Map</button><button type="button" onClick={() => setView("list")} aria-pressed={view === "list"} className="min-h-11 rounded-lg border border-[var(--rule)] px-4">List</button></div></div>
     {error && <p role="alert" className="mt-4 rounded-xl border border-red-400/30 p-4">{error} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}
-    <div className={view === "map" ? "mt-4" : "hidden"}><DirectoryMap locations={locations} selectedId={selectedId} onSelect={select} active={view === "map"} /><p className="mt-2 text-xs text-[var(--ink-muted)]">Scroll to zoom, drag to pan, or use the map controls. Markers show verified locations on this results page.</p></div>
+    <div className={view === "map" ? "mt-4" : "hidden"}><div className="relative"><DirectoryMap locations={mapResults.locations} selectedId={selectedId} onSelect={selectFromMap} active={view === "map"} />{selectedId && <aside aria-label="Selected casino details" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl bg-[var(--paper)] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(34rem,48%)]"><DirectoryDetail id={selectedId} onClose={() => update({ location: null })} backLabel="Back to map" /></aside>}{mapLoading && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">Loading casino markers…</p>}{mapError && <p role="alert" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{mapError} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}{!mapLoading && !mapError && mapResults.total === 0 && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">No published casinos are available for these filters yet.</p>}</div><p className="mt-2 text-xs text-[var(--ink-muted)]">Scroll to zoom, drag to pan, or use the map controls. Click a casino icon to see its details. Green pins mark verified locations; amber pins mark approximate locations. {mapLoading ? "Loading published locations…" : `${mappedCount} of ${mapResults.total} matching locations have map coordinates.`}</p></div>
     <div className={view === "list" ? "mt-4" : "hidden"}>{selectedId ? <DirectoryDetail id={selectedId} onClose={() => update({ location: null })} /> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{!loading && !error && locations.length === 0 && <p className="rounded-xl border border-[var(--rule)] p-6">No published locations match these filters.</p>}{locations.map((location) => <button key={location.id} type="button" onClick={() => select(location.id)} className="block w-full rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-4 text-left transition hover:border-[var(--accent)]"><span className="flex flex-wrap items-start justify-between gap-2"><strong className="text-lg">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{location.game_count} game{location.game_count === 1 ? "" : "s"}</span></span><span className="mt-1 block text-sm text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span><span className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--ink-muted)]"><span>{filters.currency && location.earliest_min_bet != null ? `From ${money(location.earliest_min_bet, filters.currency)}` : "Limits in details"}</span><span>{monthLabel(location.latest_reported_month)}</span>{position && Number.isFinite(distance(location)) && <span>{distance(location)} km away</span>}<span>{label(location.operating_status)}</span></span></button>)}</div>}
       {!selectedId && results.total > DIRECTORY_PAGE_SIZE && <nav aria-label="Directory pages" className="mt-4 flex items-center justify-between gap-3"><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page === 0} onClick={() => update({ page: String(page) })}>Previous</button><span className="text-sm">Page {page + 1} of {totalPages}</span><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => update({ page: String(page + 2) })}>Next</button></nav>}</div>
   </div>;

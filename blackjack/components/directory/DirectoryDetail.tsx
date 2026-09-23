@@ -19,7 +19,7 @@ function GameCard({ game, notes }: { game: DirectoryGame; notes: DirectoryNote[]
   </article>;
 }
 
-export function DirectoryDetail({ id, onClose }: { id: string; onClose: () => void }) {
+export function DirectoryDetail({ id, onClose, backLabel = "Back to results" }: { id: string; onClose: () => void; backLabel?: string }) {
   const [data, setData] = useState<{ location: DirectoryLocation; games: DirectoryGame[]; notes: DirectoryNote[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export function DirectoryDetail({ id, onClose }: { id: string; onClose: () => vo
   const directions = location?.latitude != null && location.longitude != null && location.coordinate_quality === "verified" ? `${location.latitude},${location.longitude}` : address;
   const website = location?.website && /^https?:\/\//i.test(location.website) ? location.website : null;
   return <section aria-label="Location details" className="min-w-0 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4 sm:p-6">
-    <button type="button" onClick={onClose} className="mb-4 min-h-11 text-sm font-medium text-[var(--accent)]"><i className="fa-solid fa-arrow-left mr-2" aria-hidden="true" />Back to results</button>
+    <button type="button" onClick={onClose} className="mb-4 min-h-11 text-sm font-medium text-[var(--accent)]"><i className="fa-solid fa-arrow-left mr-2" aria-hidden="true" />{backLabel}</button>
     {loading && <p role="status">Loading location…</p>}{error && <p role="alert">{error}</p>}{!loading && !error && !location && <p role="status">This location is unavailable or has not been published.</p>}
     {location && <><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[var(--accent)]">Game directory</p><h2 className="mt-1 text-2xl font-semibold">{location.name}</h2><p className="mt-1 text-sm text-[var(--ink-muted)]">{address}</p></div><span className="rounded-full border border-[var(--rule)] px-3 py-1 text-xs">{label(location.operating_status)}</span></div>
       <div className="mt-4 flex flex-wrap gap-3 text-sm">{directions && <a className="text-[var(--accent)] underline" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(directions)}`} target="_blank" rel="noopener noreferrer">Directions</a>}{website && <a className="text-[var(--accent)] underline" href={website} target="_blank" rel="noopener noreferrer">Website</a>}<button type="button" className="text-[var(--accent)] underline" onClick={() => void navigator.clipboard?.writeText(window.location.href)}>Copy link</button></div>

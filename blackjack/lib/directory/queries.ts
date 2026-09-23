@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { DirectoryFilters, DirectoryGame, DirectoryLocation, DirectoryNote, DirectorySearchLocation } from "./types";
 
 export const DIRECTORY_PAGE_SIZE = 30;
+const DIRECTORY_MAP_PAGE_SIZE = 100;
 
 export async function searchDirectory(filters: DirectoryFilters, page = 0, sort = "name"): Promise<{ total: number; locations: DirectorySearchLocation[] }> {
   const { data, error } = await supabase.rpc("directory_search", {
@@ -13,6 +14,28 @@ export async function searchDirectory(filters: DirectoryFilters, page = 0, sort 
   if (error) throw error;
   const result = data as { total?: number; locations?: DirectorySearchLocation[] } | null;
   return { total: result?.total ?? 0, locations: result?.locations ?? [] };
+}
+
+export async function searchDirectoryMap(filters: DirectoryFilters): Promise<{ total: number; locations: DirectorySearchLocation[] }> {
+  const fetchPage = async (offset: number) => {
+    const { data, error } = await supabase.rpc("directory_search", {
+      p_filters: filters,
+      p_limit: DIRECTORY_MAP_PAGE_SIZE,
+      p_offset: offset,
+      p_sort: "name",
+    });
+    if (error) throw error;
+    return data as { total?: number; locations?: DirectorySearchLocation[] } | null;
+  };
+  const first = await fetchPage(0);
+  const total = first?.total ?? 0;
+  const locations = [...(first?.locations ?? [])];
+  for (let offset = DIRECTORY_MAP_PAGE_SIZE; offset < total; offset += DIRECTORY_MAP_PAGE_SIZE * 4) {
+    const offsets = Array.from({ length: Math.min(4, Math.ceil((total - offset) / DIRECTORY_MAP_PAGE_SIZE)) }, (_, index) => offset + index * DIRECTORY_MAP_PAGE_SIZE);
+    const pages = await Promise.all(offsets.map(fetchPage));
+    for (const page of pages) locations.push(...(page?.locations ?? []));
+  }
+  return { total, locations };
 }
 
 export async function getDirectoryLocation(id: string): Promise<{ location: DirectoryLocation; games: DirectoryGame[]; notes: DirectoryNote[] } | null> {
