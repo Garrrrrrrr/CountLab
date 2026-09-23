@@ -21,17 +21,18 @@ if (mode === "collect") {
     if (!response.ok) throw new Error(`Read-only journal query failed (${response.status}).`);
     return response.json();
   }
-  const [users, bankrolls, sessions, transactions] = await Promise.all([
+  const [users, bankrolls, sessions, transactions, journalEvents] = await Promise.all([
     query("select id, email from auth.users where id in (select user_id from public.journal_sessions union select user_id from public.journal_bankrolls)"),
     query("select * from public.journal_bankrolls order by user_id, id"),
     query("select * from public.journal_sessions order by user_id, date, id"),
     query("select * from public.journal_transactions order by user_id, date, id"),
+    query("select occurred_at, created_at, event, properties from public.analytics_events where user_id in (select distinct user_id from public.journal_sessions) and occurred_at >= '2026-08-20' and occurred_at < '2026-09-06' and (event like '%journal%' or (event = 'result_saved' and properties->>'feature' = 'session_journal') or (event = 'data_cleared' and properties->>'scope' like 'journal%')) order by occurred_at"),
   ]);
   const backupsResponse = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(project)}/database/backups`, {
     headers: { authorization: `Bearer ${token}` },
   });
   const backups = backupsResponse.ok ? await backupsResponse.json() : { status: backupsResponse.status };
-  const data = gzipSync(Buffer.from(JSON.stringify({ capturedAt: new Date().toISOString(), users, bankrolls, sessions, transactions, backups })));
+  const data = gzipSync(Buffer.from(JSON.stringify({ capturedAt: new Date().toISOString(), users, bankrolls, sessions, transactions, journalEvents, backups })));
   const key = randomBytes(32);
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
