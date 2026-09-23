@@ -52,28 +52,14 @@ test("signed-in admin sees private draft casino on the map", async ({ page }, te
   await page.getByRole("button", { name: "List", exact: true }).click();
   await page.getByRole("button", { name: /Private Draft Casino/ }).click();
   await expect(page.getByRole("heading", { name: "Private Draft Casino" })).toBeVisible();
-  await page.locator('input[type="file"][accept=".json,application/json"]').setInputFiles({
-    name: "private-casinos.json", mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify({
-      source: { publication_clearance: "private" },
-      locations: [
-        { source_location_key: "reno-1", name: "Exact Preview Casino", city: "Reno", country: "US", subdivision: "NV", latitude: 39.5296, longitude: -119.8138, coordinate_quality: "verified", address: "1 Casino Way" },
-        { source_location_key: "reno-2", name: "Unlocated Casino", city: "Reno", country: "US", subdivision: "NV", coordinate_quality: "unknown" },
-      ],
-      rows: [{ source_row_key: "game-1", normalized_location: { source_location_key: "reno-1" }, normalized_game: { game_type: "blackjack", decks: 6, min_bet: 25, currency: "USD" } }],
-    })),
-  });
-  await expect(page.getByText("Showing private-casinos.json in this browser", { exact: false })).toBeVisible();
-  await expect(page.getByText("1 of 2 matching locations have map coordinates.")).toBeVisible();
+  await page.getByRole("button", { name: "Back to results" }).click();
+  await page.getByRole("button", { name: "Map", exact: true }).click();
+  await expect(page.getByText("1 of 1 matching locations have map coordinates.")).toBeVisible();
+  await expect(page.locator('input[type="file"][accept=".json,application/json"]')).toHaveCount(0);
   await expect(map).toHaveAttribute("data-map-marker-count", "1");
   await expect(map).toHaveAttribute("data-map-rendered-count", "1");
   const bounds = await map.boundingBox();
   await map.click({ position: { x: Math.round(bounds!.width / 2), y: Math.round(bounds!.height / 2) - 18 } });
-  await expect(page.getByLabel("Selected casino details").getByRole("heading", { name: "Exact Preview Casino" })).toBeVisible();
-  await page.getByRole("button", { name: "Back to map" }).click();
-  await page.getByRole("button", { name: "List", exact: true }).click();
-  await page.getByRole("button", { name: /Exact Preview Casino/ }).click();
-  await expect(page.getByRole("heading", { name: "Exact Preview Casino" })).toBeVisible();
-  await expect(page.getByText("Import this private file in Admin to enable direct lab handoff.").last()).toBeVisible();
+  await expect(page.getByLabel("Selected casino details").getByRole("heading", { name: "Private Draft Casino" })).toBeVisible();
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
