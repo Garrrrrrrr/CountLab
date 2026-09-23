@@ -113,8 +113,8 @@ city centers, city halls, and other administrative points are never used. Any
 venue without a confirmed venue POI stays without map coordinates for manual
 review. MapTiler requests include venue names and addresses, not game rules.
 After deploying the site, sign in as an
-admin, open `/admin/directory/`, choose **Import review**, and select
-the private staging JSON in **Private staging JSON**. Existing
+admin, open `/admin/directory/`, choose **Import review**, and select the
+private `-exact.json` output in **Private staging JSON**. Existing
 batch decisions survive a repeated upload. Select **Approve rows without
 warnings** and review flagged rows individually, or select **Approve all pending
 rows (including warnings)** to import them for later correction. Parser warnings
