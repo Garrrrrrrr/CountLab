@@ -1,13 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { DirectoryDetail } from "./DirectoryDetail";
 import { DIRECTORY_PAGE_SIZE, searchDirectory, searchDirectoryMap } from "@/lib/directory/queries";
 import { loadPrivateDirectory, searchPrivateDirectory, type PrivateDirectoryData } from "@/lib/directory/privateDirectory";
-import { parseLocalPreview, type LocalPreview } from "@/lib/directory/localPreview";
 import { useIsAdmin } from "@/lib/supabase/admin";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { label, money, monthLabel } from "@/lib/directory/format";
@@ -51,9 +49,6 @@ function DirectoryContent() {
   const [publicMapLoading, setPublicMapLoading] = useState(false);
   const [publicMapError, setPublicMapError] = useState<string | null>(null);
   const [privateData, setPrivateData] = useState<PrivateDirectoryData | null>(null);
-  const [localPreview, setLocalPreview] = useState<LocalPreview | null>(null);
-  const [previewName, setPreviewName] = useState("");
-  const [previewError, setPreviewError] = useState("");
   const [privateLoading, setPrivateLoading] = useState(false);
   const [privateError, setPrivateError] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(true);
@@ -90,22 +85,6 @@ function DirectoryContent() {
       .finally(() => { if (active) setPrivateLoading(false); });
     return () => { active = false; };
   }, [authLoading, isAdmin, retry]);
-  useEffect(() => { if (isAdmin === false) { setLocalPreview(null); setPreviewName(""); } }, [isAdmin]);
-
-  const openLocalPreview = async (file: File) => {
-    if (isAdmin !== true) return;
-    setPreviewError("");
-    try {
-      if (file.size > 20_000_000) throw new Error("Choose a staging JSON file smaller than 20 MB.");
-      const preview = parseLocalPreview(JSON.parse(await file.text()));
-      setLocalPreview(preview);
-      setPreviewName(file.name);
-      setClusterIds([]);
-      setView("map");
-      update({ location: null });
-    } catch (failure) { setPreviewError(failure instanceof Error ? failure.message : String(failure)); }
-  };
-
   const update = useCallback((changes: Record<string, string | null>) => {
     const next = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(changes)) if (value) next.set(key, value); else next.delete(key);
@@ -128,15 +107,15 @@ function DirectoryContent() {
     const a = Math.sin(dLat / 2) ** 2 + Math.cos(position.lat * rad) * Math.cos(location.latitude * rad) * Math.sin(dLon / 2) ** 2;
     return Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
-  const activePrivateData = isAdmin === true ? localPreview ?? privateData : null;
+  const activePrivateData = isAdmin === true ? privateData : null;
   const privateLocations = useMemo(() => activePrivateData ? searchPrivateDirectory(activePrivateData, requestFilters, sort) : [], [activePrivateData, requestFilters, sort]);
   const results = isAdmin === true ? { total: privateLocations.length, locations: privateLocations.slice(page * DIRECTORY_PAGE_SIZE, (page + 1) * DIRECTORY_PAGE_SIZE) } : publicResults;
   const mapResults = isAdmin === true ? { total: privateLocations.length, locations: privateLocations } : publicMapResults;
   const awaitingPrivate = isAdmin === true && !activePrivateData && !privateError;
-  const loading = authLoading || isAdmin === null || (isAdmin === true ? !localPreview && (privateLoading || awaitingPrivate) : publicLoading);
-  const error = isAdmin === true && !localPreview ? privateError : isAdmin === true ? null : publicError;
-  const mapLoading = authLoading || isAdmin === null || (isAdmin === true ? !localPreview && (privateLoading || awaitingPrivate) : publicMapLoading);
-  const mapError = isAdmin === true && !localPreview ? privateError : isAdmin === true ? null : publicMapError;
+  const loading = authLoading || isAdmin === null || (isAdmin === true ? privateLoading || awaitingPrivate : publicLoading);
+  const error = isAdmin === true ? privateError : publicError;
+  const mapLoading = authLoading || isAdmin === null || (isAdmin === true ? privateLoading || awaitingPrivate : publicMapLoading);
+  const mapError = isAdmin === true ? privateError : publicMapError;
   const locations = results.locations;
   const mappedCount = mapResults.locations.filter((location) => location.coordinate_quality === "verified" && location.latitude != null && location.longitude != null).length;
   const clusterLocations = clusterIds.map((id) => mapResults.locations.find((location) => location.id === id)).filter((location): location is DirectorySearchLocation => !!location);
@@ -144,7 +123,7 @@ function DirectoryContent() {
   const privateView = isAdmin === true;
 
   return <div><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Explore real tables</p><h1 className="mt-2 text-3xl font-semibold">Game directory</h1><p className="mt-2 max-w-2xl text-sm text-[var(--ink-muted)]">Find reported blackjack and Spanish 21 games by venue and rules. Reports describe conditions at a point in time.</p></div></div>
-    {isAdmin === true && <div className="mb-4 rounded-lg border border-[var(--accent)]/40 bg-[var(--paper-raised)] p-3 text-sm"><p>Private admin view. Draft locations and games are visible only to signed-in admins.</p><label className="mt-2 inline-flex min-h-11 cursor-pointer items-center rounded-lg bg-[var(--accent)] px-4 font-semibold text-[#112010]">Show my private casino file on the map<input type="file" accept=".json,application/json" className="sr-only" onChange={(event) => { const file = event.currentTarget.files?.[0]; if (file) void openLocalPreview(file); event.currentTarget.value = ""; }} /></label>{localPreview && <p className="mt-2">Showing {previewName} in this browser: {localPreview.locations.length} casinos, {localPreview.locations.filter((location) => location.coordinate_quality === "verified").length} verified pins. The file stays on this device and must be selected again after reloading. <Link className="underline" href="/admin/directory/">Import in Admin</Link> to save privately across devices.</p>}{previewError && <p role="alert" className="mt-2">{previewError}</p>}</div>}
+    {isAdmin === true && <div className="mb-4 rounded-lg border border-[var(--accent)]/40 bg-[var(--paper-raised)] p-3 text-sm">Private admin view. Casino locations and games load automatically for signed-in admins.</div>}
     <form className="flex gap-2" onSubmit={(event) => { event.preventDefault(); update({ q: query.trim() || null }); }}><label htmlFor="directory-search" className="sr-only">Search locations</label><input id="directory-search" className={`${inputClass} max-w-xl`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Casino, city, province, or country" /><button type="submit" className="min-h-11 rounded-lg bg-[var(--accent)] px-4 font-semibold text-[#112010]">Search</button></form>
     <div className="mt-4 grid gap-3 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4 sm:grid-cols-2 xl:grid-cols-4">
       <Field label="Game"><select className={inputClass} value={params.get("game_type") ?? ""} onChange={(e) => update({ game_type: e.target.value })}><option value="">Any game</option><option value="blackjack">Blackjack</option><option value="spanish_21">Spanish 21</option></select></Field>
@@ -165,15 +144,15 @@ function DirectoryContent() {
     <div className={view === "map" ? "mt-4" : "hidden"}>
       <div className="relative">
         <DirectoryMap locations={mapResults.locations} selectedId={selectedId} onSelect={selectFromMap} onClusterSelect={selectCluster} active={view === "map"} />
-        {selectedId && <aside aria-label="Selected casino details" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl bg-[var(--paper)] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(34rem,48%)]"><DirectoryDetail id={selectedId} preview={isAdmin === true ? localPreview?.details[selectedId] : undefined} onClose={() => update({ location: null })} backLabel="Back to map" /></aside>}
+        {selectedId && <aside aria-label="Selected casino details" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl bg-[var(--paper)] shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(34rem,48%)]"><DirectoryDetail id={selectedId} onClose={() => update({ location: null })} backLabel="Back to map" /></aside>}
         {!selectedId && clusterLocations.length > 0 && <aside aria-label="Casinos at this map location" className="absolute inset-x-0 bottom-0 z-10 max-h-[65%] overflow-y-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[min(28rem,42%)]"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-semibold">{clusterLocations.length} casinos nearby</h2><button type="button" className="min-h-11 text-sm text-[var(--accent)]" onClick={() => setClusterIds([])}>Close</button></div><div className="mt-3 grid gap-2">{clusterLocations.map((location) => <button key={location.id} type="button" onClick={() => selectFromMap(location.id)} className="rounded-lg border border-[var(--rule)] p-3 text-left hover:border-[var(--accent)]"><strong className="block">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span></button>)}</div></aside>}
         {mapLoading && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">Loading casino markers…</p>}
         {mapError && <p role="alert" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{mapError} <button type="button" className="underline" onClick={() => setRetry((value) => value + 1)}>Retry</button></p>}
-        {!mapLoading && !mapError && mapResults.total === 0 && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{privateView ? "No private casino records are loaded. Select your private casino JSON above or import it in Admin." : "No published casinos are available. Sign in as an admin to view private records."}</p>}
+        {!mapLoading && !mapError && mapResults.total === 0 && <p role="status" className="absolute bottom-3 left-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{privateView ? "No private casino records match these filters." : "No published casinos are available. Sign in as an admin to view private records."}</p>}
       </div>
       <p className="mt-2 text-xs text-[var(--ink-muted)]">Scroll to zoom, drag to pan, or use the map controls. Click a casino icon to see its details. Only confirmed venue coordinates appear as pins. {privateView && "Private venues without a confirmed venue coordinate stay in the list until reviewed."} {mapLoading ? `Loading ${privateView ? "private" : "published"} locations…` : `${mappedCount} of ${mapResults.total} matching locations have map coordinates.`}</p>
     </div>
-    <div className={view === "list" ? "mt-4" : "hidden"}>{selectedId ? <DirectoryDetail id={selectedId} preview={isAdmin === true ? localPreview?.details[selectedId] : undefined} onClose={() => update({ location: null })} /> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{!loading && !error && locations.length === 0 && <p className="rounded-xl border border-[var(--rule)] p-6">{privateView ? "No private locations match these filters." : "No published locations match these filters."}</p>}{locations.map((location) => <button key={location.id} type="button" onClick={() => select(location.id)} className="block w-full rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-4 text-left transition hover:border-[var(--accent)]"><span className="flex flex-wrap items-start justify-between gap-2"><strong className="text-lg">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{location.game_count} game{location.game_count === 1 ? "" : "s"}</span></span><span className="mt-1 block text-sm text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span><span className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--ink-muted)]"><span>{filters.currency && location.earliest_min_bet != null ? `From ${money(location.earliest_min_bet, filters.currency)}` : "Limits in details"}</span><span>{monthLabel(location.latest_reported_month)}</span>{position && Number.isFinite(distance(location)) && <span>{distance(location)} km away</span>}<span>{label(location.operating_status)}</span></span></button>)}</div>}
+    <div className={view === "list" ? "mt-4" : "hidden"}>{selectedId ? <DirectoryDetail id={selectedId} onClose={() => update({ location: null })} /> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{!loading && !error && locations.length === 0 && <p className="rounded-xl border border-[var(--rule)] p-6">{privateView ? "No private locations match these filters." : "No published locations match these filters."}</p>}{locations.map((location) => <button key={location.id} type="button" onClick={() => select(location.id)} className="block w-full rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-4 text-left transition hover:border-[var(--accent)]"><span className="flex flex-wrap items-start justify-between gap-2"><strong className="text-lg">{location.name}</strong><span className="text-xs text-[var(--ink-muted)]">{location.game_count} game{location.game_count === 1 ? "" : "s"}</span></span><span className="mt-1 block text-sm text-[var(--ink-muted)]">{[location.city, location.subdivision, location.country].filter(Boolean).join(", ")}</span><span className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--ink-muted)]"><span>{filters.currency && location.earliest_min_bet != null ? `From ${money(location.earliest_min_bet, filters.currency)}` : "Limits in details"}</span><span>{monthLabel(location.latest_reported_month)}</span>{position && Number.isFinite(distance(location)) && <span>{distance(location)} km away</span>}<span>{label(location.operating_status)}</span></span></button>)}</div>}
       {!selectedId && results.total > DIRECTORY_PAGE_SIZE && <nav aria-label="Directory pages" className="mt-4 flex items-center justify-between gap-3"><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page === 0} onClick={() => update({ page: String(page) })}>Previous</button><span className="text-sm">Page {page + 1} of {totalPages}</span><button type="button" className="min-h-11 rounded-lg border border-[var(--rule)] px-4 disabled:opacity-40" disabled={page + 1 >= totalPages} onClick={() => update({ page: String(page + 2) })}>Next</button></nav>}</div>
   </div>;
 }
