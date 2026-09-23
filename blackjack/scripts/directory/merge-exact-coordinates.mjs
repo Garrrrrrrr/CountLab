@@ -17,7 +17,7 @@ const tokens = (value) => normalize(value).split(" ").filter((token) => token.le
 const countryNames = { US: "united states", CA: "canada", PR: "puerto rico", BS: "bahamas" };
 const subdivisionNames = { AZ:"arizona", CA:"california", CO:"colorado", IA:"iowa", MI:"michigan", MS:"mississippi", NV:"nevada", NY:"new york", OK:"oklahoma", WA:"washington", WI:"wisconsin", AB:"alberta", BC:"british columbia", ON:"ontario", SK:"saskatchewan" };
 const venueWords = /\b(casino|hotel|resort|lodge|club|gaming|racino|poker|raceway|saloon|inn|bingo)\b/i;
-const administrative = /\b(museum|library|school|preschool|university|church|cemetery|parking|airport|station|fire|hospital|mall|office|city hall|spa|barbecue|cafe|restaurant|market|apartments?|dentist|dental|kids|beach club|showroom|fitness|pool|garage|theatre|theater)\b/i;
+const administrative = /\b(museum|library|school|preschool|university|church|cemetery|parking|airport|station|fire|hospital|mall|office|city hall|spa|barbecue|cafe|restaurant|market|apartments?|dentist|dental|kids|beach club|showroom|fitness|pool|garage|rink|theatre|theater)\b/i;
 
 function placeMatches(location, place) {
   const text = normalize([place.text, place.place_name, place.address].filter(Boolean).join(" "));
