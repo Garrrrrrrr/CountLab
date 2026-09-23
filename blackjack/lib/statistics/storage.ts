@@ -186,9 +186,23 @@ function restoreNamespaces(entries: unknown): number {
     if (typeof value !== "string") continue;
     if (!BACKUP_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)) || key.includes("-ack:") || key.includes("-delete-ack:") || key.includes("journal-deletions:")) continue;
     const incoming = JSON.parse(value);
-    if (key.startsWith("countlab:journal-") && Array.isArray(incoming?.items)) incoming.items = incoming.items.map((item: Record<string, unknown>) => ({ ...item, updatedAt: new Date().toISOString(), deletedAt: undefined }));
     const existing = JSON.parse(accountStorage.getItem(key) ?? "null");
-    // Collection imports merge by stable ID. Existing unrelated history survives.
+    // An old journal copy may contain the same IDs as current account rows.
+    // Add only absent IDs; stamping and overwriting duplicates here would turn
+    // a stale browser backup into a newer revision that could replace the server.
+    if (key.startsWith("countlab:journal-") && incoming?.version === 1 && Array.isArray(incoming.items)) {
+      const currentItems: Array<{ id: string }> = existing?.version === 1 && Array.isArray(existing.items) ? existing.items : [];
+      const known = new Set(currentItems.map((item) => item.id));
+      const additions = incoming.items.filter((item: { id?: string }) => {
+        if (typeof item?.id !== "string" || known.has(item.id)) return false;
+        known.add(item.id);
+        return true;
+      }).map((item: Record<string, unknown>) => ({ ...item, updatedAt: new Date().toISOString(), deletedAt: undefined }));
+      if (additions.length) accountStorage.setItem(key, JSON.stringify({ version: 1, items: [...currentItems, ...additions] }));
+      restored += 1;
+      continue;
+    }
+    // Other collection imports merge by stable ID.
     if (incoming?.version === 1 && Array.isArray(incoming.items) && existing?.version === 1 && Array.isArray(existing.items)) {
       const merged = new Map([...existing.items, ...incoming.items].map((item: { id: string }) => [item.id, item]));
       accountStorage.setItem(key, JSON.stringify({ version: 1, items: [...merged.values()] }));
@@ -331,6 +345,7 @@ export const storage = {
     const all = [s, ...this.sessions()];
     accountStorage.setItem(SESSION_KEY, JSON.stringify(all));
     window.dispatchEvent(new Event("hilo-storage"));
+    window.dispatchEvent(new Event("countlab-journal"));
     window.dispatchEvent(new Event("countlab:sync-pending"));
     void pushSession(s).catch(syncFailure);
     const elapsedSeconds = typeof s.metrics?.elapsedSeconds === "number" ? s.metrics.elapsedSeconds : undefined;

@@ -64,6 +64,7 @@ test("session log identifies the casino and venue presets fill the casino name",
   await prepareGuest(page);
   await page.goto("/journal/");
 
+  await expect(page.getByText("Actual result · 30 days")).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Casino" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Bellagio" })).toBeVisible();
   const sessionRow = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "Bellagio" }) });

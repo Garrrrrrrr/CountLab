@@ -712,7 +712,7 @@ export function SessionJournal() {
           ) : (
             <>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Metric label="Actual result" value={money(aggregate.totalActual, 0)} sub={`${hoursLabel(aggregate.totalHours)} · ${aggregate.sessionCount} session${aggregate.sessionCount === 1 ? "" : "s"}`} />
+                <Metric label={`Actual result · ${RANGE_OPTIONS.find(([value]) => value === range)?.[1] ?? ""}`} value={money(aggregate.totalActual, 0)} sub={`${hoursLabel(aggregate.totalHours)} · ${aggregate.sessionCount} session${aggregate.sessionCount === 1 ? "" : "s"}`} />
                 <Metric label="Theoretical EV" value={money(aggregate.totalTheoretical, 0)} sub={`95% modeled outcome range ${money(aggregate.ci95[0], 0)} to ${money(aggregate.ci95[1], 0)}`} />
                 <Metric label="Accumulated SD" value={`± ${money(aggregate.combinedStandardDeviation, 0)}`} sub={aggregate.combinedZ === null ? "No variance to measure yet" : `z = ${aggregate.combinedZ.toFixed(2)}${aggregate.resultPercentile === null ? "" : ` · ${ordinal(Math.round(aggregate.resultPercentile * 100))} percentile`}`} />
                 <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>

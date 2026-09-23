@@ -23,6 +23,24 @@ vi.stubGlobal("window", {
   // Analytics config reads the hostname to pick an environment at import time.
   location: { hostname: "localhost", href: "http://localhost/", pathname: "/" },
 });
+
+describe("journal history recovery", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("adds missing backup rows without replacing current rows with stale duplicates", () => {
+    const key = "countlab:journal-sessions:v1";
+    accountStorage.setItem(key, JSON.stringify({ version: 1, items: [{ id: "current", netResult: 100, updatedAt: "2026-09-20T00:00:00Z" }] }));
+    storage.importData(JSON.stringify({
+      version: 2,
+      sessions: [],
+      local: { [key]: JSON.stringify({ version: 1, items: [{ id: "current", netResult: -3500 }, { id: "missing", netResult: -500 }] }) },
+    }));
+    const items = JSON.parse(accountStorage.getItem(key)!).items;
+    expect(items).toHaveLength(2);
+    expect(items.find((item: { id: string }) => item.id === "current").netResult).toBe(100);
+    expect(items.find((item: { id: string }) => item.id === "missing").netResult).toBe(-500);
+  });
+});
 vi.stubGlobal("localStorage", new MemoryStorage());
 vi.stubGlobal("Event", class { constructor(public type: string) {} });
 // `analytics/identity` imports the change subscription from this module too,
