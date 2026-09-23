@@ -65,6 +65,7 @@ test("tool search contains focus and navigates the selected keyboard result", as
   test.skip(testInfo.project.name !== "desktop-chromium", "The keyboard shortcut is desktop-only; mobile uses the visible navigation control.");
   await prepare(page);
   await page.goto("/");
+  await expect(page.getByRole("button", { name: /Find a tool/ })).toBeEnabled();
   await page.keyboard.press("Control+k");
   const dialog = page.getByRole("dialog", { name: "Find a tool" });
   await expect(dialog).toBeVisible();

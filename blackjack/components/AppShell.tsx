@@ -37,6 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     [streakDays, setStreakDays] = useState(0),
     [standalone, setStandalone] = useState(false),
     [paletteOpen, setPaletteOpen] = useState(false),
+    [paletteReady, setPaletteReady] = useState(false),
     [paletteQuery, setPaletteQuery] = useState(""),
     toggle = useRef<HTMLButtonElement>(null),
     navigation = useRef<HTMLElement>(null),
@@ -85,6 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (event.key === "Escape") setPaletteOpen(false);
     };
     addEventListener("keydown", onKeyDown);
+    setPaletteReady(true);
     return () => removeEventListener("keydown", onKeyDown);
   }, []);
   const paletteMatches = destinations.filter(([name, href, , area]) => `${name} ${href} ${area}`.toLowerCase().includes(paletteQuery.trim().toLowerCase()));
@@ -161,7 +163,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               return <Link onClick={() => setOpen(false)} key={href} href={href} aria-current={active ? (path === href ? "page" : "location") : undefined} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>;
             })}
           </div>
-          <button type="button" onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-white/[.08] bg-white/[.04] px-3 text-sm text-[var(--ink)] hover:bg-white/[.08]"><span><i className="fa-solid fa-magnifying-glass mr-2" />Find a tool</span><kbd>Ctrl / ⌘ K</kbd></button>
+          <button type="button" disabled={!paletteReady} onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-white/[.08] bg-white/[.04] px-3 text-sm text-[var(--ink)] hover:bg-white/[.08]"><span><i className="fa-solid fa-magnifying-glass mr-2" />Find a tool</span><kbd>Ctrl / ⌘ K</kbd></button>
           <div className="border-t border-white/[.06] pt-4">
             <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Utility</p>
             {destinations.filter(([, href, , area]) => area === "Utility" && href !== "/dashboard").map(([name, href, icon]) => <Link onClick={() => setOpen(false)} key={href} href={href} aria-current={path === href ? "page" : undefined} className={`pressable flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${path === href ? "bg-white/[.09] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-white/[.045] hover:text-[var(--ink)]"}`}><i className={`fa-solid ${icon} w-4 text-center text-[.78rem]`} />{name}</Link>)}
