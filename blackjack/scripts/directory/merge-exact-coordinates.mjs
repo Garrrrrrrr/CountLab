@@ -19,7 +19,7 @@ const tokens = (value) => normalize(value).split(" ").filter((token) => token.le
 const countryNames = { US: "united states", CA: "canada", PR: "puerto rico", BS: "bahamas" };
 const subdivisionNames = { AZ:"arizona", CA:"california", CO:"colorado", IA:"iowa", MI:"michigan", MS:"mississippi", NV:"nevada", NY:"new york", OK:"oklahoma", WA:"washington", WI:"wisconsin", AB:"alberta", BC:"british columbia", ON:"ontario", SK:"saskatchewan" };
 const venueWords = /\b(casino|hotel|resort|lodge|club|gaming|racino|poker|raceway|saloon|inn|bingo)\b/i;
-const administrative = /\b(museum|library|school|preschool|university|church|cemetery|parking|airport|station|fire|hospital|mall|office|city hall|spa|barbecue|cafe|restaurant|market|apartments?|dentist|dental|kids|beach club|showroom|fitness|pool|garage|rink|theatre|theater)\b/i;
+const administrative = /\b(museum|library|school|preschool|university|church|cemetery|parking|airport|bus stop|train station|transit station|fire station|hospital|mall|office|city hall|spa|barbecue|cafe|restaurant|market|apartments?|dentist|dental|kids|beach club|showroom|fitness|pool|garage|rink|theatre|theater)\b/i;
 const venueSubdivision = /\b(poker room|sportsbook|spa tower|suite|restaurant|bar|lounge|gift shop)\b/i;
 const distanceKm = (first, second) => {
   const rad = Math.PI / 180, latitude = (first[1] - second[1]) * rad, longitude = (first[0] - second[0]) * rad;
@@ -60,6 +60,26 @@ function coordinateFromOsm(location) {
     return exact && !administrative.test(tags.name) ? { center: point, place_name: [tags.name, tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean).join(", "), source: "OpenStreetMap named casino POI" } : null;
   }).filter(Boolean);
   return candidates[0] ?? null;
+}
+
+function coordinateFromNearbyOsm(location) {
+  const locality = cityCache[`${location.city}|${location.subdivision}|${location.country}`]
+    ?.find((feature) => normalize(feature.text) === normalize(location.city) && Array.isArray(feature.center));
+  if (!locality) return null;
+  const requested = normalize(location.name);
+  const streetAddress = /^\d{2,6}\s+(?!and\b|at\b)/i.test(location.address ?? "");
+  const number = streetAddress ? location.address.match(/^\d{2,6}/)?.[0] : null;
+  const candidates = Object.values(osm.elements ?? {}).flatMap((item) => {
+    const tags = item.tags ?? {};
+    const point = item.lat != null && item.lon != null ? [item.lon, item.lat] : item.center && [item.center.lon, item.center.lat];
+    const name = normalize(tags.name);
+    if (!point || !name || administrative.test(tags.name) || venueSubdivision.test(tags.name)
+      || distanceKm(point, locality.center) > 10) return [];
+    if (name !== requested && !name.startsWith(`${requested} `) && !name.endsWith(` ${requested}`)) return [];
+    if (number && tags["addr:housenumber"] && tags["addr:housenumber"] !== number) return [];
+    return [{ center: point, place_name: [tags.name, tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean).join(", "), source: "OpenStreetMap named casino POI" }];
+  });
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function coordinateFromMapTiler(location, decision) {
@@ -111,7 +131,8 @@ for (const location of staged.locations) {
   // Recheck every venue-level result. The first pass intentionally left some
   // similarly named POIs for review (for example a casino spa or parking lot);
   // only named casino/resort/hotel POIs survive this stricter audit.
-  const online = coordinateFromOsm(location) ?? coordinateFromMapTiler(location, decision) ?? coordinateFromNearbyVenue(location, decision);
+  const online = coordinateFromOsm(location) ?? coordinateFromMapTiler(location, decision)
+    ?? coordinateFromNearbyVenue(location, decision) ?? coordinateFromNearbyOsm(location);
   if (online) {
     const normalized = { ...location, longitude: Number(online.center[0].toFixed(7)), latitude: Number(online.center[1].toFixed(7)),
       coordinate_quality: "verified", coordinate_source: `${online.source}: ${online.place_name}` };
