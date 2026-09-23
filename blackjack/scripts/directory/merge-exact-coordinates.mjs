@@ -13,9 +13,19 @@ let osm = { elements: {} };
 try { osm = JSON.parse(await readFile(resolve(process.argv[3] ?? "../tmp/directory/osm-casinos.json"), "utf8")); } catch { /* OSM cache is optional. */ }
 let layercake = [];
 let reviewedLayercake = {};
+let reviewedOsmVenue = {};
+let reviewedOsmApi = {};
 let reviewedMapTiler = {};
 let reviewedName = {};
 let nameCache = {};
+let reviewedCasinoName = {};
+let casinoNameCache = {};
+let reviewedCityName = {};
+let cityNameCache = {};
+let addressCache = {};
+let officialAddresses = {};
+let overture = [];
+let reviewedOverture = {};
 try { layercake = JSON.parse(await readFile(resolve("../tmp/directory/layercake-casinos.json"), "utf8")); } catch { /* Layercake cache is optional. */ }
 try {
   const named = JSON.parse(await readFile(resolve("../tmp/directory/layercake-casino-resorts.json"), "utf8"));
@@ -26,9 +36,23 @@ try {
   layercake = [...new Map([...layercake, ...hotels].map((item) => [`${item.type}/${item.id}`, item])).values()];
 } catch { /* Hotel cache is optional. */ }
 try { reviewedLayercake = JSON.parse(await readFile(resolve("../tmp/directory/layercake-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { reviewedOsmVenue = JSON.parse(await readFile(resolve("../tmp/directory/osm-venue-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { reviewedOsmApi = JSON.parse(await readFile(resolve("../tmp/directory/osm-api-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
 try { reviewedMapTiler = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
 try { reviewedName = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-name-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
 try { nameCache = JSON.parse(await readFile(resolve("../tmp/directory/cbjn-2026-09-staging-name-cache.json"), "utf8")); } catch { /* Name query cache is optional. */ }
+try { reviewedCasinoName = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-casino-name-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { casinoNameCache = JSON.parse(await readFile(resolve("../tmp/directory/cbjn-2026-09-staging-casino-name-cache.json"), "utf8")); } catch { /* Casino query cache is optional. */ }
+try { reviewedCityName = JSON.parse(await readFile(resolve("../tmp/directory/maptiler-city-name-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
+try { cityNameCache = JSON.parse(await readFile(resolve("../tmp/directory/cbjn-2026-09-staging-city-name-cache.json"), "utf8")); } catch { /* City query cache is optional. */ }
+try { addressCache = JSON.parse(await readFile(resolve("../tmp/directory/cbjn-2026-09-staging-address-cache.json"), "utf8")); } catch { /* Address query cache is optional. */ }
+try { officialAddresses = JSON.parse(await readFile(resolve("../tmp/directory/official-addresses.json"), "utf8")); } catch { /* Official address cache is optional. */ }
+try { overture = JSON.parse(await readFile(resolve("../tmp/directory/overture-casinos.json"), "utf8")); } catch { /* Overture cache is optional. */ }
+try {
+  const remaining = JSON.parse(await readFile(resolve("../tmp/directory/overture-remaining.json"), "utf8"));
+  overture = [...new Map([...overture, ...remaining].map((item) => [item.id, item])).values()];
+} catch { /* Additional place cache is optional. */ }
+try { reviewedOverture = JSON.parse(await readFile(resolve("../tmp/directory/overture-reviewed.json"), "utf8")); } catch { /* Reviewed matches are optional. */ }
 
 const normalize = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
   .replace(/[&'’]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
@@ -109,10 +133,79 @@ function coordinateFromReviewedLayercake(location) {
   const item = matches[0];
   const locality = cityCache[`${location.city ?? ""}|${location.subdivision ?? ""}|${location.country ?? ""}`]
     ?.find((feature) => normalize(feature.text) === normalize(location.city) && Array.isArray(feature.center));
-  if (!locality || distanceKm([item.lon, item.lat], locality.center) > 35)
+  const number = location.address?.match(/^\d{2,6}/)?.[0];
+  const address = number && (addressCache[location.source_location_key] ?? []).find((feature) =>
+    feature.place_type?.includes("address") && new RegExp(`\\b${number}\\b`).test(feature.place_name)
+    && Array.isArray(feature.center) && distanceKm([item.lon, item.lat], feature.center) < 1);
+  if ((!locality || distanceKm([item.lon, item.lat], locality.center) > 35) && !address)
     throw new Error(`Reviewed OSM feature ${id} is outside ${location.name}'s locality`);
   return { center: [item.lon, item.lat], place_name: `${item.name[0]} (${location.city ?? location.subdivision})`,
     source: `OpenStreetMap ${item.type}/${item.id} via OpenStreetMap US Layercake` };
+}
+
+function coordinateFromReviewedOverture(location) {
+  const id = reviewedOverture[location.source_location_key];
+  if (!id) return null;
+  const matches = overture.filter((item) => item.id === id && item.name
+    && Number.isFinite(item.lon) && Number.isFinite(item.lat));
+  if (matches.length !== 1) throw new Error(`Reviewed Overture place ${id} is missing or ambiguous`);
+  const item = matches[0];
+  if (item.country !== location.country || item.region !== location.subdivision)
+    throw new Error(`Reviewed Overture place ${id} has a country or region mismatch`);
+  if (Number(item.confidence) < 0.65)
+    throw new Error(`Reviewed Overture place ${id} has insufficient place confidence`);
+  return { center: [item.lon, item.lat], place_name: [item.name, item.address, item.locality, item.region].filter(Boolean).join(", "),
+    source: `Overture Maps place ${id}` };
+}
+
+function coordinateFromReviewedOsmVenue(location) {
+  const id = reviewedOsmVenue[location.source_location_key];
+  if (!id) return null;
+  const matches = layercake.filter((item) => item.id === id && item.name?.length
+    && Number.isFinite(item.lon) && Number.isFinite(item.lat));
+  if (matches.length !== 1) throw new Error(`Reviewed OSM venue ${id} is missing or ambiguous`);
+  const item = matches[0];
+  if (location.country === "PR" && !(item.lon > -68 && item.lon < -65 && item.lat > 17 && item.lat < 19))
+    throw new Error(`Reviewed OSM venue ${id} is outside Puerto Rico`);
+  if (location.country === "US" && !(item.lon > -170 && item.lon < -66 && item.lat > 17 && item.lat < 72))
+    throw new Error(`Reviewed OSM venue ${id} is outside the United States`);
+  return { center: [item.lon, item.lat], place_name: item.name[0],
+    source: `OpenStreetMap ${item.type}/${item.id} via OpenStreetMap US Layercake, manually reviewed venue` };
+}
+
+function coordinateFromReviewedOsmApi(location) {
+  const item = reviewedOsmApi[location.source_location_key];
+  if (!item) return null;
+  const official = officialAddresses[location.source_location_key];
+  const number = official?.address.match(/^\d{2,6}\b/)?.[0];
+  if (!Number.isFinite(item.longitude) || !Number.isFinite(item.latitude)
+    || !/casino/i.test(item.name) || !item.website?.startsWith("https://playatgila.com/")
+    || !number || !new RegExp(`\\b${number}\\b`).test(item.address)
+    || !normalize(item.address).includes("gilbert") || !normalize(item.address).includes(normalize(official.locality)))
+    throw new Error(`Reviewed OSM API venue is invalid for ${location.source_location_key}`);
+  return { center: [item.longitude, item.latitude], place_name: `${item.name}, ${item.address}`,
+    source: `OpenStreetMap ${item.type}/${item.id} venue polygon, corroborated by ${item.website}` };
+}
+
+function coordinateFromOfficialAddress(location) {
+  const official = officialAddresses[location.source_location_key];
+  if (!official || !official.source_url || official.country !== location.country) return null;
+  const number = official.address.match(/^\d{2,6}\b/)?.[0];
+  if (!number) return null;
+  const street = tokens(official.address).filter((token) => token !== number
+    && !/^(east|west|north|south|street|road|drive|avenue|circle|trail|boulevard|se|ne|sw|nw)$/.test(token));
+  const region = normalize(subdivisionNames[official.region] ?? official.region);
+  const country = normalize(countryNames[official.country] ?? official.country);
+  const candidates = (addressCache[location.source_location_key] ?? []).filter((feature) => {
+    const place = normalize(feature.place_name);
+    return feature.place_type?.includes("address") && Array.isArray(feature.center)
+      && new RegExp(`\\b${number}\\b`).test(place) && street.every((token) => place.includes(token))
+      && place.includes(normalize(official.locality)) && place.includes(region) && place.includes(country)
+      && (!official.postal_code || place.includes(normalize(official.postal_code)));
+  });
+  if (candidates.length !== 1) return null;
+  return { center: candidates[0].center, place_name: candidates[0].place_name,
+    source: `MapTiler street address corroborated by ${official.source_url}` };
 }
 
 function coordinateFromReviewedMapTiler(location, candidatesForReview, selections) {
@@ -186,8 +279,14 @@ for (const location of staged.locations) {
   // similarly named POIs for review (for example a casino spa or parking lot);
   // only named casino/resort/hotel POIs survive this stricter audit.
   const online = coordinateFromReviewedLayercake(location)
+    ?? coordinateFromReviewedOsmApi(location)
+    ?? coordinateFromReviewedOsmVenue(location)
+    ?? coordinateFromReviewedOverture(location)
+    ?? coordinateFromOfficialAddress(location)
     ?? coordinateFromReviewedMapTiler(location, decision?.candidates, reviewedMapTiler)
     ?? coordinateFromReviewedMapTiler(location, nameCache[location.source_location_key], reviewedName)
+    ?? coordinateFromReviewedMapTiler(location, casinoNameCache[location.source_location_key], reviewedCasinoName)
+    ?? coordinateFromReviewedMapTiler(location, cityNameCache[location.source_location_key], reviewedCityName)
     ?? coordinateFromOsm(location) ?? coordinateFromMapTiler(location, decision)
     ?? coordinateFromNearbyVenue(location, decision) ?? coordinateFromNearbyOsm(location);
   if (online) {

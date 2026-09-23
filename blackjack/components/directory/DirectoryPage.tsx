@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DirectoryDetail } from "./DirectoryDetail";
 import { DIRECTORY_PAGE_SIZE, searchDirectory, searchDirectoryMap } from "@/lib/directory/queries";
 import { loadPrivateDirectory, searchPrivateDirectory, type PrivateDirectoryData } from "@/lib/directory/privateDirectory";
@@ -58,6 +58,7 @@ function DirectoryContent() {
   const [clusterIds, setClusterIds] = useState<string[]>([]);
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const pendingScrollTop = useRef<number | null>(null);
   const sort = requestedSort === "distance" && !position ? "name" : requestedSort;
   const requestFilters = useMemo(() => sort === "distance" && position ? { ...filters, latitude: position.lat, longitude: position.lon } : filters, [filters, sort, position]);
   useEffect(() => setQuery(filters.q ?? ""), [filters.q]);
@@ -86,12 +87,22 @@ function DirectoryContent() {
     return () => { active = false; };
   }, [authLoading, isAdmin, retry]);
   const update = useCallback((changes: Record<string, string | null>) => {
+    // Directory controls update the query string in place. Preserve the
+    // reader's position while Next applies the URL change; otherwise a static
+    // export can restore the document to the top even with scroll:false.
     const next = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(changes)) if (value) next.set(key, value); else next.delete(key);
     if (!("page" in changes)) next.delete("page");
     const value = next.toString();
+    pendingScrollTop.current = value === window.location.search.replace(/^\?/, "") ? null : window.scrollY;
     router.replace(`/directory${value ? `?${value}` : ""}`, { scroll: false });
   }, [router]);
+  useLayoutEffect(() => {
+    const top = pendingScrollTop.current;
+    if (top == null) return;
+    pendingScrollTop.current = null;
+    window.scrollTo(window.scrollX, top);
+  }, [serialized]);
   const select = useCallback((id: string) => { setView("list"); update({ location: id }); }, [update]);
   const selectFromMap = useCallback((id: string) => { setClusterIds([]); update({ location: id }); }, [update]);
   const selectCluster = useCallback((ids: string[]) => { setClusterIds(ids); update({ location: null }); }, [update]);

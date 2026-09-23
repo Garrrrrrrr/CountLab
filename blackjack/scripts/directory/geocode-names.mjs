@@ -9,7 +9,9 @@ const staged = JSON.parse(await readFile(resolve(root, "cbjn-2026-09-staging.jso
 const review = JSON.parse(await readFile(resolve(root, "cbjn-2026-09-staging-exact-review.json"), "utf8"));
 const unresolved = new Set(review.decisions.filter((item) => item.status === "unmapped").map((item) => item.source_location_key));
 const target = staged.locations.filter((item) => unresolved.has(item.source_location_key));
-const path = resolve(root, "cbjn-2026-09-staging-name-cache.json");
+const casinoQuery = process.argv.includes("--casino");
+const cityQuery = process.argv.includes("--city");
+const path = resolve(root, `cbjn-2026-09-staging-${casinoQuery ? "casino-name" : cityQuery ? "city-name" : "name"}-cache.json`);
 const cache = await readFile(path, "utf8").then(JSON.parse).catch(() => ({}));
 const pending = target.filter((item) => !(item.source_location_key in cache));
 const key = process.env.NEXT_PUBLIC_MAPTILER_KEY;
@@ -23,12 +25,22 @@ try {
     const group = pending.filter((item) => item.country === country);
     for (let offset = 0; offset < group.length; offset += 10) {
       const batch = group.slice(offset, offset + 10);
-      const results = await page.evaluate(async ({ names, key, country }) => {
-        const path = names.map(encodeURIComponent).join(";");
-        const response = await fetch(`https://api.maptiler.com/geocoding/${path}.json?key=${encodeURIComponent(key)}&types=poi&limit=10&autocomplete=false&country=${country.toLowerCase()}`);
-        if (!response.ok) throw new Error(`MapTiler returned ${response.status}`);
-        return response.json();
-      }, { names: batch.map((item) => item.name), key, country });
+      let results;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          results = await page.evaluate(async ({ names, key, country }) => {
+            const path = names.map(encodeURIComponent).join(";");
+            const response = await fetch(`https://api.maptiler.com/geocoding/${path}.json?key=${encodeURIComponent(key)}&types=poi&limit=10&autocomplete=false&country=${country.toLowerCase()}`);
+            if (!response.ok) throw new Error(`MapTiler returned ${response.status}`);
+            return response.json();
+          }, { names: batch.map((item) => casinoQuery && !/casino/i.test(item.name) ? `${item.name} casino`
+            : cityQuery && item.city ? `${item.name} ${item.city}` : item.name), key, country });
+          break;
+        } catch (error) {
+          if (attempt === 3) throw error;
+          await new Promise((done) => setTimeout(done, 800 * (attempt + 1)));
+        }
+      }
       const lists = Array.isArray(results) ? results : [results];
       if (lists.length !== batch.length) throw new Error("Unexpected MapTiler batch size.");
       for (let index = 0; index < batch.length; index++) {
@@ -38,6 +50,7 @@ try {
       }
       await writeFile(path, JSON.stringify(cache, null, 2));
       process.stdout.write(`Named POI candidates: ${Object.keys(cache).length}/${target.length}\n`);
+      await new Promise((done) => setTimeout(done, 250));
     }
   }
 } finally { await browser.close(); }

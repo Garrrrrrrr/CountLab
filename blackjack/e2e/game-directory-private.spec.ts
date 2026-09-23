@@ -59,7 +59,13 @@ test("signed-in admin sees private draft casino on the map", async ({ page }, te
   await expect(map).toHaveAttribute("data-map-marker-count", "1");
   await expect(map).toHaveAttribute("data-map-rendered-count", "1");
   const bounds = await map.boundingBox();
+  const scrollBeforeMarkerClick = await page.evaluate(() => {
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    return window.scrollY;
+  });
+  expect(scrollBeforeMarkerClick).toBeGreaterThan(0);
   await map.click({ position: { x: Math.round(bounds!.width / 2), y: Math.round(bounds!.height / 2) - 18 } });
   await expect(page.getByLabel("Selected casino details").getByRole("heading", { name: "Private Draft Casino" })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThanOrEqual(scrollBeforeMarkerClick - 2);
   await page.unrouteAll({ behavior: "ignoreErrors" });
 });
