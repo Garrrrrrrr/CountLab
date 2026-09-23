@@ -31,7 +31,14 @@ function placeMatches(location, place) {
   const city = normalize(location.city).replace(/\s+(area|east of|north of)$/g, "");
   const placeName = normalize(place.place_name);
   const cityMatch = !city || placeName.includes(city) || text.includes(city) || headingCities.some((value) => placeName.includes(value) || text.includes(value));
-  return (!country || placeName.includes(country)) && (!region || placeName.includes(region)) && cityMatch;
+  // Geocoders sometimes label a venue with its county (for example Clark)
+  // instead of the source's city (Las Vegas). An exact street address plus
+  // matching venue name and state is stronger evidence than that city label.
+  const number = location.address?.match(/\b\d{2,6}\b/)?.[0];
+  const streetTokens = tokens(location.address).filter((token) => !/^(street|avenue|road|drive|boulevard|highway|parkway|lane|way|north|south|east|west)$/.test(token));
+  const addressMatch = !!number && new RegExp(`\\b${number}\\b`).test(text)
+    && streetTokens.some((token) => text.includes(token));
+  return (!country || placeName.includes(country)) && (!region || placeName.includes(region)) && (cityMatch || addressMatch);
 }
 
 function coordinateFromOsm(location) {

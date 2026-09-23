@@ -35,9 +35,11 @@ function casinoIcon(fill: string): ImageData {
 export function DirectoryMap({ locations, selectedId, onSelect, onClusterSelect, active }: { locations: DirectorySearchLocation[]; selectedId: string | null; onSelect: (id: string) => void; onClusterSelect: (ids: string[]) => void; active: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
+  const dataGeneration = useRef(0);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const points = useMemo(() => locations.filter((location) => location.latitude != null && location.longitude != null && ["verified", "approximate"].includes(location.coordinate_quality ?? "")), [locations]);
+  const [renderedCount, setRenderedCount] = useState(0);
+  const points = useMemo(() => locations.filter((location) => location.latitude != null && location.longitude != null && location.coordinate_quality === "verified"), [locations]);
 
   useEffect(() => {
     if (!host.current || !key) return;
@@ -65,11 +67,10 @@ export function DirectoryMap({ locations, selectedId, onSelect, onClusterSelect,
       instance.on("load", () => {
         clearTimeout(loadTimer);
         instance.addImage("casino-marker", casinoIcon("#b4f27d"), { pixelRatio: 2 });
-        instance.addImage("casino-marker-approximate", casinoIcon("#f5c66a"), { pixelRatio: 2 });
         instance.addSource("directory-locations", { type: "geojson", data: { type: "FeatureCollection", features: [] }, cluster: true, clusterRadius: 45 });
         instance.addLayer({ id: "clusters", type: "circle", source: "directory-locations", filter: ["has", "point_count"], paint: { "circle-color": "#65c875", "circle-radius": ["step", ["get", "point_count"], 17, 20, 23, 100, 29], "circle-stroke-color": "#112010", "circle-stroke-width": 2 } });
         instance.addLayer({ id: "cluster-count", type: "symbol", source: "directory-locations", filter: ["has", "point_count"], layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 }, paint: { "text-color": "#112010" } });
-        instance.addLayer({ id: "locations", type: "symbol", source: "directory-locations", filter: ["!", ["has", "point_count"]], layout: { "icon-image": ["match", ["get", "coordinate_quality"], "verified", "casino-marker", "casino-marker-approximate"], "icon-anchor": "bottom", "icon-allow-overlap": true } });
+        instance.addLayer({ id: "locations", type: "symbol", source: "directory-locations", filter: ["!", ["has", "point_count"]], layout: { "icon-image": "casino-marker", "icon-anchor": "bottom", "icon-allow-overlap": true } });
         instance.on("click", "locations", (event) => {
           const id = event.features?.[0]?.properties?.id;
           if (typeof id === "string") onSelect(id);
@@ -99,22 +100,24 @@ export function DirectoryMap({ locations, selectedId, onSelect, onClusterSelect,
   useEffect(() => {
     const source = map.current?.getSource("directory-locations") as import("maplibre-gl").GeoJSONSource | undefined;
     if (!source) return;
+    const generation = ++dataGeneration.current;
+    setRenderedCount(0);
+    if (active) map.current?.resize();
     source.setData({ type: "FeatureCollection", features: points.map((location) => ({ type: "Feature", geometry: { type: "Point", coordinates: [location.longitude!, location.latitude!] }, properties: { id: location.id, name: location.name, coordinate_quality: location.coordinate_quality } })) });
+    map.current?.once("idle", () => { if (dataGeneration.current === generation) setRenderedCount(points.length); });
     if (points.length === 1) map.current?.easeTo({ center: [points[0].longitude!, points[0].latitude!], zoom: 10 });
     else if (points.length > 1) {
       const longitudes = points.map((location) => location.longitude!);
       const latitudes = points.map((location) => location.latitude!);
       map.current?.fitBounds([[Math.min(...longitudes), Math.min(...latitudes)], [Math.max(...longitudes), Math.max(...latitudes)]], { padding: 40, maxZoom: 10, duration: 500 });
     }
-  }, [points, loaded]);
+  }, [points, loaded, active]);
 
   useEffect(() => {
     const selected = points.find((location) => location.id === selectedId);
     if (selected) map.current?.easeTo({ center: [selected.longitude!, selected.latitude!], zoom: Math.max(map.current.getZoom(), 10) });
   }, [selectedId, points]);
 
-  useEffect(() => { if (active) map.current?.resize(); }, [active]);
-
   if (!key) return <div className="grid h-[calc(100dvh-10rem)] min-h-96 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] p-6 text-center text-sm text-[var(--ink-muted)]">Map is unavailable. Browse locations in the list.</div>;
-  return <div className="relative h-[calc(100dvh-10rem)] min-h-96 max-h-[70rem] overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="h-full w-full" data-map-loaded={loaded} data-map-marker-count={points.length} aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
+  return <div className="relative h-[calc(100dvh-10rem)] min-h-96 max-h-[70rem] overflow-hidden rounded-xl border border-[var(--rule)]"><div ref={host} className="h-full w-full" data-map-loaded={loaded} data-map-marker-count={points.length} data-map-rendered-count={renderedCount} aria-label="Map of directory locations" role="img" />{error && <p role="status" className="absolute inset-x-3 bottom-3 rounded-lg bg-[var(--paper-raised)] p-3 text-sm">{error}</p>}</div>;
 }

@@ -78,7 +78,7 @@ test("anonymous visitor can browse and open a direct directory game link", async
 
 test("map loads casinos beyond the first directory page", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium" || !process.env.NEXT_PUBLIC_MAPTILER_KEY, "Map key and desktop required.");
-  const locations = Array.from({ length: 101 }, (_, index) => ({
+  const locations = Array.from({ length: 102 }, (_, index) => ({
     ...location,
     id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
     name: `Casino ${index + 1}`,
@@ -102,5 +102,5 @@ test("map loads casinos beyond the first directory page", async ({ page }, testI
   await expect(map).toHaveAttribute("data-map-loaded", "true", { timeout: 15000 });
   await expect(map).toHaveAttribute("data-map-marker-count", "101");
   expect(offsets).toContain(100);
-  await expect(page.getByText("101 of 101 matching locations have map coordinates.", { exact: false })).toBeVisible();
+  await expect(page.getByText("101 of 102 matching locations have map coordinates.", { exact: false })).toBeVisible();
 });
