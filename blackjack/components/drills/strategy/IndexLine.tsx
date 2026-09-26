@@ -39,7 +39,8 @@ export function IndexLine({ hand }: { hand: IndexHand }) {
             );
           })}
         </div>
-        <span className="absolute top-0 h-7 w-0.5 -translate-x-1/2 bg-[var(--ink)]" style={{ left: `${at(hand.tc)}%` }} />
+        {/* A notch at the bar's top edge under the count's caret, clear of the segment labels. */}
+        <span className="absolute -top-1 h-2.5 w-0.5 -translate-x-1/2 bg-[var(--ink)] shadow-[0_0_0_1px_var(--paper)]" style={{ left: `${at(hand.tc)}%` }} />
         {boundary !== undefined && (
           <span className="absolute top-7 -translate-x-1/2 whitespace-nowrap pt-0.5 font-data text-[.65rem] text-[var(--ink-muted)]" style={{ left: `${at(boundary)}%` }}>
             index {countText(hand.index)}

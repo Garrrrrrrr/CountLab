@@ -17,14 +17,13 @@ export interface SlowHand {
  * link to each one's chart cell. Correct-but-slow hands are listed too,
  * since the goal is decisions that are automatic, not just right.
  */
-export function StrategySummary({ session, drillTitle, onPlayAgain, onRetry, onChangeSetup, breakdownTitle, breakdownLimit, mistakeHref, slow, onRetrySlow, footer, tiles }: {
+export function StrategySummary({ session, drillTitle, onPlayAgain, onRetry, onChangeSetup, breakdownTitle, mistakeHref, slow, onRetrySlow, footer, tiles }: {
   session: Session;
   drillTitle: string;
   onPlayAgain: () => void;
   onRetry?: () => void;
   onChangeSetup: () => void;
   breakdownTitle: string;
-  breakdownLimit?: number;
   mistakeHref: (mistake: Mistake) => string | undefined;
   slow: readonly SlowHand[];
   onRetrySlow?: () => void;
@@ -53,7 +52,7 @@ export function StrategySummary({ session, drillTitle, onPlayAgain, onRetry, onC
           { label: "Avg. answer time", value: `${(session.averageResponseTime / 1000).toFixed(1)} s` },
           { label: "Best streak", value: session.bestStreak, sub: "right in a row" },
         ]}
-        breakdown={rows.length ? { title: breakdownTitle, rows, limit: breakdownLimit } : undefined}
+        breakdown={rows.length ? { title: breakdownTitle, rows } : undefined}
         mistakesTitle="Hands to review"
         mistakeHref={(mistake) => mistakeHref(mistake)}
         detail={session.mistakes.length ? undefined : <Callout tone="good" title="No mistakes this round." />}

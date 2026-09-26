@@ -172,8 +172,8 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
         onPlayAgain={() => round.start({ length, explain, retry: false, mode })}
         onRetry={() => retry(indexRetryQueue(round.session!.mistakes, rows))}
         onChangeSetup={round.changeSetup}
+        // Every play in the round, weakest first: a 50-hand round can touch 30 plays, and each one is worth a look.
         breakdownTitle="By hand"
-        breakdownLimit={8}
         mistakeHref={(mistake) => {
           const parsed = parseIndexMistake(mistake);
           return referenceHref("deviations", parsed && indexChartCell(parsed));
