@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BJA_H17_SECTIONS, CHART_DEALERS, cellKey, formatToken } from "./bjaH17Chart";
-import { displayBuffer, explainToken, feedKey, gradeChart, parseEntry, SECTION_LETTERS, sectionLegend, tokensEqual } from "./chartEntry";
+import { displayBuffer, explainToken, feedCell, feedKey, gradeChart, KEYPAD_ROWS, parseEntry, SECTION_LETTERS, sectionLegend, tokensEqual } from "./chartEntry";
+import { chartSections } from "./es10Chart";
 
 /** Types a whole string into one cell and returns the final buffer + disposition. */
 const type = (section: Parameters<typeof feedKey>[0], keys: string) =>
@@ -279,6 +280,59 @@ describe("sectionLegend", () => {
         const result = feedKey(section, "", trigger, entry.combo);
         expect(result.disposition, `${section} ${entry.keys.join("+")}`).toBe("commit");
         expect(formatToken(parseEntry(section, result.buffer)!), `${section} ${entry.keys.join("+")}`).toBe(entry.shows);
+      }
+    }
+  });
+});
+
+describe("feedCell", () => {
+  it("replaces a finished answer instead of ignoring the key", () => {
+    expect(feedCell("hard", "h", "s")).toEqual({ buffer: "s", disposition: "commit" });
+    expect(feedCell("pairs", "y", "y", true)).toEqual({ buffer: "yn", disposition: "commit" });
+    expect(feedCell("hard", "4+", "1")).toEqual({ buffer: "1", disposition: "pending" });
+    expect(feedCell("hard", "h", "x")).toEqual({ buffer: "h", disposition: "ignore" });
+  });
+
+  it("keeps building a partial entry and still steps back on an empty cell", () => {
+    expect(feedCell("hard", "4", "+")).toEqual({ buffer: "4+", disposition: "commit" });
+    expect(feedCell("hard", "-", "1")).toEqual({ buffer: "-1", disposition: "pending" });
+    expect(feedCell("hard", "h", "Backspace")).toEqual({ buffer: "", disposition: "pending" });
+    expect(feedCell("hard", "", "Backspace")).toEqual({ buffer: "", disposition: "back" });
+  });
+});
+
+describe("KEYPAD_ROWS", () => {
+  it("is a fixed six-by-three grid", () => {
+    for (const section of ["pairs", "soft", "hard", "surrender"] as const) {
+      const rows = KEYPAD_ROWS(section);
+      expect(rows.map((row) => row.length)).toEqual([6, 6, 6]);
+      expect(rows[1].map((key) => key.face)).toEqual(["\u2212", "0", "1", "2", "3", "4"]);
+      expect(rows[2].map((key) => key.face)).toEqual(["+", "5", "6", "7", "8", "9"]);
+    }
+    expect(KEYPAD_ROWS("pairs")[0].map((key) => key.face)).toEqual(["Y", "N", "Y/N", "", "\u232b", "Next"]);
+    expect(KEYPAD_ROWS("surrender")[0].map((key) => key.face)).toEqual(["SUR", "N", "", "", "\u232b", "Next"]);
+  });
+
+  it("can enter every cell of both charts, including the early-surrender 7+ and 8+", () => {
+    for (const rule of ["late", "early10"] as const) {
+      for (const section of chartSections(rule)) {
+        const keys = KEYPAD_ROWS(section.id).flat();
+        for (const [key, token] of section.cells) {
+          const printed = formatToken(token);
+          let buffer = "";
+          if (token.kind === "action") {
+            const letter = keys.find((candidate) => candidate.kind === "letter" && candidate.face === printed);
+            expect(letter, `${rule} ${key} ${printed}`).toBeDefined();
+            buffer = feedCell(section.id, buffer, letter!.key, letter!.shift).buffer;
+          } else {
+            for (const character of printed) {
+              const press = keys.find((candidate) => candidate.key === character);
+              expect(press, `${rule} ${key} ${printed}: ${character}`).toBeDefined();
+              buffer = feedCell(section.id, buffer, press!.key, press!.shift).buffer;
+            }
+          }
+          expect(formatToken(parseEntry(section.id, buffer)!), `${rule} ${key}`).toBe(printed);
+        }
       }
     }
   });
