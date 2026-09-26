@@ -6,7 +6,7 @@ import { journalLibrary, sessionsInRange, type BankrollTransaction, type Journal
 import { theoreticalSessionOutcome } from "@/lib/blackjack/journalAnalysis";
 import { applyVenue, draftFromSession, gameFromScenario, newSessionDraft, rememberedGame, type GameDraft, type GameSource, type SessionDraft } from "@/lib/blackjack/journalForm";
 import { longDate, money } from "@/lib/blackjack/journalFormat";
-import { periodPhrase, targetBankrollId, type Period } from "@/lib/blackjack/journalView";
+import { neighbourId, periodPhrase, targetBankrollId, type Period } from "@/lib/blackjack/journalView";
 import { venuePresetLibrary, type VenuePreset } from "@/lib/blackjack/venuePresets";
 import { storage } from "@/lib/statistics/storage";
 import { useAuth } from "@/lib/supabase/AuthProvider";
@@ -47,11 +47,7 @@ const SHEETS = new Set<Overlay["kind"]>(["log", "details", "cash", "bankrolls"])
 type RowAttribute = "data-session-row" | "data-cash-row" | "data-venue-row";
 const shownRows = (attribute: RowAttribute) => Array.from(document.querySelectorAll<HTMLElement>(`[${attribute}]`)).filter((element) => element.getClientRects().length > 0);
 /** The row on screen after (or else before) the one being removed, for focus to land on. */
-const neighbourOf = (attribute: RowAttribute, id: string) => {
-  const ids = shownRows(attribute).map((element) => element.getAttribute(attribute));
-  const index = ids.indexOf(id);
-  return index === -1 ? null : ids[index + 1] ?? ids[index - 1] ?? null;
-};
+const neighbourOf = (attribute: RowAttribute, id: string) => neighbourId(shownRows(attribute).map((element) => element.getAttribute(attribute) ?? ""), id);
 type FocusRequest = { row?: [RowAttribute, string]; fallback: string };
 
 /**
