@@ -192,7 +192,9 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
   };
 
   const finish = (nextChecks = checks, nextCorrect = correct, nextMistakes = mistakes, nextCategories = categories, nextBest = best) => {
-    const total = Date.now() - startRef.current - pausedTotal.current;
+    // Ending while paused: the current pause is not session time either.
+    const pausedNow = phase === "paused" ? Date.now() - pausedAt.current : 0;
+    const total = Date.now() - startRef.current - pausedTotal.current - pausedNow;
     const seen = cursor;
     const session = makeSession(DRILL, nextChecks, nextCorrect, total, nextBest, nextMistakes, nextCategories, {
       cardsPerSecond: seen / Math.max(0.001, total / 1000), elapsedSeconds: total / 1000,
