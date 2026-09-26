@@ -113,9 +113,9 @@ function BetSpreadBody({
           are watched but not played.
         </p>
         <div className="flex flex-wrap gap-2 text-xs">
-          <button type="button" onClick={() => onScale(0.5)} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-white/[.05]">½X</button>
-          <button type="button" onClick={() => onScale(2)} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-white/[.05]">2X</button>
-          <button type="button" onClick={onReset} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-white/[.05]">Reset</button>
+          <button type="button" onClick={() => onScale(0.5)} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-overlay/[.05]">½X</button>
+          <button type="button" onClick={() => onScale(2)} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-overlay/[.05]">2X</button>
+          <button type="button" onClick={onReset} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-1.5 font-semibold text-[var(--ink)] hover:bg-overlay/[.05]">Reset</button>
         </div>
       </div>
 
@@ -203,7 +203,7 @@ function TrueCountDistributionBody({
             {row.label}
           </span>
           <div className="flex items-center gap-2">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[.06]">
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-overlay/[.06]">
               <div
                 className="h-full rounded-full bg-sky-400/70"
                 style={{
@@ -569,7 +569,7 @@ export function CvcxLab() {
       {/* Pinned directly under the app header so the four numbers everything
           else exists to produce stay readable while the reader works down the
           page. z-20 keeps it below the z-30 header it tucks under. */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-overlay/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat
             label="Expected value"
@@ -609,12 +609,12 @@ export function CvcxLab() {
                 {wongInAt === null ? "Play every count" : `Enter at TC +${wongInAt}`} · {compact(handsPerHour)} rounds/hr · {percent(result.playedFrequency, 0)} of rounds played
               </p>
             </div>
-            <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+            <div className="rounded-2xl border border-overlay/[.07] bg-well/20 p-4">
               <p className="text-xs font-bold uppercase tracking-[.12em] text-[var(--ink-muted)]">Your bet plan</p>
               <p className="mt-2 font-semibold">{money(baseBet, 0)} unit · {playedSpreadLabel(activeRamp)} spread</p>
               <p className="mt-1 text-sm text-[var(--ink-muted)]">{money(result.averageBet, 2)} average action per round</p>
             </div>
-            <div className="rounded-2xl border border-white/[.07] bg-black/20 p-4">
+            <div className="rounded-2xl border border-overlay/[.07] bg-well/20 p-4">
               <p className="text-xs font-bold uppercase tracking-[.12em] text-[var(--ink-muted)]">Plain-English result</p>
               <p className="mt-2 font-semibold text-[var(--accent)]">About {money(result.hourlyEv, 0)}/hr long run</p>
               <p className="mt-1 text-sm text-[var(--ink-muted)]">{percent(result.riskOfRuin)} chance of losing the whole bankroll at these stakes</p>
@@ -751,7 +751,7 @@ export function CvcxLab() {
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             {([["68% range", 1], ["90% range", 1.645], ["95% range", 1.96]] as const).map(([label, z]) => (
-              <div key={label} className="rounded-2xl bg-black/20 p-4">
+              <div key={label} className="rounded-2xl bg-well/20 p-4">
                 <p className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">{label}</p>
                 <p className="mt-2 font-semibold">{money(result.tripEv - z * result.standardDeviation, 0)}</p>
                 <p className="text-[var(--ink-muted)]">to</p>
@@ -759,7 +759,7 @@ export function CvcxLab() {
               </div>
             ))}
           </div>
-          <dl className="mt-5 grid gap-4 border-t border-white/[.06] pt-4 sm:grid-cols-3">
+          <dl className="mt-5 grid gap-4 border-t border-overlay/[.06] pt-4 sm:grid-cols-3">
             <div><dt className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">Average action / round</dt><dd className="mt-1 text-xl font-semibold">{money(result.averageBet, 2)}</dd></div>
             <div><dt className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">Rounds for EV to match one σ (N₀)</dt><dd className="mt-1 text-xl font-semibold">{compact(result.nZeroRounds)}</dd></div>
             <div><dt className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">SCORE</dt><dd className="mt-1 text-xl font-semibold">{money(result.cScore, 0)}</dd><dd className="text-xs text-[var(--ink-muted)]">per 100 rounds on a $10,000 bankroll at 13.5% ruin</dd></div>
@@ -788,7 +788,7 @@ export function CvcxLab() {
                 {[...comparisons].sort((a, b) => b.cScore - a.cScore).map((row, index) => {
                   const active = row.decks === decks && Math.abs(row.penetration - dealt / decks) < 0.001;
                   return (
-                    <tr key={row.name} className={`border-t border-white/[.06] ${active ? "text-[var(--accent)]" : ""}`}>
+                    <tr key={row.name} className={`border-t border-overlay/[.06] ${active ? "text-[var(--accent)]" : ""}`}>
                       <td className="py-3 text-left"><span className="mr-2 text-xs text-[var(--ink-muted)]">#{index + 1}</span><b>{row.name}</b></td>
                       <td>{money(row.hourlyEv, 2)}</td>
                       <td>{percent(row.riskOfRuin)}</td>
@@ -814,9 +814,9 @@ export function CvcxLab() {
           </div>
           {cvcxNotice && <p role="status" className="mt-2 text-xs text-[var(--accent)]">{cvcxNotice}</p>}
           <div className="mt-3 space-y-2">
-            {cvcxTemplates.length === 0 && <p className="rounded-xl border border-dashed border-white/[.08] p-3 text-xs text-[var(--ink-muted)]">No saved scenarios yet.</p>}
+            {cvcxTemplates.length === 0 && <p className="rounded-xl border border-dashed border-overlay/[.08] p-3 text-xs text-[var(--ink-muted)]">No saved scenarios yet.</p>}
             {cvcxTemplates.map((template) => (
-              <div key={template.id} className="flex items-center gap-2 rounded-xl border border-white/[.06] bg-black/10 p-2.5">
+              <div key={template.id} className="flex items-center gap-2 rounded-xl border border-overlay/[.06] bg-well/10 p-2.5">
                 <button type="button" onClick={() => loadCvcxTemplate(template)} className="min-w-0 flex-1 text-left">
                   <span className="block truncate text-sm font-medium text-[var(--ink)]">{template.name}</span>
                   <span className="text-xs text-[var(--ink-muted)]">{template.config.decks}D · {Math.round((template.config.dealt / template.config.decks) * 100)}% · 1–{unitLabel(rampSpread(template.config.ramp))}</span>
@@ -854,7 +854,7 @@ export function CvcxLab() {
           </p>
         </Section>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/[.07] bg-black/20 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-overlay/[.07] bg-well/20 p-4">
           <div>
             <h2 className="font-semibold">Want variance and streak simulation?</h2>
             <p className="mt-1 text-sm text-[var(--ink-muted)]">Run this exact bankroll and bet spread through thousands of simulated shoes.</p>

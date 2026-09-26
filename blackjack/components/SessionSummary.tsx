@@ -37,7 +37,7 @@ export function SessionSummary({
           <h2 className="mb-4 text-lg font-semibold">Mistakes</h2>
           <div className="max-h-[50svh] space-y-3 overflow-y-auto pr-1">
             {session.mistakes.map((mistake, index) => (
-              <div key={index} className="rounded-xl bg-black/20 p-4 text-sm">
+              <div key={index} className="rounded-xl bg-well/20 p-4 text-sm">
                 <b>{mistake.question}</b>
                 <p className="mt-1 text-[var(--negative)]">You: {mistake.userAnswer} · Correct: {mistake.correctAnswer}</p>
                 <p className="mt-1 text-[var(--ink-muted)]">{mistake.explanation}</p>

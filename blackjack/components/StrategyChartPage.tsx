@@ -20,6 +20,7 @@ import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
 import { surrenderChart } from "@/lib/blackjack/surrenderChart";
 import type { SurrenderCell } from "@/lib/blackjack/surrenderChart";
 import type { Action } from "@/lib/blackjack/types";
+import { ACTION_LABEL, ACTION_STYLE } from "@/lib/blackjack/actionStyles";
 import { storage } from "@/lib/statistics/storage";
 
 type ChartTab = "strategy" | "deviations" | "h17";
@@ -56,28 +57,12 @@ const SECTIONS: Array<{ id: SectionTab; label: string; description: string }> = 
 
 const HAND_SECTIONS = SECTIONS.filter((entry): entry is { id: StrategySectionId; label: string; description: string } => entry.id !== "surrender");
 
-const ACTION_STYLE: Record<Action, string> = {
-  H: "border-sky-800 bg-sky-700 text-white",
-  S: "border-slate-800 bg-slate-700 text-white",
-  D: "border-amber-600 bg-amber-400 text-slate-950",
-  P: "border-violet-800 bg-violet-700 text-white",
-  R: "border-rose-800 bg-rose-700 text-white",
-};
-
 const INDEX_TAG_STYLE: Record<Action, string> = {
   H: "bg-sky-950 text-white ring-1 ring-white/80",
   S: "bg-slate-950 text-white ring-1 ring-white/80",
-  D: "bg-amber-950 text-[var(--warning)] ring-1 ring-white/80",
+  D: "bg-amber-950 text-amber-200 ring-1 ring-white/80",
   P: "bg-violet-950 text-violet-100 ring-1 ring-white/80",
   R: "bg-rose-950 text-rose-100 ring-1 ring-white/80",
-};
-
-const ACTION_LABEL: Record<Action, string> = {
-  H: "Hit",
-  S: "Stand",
-  D: "Double",
-  P: "Split",
-  R: "Surrender",
 };
 
 const H17_TOKEN_STYLE: Record<string, string> = {
@@ -87,7 +72,7 @@ const H17_TOKEN_STYLE: Record<string, string> = {
   H: ACTION_STYLE.H,
   S: ACTION_STYLE.S,
   D: ACTION_STYLE.D,
-  Ds: "border-amber-700 bg-amber-950 text-[var(--warning)]",
+  Ds: "border-amber-700 bg-amber-950 text-amber-200",
   SUR: ACTION_STYLE.R,
   index: "border-[var(--count-warm)] bg-[var(--count-warm)] text-slate-950",
 };

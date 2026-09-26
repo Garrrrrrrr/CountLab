@@ -32,7 +32,7 @@ export function AnalyticsConsent({ onVisibilityChange }: { onVisibilityChange?: 
 
   if (!visible) return null;
   return (
-    <aside aria-label="Analytics privacy choices" className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-[100] mx-auto max-h-[min(45svh,30rem)] max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[var(--paper-raised)] p-4 shadow-2xl backdrop-blur sm:p-5">
+    <aside aria-label="Analytics privacy choices" className="fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-[100] mx-auto max-h-[min(45svh,30rem)] max-w-2xl overflow-y-auto rounded-2xl border border-overlay/10 bg-[var(--paper-raised)] p-4 shadow-2xl backdrop-blur sm:p-5">
       <p className="font-semibold">Privacy choices</p>
       <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">
         <span className="sm:hidden">CountLab uses privacy-minimised analytics to improve training. It never records passwords, email addresses, notes, or exact bankrolls.</span>

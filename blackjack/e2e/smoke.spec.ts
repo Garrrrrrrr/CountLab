@@ -18,11 +18,11 @@ test("desktop lab navigation has visible primary controls", async ({ page }, tes
   await expect(page.getByLabel("Audited true-count range")).toBeVisible();
 });
 
-test("phone has four area destinations with usable tap targets", async ({ page }, testInfo) => {
+test("phone has the dashboard and four area destinations with usable tap targets", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop-chromium", "Mobile smoke coverage.");
   await prepareGuest(page);
   await page.goto("/dashboard/");
-  for (const name of ["Practice", "Analyze", "Games", "Reference"]) {
+  for (const name of ["Dashboard", "Practice", "Analyze", "Games", "Reference"]) {
     const link = page.getByLabel("Mobile navigation").getByRole("link", { name });
     await expect(link).toBeVisible();
     const box = await link.boundingBox();

@@ -33,14 +33,14 @@ export function HandReplayer({
     <Panel>
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <button type="button" onClick={onBack} className="text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]"><i className="fa-solid fa-arrow-left mr-1.5" />{backLabel}</button>
+          <button type="button" onClick={onBack} className="text-xs font-medium text-[var(--ink-muted)] hover:text-[var(--ink)]"><i aria-hidden="true" className="fa-solid fa-arrow-left mr-1.5" />{backLabel}</button>
           <h2 className="mt-1 text-lg font-semibold">{title}</h2>
         </div>
-        <span className="rounded-full bg-white/[.05] px-3 py-1 text-xs text-[var(--ink-muted)]">{shoe.totalHands} hands</span>
+        <span className="rounded-full bg-overlay/[.05] px-3 py-1 text-xs text-[var(--ink-muted)]">{shoe.totalHands} hands</span>
       </div>
 
       {gradedHands.length > 0 && (
-        <div data-testid="hand-grader" className="mb-5 rounded-2xl border border-white/[.06] bg-black/10 p-4">
+        <div data-testid="hand-grader" className="mb-5 rounded-2xl border border-overlay/[.06] bg-well/10 p-4">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h3 className="font-semibold">Hand Grader</h3>
             <p className="text-xs text-[var(--ink-muted)]">
@@ -53,7 +53,7 @@ export function HandReplayer({
           <div className="mt-3 flex flex-wrap gap-1.5">
             {grades.map((grade) => {
               const tone = grade.graded === 0
-                ? "border-white/[.08] bg-white/[.03] text-[var(--ink-muted)]"
+                ? "border-overlay/[.08] bg-overlay/[.03] text-[var(--ink-muted)]"
                 : grade.errors > 0
                   ? "border-red-400/30 bg-red-400/[.12] text-[var(--negative)]"
                   : "border-emerald-400/25 bg-emerald-400/[.1] text-[var(--accent)]";
@@ -72,7 +72,7 @@ export function HandReplayer({
                   aria-label={`Hand ${grade.roundInShoe}, ${result}`}
                   aria-pressed={grade.index === selectedHandIndex}
                   onClick={() => setSelectedHandIndex(grade.index)}
-                  className={`pressable grid h-10 w-10 place-content-center rounded-lg border text-[.7rem] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${tone} ${grade.index === selectedHandIndex ? "ring-2 ring-white/50" : ""}`}
+                  className={`pressable grid h-10 w-10 place-content-center rounded-lg border text-[.7rem] font-semibold leading-tight outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${tone} ${grade.index === selectedHandIndex ? "ring-2 ring-overlay/50" : ""}`}
                 >
                   <span>{grade.roundInShoe}</span>
                   {grade.errors > 0 && <span className="text-[.6rem] font-bold opacity-80">{grade.errors}</span>}
@@ -96,18 +96,18 @@ export function HandReplayer({
               <p className="text-xs text-[var(--ink-muted)]">Hand {hand.roundInShoe} of {shoe.totalHands}</p>
             </div>
             <div className="flex items-center gap-2 text-xs text-[var(--ink-muted)]">
-              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === 0} onClick={() => setSelectedHandIndex((i) => Math.max(0, i - 1))}><i className="fa-solid fa-chevron-left" /></GhostButton>
+              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === 0} onClick={() => setSelectedHandIndex((i) => Math.max(0, i - 1))}><i aria-hidden="true" className="fa-solid fa-chevron-left" /></GhostButton>
               <span>{selectedHandIndex + 1} / {shoe.hands.length}</span>
-              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === shoe.hands.length - 1} onClick={() => setSelectedHandIndex((i) => Math.min(shoe.hands.length - 1, i + 1))}><i className="fa-solid fa-chevron-right" /></GhostButton>
+              <GhostButton className="px-3 py-1.5" disabled={selectedHandIndex === shoe.hands.length - 1} onClick={() => setSelectedHandIndex((i) => Math.min(shoe.hands.length - 1, i + 1))}><i aria-hidden="true" className="fa-solid fa-chevron-right" /></GhostButton>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/[.06] bg-black/10 p-4">
+          <div className="rounded-2xl border border-overlay/[.06] bg-well/10 p-4">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--ink-muted)]">Dealer</p>
             <div className="flex gap-2">{hand.dealerCards.map((card, index) => <PlayingCard key={index} card={card} size="sm" />)}</div>
 
             {hand.playerHands.map((box, boxIndex) => (
-              <div key={boxIndex} className="mt-4 border-t border-white/[.06] pt-4">
+              <div key={boxIndex} className="mt-4 border-t border-overlay/[.06] pt-4">
                 <div className="mb-2 flex items-center justify-between text-xs">
                   <span className="font-medium uppercase tracking-wide text-[var(--ink-muted)]">Hand {boxIndex + 1}</span>
                   <span className={box.net >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{box.net >= 0 ? "+" : ""}{money(box.net, 0)}</span>
@@ -118,7 +118,7 @@ export function HandReplayer({
             ))}
 
             {hand.decisions && hand.decisions.length > 0 && (
-              <div className="mt-4 border-t border-white/[.06] pt-4">
+              <div className="mt-4 border-t border-overlay/[.06] pt-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-[var(--ink-muted)]">Decision review</p>
                 <div className="mt-2 space-y-2">
                   {hand.decisions.map((decision, index) => (
@@ -152,7 +152,7 @@ export function HandReplayer({
         </div>
       </div>
 
-      <div className="mt-6 border-t border-white/[.06] pt-5">
+      <div className="mt-6 border-t border-overlay/[.06] pt-5">
         <h3 className="font-semibold">Hand History</h3>
         <p className="mt-1 text-xs text-[var(--ink-muted)]">Select a row, then press Enter or Space to view that hand.</p>
         <div className="mt-3 max-h-[28rem] overflow-auto">
@@ -182,7 +182,7 @@ export function HandReplayer({
                       setSelectedHandIndex(index);
                     }
                   }}
-                  className={`cursor-pointer border-t border-white/[.06] outline-none hover:bg-white/[.03] focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${index === selectedHandIndex ? "bg-emerald-300/[.05]" : ""}`}
+                  className={`cursor-pointer border-t border-overlay/[.06] outline-none hover:bg-overlay/[.03] focus-visible:ring-2 focus-visible:ring-[var(--focus)] ${index === selectedHandIndex ? "bg-emerald-300/[.05]" : ""}`}
                 >
                   <td className="py-2.5">{row.roundInShoe}</td>
                   <td className="py-2.5">{row.playerHands.map((box) => `${cardLabel(box.cards)}(${box.net >= 0 ? "+" : ""}${money(box.net, 0)})`).join(" ")}</td>

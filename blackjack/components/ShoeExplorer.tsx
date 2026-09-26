@@ -36,7 +36,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
               key={mode}
               type="button"
               onClick={() => setSortMode(mode)}
-              className={`min-h-11 rounded-lg border px-3 py-1.5 font-semibold ${sortMode === mode ? "border-emerald-300/30 bg-emerald-300/10 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}
+              className={`min-h-11 rounded-lg border px-3 py-1.5 font-semibold ${sortMode === mode ? "border-emerald-300/30 bg-emerald-300/10 text-[var(--accent)]" : "border-overlay/[.08] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
             >
               {mode === "profit" ? "Profit" : mode === "loss" ? "Loss" : "Max TC"}
             </button>
@@ -52,7 +52,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
       </div>
 
       <div className="mt-5 grid gap-3 sm:hidden">
-        {sorted.map(({ shoe, index }) => <button key={shoe.shoeNumber} type="button" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }} className="rounded-xl border border-white/[.07] bg-black/20 p-4 text-left hover:bg-white/[.05]">
+        {sorted.map(({ shoe, index }) => <button key={shoe.shoeNumber} type="button" onClick={() => { track("shoe_viewed", { shoeNumber: shoe.shoeNumber, totalProfit: shoe.totalProfit, totalHands: shoe.totalHands }); onSelectShoe(index); }} className="rounded-xl border border-overlay/[.07] bg-well/20 p-4 text-left hover:bg-overlay/[.05]">
           <div className="flex items-center justify-between gap-3"><b>#{shoe.shoeNumber}</b><span className={shoe.totalProfit >= 0 ? "font-semibold text-[var(--accent)]" : "font-semibold text-[var(--negative)]"}>{shoe.totalProfit >= 0 ? "+" : ""}{money(shoe.totalProfit, 2)}</span></div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-[var(--ink-muted)]"><span>{shoe.totalHands} hands</span><span>TC {shoe.tcMin.toFixed(1)}</span><span>TC {shoe.tcMax.toFixed(1)}</span></div>
           <span className="mt-3 block text-sm font-semibold text-[var(--accent)]">View hands <i className="fa-solid fa-arrow-right ml-1" aria-hidden="true" /></span>
@@ -72,7 +72,7 @@ export function ShoeExplorer({ shoes, onSelectShoe }: { shoes: SimulatedShoe[]; 
           </thead>
           <tbody>
             {sorted.map(({ shoe, index }) => (
-              <tr key={shoe.shoeNumber} className="border-t border-white/[.06]">
+              <tr key={shoe.shoeNumber} className="border-t border-overlay/[.06]">
                 <td className="py-3 font-medium">#{shoe.shoeNumber}</td>
                 <td>{shoe.totalHands}</td>
                 <td className={shoe.totalProfit >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{shoe.totalProfit >= 0 ? "+" : ""}{money(shoe.totalProfit, 2)}</td>

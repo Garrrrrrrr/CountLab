@@ -50,6 +50,9 @@ export function registerServiceWorker() {
   });
   const register = () => {
     navigator.serviceWorker.register("/sw.js").then((registration) => {
+      // Some embedded and automated browsers resolve without a registration
+      // when service workers are blocked; there is nothing to watch then.
+      if (!registration) return;
       if (registration.waiting && navigator.serviceWorker.controller) announce(registration);
       registration.addEventListener("updatefound", () => {
         const installing = registration.installing;

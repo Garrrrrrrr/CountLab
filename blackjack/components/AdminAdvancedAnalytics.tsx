@@ -19,7 +19,7 @@ function SectionTitle({ title, note }: { title: string; note?: string }) {
 
 function Table({ rows, columns }: { rows: Array<Record<string, unknown>>; columns: Array<{ key: string; label: string; format?: (value: unknown) => string | number }> }) {
   if (!rows.length) return <p className="py-8 text-center text-sm text-[var(--ink-muted)]">No data for this period.</p>;
-  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-[var(--ink-muted)]"><tr>{columns.map((column) => <th key={column.key} className="whitespace-nowrap pb-3 pr-4 font-medium">{column.label}</th>)}</tr></thead><tbody>{rows.map((row,index) => <tr key={index} className="border-t border-white/[.06]">{columns.map((column,columnIndex) => <td key={column.key} className={`whitespace-nowrap py-3 pr-4 ${columnIndex ? "text-[var(--ink-muted)]" : "font-medium"}`}>{column.format ? column.format(row[column.key]) : String(row[column.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
+  return <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-[var(--ink-muted)]"><tr>{columns.map((column) => <th key={column.key} className="whitespace-nowrap pb-3 pr-4 font-medium">{column.label}</th>)}</tr></thead><tbody>{rows.map((row,index) => <tr key={index} className="border-t border-overlay/[.06]">{columns.map((column,columnIndex) => <td key={column.key} className={`whitespace-nowrap py-3 pr-4 ${columnIndex ? "text-[var(--ink-muted)]" : "font-medium"}`}>{column.format ? column.format(row[column.key]) : String(row[column.key] ?? "—")}</td>)}</tr>)}</tbody></table></div>;
 }
 
 const records = <T extends object>(rows: T[]) => rows as Array<Record<string, unknown>>;

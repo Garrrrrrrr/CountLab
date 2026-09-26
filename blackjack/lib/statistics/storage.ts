@@ -384,6 +384,22 @@ export const storage = {
     void pushSettings(s).catch(syncFailure);
     if (changedKeys.length) track("settings_saved", { changedKeys, decks: s.decks });
   },
+  /**
+   * Appearance takes effect the moment it is picked, from the header toggle or
+   * Settings, without committing any unsaved rule edits and without counting as
+   * the onboarding "set your table rules" step.
+   */
+  saveTheme(theme: Settings["theme"]) {
+    const current = this.settings();
+    if (current.theme === theme) return;
+    const next = { ...current, theme };
+    localStorage.setItem("countlab:theme", theme);
+    accountStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("hilo-storage"));
+    window.dispatchEvent(new Event("countlab:sync-pending"));
+    void pushSettings(next).catch(syncFailure);
+    track("settings_saved", { changedKeys: ["theme"], decks: next.decks });
+  },
   progress<T = unknown>(drill: DrillType): DrillProgress<T> | null {
     if (typeof window === "undefined") return null;
     try {

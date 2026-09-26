@@ -65,10 +65,10 @@ export function ShareCard({ session, outcome, bankrollName, onClose }: { session
       onConfirm={() => void download()}
     >
       <div className="mt-3">
-        <canvas ref={canvasRef} className="w-full rounded-xl border border-white/10" />
+        <canvas ref={canvasRef} className="w-full rounded-xl border border-overlay/10" />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <GhostButton onClick={() => void share()} disabled={!ready}>
-            <i className="fa-solid fa-share-nodes mr-2" />Share
+            <i aria-hidden="true" className="fa-solid fa-share-nodes mr-2" />Share
           </GhostButton>
           {notice && <span role="status" className="text-xs text-[var(--ink-muted)]">{notice}</span>}
         </div>

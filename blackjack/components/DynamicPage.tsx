@@ -23,7 +23,7 @@ import { AccountDataTools } from "./AccountDataTools";
 import { HomePage } from "./HomePage";
 import { ROUTE_DESCRIPTIONS } from "@/lib/routes";
 import { LEGACY_REDIRECTS } from "@/lib/routes";
-import { AdminImportPanel } from "@/components/directory/AdminImportPanel";
+import { NotFoundView } from "./NotFoundView";
 
 function PageLoading() {
   return (
@@ -63,6 +63,8 @@ const TermsPage = dynamic(() => import("@/components/TermsPage"), { loading: Pag
 const PrivacyPage = dynamic(() => import("@/components/PrivacyPage"), { loading: PageLoading });
 const AdminPage = dynamicPage(() => import("@/components/AdminPage"));
 const AdminDirectory = dynamic(() => import("@/components/directory/AdminDirectory").then((m) => m.AdminDirectory), { loading: PageLoading });
+// Admin-only; kept out of the bundle every visitor downloads.
+const AdminImportPanel = dynamic(() => import("@/components/directory/AdminImportPanel").then((m) => m.AdminImportPanel), { loading: PageLoading });
 const DirectoryPage = dynamicPage(() => import("@/components/directory/DirectoryPage").then((m) => ({ default: m.DirectoryPage })));
 function Dashboard() {
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -133,10 +135,10 @@ function Dashboard() {
           </ButtonLink>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Sessions completed" value={sessions.length} />
+        <Metric label="Sessions completed" value={sessions.length} sub={sessions.length ? undefined : "Finish a drill to start"} />
         <Metric label="Questions answered" value={totals.q} />
-        <Metric label="Overall accuracy" value={`${totals.avg}%`} />
-        <Metric label="Best streak" value={totals.best} />
+        <Metric label="Overall accuracy" value={totals.q ? `${totals.avg}%` : "—"} sub={totals.q ? undefined : "Not measured yet"} />
+        <Metric label="Best streak" value={sessions.length ? totals.best : "—"} sub={sessions.length ? "correct in a row" : undefined} />
       </div>
       {sessions.length > 0 && (
       <Panel className="mt-6">
@@ -155,7 +157,7 @@ function Dashboard() {
           <ButtonLink href="/training/checklist"  variant="quiet" className="px-3 py-1.5 text-sm">Open checklist</ButtonLink>
         </div>
         <div
-          className="mt-3 h-2 overflow-hidden rounded-full bg-white/[.07]"
+          className="mt-3 h-2 overflow-hidden rounded-full bg-overlay/[.07]"
           role="progressbar"
           aria-valuenow={checklist.completed}
           aria-valuemin={0}
@@ -192,7 +194,7 @@ function Dashboard() {
             {heatmap.map((week, weekIndex) => (
               <div key={weekIndex} className="flex flex-col gap-1">
                 {week.map((day) => (
-                  <div key={day.date} title={day.date} className={`h-3 w-3 rounded-sm ${day.practiced ? "bg-emerald-400" : "bg-white/[.06]"}`} />
+                  <div key={day.date} title={day.date} className={`h-3 w-3 rounded-sm ${day.practiced ? "bg-emerald-400" : "bg-overlay/[.06]"}`} />
                 ))}
               </div>
             ))}
@@ -272,7 +274,7 @@ function Dashboard() {
               </thead>
               <tbody>
                 {sessions.slice(0, 5).map((s) => (
-                  <tr key={s.id} className="border-t border-white/[.06]">
+                  <tr key={s.id} className="border-t border-overlay/[.06]">
                     <td className="py-4 font-medium">{s.drill}</td>
                     <td>{s.questions}</td>
                     <td className="text-[var(--accent)]">{s.accuracy}%</td>
@@ -294,61 +296,10 @@ function Dashboard() {
     </>
   );
 }
-export function HiLoReference() {
-  return (
-    <>
-      <h1 className="text-3xl font-semibold">Hi-Lo System</h1>
-      <p className="mt-2 text-[var(--ink-muted)]">
-        A balanced, level-one counting system.
-      </p>
-      <div className="mt-7 grid gap-4 md:grid-cols-3">
-        {[
-          ["+1", "2  3  4  5  6", "Low cards"],
-          ["0", "7  8  9", "Neutral cards"],
-          ["−1", "10  J  Q  K  A", "High cards"],
-        ].map(([v, r, l]) => (
-          <Panel key={v} className="text-center">
-            <span
-              className={`text-4xl font-bold ${v === "+1" ? "text-[var(--accent)]" : v === "−1" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}
-            >
-              {v}
-            </span>
-            <p className="my-5 text-2xl tracking-widest">{r}</p>
-            <small className="text-[var(--ink-muted)]">{l}</small>
-          </Panel>
-        ))}
-      </div>
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {[
-          [
-            "Running Count",
-            "Add each exposed card’s Hi-Lo value. RC = sum of all exposed values.",
-          ],
-          [
-            "True Count",
-            "Divide running count by estimated decks remaining. Apply the selected rounding rule.",
-          ],
-          [
-            "Deck Estimation",
-            "Estimate how many 52-card decks remain in the shoe, including fractional decks.",
-          ],
-          [
-            "Index Deviations",
-            "Change a basic-strategy play only when the true count crosses its published index.",
-          ],
-        ].map(([a, b]) => (
-          <Panel key={a}>
-            <h2 className="font-semibold">{a}</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--ink-muted)]">{b}</p>
-          </Panel>
-        ))}
-      </div>
-    </>
-  );
-}
 function SettingsPage() {
   const { user, signOut, exitGuest, syncStatus } = useAuth();
   const [s, setS] = useState<Settings>(DEFAULT_SETTINGS),
+    [stored, setStored] = useState<Settings>(DEFAULT_SETTINGS),
     [pendingImport, setPendingImport] = useState<{ raw: string; count: number }>(),
     [saved, setSaved] = useState(false),
     [dataMessage, setDataMessage] = useState(""),
@@ -357,11 +308,37 @@ function SettingsPage() {
     [analyticsMessage, setAnalyticsMessage] = useState(""),
     [confirmingAnalyticsDelete, setConfirmingAnalyticsDelete] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
-  useEffect(() => { setS(storage.settings()); setAnalyticsEnabled(analytics.isEnabled()); }, []);
+  const storedRef = useRef<Settings>(DEFAULT_SETTINGS);
+  useEffect(() => {
+    const load = () => {
+      const next = storage.settings();
+      const previous = storedRef.current;
+      storedRef.current = next;
+      setStored(next);
+      // Follow saved changes (a sync pull, the header theme toggle) unless the reader has edits in progress.
+      setS((draft) => (Object.keys(draft) as Array<keyof Settings>).every((key) => draft[key] === previous[key]) ? next : draft);
+    };
+    load();
+    setAnalyticsEnabled(analytics.isEnabled());
+    addEventListener("hilo-storage", load);
+    return () => removeEventListener("hilo-storage", load);
+  }, []);
   const update = <K extends keyof Settings>(k: K, v: Settings[K]) => {
     setS((x) => ({ ...x, [k]: v }));
     setSaved(false);
   };
+  // Theme is applied as soon as it is picked, so only the other fields can be unsaved.
+  const dirty = (Object.keys(s) as Array<keyof Settings>).some((key) => key !== "theme" && s[key] !== stored[key]);
+  const save = () => {
+    // Theme is saved the moment it changes, possibly from the header, so never let the draft overwrite it.
+    storage.saveSettings({ ...s, theme: storedRef.current.theme });
+    setSaved(true);
+  };
+  useEffect(() => {
+    if (!saved) return;
+    const id = setTimeout(() => setSaved(false), 2500);
+    return () => clearTimeout(id);
+  }, [saved]);
   const preset = s.decks === 6 && s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.surrender === "late"
     ? "6d-h17"
     : s.decks === 6 && !s.dealerHitsSoft17 && s.doubleAfterSplit && s.resplitAces && s.surrender === "late"
@@ -373,15 +350,28 @@ function SettingsPage() {
     <>
       <h1 className="text-3xl font-semibold">Settings</h1>
       <p className="mt-2 text-[var(--ink-muted)]">
-        Defaults are saved locally on this device.
+        {user ? "Saved on this device and synced to your account." : "Saved on this device."} Theme changes apply immediately; other changes apply when you save.
       </p>
       <div className="mt-7 grid gap-5 lg:grid-cols-2">
         <Panel>
-          <h2 className="mb-2 font-semibold">Appearance</h2>
+          <h2 className="mb-2 font-semibold">Appearance and experience</h2>
           <p className="mb-5 text-sm text-[var(--ink-muted)]">Choose the register that is easiest on your eyes. System follows your device.</p>
-          <Select label="Theme" value={s.theme} onChange={(event) => update("theme", event.target.value as Settings["theme"])}>
-            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
-          </Select>
+          <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-2">
+            {([["system", "System", "fa-circle-half-stroke"], ["light", "Light", "fa-sun"], ["dark", "Dark", "fa-moon"]] as const).map(([value, label, icon]) => (
+              <button key={value} type="button" role="radio" aria-checked={stored.theme === value} onClick={() => storage.saveTheme(value)} className={`pressable flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold ${stored.theme === value ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)]" : "border-[var(--rule)] bg-[var(--paper)] hover:border-[var(--ink-muted)]"}`}>
+                <i className={`fa-solid ${icon}`} aria-hidden="true" />{label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            {([
+              ["sound", "Sound effects"],
+              ["animations", "Card animations"],
+              ["shortcuts", "Keyboard shortcuts"],
+            ] as const).map(([k, l]) => (
+              <Switch key={k} label={l} checked={s[k]} onChange={(value) => update(k, value)} />
+            ))}
+          </div>
         </Panel>
         <Panel>
           <h2 className="mb-5 font-semibold">Table rules</h2>
@@ -469,13 +459,13 @@ function SettingsPage() {
             </div>
           </div>
         </Panel>
-        <Panel>
+        <Panel className="lg:col-span-2">
           <h2 className="mb-5 font-semibold">Counting defaults</h2>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
             <b>Hi-Lo ✓</b>
             <p className="text-sm text-[var(--ink-muted)]">Balanced level-one system</p>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Select label="Running-count preset" value={s.countingPreset} onChange={(e) => update("countingPreset", e.target.value as Settings["countingPreset"])}>
               <option value="one-deck-speed">One-deck speed</option>
               <option value="two-card-cancellation">Two-card cancellation</option>
@@ -495,27 +485,8 @@ function SettingsPage() {
           <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Floor rounds toward negative infinity: -1.2 becomes -2. Truncate rounds toward zero: -1.2 becomes -1. Pick the method that matches the indices you train.</p>
         </Panel>
         <Panel className="lg:col-span-2">
-          <h2 className="mb-4 font-semibold">Experience</h2>
-          {[
-            ["sound", "Sound effects"],
-            ["animations", "Card animations"],
-            ["shortcuts", "Keyboard shortcuts"],
-          ].map(([k, l]) => (
-            <Switch key={k} label={l} checked={Boolean(s[k as keyof Settings])} onChange={(value) => update(k as "sound" | "animations" | "shortcuts", value)} className="border-b border-white/[.06] py-3" />
-          ))}
-          <Button
-            className="mt-5"
-            onClick={() => {
-              storage.saveSettings(s);
-              setSaved(true);
-            }}
-          >
-            {saved ? "Saved ✓" : "Save settings"}
-          </Button>
-        </Panel>
-        <Panel className="lg:col-span-2">
           <h2 className="font-semibold">Privacy</h2>
-          <label className="mt-4 flex items-start justify-between gap-5 rounded-xl bg-black/20 p-4">
+          <label className="mt-4 flex items-start justify-between gap-5 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-4">
             <span><b className="block text-sm">Privacy-minimized product analytics</b><span className="mt-1 block text-xs leading-5 text-[var(--ink-muted)]">Helps improve drills and reliability. No email, notes, passwords, exact bankrolls, or advertising identifiers are collected.</span></span>
             <input type="checkbox" checked={analyticsEnabled} onChange={(event) => { const enabled = event.target.checked; setAnalyticsEnabled(enabled); analytics.setConsent(enabled, "settings"); }} className="mt-1 h-5 w-5 shrink-0 accent-emerald-500" />
           </label>
@@ -608,12 +579,12 @@ function SettingsPage() {
           )}
           {user ? (
             <GhostButton className="mt-4" onClick={() => signOut()}>
-              <i className="fa-solid fa-arrow-right-from-bracket mr-2" />
+              <i aria-hidden="true" className="fa-solid fa-arrow-right-from-bracket mr-2" />
               Sign out
             </GhostButton>
           ) : (
             <GhostButton className="mt-4" onClick={() => exitGuest()}>
-              <i className="fa-solid fa-arrow-right-to-bracket mr-2" />
+              <i aria-hidden="true" className="fa-solid fa-arrow-right-to-bracket mr-2" />
               Sign in
             </GhostButton>
           )}
@@ -625,6 +596,15 @@ function SettingsPage() {
         </Panel>
       </div>
       <AccountDataTools />
+      {(dirty || saved) && (
+        <div role="region" aria-label="Unsaved settings" className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--rule)] bg-[var(--paper-raised)] p-3 pl-4 shadow-[0_12px_40px_rgba(0,0,0,.18)] lg:bottom-4">
+          <p className="text-sm font-medium" aria-live="polite">{dirty ? "You have unsaved changes." : <><i className="fa-solid fa-check mr-1.5 text-[var(--accent)]" aria-hidden="true" />Settings saved.</>}</p>
+          {dirty && <div className="flex gap-2">
+            <GhostButton className="min-h-10 py-1.5" onClick={() => { setS(stored); setSaved(false); }}>Discard</GhostButton>
+            <Button className="min-h-10 py-1.5" onClick={save}>Save settings</Button>
+          </div>}
+        </div>
+      )}
       <ConfirmModal open={!!pendingImport} title="Import this backup?" description={`${pendingImport?.count ?? 0} training sessions and any included saved collections will be merged. Matching IDs use the backup version; unrelated history is kept. Export a backup first if you want to retain both versions.`} confirmLabel="Import backup" onCancel={() => setPendingImport(undefined)} onConfirm={() => {
         if (!pendingImport) return;
         try { const result = storage.importData(pendingImport.raw); setS(storage.settings()); setDataMessage(`Imported ${result.sessions} training sessions and ${result.namespaces} saved collections.`); } catch (error) { setDataMessage(error instanceof Error ? error.message : "Import failed. Existing history was preserved."); }
@@ -649,42 +629,83 @@ function SettingsPage() {
   );
 }
 /** Keeps an old bookmark working without publishing the same page at three URLs. */
-function LegacyRedirect({ to }: { to: string }) {
+function Redirect({ to, message }: { to: string; message: string }) {
   const router = useRouter();
   useEffect(() => {
     router.replace(to);
   }, [router, to]);
   return (
     <Panel className="py-20 text-center">
-      <p className="text-[var(--ink-muted)]">This page moved to the Game &amp; Bankroll Lab.</p>
-      <ButtonLink href={to}  className="mt-5">Continue</ButtonLink>
+      <p className="text-[var(--ink-muted)]" role="status">{message}</p>
+      <ButtonLink href={to} className="mt-5">Continue</ButtonLink>
     </Panel>
   );
 }
-function NotFound() {
-  useEffect(() => {
-    analytics.track("client_error", { error_type: "RouteNotFound", message_normalized: "route not found", route: analytics.route, source: "dynamic_page" });
-  }, []);
+type AreaItem = { name: string; href: string; icon: string; step?: string; modes?: ReadonlyArray<readonly [label: string, hash: string]> };
+const AREA_PAGES: Record<"analyze" | "play", { eyebrow: string; title: string; description: string; sequence?: string; items: readonly AreaItem[]; extra?: AreaItem }> = {
+  analyze: {
+    eyebrow: "Analysis workspace",
+    title: "Analyze",
+    description: "Build a game once and carry it through every tool. Save a scenario in the Lab, then simulate it, compare alternatives, plan a trip, and record what actually happened.",
+    sequence: "Suggested order",
+    items: [
+      { step: "1", name: "Game & Bankroll Lab", href: "/cvcx", icon: "fa-chart-area" },
+      { step: "2", name: "Bet Spread Recommender", href: "/bet-spread-recommender", icon: "fa-layer-group" },
+      { step: "3", name: "Session Simulator", href: "/simulation", icon: "fa-wave-square" },
+      { step: "4", name: "Compare Scenarios", href: "/compare", icon: "fa-code-compare" },
+      { step: "5", name: "Trip Planner", href: "/trip-planner", icon: "fa-plane-departure" },
+      { step: "6", name: "Session Journal", href: "/journal", icon: "fa-book" },
+    ],
+    extra: { name: "Game Directory", href: "/directory", icon: "fa-map-location-dot" },
+  },
+  play: {
+    eyebrow: "Casino table games",
+    title: "Games",
+    description: "Take the concepts to the felt. Each game has a chip-based table with its own bankroll, a strategy reference, and an analyzer for the hard decisions.",
+    items: [
+      { name: "Double Down Madness", href: "/double-down-madness", icon: "fa-bolt", modes: [["Play", "game"], ["EV calculator", "calculator"], ["Strategy", "strategy"], ["Deviations", "deviations"]] },
+      { name: "Ultimate Texas Hold'em", href: "/ultimate-texas-holdem", icon: "fa-clover", modes: [["Play", "game"], ["Strategy", "strategy"], ["Analyzer", "analyzer"], ["Simulation", "simulation"]] },
+      { name: "Chase the Flush", href: "/chase-flush", icon: "fa-diamond", modes: [["Play", "game"], ["Strategy", "strategy"], ["Analyzer", "analyze"], ["Research", "research"]] },
+    ],
+  },
+};
+function AreaCard({ item }: { item: AreaItem }) {
   return (
-    <Panel className="py-20 text-center">
-      <h1 className="text-3xl font-semibold">Page not found</h1>
-      <ButtonLink href="/dashboard"  className="mt-5">Back to dashboard</ButtonLink>
-    </Panel>
+    <article className="surface group relative flex min-h-40 flex-col rounded-2xl p-5 transition-colors hover:border-[var(--ink-muted)]">
+      <div className="flex items-start justify-between gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper)] text-[var(--count-cold)]"><i className={`fa-solid ${item.icon}`} aria-hidden="true" /></span>
+        {item.step && <span className="rounded-full border border-[var(--rule)] px-2.5 py-0.5 font-data text-xs font-semibold text-[var(--ink-muted)]">Step {item.step}</span>}
+      </div>
+      <h2 className="mt-4 text-lg font-semibold">
+        <Link href={item.href} className="after:absolute after:inset-0 after:rounded-2xl after:content-['']">{item.name}</Link>
+      </h2>
+      <p className="mt-1.5 text-sm leading-6 text-[var(--ink-muted)]">{ROUTE_DESCRIPTIONS[item.href]}</p>
+      {item.modes
+        ? <ul aria-label={`${item.name} sections`} className="relative z-10 mt-auto flex flex-wrap gap-2 pt-4">{item.modes.map(([label, hash]) => <li key={hash}><Link href={`${item.href}#${hash}`} className="inline-flex min-h-9 items-center rounded-lg border border-[var(--rule)] bg-[var(--paper)] px-3 text-xs font-semibold hover:border-[var(--ink-muted)]">{label}</Link></li>)}</ul>
+        : <span aria-hidden="true" className="mt-auto pt-4 text-sm font-semibold text-[var(--accent)]">Open <i aria-hidden="true" className="fa-solid fa-arrow-right ml-1 transition-transform group-hover:translate-x-1" /></span>}
+    </article>
   );
 }
-const AREA_PAGES = {
-  analyze: { title: "Analyze", description: "Start in the Game & Bankroll Lab and save a scenario. Simulate it, compare alternatives or plan a trip, then record actual results in the Journal.", items: [["Game & Bankroll Lab", "/cvcx", "fa-chart-area"], ["Game Directory", "/directory", "fa-map-location-dot"], ["Bet Spread Recommender", "/bet-spread-recommender", "fa-layer-group"], ["Session Simulator", "/simulation", "fa-wave-square"], ["Session Journal", "/journal", "fa-book"], ["Compare Scenarios", "/compare", "fa-code-compare"], ["Trip Planner", "/trip-planner", "fa-plane-departure"]] },
-  play: { title: "Games", description: "Take the concepts to the felt in focused table-game practice.", items: [["Double Down Madness", "/double-down-madness", "fa-bolt"], ["Ultimate Texas Hold'em", "/ultimate-texas-holdem", "fa-clover"], ["Chase the Flush", "/chase-flush", "fa-diamond"]] },
-} as const;
 function AreaLanding({ area }: { area: keyof typeof AREA_PAGES }) {
   const page = AREA_PAGES[area];
-  return <><p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--ink-muted)]">CountLab workspace</p><h1 className="font-display mt-2 text-3xl font-semibold">{page.title}</h1><p className="mt-2 max-w-2xl text-[var(--ink-muted)]">{page.description}</p><div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{page.items.map(([name, href, icon]) => <Link key={href} href={href} className="pressable surface group flex min-h-28 items-center gap-4 rounded-xl p-5 hover:border-[var(--ink-muted)]"><i className={`fa-solid ${icon} grid h-10 w-10 place-items-center rounded-lg border border-[var(--rule)] text-[var(--count-cold)]`} /><span><b className="block">{name}</b><span className="mt-1 block text-xs text-[var(--ink-muted)]">{ROUTE_DESCRIPTIONS[href] ?? "Explore this game and its strategy."} <i className="fa-solid fa-arrow-right ml-1" /></span></span></Link>)}</div></>;
+  return <>
+    <p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--accent)]">{page.eyebrow}</p>
+    <h1 className="font-display mt-2 text-3xl font-semibold sm:text-4xl">{page.title}</h1>
+    <p className="mt-3 max-w-3xl text-[var(--ink-muted)]">{page.description}</p>
+    {page.sequence && <h2 className="mt-8 text-xs font-bold uppercase tracking-[.16em] text-[var(--ink-muted)]">{page.sequence}</h2>}
+    <div className={`${page.sequence ? "mt-3" : "mt-8"} grid gap-4 sm:grid-cols-2 xl:grid-cols-3`}>{page.items.map((item) => <AreaCard key={item.href} item={item} />)}</div>
+    {page.extra && <>
+      <h2 className="mt-10 text-xs font-bold uppercase tracking-[.16em] text-[var(--ink-muted)]">Find a real game</h2>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"><AreaCard item={page.extra} /></div>
+    </>}
+  </>;
 }
 export default function DynamicPage({ route = "dashboard" }: { route?: string }) {
   const path = route;
   const pages: Record<string, React.ReactNode> = {
     "": <HomePage />,
-    signin: <Dashboard />,
+    // AuthGate shows the form here; once signed in, the dashboard is the destination.
+    signin: <Redirect to="/dashboard" message="You are signed in. Opening your dashboard…" />,
     dashboard: <Dashboard />,
     practice: <PracticeHub />,
     analyze: <AreaLanding area="analyze" />,
@@ -720,6 +741,6 @@ export default function DynamicPage({ route = "dashboard" }: { route?: string })
     "admin/directory": <AdminDirectory importPanel={<AdminImportPanel />} />,
   };
   const redirect = LEGACY_REDIRECTS[path];
-  if (redirect) return <LegacyRedirect to={redirect} />;
-  return path in pages ? pages[path] : <NotFound />;
+  if (redirect) return <Redirect to={redirect} message="This page has moved." />;
+  return path in pages ? pages[path] : <NotFoundView source="dynamic_page" />;
 }

@@ -11,3 +11,8 @@ es10_surrender_chart.png
 
 # Stray installs from running a package runner outside blackjack/.
 /node_modules/
+
+# Local tool output: browser-automation snapshots and Python bytecode.
+/.playwright-mcp/
+__pycache__/
+*.pyc

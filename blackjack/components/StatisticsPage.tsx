@@ -190,12 +190,12 @@ export default function StatisticsPage() {
               </p>
               <div className="grid gap-3 md:grid-cols-2">
                 {byCategory.map((row) => (
-                  <div key={row.name} className="rounded-xl bg-black/20 p-4">
+                  <div key={row.name} className="rounded-xl bg-well/20 p-4">
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span>{row.name}</span>
                       <b>{row.accuracy}%</b>
                     </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-overlay/10">
                       <div className="h-full bg-emerald-500" style={{ width: `${row.accuracy}%` }} />
                     </div>
                     <p className="mt-2 text-xs text-[var(--ink-muted)]">{row.total} answers</p>
@@ -204,7 +204,7 @@ export default function StatisticsPage() {
               </div>
             </Panel>
           )}
-          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-[var(--ink-muted)]">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-black/25 px-3 py-2 text-sm"><b className="text-[var(--warning)]">{count}</b> {name}</span>)}</div></Panel>}
+          {errorCounts.length > 0 && <Panel className="lg:col-span-2"><h2 className="font-semibold">Counting error diagnosis</h2><p className="mb-4 mt-1 text-sm text-[var(--ink-muted)]">Use the most frequent error as the focus for the next spaced-practice session.</p><div className="flex flex-wrap gap-2">{errorCounts.map(([name, count]) => <span key={name} className="rounded-full bg-well/25 px-3 py-2 text-sm"><b className="text-[var(--warning)]">{count}</b> {name}</span>)}</div></Panel>}
           <section className="sr-only" aria-label="Statistics text summary">
             <h2>Performance summary</h2>
             <ul>

@@ -134,7 +134,7 @@ export function DDMLongRunCalculator() {
           {source.tcMode !== "none" && <div className="flex flex-wrap gap-2"><GhostButton onClick={() => scaleRamp(0.5)}>½X</GhostButton><GhostButton onClick={() => scaleRamp(2)}>2X</GhostButton><GhostButton onClick={() => applyPreset("Recommended")}>Reset</GhostButton></div>}
         </div>
         {source.tcMode === "none" ? (
-          <div className="mt-5 rounded-xl border border-white/[.07] bg-black/20 p-4 text-sm text-[var(--ink-muted)]">A CSM has no persistent true count, so the calculator uses a flat one-unit wager. Change the dollar amount with Base betting unit above.</div>
+          <div className="mt-5 rounded-xl border border-overlay/[.07] bg-well/20 p-4 text-sm text-[var(--ink-muted)]">A CSM has no persistent true count, so the calculator uses a flat one-unit wager. Change the dollar amount with Base betting unit above.</div>
         ) : (
           <>
             <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,12 +145,12 @@ export function DDMLongRunCalculator() {
               <Select label="Enter the game at" value={wongInAt ?? "play-all"} onChange={(event) => changeWonging(event.target.value === "play-all" ? null : Number(event.target.value))}>
                 <option value="play-all">Play every count</option><option value={0}>TC 0+</option><option value={1}>TC +1+</option><option value={2}>TC +2+</option><option value={3}>TC +3+</option>
               </Select>
-              <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Played spread</p><p className="mt-2 font-semibold">{playedUnits.length ? `${unitLabel(minUnits)}–${unitLabel(maxUnits)} units` : "No wagers"}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">{money(minUnits * unit)} → {money(maxUnits * unit)}</p></div>
-              <div className="rounded-xl bg-black/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Rounds played</p><p className="mt-2 font-semibold">{percentage(profile.playedFrequency, 1)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">≈ {integer(profile.playedFrequency * roundsPerHour)} per hour</p></div>
+              <div className="rounded-xl bg-well/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Played spread</p><p className="mt-2 font-semibold">{playedUnits.length ? `${unitLabel(minUnits)}–${unitLabel(maxUnits)} units` : "No wagers"}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">{money(minUnits * unit)} → {money(maxUnits * unit)}</p></div>
+              <div className="rounded-xl bg-well/20 p-3"><p className="text-xs text-[var(--ink-muted)]">Rounds played</p><p className="mt-2 font-semibold">{percentage(profile.playedFrequency, 1)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">≈ {integer(profile.playedFrequency * roundsPerHour)} per hour</p></div>
             </div>
             <div className="mt-5 grid gap-2.5 md:hidden">
               {profile.buckets.map((bucket) => (
-                <div key={bucket.tc} className="rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+                <div key={bucket.tc} className="rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className={`text-base font-bold ${bucket.tc < 0 ? "text-[var(--negative)]" : bucket.tc > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>{bucket.label}</span>
                     <span className="text-right text-xs text-[var(--ink-muted)]">{percentage(bucket.frequency, 2)} freq · <span className={bucket.unitEv >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{percentage(bucket.unitEv, 3, true)}</span></span>
@@ -167,7 +167,7 @@ export function DDMLongRunCalculator() {
               <table className="w-full min-w-[720px] text-right text-sm">
                 <thead className="text-[var(--ink-muted)]"><tr><th className="pb-3 text-left">True count</th><th className="pb-3">Frequency</th><th className="pb-3">Edge / unit</th><th className="pb-3 text-left">Bet units</th><th className="pb-3">Wager</th><th className="pb-3">EV / observed round</th></tr></thead>
                 <tbody>{profile.buckets.map((bucket) => (
-                  <tr key={bucket.tc} className="border-t border-white/[.06]">
+                  <tr key={bucket.tc} className="border-t border-overlay/[.06]">
                     <td className={`py-2.5 text-left font-bold ${bucket.tc < 0 ? "text-[var(--negative)]" : bucket.tc > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>{bucket.label}</td>
                     <td><span className="inline-flex min-w-24 items-center justify-end gap-2"><span className="h-1.5 rounded-full bg-sky-400/60" style={{ width: `${Math.max(2, (bucket.frequency / maxFrequency) * 42)}px` }} />{percentage(bucket.frequency, 2)}</span></td>
                     <td className={bucket.unitEv >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{percentage(bucket.unitEv, 3, true)}</td>
@@ -198,17 +198,17 @@ export function DDMLongRunCalculator() {
             <div><p className="text-xs text-[var(--ink-muted)]">Chance of profit</p><p className="mt-2 text-lg font-semibold">{percentage(result.chanceOfProfit, 1)}</p></div>
             <div><p className="text-xs text-[var(--ink-muted)]">Trip ruin risk</p><p className="mt-2 text-lg font-semibold">{riskLabel(result.tripRisk)}</p></div>
           </div>
-          <div className="mt-5 rounded-xl bg-black/20 p-4"><div className="flex items-center justify-between gap-3 text-sm"><span className="text-[var(--ink-muted)]">Approximate 95% ending-result interval</span><b>{signedMoney(result.lower95, 0)} to {signedMoney(result.upper95, 0)}</b></div></div>
+          <div className="mt-5 rounded-xl bg-well/20 p-4"><div className="flex items-center justify-between gap-3 text-sm"><span className="text-[var(--ink-muted)]">Approximate 95% ending-result interval</span><b>{signedMoney(result.lower95, 0)} to {signedMoney(result.upper95, 0)}</b></div></div>
           <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">The interval and chance of profit use the same normal approximation as CountLab&apos;s blackjack calculator. Trip risk estimates touching zero before the session ends.</p>
         </Panel>
 
         <Panel>
           <h2 className="text-lg font-semibold">Bankroll and lifetime risk</h2>
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Current lifetime RoR</p><p className={`mt-2 text-xl font-semibold ${result.lifetimeRisk <= targetRisk ? "text-[var(--accent)]" : "text-[var(--warning)]"}`}>{riskLabel(result.lifetimeRisk)}</p></div>
-            <div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Target bankroll</p><p className="mt-2 text-xl font-semibold">{money(result.requiredBankroll, 0)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">for {percentage(targetRisk, 1)} lifetime RoR</p></div>
-            <div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Risk-sized unit</p><p className="mt-2 text-xl font-semibold">{positive ? money(result.riskSizedUnit) : "$0.00"}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">with current bankroll</p></div>
-            <div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Average initial bet</p><p className="mt-2 text-xl font-semibold">{money(result.averageBet)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">{percentage(result.edgePerUnitBet, 3, true)} edge / action</p></div>
+            <div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Current lifetime RoR</p><p className={`mt-2 text-xl font-semibold ${result.lifetimeRisk <= targetRisk ? "text-[var(--accent)]" : "text-[var(--warning)]"}`}>{riskLabel(result.lifetimeRisk)}</p></div>
+            <div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Target bankroll</p><p className="mt-2 text-xl font-semibold">{money(result.requiredBankroll, 0)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">for {percentage(targetRisk, 1)} lifetime RoR</p></div>
+            <div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Risk-sized unit</p><p className="mt-2 text-xl font-semibold">{positive ? money(result.riskSizedUnit) : "$0.00"}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">with current bankroll</p></div>
+            <div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">Average initial bet</p><p className="mt-2 text-xl font-semibold">{money(result.averageBet)}</p><p className="mt-1 text-xs text-[var(--ink-muted)]">{percentage(result.edgePerUnitBet, 3, true)} edge / action</p></div>
           </div>
           <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Lifetime risk is the standard positive-drift diffusion approximation. A non-positive game has no finite bankroll solution.</p>
         </Panel>

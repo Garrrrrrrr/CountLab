@@ -57,7 +57,7 @@ export function InstallPrompt({ hidden = false }: { hidden?: boolean }) {
     setMode("none");
   };
   return (
-    <div role="complementary" aria-label="Install CountLab" className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-white/10 bg-[var(--paper-raised)] p-4 shadow-2xl backdrop-blur-2xl lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
+    <div role="complementary" aria-label="Install CountLab" className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-md rounded-2xl border border-overlay/10 bg-[var(--paper-raised)] p-4 shadow-2xl backdrop-blur-2xl lg:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <p className="text-sm font-semibold text-[var(--ink)]">Install CountLab</p>
       {mode === "ios-instructions" ? (
         <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">Tap the Share button, then <b className="text-[var(--ink)]">Add to Home Screen</b>. Install for offline access. Export your history or sign in to keep a separate backup.</p>

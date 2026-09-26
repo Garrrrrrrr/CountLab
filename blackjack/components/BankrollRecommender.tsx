@@ -132,7 +132,7 @@ export function BankrollRecommender() {
           targeting an hourly EV and maximum lifetime risk of ruin.
         </p>
       </div>
-      {recommendation && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {recommendation && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-overlay/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Spread" value={recommendation.name} sub="recommended" />
           <PinnedStat label="Minimum" value={money(recommendation.baseBet, 0)} sub="per hand" />
@@ -223,7 +223,7 @@ export function BankrollRecommender() {
             <h2 className="mb-4 font-semibold">Candidate spreads</h2>
             <div className="space-y-3 md:hidden">
               {candidates.map((candidate) => (
-                <article key={candidate.name} className="rounded-2xl bg-black/20 p-4">
+                <article key={candidate.name} className="rounded-2xl bg-well/20 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div><p className="text-xs text-[var(--ink-muted)]">Spread</p><b className="text-xl">{candidate.name}</b></div>
                     <span className={`rounded-full px-3 py-1 text-xs font-medium ${candidate.status === "met" ? "bg-emerald-500/10 text-[var(--accent)]" : "bg-amber-400/10 text-[var(--warning)]"}`}>{candidate.status === "met" ? "Both met" : candidate.status === "risk-limited" ? "EV risk-limited" : "Minimum exceeds RoR"}</span>
@@ -251,7 +251,7 @@ export function BankrollRecommender() {
                 {candidates.map((candidate) => (
                   <tr
                     key={candidate.name}
-                    className="border-t border-white/[.06]"
+                    className="border-t border-overlay/[.06]"
                   >
                     <td className="py-3 text-left font-medium">
                       {candidate.name}
@@ -314,7 +314,7 @@ export function BankrollRecommender() {
                 </div>
                 <div className="grid grid-cols-1 min-[375px]:grid-cols-2 gap-2 sm:hidden">
                   {recommendation.bets.map((item) => (
-                    <div key={item.label} className="flex items-center justify-between rounded-xl bg-black/20 p-3">
+                    <div key={item.label} className="flex items-center justify-between rounded-xl bg-well/20 p-3">
                       <span className="text-sm text-[var(--ink-muted)]">TC {item.label}</span>
                       <b>{money(item.bet, 0)}</b>
                     </div>
@@ -331,7 +331,7 @@ export function BankrollRecommender() {
                     {recommendation.bets.map((item) => (
                       <tr
                         key={item.label}
-                        className="border-t border-white/[.06]"
+                        className="border-t border-overlay/[.06]"
                       >
                         <td className="py-2.5 text-left font-medium">
                           {item.label}

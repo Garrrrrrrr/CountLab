@@ -190,7 +190,7 @@ export function H17ChartDrill() {
   const cellTone = useCallback((cell: CellRef, index: number) => {
     const buffer = entries[cell.key] ?? "";
     const settled = graded || (feedback === "live" && parseEntry(cell.section, buffer) !== null);
-    if (!settled) return focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-white/[.08]";
+    if (!settled) return focus === index ? "border-emerald-400/70 ring-1 ring-emerald-400/40" : "border-overlay/[.08]";
     const result = gradeByKey.get(cell.key);
     return result?.correct
       ? "border-emerald-500/50 bg-emerald-500/15 text-[var(--accent)]"
@@ -237,7 +237,7 @@ export function H17ChartDrill() {
         <p className="mt-2 max-w-2xl text-[var(--ink-muted)]">
           Fill in the whole H17 deviation chart from memory. One keystroke per cell — Tab, Enter,
           or an arrow key moves on. Each table&rsquo;s keys are listed above it.
-          <span className="hidden sm:inline"> {" "}Hold{" "}<kbd className="rounded border border-white/15 bg-black/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}for the two-part answers (Y/N, Ds) instead of typing two keys.</span>
+          <span className="hidden sm:inline"> {" "}Hold{" "}<kbd className="rounded border border-overlay/15 bg-well/25 px-1 py-px font-mono text-[.68rem]">Shift</kbd>{" "}for the two-part answers (Y/N, Ds) instead of typing two keys.</span>
           <span className="sm:hidden"> Use the keypad below the chart for two-part answers.</span> Deviation cells want the
           true count and the direction it applies, like <code>4+</code> (true count 4 or higher) or{" "}
           <code>-1-</code> (true count -1 or lower).
@@ -293,7 +293,7 @@ export function H17ChartDrill() {
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(grade.bySection).map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-black/20 p-3">
+              <div key={label} className="rounded-xl bg-well/20 p-3">
                 <p className="text-xs text-[var(--ink-muted)]">{label}</p>
                 <b className="text-lg">{Math.round((value.correct / value.total) * 100)}%</b>
                 <span className="ml-2 text-xs text-[var(--ink-muted)]">{value.correct}/{value.total}</span>
@@ -314,25 +314,25 @@ export function H17ChartDrill() {
               {sectionLegend(section.id).map((entry) => (
                 <li key={entry.keys.join("+")} className="inline-flex min-w-0 items-center gap-1.5">
                   {entry.combo ? <>
-                    <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)] sm:hidden">{entry.shows}</kbd>
+                    <kbd className="shrink-0 rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)] sm:hidden">{entry.shows}</kbd>
                     <span className="hidden shrink-0 items-center gap-1.5 sm:inline-flex">
                       {entry.keys.map((key, position) => <span key={key} className="inline-flex items-center gap-1.5">
                         {position > 0 && <span aria-hidden="true">+</span>}
-                        <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{key}</kbd>
+                        <kbd className="rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{key}</kbd>
                       </span>)}
                     </span>
-                  </> : <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{entry.keys[0]}</kbd>}
+                  </> : <kbd className="shrink-0 rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">{entry.keys[0]}</kbd>}
                   <span className="text-[var(--ink-muted)]" aria-hidden="true">→</span>
                   <span className="truncate font-mono text-[var(--ink)]">{entry.shows}</span>
                   <span className="hidden truncate sm:inline">({entry.meaning})</span>
                 </li>
               ))}
               <li className="col-span-2 inline-flex min-w-0 items-center gap-1.5">
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">0–9</kbd>
+                <kbd className="shrink-0 rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">0–9</kbd>
                 <span aria-hidden="true">then</span>
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">+</kbd>
+                <kbd className="shrink-0 rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">+</kbd>
                 <span aria-hidden="true">or</span>
-                <kbd className="shrink-0 rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">−</kbd>
+                <kbd className="shrink-0 rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">−</kbd>
                 <span className="text-[var(--ink-muted)]" aria-hidden="true">→</span>
                 <span className="truncate font-mono text-[var(--ink)]">a true count, e.g. 4+</span>
                 <span className="hidden sm:inline">(deviate at this count or beyond)</span>
@@ -396,7 +396,7 @@ export function H17ChartDrill() {
               {rails[section.id]?.scrollable && !rails[section.id]?.atEnd && (
                 <>
                   <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--paper-raised)] to-transparent" />
-                  <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[.65rem] font-medium text-[var(--ink)]">{rails[section.id].hiddenRight} more →</p>
+                  <p className="pointer-events-none absolute bottom-1 right-2 rounded-full bg-well/70 px-2 py-0.5 text-[.65rem] font-medium text-[var(--ink)]">{rails[section.id].hiddenRight} more →</p>
                 </>
               )}
             </div>

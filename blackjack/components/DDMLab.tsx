@@ -28,7 +28,7 @@ const tabLabels: Record<Tab, string> = {
 
 function StrategyCell({ action }: { action: DDMAction }) {
   const tone = action === "D" ? "bg-amber-400/15 text-[var(--warning)]" : action === "S" ? "bg-sky-400/15 text-[var(--info)]" : "bg-emerald-400/10 text-[var(--accent)]";
-  return <td className={`min-w-12 border border-white/[.06] px-3 py-2 text-center font-bold ${tone}`} title={ACTION_NAMES[action]}>{action}</td>;
+  return <td className={`min-w-12 border border-overlay/[.06] px-3 py-2 text-center font-bold ${tone}`} title={ACTION_NAMES[action]}>{action}</td>;
 }
 
 function StrategyTable({ title, rows }: { title: string; rows: Record<number, string> }) {
@@ -38,7 +38,7 @@ function StrategyTable({ title, rows }: { title: string; rows: Record<number, st
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[38rem] text-sm">
           <thead><tr><th className="px-3 py-2 text-left text-[var(--ink-muted)]">Player</th>{UPCARDS.map((upcard) => <th key={upcard} className="px-3 py-2 text-center text-[var(--ink-muted)]">{formatUpcard(upcard)}</th>)}</tr></thead>
-          <tbody>{Object.entries(rows).map(([row, actions]) => <tr key={row}><th className="border border-white/[.06] px-3 py-2 text-left">{row}</th>{actions.split("").map((action, index) => <StrategyCell key={`${row}-${UPCARDS[index]}`} action={action as DDMAction} />)}</tr>)}</tbody>
+          <tbody>{Object.entries(rows).map(([row, actions]) => <tr key={row}><th className="border border-overlay/[.06] px-3 py-2 text-left">{row}</th>{actions.split("").map((action, index) => <StrategyCell key={`${row}-${UPCARDS[index]}`} action={action as DDMAction} />)}</tr>)}</tbody>
         </table>
       </div>
     </Panel>
@@ -68,7 +68,7 @@ function DeviationsReference() {
           <table className="w-full min-w-[42rem] text-left text-sm">
             <thead className="text-[var(--ink-muted)]"><tr><th className="pb-3">#</th><th className="pb-3">State</th><th className="pb-3">Index</th><th className="pb-3">Change</th></tr></thead>
             <tbody>{TOP_DEVIATIONS.map((item, index) => (
-              <tr key={`${item.plane}-${item.row}-${item.upcard}`} className="border-t border-white/[.06]">
+              <tr key={`${item.plane}-${item.row}-${item.upcard}`} className="border-t border-overlay/[.06]">
                 <td className="py-3 text-[var(--ink-muted)]">{index + 1}</td>
                 <td className="py-3">{item.plane === "first" ? "First card" : "Hard"} {item.row} vs {formatUpcard(item.upcard)}</td>
                 <td className="py-3 font-semibold text-[var(--warning)]">TC {item.direction === 1 ? "≥" : "≤"} {item.threshold >= 0 ? "+" : ""}{item.threshold}</td>
@@ -109,19 +109,19 @@ function EdgeAndSpread() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel>
           <h2 className="text-xl font-semibold">Recommended 1–16 ramp</h2>
-          <div className="mt-4 space-y-2">{BETTING_RAMP.map((row) => <div key={row.label} className="flex items-center justify-between rounded-xl bg-black/20 px-4 py-3 text-sm"><span className="text-[var(--ink-muted)]">{row.label}</span><b>{row.units} unit{row.units === 1 ? "" : "s"}</b></div>)}</div>
+          <div className="mt-4 space-y-2">{BETTING_RAMP.map((row) => <div key={row.label} className="flex items-center justify-between rounded-xl bg-well/20 px-4 py-3 text-sm"><span className="text-[var(--ink-muted)]">{row.label}</span><b>{row.units} unit{row.units === 1 ? "" : "s"}</b></div>)}</div>
           <p className="mt-4 text-xs leading-5 text-[var(--ink-muted)]">Benchmark: Version 1, six decks, H17, one deck cut off, one occupied spot, exact deck estimation, insurance +4, and the 18 departures. The independent ten-billion-round run produced 7.398 units/hour with 84.010 units/hour SD.</p>
         </Panel>
         <Panel>
           <h2 className="text-xl font-semibold">Bankroll and penetration</h2>
           <p className="mt-3 text-sm leading-6 text-[var(--ink-muted)]">The benchmark bankroll for 5% lifetime risk of ruin is about <b className="text-white">1,429 base units</b>. A $10 unit therefore implies roughly $14,290. The spread was approximately break-even with only two decks dealt; the attractive result needs much deeper penetration.</p>
-          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073979</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 10B run</p></div><div className="rounded-xl bg-black/20 p-4"><p className="text-xs text-[var(--ink-muted)]">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 500M run</p></div></div>
+          <div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">5 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.073979</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 10B run</p></div><div className="rounded-xl bg-well/20 p-4"><p className="text-xs text-[var(--ink-muted)]">3 decks dealt</p><p className="mt-2 text-lg font-semibold">+0.014826</p><p className="text-xs text-[var(--ink-muted)]">EV / round · 500M run</p></div></div>
           <p className="mt-4 text-xs leading-5 text-[var(--warning)]/80">A continuous shuffler has no usable pre-deal count variation and remains a house game. Casino conditions, limits, speed, and tolerance of this spread are not modeled.</p>
         </Panel>
       </div>
       <Panel>
         <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--accent)]">Exact effects of removal</p><h2 className="mt-2 text-xl font-semibold">Why Hi-Lo is the practical choice</h2></div><span className="text-xs text-[var(--ink-muted)]">Positive = removal helps player</span></div>
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-10">{eors.map(([rank, eor]) => <div key={rank} className="rounded-xl bg-black/20 p-3 text-center"><b>{rank}</b><span className={`mt-1 block text-xs ${eor.startsWith("+") ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{eor}</span></div>)}</div>
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-10">{eors.map(([rank, eor]) => <div key={rank} className="rounded-xl bg-well/20 p-3 text-center"><b>{rank}</b><span className={`mt-1 block text-xs ${eor.startsWith("+") ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>{eor}</span></div>)}</div>
         <p className="mt-5 text-sm leading-6 text-[var(--ink-muted)]">Rounding these EORs to the simplest balanced level-1 tags produces Hi-Lo exactly. The custom level-6 DDM count raises betting correlation from 0.9779 to 0.9981, but reduced sampled N0 only 5.2% in matched five-billion-round no-index tests. Hi-Lo keeps nearly all the betting power at far lower mental cost.</p>
       </Panel>
     </div>

@@ -111,7 +111,7 @@ export function AdminLocationEditor({ location, onSaved, onCancel, onReload }: {
         {select("Game availability", "game_availability", [["unknown", "Unknown"], ["reported", "Games reported"], ["none_reported", "No current games reported"], ["not_listed", "Not listed in source"]])}
         {select("Publication", "publication_status", [["draft", "Draft"], ["published", "Published"]])}
       </div>
-      {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-red-400"><span>{error}</span>{error.startsWith("Another admin") && <GhostButton type="button" className="min-h-9 px-3 py-1 text-xs" onClick={onReload}>Reload latest</GhostButton>}</div>}
+      {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-[var(--negative)]"><span>{error}</span>{error.startsWith("Another admin") && <GhostButton type="button" className="min-h-9 px-3 py-1 text-xs" onClick={onReload}>Reload latest</GhostButton>}</div>}
       <div className="flex flex-wrap gap-3"><Button type="submit" disabled={saving}>{saving ? "Saving…" : location ? "Save changes" : "Add location"}</Button><GhostButton type="button" onClick={onCancel}>Cancel</GhostButton></div>
     </form>
   </Panel>;

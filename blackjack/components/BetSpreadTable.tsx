@@ -43,7 +43,7 @@ export function BetSpreadTable({
           every control reachable with a straight thumb scroll. */}
       <div className="grid gap-2.5 md:hidden">
         {rows.map((row) => (
-          <div key={row.trueCount} className="rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+          <div key={row.trueCount} className="rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3">
             <div className="flex items-center justify-between gap-3">
               <span className={`text-base font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>
                 {row.label}
@@ -81,7 +81,7 @@ export function BetSpreadTable({
                     aria-pressed={row.playerHands === count}
                     aria-label={`${count} hands at true count ${row.label}`}
                     onClick={() => onHandsChange(row.trueCount, count)}
-                    className={`min-h-11 min-w-11 rounded-lg border text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}
+                    className={`min-h-11 min-w-11 rounded-lg border text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-overlay/[.08] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
                   >
                     {count}X
                   </button>
@@ -110,7 +110,7 @@ export function BetSpreadTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.trueCount} className="border-t border-white/[.06]">
+              <tr key={row.trueCount} className="border-t border-overlay/[.06]">
                 <td
                   className={`py-2.5 text-left font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}
                 >
@@ -150,7 +150,7 @@ export function BetSpreadTable({
                         aria-pressed={row.playerHands === count}
                         aria-label={`${count} hands at true count ${row.label}`}
                         onClick={() => onHandsChange(row.trueCount, count)}
-                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-white/[.08] text-[var(--ink-muted)] hover:bg-white/[.05]"}`}
+                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-overlay/[.08] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
                       >
                         {count}X
                       </button>

@@ -110,7 +110,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
               key={section.section}
               type="button"
               onClick={() => practise(section)}
-              className="pressable flex min-h-11 items-center justify-between gap-3 rounded-xl bg-black/20 p-4 text-left hover:bg-white/[.06]"
+              className="pressable flex min-h-11 items-center justify-between gap-3 rounded-xl bg-well/20 p-4 text-left hover:bg-overlay/[.06]"
             >
               <span>
                 <span className="block text-sm font-medium">{section.label}</span>
@@ -124,7 +124,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
         {mistakesBySection.map((group) => <Panel key={group.label}>
           <h2 className="font-display text-lg font-semibold">{group.label} — {group.mistakes.length} missed</h2>
           <ul className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
-            {group.mistakes.map((mistake: Mistake, index: number) => <li key={index} className="rounded-xl bg-black/20 p-3 text-sm">
+            {group.mistakes.map((mistake: Mistake, index: number) => <li key={index} className="rounded-xl bg-well/20 p-3 text-sm">
               <p className="font-medium">{mistake.question}</p>
               <p className="mt-1 text-[var(--ink-muted)]">
                 You said <b className="text-[var(--warning)]">{mistake.userAnswer}</b> · correct <b className="text-[var(--accent)]">{mistake.correctAnswer}</b>

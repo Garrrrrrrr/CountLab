@@ -82,7 +82,7 @@ export function PracticeChecklist() {
           )}
         </div>
         <div
-          className="mt-3 h-2 overflow-hidden rounded-full bg-white/[.07]"
+          className="mt-3 h-2 overflow-hidden rounded-full bg-overlay/[.07]"
           role="progressbar"
           aria-valuenow={day.completed}
           aria-valuemin={0}
@@ -115,7 +115,7 @@ export function PracticeChecklist() {
                     className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border p-3 ${
                       entry.done
                         ? "border-emerald-500/40 bg-emerald-500/[.08]"
-                        : "border-white/[.07] bg-black/20"
+                        : "border-overlay/[.07] bg-well/20"
                     }`}
                   >
                     {manual ? (
@@ -130,10 +130,10 @@ export function PracticeChecklist() {
                       <span
                         aria-hidden="true"
                         className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[.6rem] ${
-                          entry.done ? "bg-emerald-400 text-[#10200f]" : "border border-white/15 text-transparent"
+                          entry.done ? "bg-emerald-400 text-[#10200f]" : "border border-overlay/15 text-transparent"
                         }`}
                       >
-                        <i className="fa-solid fa-check" />
+                        <i aria-hidden="true" className="fa-solid fa-check" />
                       </span>
                     )}
 
@@ -141,7 +141,7 @@ export function PracticeChecklist() {
                       <p className={`text-sm font-medium ${entry.done ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>
                         {item.label}
                         {manual && (
-                          <span className="ml-2 rounded-full border border-white/10 px-2 py-px text-[.6rem] uppercase tracking-[.12em] text-[var(--ink-muted)]">
+                          <span className="ml-2 rounded-full border border-overlay/10 px-2 py-px text-[.6rem] uppercase tracking-[.12em] text-[var(--ink-muted)]">
                             Off-app
                           </span>
                         )}
@@ -149,7 +149,7 @@ export function PracticeChecklist() {
                       {item.detail && <p className="mt-0.5 text-xs leading-5 text-[var(--ink-muted)]">{item.detail}</p>}
                       {!manual && (
                         <div className="mt-2 flex items-center gap-2">
-                          <div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-white/[.07]">
+                          <div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-overlay/[.07]">
                             <div
                               className="h-full rounded-full bg-emerald-400/80"
                               style={{ width: `${Math.round((entry.current / entry.target) * 100)}%` }}
@@ -165,7 +165,7 @@ export function PracticeChecklist() {
                     {item.href && !entry.done && (
                       <Link
                         href={item.href}
-                        className="pressable shrink-0 rounded-xl border border-white/[.09] bg-white/[.055] px-3 py-1.5 text-xs font-medium text-[var(--ink)] hover:bg-white/[.1]"
+                        className="pressable shrink-0 rounded-xl border border-overlay/[.09] bg-overlay/[.055] px-3 py-1.5 text-xs font-medium text-[var(--ink)] hover:bg-overlay/[.1]"
                       >
                         Practise
                       </Link>

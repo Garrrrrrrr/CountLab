@@ -102,12 +102,12 @@ function LongRunProgress({ aggregate }: { aggregate: JournalAggregate }) {
   const progress = Math.min(1, aggregate.longRunProgress);
   const reached = aggregate.longRunProgress >= 1;
   return (
-    <div className="mt-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+    <div className="mt-3 rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[.8rem] font-medium text-[var(--ink)]">Progress into the long run</p>
         <p className="text-xs text-[var(--ink-muted)]">{hoursLabel(aggregate.totalHours)} of {hoursLabel(aggregate.nZeroHours)} (N₀)</p>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[.06]">
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-overlay/[.06]">
         <div className={`h-full rounded-full ${reached ? "bg-emerald-300" : "bg-sky-300/70"}`} style={{ width: `${Math.max(1, progress * 100)}%` }} />
       </div>
       <p className="mt-2 text-xs leading-5 text-[var(--ink-muted)]">
@@ -533,7 +533,7 @@ export function SessionJournal() {
       {/* Pinned directly under the app header so the numbers everything else
           exists to produce stay readable while the reader works down the
           page. z-20 keeps it below the z-30 header it tucks under. */}
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-overlay/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Bankroll" value={money(bankroll, 0)} sub={`${scopedSessions.length} session${scopedSessions.length === 1 ? "" : "s"}`} />
           <PinnedStat label="Draft session EV" value={money(draftOutcome.tripEv, 2)} sub={`± ${money(draftOutcome.standardDeviation, 0)} SD`} />
@@ -555,7 +555,7 @@ export function SessionJournal() {
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="grid min-w-0 flex-1 gap-2 text-sm text-[var(--ink-muted)]">New bankroll name<input value={newBankrollName} onChange={(event) => setNewBankrollName(event.target.value)} placeholder="New bankroll name" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
-            <GhostButton onClick={addBankroll} disabled={!newBankrollName.trim()}><i className="fa-solid fa-plus mr-2" />Add</GhostButton>
+            <GhostButton onClick={addBankroll} disabled={!newBankrollName.trim()}><i aria-hidden="true" className="fa-solid fa-plus mr-2" />Add</GhostButton>
             {selectedBankrollId !== "all" && (
               <>
                 <GhostButton
@@ -612,7 +612,7 @@ export function SessionJournal() {
           <div onChange={() => sessionForm.start("inputs")}>
             <p className="text-xs text-[var(--ink-muted)]">Start with the date, time, unit, and actual result. Your most recent assumptions stay in place; open Advanced only when the table or spread changed.</p>
             {editingSessionId && (
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-sky-100/80">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-300/15 bg-sky-300/[.06] px-3 py-2.5 text-xs text-[var(--info)]">
                 <span><i className="fa-solid fa-pen mr-1.5 text-[var(--info)]" aria-hidden="true" />Editing session from {sessionDateValid ? shortDate(date) : "an incomplete date"}.</span>
                 <div className="flex items-center gap-2">
                   {bankrolls.length > 1 && (
@@ -659,9 +659,9 @@ export function SessionJournal() {
               <NumberField label="Betting unit" value={bettingUnit} min={0.01} prefix="$" onValueChange={setBettingUnit} />
               <Select label="Default hands" value={playerHands} onChange={(event) => setPlayerHands(Number(event.target.value))}>{[1, 2, 3].map((value) => <option key={value} value={value}>{value} hand{value === 1 ? "" : "s"}</option>)}</Select>
             </div>
-            <details className="group mt-4 rounded-xl border border-white/[.07] bg-black/10" open={Boolean(editingSessionId)}>
+            <details className="group mt-4 rounded-xl border border-overlay/[.07] bg-well/10" open={Boolean(editingSessionId)}>
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-medium marker:hidden"><span><i className="fa-solid fa-sliders mr-2 text-[var(--info)]" aria-hidden="true" />Advanced assumptions</span><span className="text-xs font-normal text-[var(--ink-muted)]">Rules, spread, and hands <i className="fa-solid fa-chevron-down ml-1 transition-transform group-open:rotate-180" aria-hidden="true" /></span></summary>
-              <div className="border-t border-white/[.06] p-3">
+              <div className="border-t border-overlay/[.06] p-3">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Switch label="Dealer hits soft 17" checked={dealerHitsSoft17} onChange={setDealerHitsSoft17} />
               <Switch label="Double after splitting" checked={doubleAfterSplit} onChange={setDoubleAfterSplit} />
@@ -690,7 +690,7 @@ export function SessionJournal() {
             <p className="mt-2 text-xs text-[var(--ink-muted)]">Expenses are tracked and totalled separately — they do not move your bankroll or change how this session scores against its EV, because the model prices the table, not the trip.</p>
             <label className="mt-3 grid min-w-0 gap-2 text-[.8rem] font-medium text-[var(--ink-muted)]">Notes (optional)<textarea value={notes} onChange={(event) => setNotes(event.target.value)} rows={2} className="field min-w-0 rounded-xl px-3 py-2.5 text-sm text-[var(--ink)] outline-none" /></label>
             <div className="mt-4 rounded-xl bg-emerald-400/[.07] p-4 text-sm leading-6 text-[var(--accent)]">This session&apos;s theoretical EV is <b>{money(draftOutcome.tripEv, 2)}</b> with a standard deviation of <b>{money(draftOutcome.standardDeviation, 0)}</b>. A result inside {money(draftOutcome.tripEv - 1.96 * draftOutcome.standardDeviation, 0)} to {money(draftOutcome.tripEv + 1.96 * draftOutcome.standardDeviation, 0)} is normal variance, not a sign anything went right or wrong.</div>
-            <Button className="mt-4 hidden w-full lg:block" disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
+            <Button className="mt-4 hidden w-full lg:block" disabled={!sessionDateValid} onClick={logSession}><i aria-hidden="true" className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
           </div>
         </Section>
 
@@ -701,14 +701,14 @@ export function SessionJournal() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-[var(--ink-muted)]">Cumulative net results for the selected sessions. The 95% modeled outcome band combines variance using each session’s saved rules, ramp, and duration; it is not a confidence interval for average EV.</p>
-            <div className="flex gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
+            <div className="flex gap-1 rounded-xl border border-overlay/[.08] bg-overlay/[.03] p-1">
               {RANGE_OPTIONS.map(([value, label]) => (
                 <button key={label} type="button" onClick={() => setRange(value)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold ${range === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{label}</button>
               ))}
             </div>
           </div>
           {inRange.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-white/[.09] p-8 text-center text-sm text-[var(--ink-muted)]">Log a session to start comparing actual results with theoretical EV.</div>
+            <div className="mt-5 rounded-xl border border-dashed border-overlay/[.09] p-8 text-center text-sm text-[var(--ink-muted)]">Log a session to start comparing actual results with theoretical EV.</div>
           ) : (
             <>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -717,7 +717,7 @@ export function SessionJournal() {
                 <Metric label="Accumulated SD" value={`± ${money(aggregate.combinedStandardDeviation, 0)}`} sub={aggregate.combinedZ === null ? "No variance to measure yet" : `z = ${aggregate.combinedZ.toFixed(2)}${aggregate.resultPercentile === null ? "" : ` · ${ordinal(Math.round(aggregate.resultPercentile * 100))} percentile`}`} />
                 <Panel className="flex flex-col justify-center"><p className="text-[.72rem] font-medium uppercase tracking-[.08em] text-[var(--ink-muted)]">Assessment</p><div className="mt-2"><AssessmentBadge assessment={aggregate.assessment} /></div></Panel>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-white/[.07] bg-white/[.02] p-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3 sm:grid-cols-3 lg:grid-cols-4">
                 <Stat label="Actual $ / hour" value={money(aggregate.actualPerHour, 0)} tone={aggregate.actualPerHour >= 0 ? "positive" : "negative"} sub={`Expected ${money(aggregate.theoreticalPerHour, 0)} / hour`} />
                 <Stat label="Total action" value={money(aggregate.totalAction, 0)} sub={aggregate.totalAction > 0 ? `${percent(aggregate.totalActual / aggregate.totalAction, 2)} of action won` : undefined} />
                 <Stat label="Winning sessions" value={percent(aggregate.winRate, 0)} sub={`${aggregate.longestWinStreak} won / ${aggregate.longestLossStreak} lost in a row`} />
@@ -754,7 +754,7 @@ export function SessionJournal() {
         >
           <div className="mb-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
             <label className="grid min-w-0 flex-1 gap-2 text-sm text-[var(--ink-muted)]">Search journal sessions<input value={sessionQuery} onChange={(event) => setSessionQuery(event.target.value)} aria-label="Search journal sessions" placeholder="Search date, casino, or notes" className="field min-h-11 min-w-0 rounded-xl px-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /></label>
-            <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/[.08] bg-white/[.03] p-1">
+            <div className="grid grid-cols-3 gap-1 rounded-xl border border-overlay/[.08] bg-overlay/[.03] p-1">
               {(["all", "win", "loss"] as const).map((value) => <button key={value} type="button" onClick={() => setSessionResultFilter(value)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${sessionResultFilter === value ? "bg-emerald-300/15 text-[var(--accent)]" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"}`}>{value === "all" ? "All" : value === "win" ? "Wins" : "Losses"}</button>)}
             </div>
           </div>
@@ -768,7 +768,7 @@ export function SessionJournal() {
                   const outcome = theoreticalSessionOutcome(session);
                   const z = sessionZScore(session, outcome);
                   return (
-                    <div key={session.id} className="rounded-xl border border-white/[.07] bg-white/[.02] p-3">
+                    <div key={session.id} className="rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-semibold">{shortDate(session.date)}</p>
@@ -781,21 +781,21 @@ export function SessionJournal() {
                         <span className="text-[var(--ink-muted)]">EV {money(outcome.tripEv, 0)} · {session.hours}h</span>
                       </div>
                       {session.notes && (
-                        <div className="mt-3 rounded-lg border border-white/[.07] bg-black/15">
+                        <div className="mt-3 rounded-lg border border-overlay/[.07] bg-well/15">
                           <button type="button" aria-expanded={expandedNotesId === session.id} onClick={() => setExpandedNotesId((current) => current === session.id ? undefined : session.id)} className="flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-[var(--ink-muted)] hover:text-[var(--ink)]">
                             <span><i className="fa-solid fa-note-sticky mr-1.5 text-[var(--info)]" aria-hidden="true" />Session notes</span>
                             <span>{expandedNotesId === session.id ? "Hide" : "View"}</span>
                           </button>
-                          {expandedNotesId === session.id && <p className="whitespace-pre-wrap break-words border-t border-white/[.06] px-3 py-2.5 text-sm leading-6 text-[var(--ink)]">{session.notes}</p>}
+                          {expandedNotesId === session.id && <p className="whitespace-pre-wrap break-words border-t border-overlay/[.06] px-3 py-2.5 text-sm leading-6 text-[var(--ink)]">{session.notes}</p>}
                         </div>
                       )}
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
-                        <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
-                        <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05] disabled:opacity-40">
+                        <button type="button" onClick={() => startEdit(session)} className="min-h-11 rounded-lg border border-overlay/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i className="fa-solid fa-pen mr-1.5" aria-hidden="true" />Edit</button>
+                        <button type="button" onClick={() => setShareSession(session)} className="min-h-11 rounded-lg border border-overlay/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i className="fa-solid fa-share-nodes mr-1.5" aria-hidden="true" />Share</button>
+                        <button type="button" onClick={() => void simulateSessionShoe(session)} disabled={shoeReplayLoading !== undefined} className="min-h-11 rounded-lg border border-overlay/[.08] text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05] disabled:opacity-40">
                           {shoeReplayLoading === session.id ? "Simulating…" : <><i className="fa-solid fa-shuffle mr-1.5" aria-hidden="true" />Shoe</>}
                         </button>
-                        <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="min-h-11 rounded-lg border border-white/[.08] text-xs font-semibold text-[var(--negative)]/80 hover:bg-red-400/10"><i className="fa-solid fa-trash mr-1.5" aria-hidden="true" />Delete</button>
+                        <button type="button" aria-label={`Delete session on ${session.date}`} onClick={() => setPendingDelete({ kind: "session", id: session.id, date: session.date })} className="min-h-11 rounded-lg border border-overlay/[.08] text-xs font-semibold text-[var(--negative)]/80 hover:bg-red-400/10"><i className="fa-solid fa-trash mr-1.5" aria-hidden="true" />Delete</button>
                       </div>
                     </div>
                   );
@@ -810,7 +810,7 @@ export function SessionJournal() {
                       const z = sessionZScore(session, outcome);
                       return (
                         <Fragment key={session.id}>
-                          <tr className="border-t border-white/[.06]">
+                          <tr className="border-t border-overlay/[.06]">
                             <td className="whitespace-nowrap py-2.5 pr-3">{shortDate(session.date)}</td>
                             <td className="max-w-48 truncate py-2.5 pr-3 text-[var(--ink)]">{session.location || <span className="text-[var(--ink-muted)]">Not recorded</span>}</td>
                             <td className="py-2.5 pr-3">{session.hours}h</td>
@@ -830,7 +830,7 @@ export function SessionJournal() {
                           {session.notes && expandedNotesId === session.id && (
                             <tr className="bg-sky-300/[.025]">
                               <td colSpan={7} className="px-3 pb-3 pt-1">
-                                <div className="rounded-lg border border-sky-300/10 bg-black/15 px-3 py-2.5">
+                                <div className="rounded-lg border border-sky-300/10 bg-well/15 px-3 py-2.5">
                                   <p className="text-[.68rem] font-semibold uppercase tracking-[.1em] text-[var(--ink-muted)]">Session notes</p>
                                   <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-[var(--ink)]">{session.notes}</p>
                                 </div>
@@ -870,7 +870,7 @@ export function SessionJournal() {
                 </thead>
                 <tbody>
                   {venues.map((venue) => (
-                    <tr key={venue.location || "unspecified"} className="border-t border-white/[.06]">
+                    <tr key={venue.location || "unspecified"} className="border-t border-overlay/[.06]">
                       <td className="py-2.5 pr-3">
                         {venue.location || <span className="text-[var(--ink-muted)]">No location logged</span>}
                         <span className="block text-xs text-[var(--ink-muted)]">{venue.sessionCount} session{venue.sessionCount === 1 ? "" : "s"}</span>
@@ -930,11 +930,11 @@ export function SessionJournal() {
                       list has to be able to account for all of it rather than
                       stopping at a dozen with no way to see the rest. */}
                   {[...scopedTransactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, showAllTransactions ? undefined : 12).map((transaction) => (
-                    <span key={transaction.id} title={transaction.note} className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-1.5 text-xs text-[var(--ink)]">
+                    <span key={transaction.id} title={transaction.note} className="flex items-center gap-2 rounded-full bg-well/25 px-3 py-1.5 text-xs text-[var(--ink)]">
                       <span className={transaction.type === "deposit" ? "text-[var(--accent)]" : "text-[var(--warning)]"}>{transaction.type === "deposit" ? "+" : "−"}{money(transaction.amount, 0)}</span>
                       {shortDate(transaction.date)}
                       {transaction.note && <span className="max-w-40 truncate text-[var(--ink-muted)]">{transaction.note}</span>}
-                      <button type="button" aria-label="Delete transaction" onClick={() => setPendingDelete({ kind: "transaction", id: transaction.id })} className="text-[var(--ink-muted)] hover:text-[var(--negative)]"><i className="fa-solid fa-xmark" /></button>
+                      <button type="button" aria-label="Delete transaction" onClick={() => setPendingDelete({ kind: "transaction", id: transaction.id })} className="text-[var(--ink-muted)] hover:text-[var(--negative)]"><i aria-hidden="true" className="fa-solid fa-xmark" /></button>
                     </span>
                   ))}
                 </div>
@@ -958,12 +958,12 @@ export function SessionJournal() {
             <p className="text-xs leading-5 text-[var(--ink-muted)]">Stored only in this browser. JSON is the full-fidelity backup format; CSV is spreadsheet-friendly and also round-trips sessions, but re-importing a CSV always creates new rows rather than updating existing ones.</p>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <button type="button" onClick={exportJournal} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-download mr-2" />Export JSON</button>
-            <button type="button" onClick={() => importInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import JSON</button>
+            <button type="button" onClick={exportJournal} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i aria-hidden="true" className="fa-solid fa-download mr-2" />Export JSON</button>
+            <button type="button" onClick={() => importInputRef.current?.click()} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i aria-hidden="true" className="fa-solid fa-upload mr-2" />Import JSON</button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={(event) => void importJournal(event.target.files?.[0])} className="hidden" />
-            <button type="button" onClick={exportSessionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
-            <button type="button" onClick={exportTransactionsCsv} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
-            <button type="button" onClick={() => importCsvInputRef.current?.click()} className="min-h-11 rounded-lg border border-white/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-white/[.05]"><i className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
+            <button type="button" onClick={exportSessionsCsv} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i aria-hidden="true" className="fa-solid fa-file-csv mr-2" />Export sessions CSV</button>
+            <button type="button" onClick={exportTransactionsCsv} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i aria-hidden="true" className="fa-solid fa-file-csv mr-2" />Export transactions CSV</button>
+            <button type="button" onClick={() => importCsvInputRef.current?.click()} className="min-h-11 rounded-lg border border-overlay/[.08] px-3 py-2 text-xs font-semibold text-[var(--ink)] hover:bg-overlay/[.05]"><i aria-hidden="true" className="fa-solid fa-upload mr-2" />Import sessions CSV</button>
             <input ref={importCsvInputRef} type="file" accept="text/csv,.csv" onChange={(event) => void importSessionsCsv(event.target.files?.[0])} className="hidden" />
             {notice && <span role="status" className="text-xs text-[var(--accent)]">{notice}</span>}
           </div>
@@ -973,7 +973,7 @@ export function SessionJournal() {
       <MobileActionDock label="Session journal actions">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="min-w-0 px-2 text-xs"><p className="text-[var(--ink-muted)]">Expected for this session</p><b className="block truncate text-[var(--accent)]">{money(draftOutcome.tripEv, 2)} EV</b></div>
-          <Button disabled={!sessionDateValid} onClick={logSession}><i className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
+          <Button disabled={!sessionDateValid} onClick={logSession}><i aria-hidden="true" className={`fa-solid ${editingSessionId ? "fa-check" : "fa-plus"} mr-2 text-xs`} />{editingSessionId ? "Save changes" : "Log session"}</Button>
         </div>
       </MobileActionDock>
       <ConfirmModal

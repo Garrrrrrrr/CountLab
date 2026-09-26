@@ -86,7 +86,7 @@ export function TripPlanner() {
       </div>
       <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ config: c }) => { setDecks(c.decks); setDealt(c.dealt); setBankroll(c.bankroll); setBettingUnit(c.baseBet); setHandsPerHour(c.handsPerHour); setTripHours(c.hours); setDealerHitsSoft17(c.dealerHitsSoft17); setDoubleAfterSplit(c.doubleAfterSplit); setResplitAces(c.resplitAces); setLateSurrender(c.lateSurrender); setBlackjackPayout(c.blackjackPayout); setUseIndices(c.useIndices !== false); setRamp(scenarioRamp(c)); setHandsSchedule(templateHandSchedule(c)); setPlayerHands(templateHandSchedule(c)[0]?.hands ?? 1); }} />
 
-      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-overlay/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Trip EV" value={money(plan.tripEv)} sub={`${tripHours} hours`} />
           <PinnedStat label="Finish ahead" value={percent(plan.chanceOfProfit)} sub="chance" />

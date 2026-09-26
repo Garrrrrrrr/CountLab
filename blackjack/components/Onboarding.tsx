@@ -70,7 +70,7 @@ export function Onboarding() {
             <Link
               key={item.id}
               href={item.href}
-              className={`flex min-h-11 items-center gap-3 rounded-xl p-3 text-sm ${done ? "bg-emerald-400/10 text-[var(--accent)]" : "bg-black/20 text-[var(--ink)] hover:bg-white/[.06]"}`}
+              className={`flex min-h-11 items-center gap-3 rounded-xl p-3 text-sm ${done ? "bg-emerald-400/10 text-[var(--accent)]" : "bg-well/20 text-[var(--ink)] hover:bg-overlay/[.06]"}`}
             >
               <i className={`fa-solid ${done ? "fa-circle-check" : "fa-circle"} ${done ? "" : "text-[var(--ink-muted)]"}`} aria-hidden="true" />
               {item.label}

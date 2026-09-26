@@ -122,7 +122,7 @@ function CardChip({ card, source, onRemove }: { card: number; source: Target; on
       onClick={onRemove}
       aria-label={`Remove ${rankLabel(name[0])} of ${name[1]}`}
       title="Drag to another box or click to remove"
-      className={`min-h-11 cursor-grab rounded-lg border border-white/10 bg-white px-3 py-2 font-semibold active:cursor-grabbing ${red ? "text-red-600" : "text-zinc-950"}`}
+      className={`min-h-11 cursor-grab rounded-lg border border-overlay/10 bg-white px-3 py-2 font-semibold active:cursor-grabbing ${red ? "text-red-600" : "text-zinc-950"}`}
     >
       {rankLabel(name[0])}{suitGlyph[name[1]]} <span aria-hidden="true">×</span>
     </button>
@@ -395,7 +395,7 @@ export function ChaseFlushLab() {
               </div>
               <div className="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="Decision stage">
                 {([[0, "Opening", "3x or check"], [2, "Board", "2x or check"], [4, "River", "1x or fold"]] as const).map(([value, label, detail]) => (
-                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`min-h-14 rounded-xl border px-2 py-2 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-[var(--accent)]" : "border-white/10 bg-black/20 text-[var(--ink-muted)]"}`}><b className="block">{label}</b><span className="mt-0.5 block text-[.65rem] opacity-70">{detail}</span></button>
+                  <button key={value} type="button" role="tab" aria-selected={stage === value} onClick={() => changeStage(value)} className={`min-h-14 rounded-xl border px-2 py-2 text-sm ${stage === value ? "border-emerald-400 bg-emerald-500/15 text-[var(--accent)]" : "border-overlay/10 bg-well/20 text-[var(--ink-muted)]"}`}><b className="block">{label}</b><span className="mt-0.5 block text-[.65rem] opacity-70">{detail}</span></button>
                 ))}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -403,14 +403,14 @@ export function ChaseFlushLab() {
                 <CardGroup target="dealer" label={informationActive ? "Exposed dealer card" : "Dealer card ignored"} active={target === "dealer"} onActivate={() => setTarget("dealer")} cards={dealer} capacity={1} onDropCard={placeCard} onRemove={() => { setDealer([]); clearResult(); }} />
                 <CardGroup target="board" label={`Community cards (${board.length}/${stage})`} active={target === "board"} onActivate={() => setTarget("board")} cards={board} capacity={stage} onDropCard={placeCard} onRemove={(card) => { setBoard((items) => items.filter((item) => item !== card)); clearResult(); }} />
               </div>
-              <div className="mt-5 rounded-2xl bg-black/20 p-3">
+              <div className="mt-5 rounded-2xl bg-well/20 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-[var(--ink-muted)]">Adding to: <b className="text-[var(--accent)]">{target === "player" ? "Player" : target === "dealer" ? "Dealer" : "Community"}</b></p>
                   <span className="text-xs text-[var(--ink-muted)]">Tap to add</span>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2" role="group" aria-label="Card suit">
                   {(SUITS.split("") as SuitCode[]).map((suit) => (
-                    <button key={suit} type="button" aria-pressed={pickerSuit === suit} aria-label={`Show ${{s:"spades",h:"hearts",d:"diamonds",c:"clubs"}[suit]} cards`} onClick={() => setPickerSuit(suit)} className={`min-h-12 rounded-xl border text-xl ${pickerSuit === suit ? "border-emerald-400 bg-emerald-500/15" : "border-white/10 bg-white/[.04]"} ${suit === "d" || suit === "h" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>{suitGlyph[suit]}</button>
+                    <button key={suit} type="button" aria-pressed={pickerSuit === suit} aria-label={`Show ${{s:"spades",h:"hearts",d:"diamonds",c:"clubs"}[suit]} cards`} onClick={() => setPickerSuit(suit)} className={`min-h-12 rounded-xl border text-xl ${pickerSuit === suit ? "border-emerald-400 bg-emerald-500/15" : "border-overlay/10 bg-overlay/[.04]"} ${suit === "d" || suit === "h" ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>{suitGlyph[suit]}</button>
                   ))}
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7 lg:grid-cols-13" aria-label={`${pickerSuit} card picker for ${target}`}>
@@ -418,7 +418,7 @@ export function ChaseFlushLab() {
                     const suitIndex = SUITS.indexOf(pickerSuit);
                     const card = suitIndex * 13 + rankIndex;
                     const red = pickerSuit === "d" || pickerSuit === "h";
-                    return <button key={card} type="button" draggable={!selected.has(card)} disabled={selected.has(card)} onDragStart={(event) => writeDraggedCard(event, { card })} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${pickerSuit}`} title="Tap to add to the active box or drag into any box" className={`min-h-12 cursor-grab rounded-lg border border-white/10 bg-white text-sm font-bold active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[pickerSuit]}</span></button>;
+                    return <button key={card} type="button" draggable={!selected.has(card)} disabled={selected.has(card)} onDragStart={(event) => writeDraggedCard(event, { card })} onClick={() => addCard(card)} aria-label={`${rankLabel(rank)} of ${pickerSuit}`} title="Tap to add to the active box or drag into any box" className={`min-h-12 cursor-grab rounded-lg border border-overlay/10 bg-white text-sm font-bold active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-20 ${red ? "text-red-600" : "text-zinc-950"}`}>{rankLabel(rank)}<span className="block">{suitGlyph[pickerSuit]}</span></button>;
                   })}
                 </div>
               </div>
@@ -437,7 +437,7 @@ export function ChaseFlushLab() {
             <Panel>
               {!result && !loading && <div className="grid min-h-48 place-items-center text-center text-[var(--ink-muted)] md:min-h-80">Complete the cards and request a calculation.</div>}
               {loading && provisional && <ProvisionalPanel decision={provisional} />}
-              {loading && !provisional && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i className="fa-solid fa-spinner fa-spin text-2xl text-[var(--accent)]" /><p className="mt-3 text-[var(--ink-muted)]">Enumerating every legal completion in parallel.</p><p className="mt-2 text-xs text-[var(--ink-muted)]">The exact result replaces the provisional estimate automatically.</p></div></div>}
+              {loading && !provisional && <div className="grid min-h-48 place-items-center text-center md:min-h-80"><div><i aria-hidden="true" className="fa-solid fa-spinner fa-spin text-2xl text-[var(--accent)]" /><p className="mt-3 text-[var(--ink-muted)]">Enumerating every legal completion in parallel.</p><p className="mt-2 text-xs text-[var(--ink-muted)]">The exact result replaces the provisional estimate automatically.</p></div></div>}
               {result && <DecisionPanel result={result} closeDecision={Boolean(closeDecision)} practiceChoice={practiceChoice} informationActive={informationActive} />}
             </Panel>
           </div>
@@ -454,8 +454,8 @@ function ProvisionalPanel({decision}:{decision:Decision}){
     <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-[var(--warning)]"><b>Provisional Monte Carlo estimate</b><p className="mt-1 text-sm text-[var(--warning)]/70">Do not rely on this preview yet. The exact enumerator is still running and will replace it automatically.</p></div>
     <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Estimated decision</p>
     <div className="mt-2 text-3xl font-semibold text-[var(--warning)]">{decision.action.toUpperCase()}</div>
-    <div className="mt-4 space-y-2">{Object.entries(decision.evs).map(([action,value])=><div key={action} className="flex justify-between rounded-xl bg-black/20 p-3"><span>{action.toUpperCase()}</span><b>{fmt(value,false)}</b></div>)}</div>
-    <p className="mt-4 flex items-center gap-2 text-xs text-[var(--ink-muted)]"><i className="fa-solid fa-spinner fa-spin text-[var(--accent)]" /> Exact solve in progress</p>
+    <div className="mt-4 space-y-2">{Object.entries(decision.evs).map(([action,value])=><div key={action} className="flex justify-between rounded-xl bg-well/20 p-3"><span>{action.toUpperCase()}</span><b>{fmt(value,false)}</b></div>)}</div>
+    <p className="mt-4 flex items-center gap-2 text-xs text-[var(--ink-muted)]"><i aria-hidden="true" className="fa-solid fa-spinner fa-spin text-[var(--accent)]" /> Exact solve in progress</p>
   </div>;
 }
 
@@ -511,7 +511,7 @@ function PracticalStrategy() {
             ["2", "Flush ranks", "Compare the suited ranks high to low."],
             ["3", "Exposed threat", "Same-suit high cards are the largest warning."],
           ].map(([number, title, copy]) => (
-            <div key={number} className="rounded-xl bg-black/20 p-4">
+            <div key={number} className="rounded-xl bg-well/20 p-4">
               <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-500/15 text-xs font-bold text-[var(--accent)]">{number}</span>
               <b className="mt-3 block">{title}</b>
               <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">{copy}</p>
@@ -524,7 +524,7 @@ function PracticalStrategy() {
         {stages.map((stage) => (
           <Panel key={stage.step}>
             <div className="flex items-center gap-3">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/[.06] text-sm font-bold">{stage.step}</span>
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-overlay/[.06] text-sm font-bold">{stage.step}</span>
               <h3 className={`font-semibold ${stage.accent}`}>{stage.wager}</h3>
             </div>
             <ul className="mt-5 space-y-3 text-sm leading-6 text-[var(--ink-muted)]">
@@ -549,7 +549,7 @@ function PracticalStrategy() {
               ["Different suit", "Your primary flush is less directly threatened, so stay closer to the baseline aggression rules."],
               ["Low exposed card", "Usually less dangerous, but it can still help the dealer reach qualification or length through the board."],
             ].map(([label, copy]) => (
-              <div key={label} className="rounded-xl bg-black/20 p-3">
+              <div key={label} className="rounded-xl bg-well/20 p-3">
                 <b className="text-[var(--ink)]">{label}</b>
                 <p className="mt-1 leading-5 text-[var(--ink-muted)]">{copy}</p>
               </div>
@@ -595,7 +595,7 @@ function CardGroup({ target, label, active, onActivate, cards, capacity, onDropC
       onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDragOver(true); }}
       onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOver(false); }}
       onDrop={drop}
-      className={`rounded-xl border p-3 transition ${dragOver ? "scale-[1.02] border-emerald-300 bg-emerald-400/20 ring-2 ring-emerald-400/30" : active ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-black/20"}`}
+      className={`rounded-xl border p-3 transition ${dragOver ? "scale-[1.02] border-emerald-300 bg-emerald-400/20 ring-2 ring-emerald-400/30" : active ? "border-emerald-400/60 bg-emerald-500/10" : "border-overlay/10 bg-well/20"}`}
       aria-label={`${label} drop zone`}
     >
       <button type="button" aria-pressed={active} onClick={onActivate} className="flex min-h-11 w-full items-center justify-between rounded-lg px-1 text-left text-xs font-semibold uppercase tracking-wide text-[var(--ink-muted)]"><span>{label}</span>{active && <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[.62rem] text-[var(--accent)]">Adding here</span>}</button>
@@ -619,9 +619,9 @@ function DecisionPanel({ result, closeDecision, practiceChoice, informationActiv
       <div className="mt-3 text-4xl font-semibold text-[var(--accent)]">{result.informed.action.toUpperCase()}</div>
       <div className="mt-5 space-y-3">{Object.entries(result.informed.evs).map(([action, value]) => {
         const statistics=result.informed.statistics?.[action];
-        return <div key={action} className="rounded-xl bg-black/20 p-3"><div className="flex justify-between"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{fmt(value, exact)}</b></div>{statistics&&<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--ink-muted)]"><span>Standard error</span><span className="text-right">{statistics.standardError.toFixed(6)}</span><span>99.9% CI</span><span className="text-right">[{fmt(statistics.ci999[0],true)}, {fmt(statistics.ci999[1],true)}]</span></div>}</div>;
+        return <div key={action} className="rounded-xl bg-well/20 p-3"><div className="flex justify-between"><span>{action.toUpperCase()}</span><b className={value >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{fmt(value, exact)}</b></div>{statistics&&<div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[var(--ink-muted)]"><span>Standard error</span><span className="text-right">{statistics.standardError.toFixed(6)}</span><span>99.9% CI</span><span className="text-right">[{fmt(statistics.ci999[0],true)}, {fmt(statistics.ci999[1],true)}]</span></div>}</div>;
       })}</div>
-      <div className="mt-5 border-t border-white/[.07] pt-4 text-sm text-[var(--ink-muted)]">
+      <div className="mt-5 border-t border-overlay/[.07] pt-4 text-sm text-[var(--ink-muted)]">
         <p>Best action EV: <b className="text-[var(--ink)]">{fmt(best, exact)} Ante units</b></p>
         <p className="mt-2">Decision margin: <b className="text-[var(--ink)]">{result.informed.difference.toFixed(exact ? 4 : 3)} Ante units</b></p>
         {result.informed.differenceStatistics && <div className="mt-3 rounded-lg bg-emerald-500/10 p-3"><p className="font-semibold text-[var(--accent)]">Paired action difference</p><p className="mt-1">SE: {result.informed.differenceStatistics.standardError.toFixed(6)} · 99.9% CI [{fmt(result.informed.differenceStatistics.ci999[0],true)}, {fmt(result.informed.differenceStatistics.ci999[1],true)}]</p><p className="mt-1">{result.informed.differenceStatistics.samples.toLocaleString()} decision-path terminal assignments represented{result.informed.differenceStatistics.evaluations&&result.informed.differenceStatistics.evaluations!==result.informed.differenceStatistics.samples?` · ${result.informed.differenceStatistics.evaluations.toLocaleString()} unique states evaluated`:""} · {result.informed.differenceStatistics.runtimeSeconds.toFixed(2)}s · {Math.round(result.informed.differenceStatistics.samplesPerSecond).toLocaleString()} states/sec</p></div>}
@@ -647,7 +647,7 @@ function ResearchPanel({ sixCardPayout, setSixCardPayout }: { sixCardPayout: num
         <p className="mt-1 text-sm text-[var(--ink-muted)]">Five-million-hand conditional holdout. EV and information value are descriptive, not additive.</p>
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-5 lg:grid-cols-13">{rankResearch.map(([rank, ev, delta]) => <div key={rank} className={`rounded-xl p-3 text-center ${ev >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}><b>{rank}</b><p className={`mt-2 text-xs ${ev >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}`}>EV {(ev * 100).toFixed(1)}%</p><p className="mt-1 text-[.65rem] text-[var(--ink-muted)]">Info +{(delta * 100).toFixed(1)}%</p></div>)}</div>
       </Panel>
-      <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--ink-muted)]"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-black/20 p-3" key={label}><span className="text-[var(--ink-muted)]">{label}</span><b className="text-[var(--accent)]">{value}</b></div>)}</div></Panel></div>
+      <div className="grid gap-5 lg:grid-cols-2"><Panel><h2 className="font-semibold">Rules modeled</h2><ul className="mt-4 space-y-2 text-sm leading-6 text-[var(--ink-muted)]"><li>Ante and X-Tra are one unit each.</li><li>Check or 3x, check or 2x, then 1x or fold.</li><li>Dealer qualifies with at least a 9-high three-card flush.</li><li>Non-qualifying dealer pushes Ante before comparison.</li><li>X-Tra pays 1 / 5 / {sixCardPayout} / 250 for 4 / 5 / 6 / 7 cards.</li></ul></Panel><Panel><h2 className="font-semibold">Information schedule</h2><div className="mt-4 grid gap-3 text-sm">{[["Baseline","+0.035836"],["Final-card access","+0.053926"],["Added at 2x stage","+0.020048"],["Added at 3x stage","+0.012469"]].map(([label, value]) => <div className="flex justify-between rounded-xl bg-well/20 p-3" key={label}><span className="text-[var(--ink-muted)]">{label}</span><b className="text-[var(--accent)]">{value}</b></div>)}</div></Panel></div>
       <details className="surface rounded-[1.35rem] p-5 md:p-6"><summary className="cursor-pointer font-semibold">Research method and validation</summary><div className="mt-4 space-y-3 text-sm leading-6 text-[var(--ink-muted)]"><p>Policies were trained backward on two million independent legal deals per information schedule, then evaluated on 20 million new paired deals.</p><p>A separate legacy-paytable run reproduced the published -2.3907% result inside its prespecified 99.9% interval. The displayed table says 50:1 for six cards while its analysis rows behave as 20:1, so results are kept separate by paytable.</p><p>Interactive decisions use exhaustive integer-mask backward induction at every stage. The exposed opening represents 1,104,436,080 legal decision-path terminal assignments by evaluating each of the 184,072,680 unique completed-board and dealer states once, then attributing it exactly to all six board-reveal orders. This is algebraic reuse, not sampling; statistical uncertainty remains zero. Full-game edge estimates remain paired fixed-policy simulations, so their reported Monte Carlo error is separate from policy-approximation error.</p></div></details>
     </div>
   );

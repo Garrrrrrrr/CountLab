@@ -241,7 +241,7 @@ function DataTable<T extends object>({
       <table className="w-full text-left text-sm">
         <thead className="text-[var(--ink-muted)]"><tr>{columns.map((column) => <th className="whitespace-nowrap pb-3 pr-4 font-medium" key={String(column.key)}>{column.label}</th>)}</tr></thead>
         <tbody>{rows.map((row, rowIndex) => (
-          <tr className="border-t border-white/[.06]" key={rowIndex}>
+          <tr className="border-t border-overlay/[.06]" key={rowIndex}>
             {columns.map((column, columnIndex) => {
               const value = row[column.key];
               return <td className={`whitespace-nowrap py-3 pr-4 ${columnIndex ? "text-[var(--ink-muted)]" : "font-medium"}`} key={String(column.key)}>{column.format ? column.format(value, row) : String(value ?? "—")}</td>;
@@ -414,7 +414,7 @@ export default function AdminPage() {
     <>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div><p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">Admin</p><h1 className="mt-2 text-3xl font-semibold">Product analytics</h1><p className="mt-2 max-w-3xl text-[var(--ink-muted)]">Actionable usage, learning, retention, acquisition, reliability, and performance metrics. Bots, internal accounts, staging, and development are excluded.</p></div>
-        <div className="flex flex-wrap gap-2"><GhostButton onClick={() => exportData("csv")} disabled={!dashboard}>Export CSV</GhostButton><GhostButton onClick={() => exportData("json")} disabled={!dashboard}>Export JSON</GhostButton><GhostButton onClick={() => void load()} disabled={loading}><i className={`fa-solid fa-arrows-rotate mr-2 ${loading ? "animate-spin" : ""}`} />Refresh</GhostButton></div>
+        <div className="flex flex-wrap gap-2"><GhostButton onClick={() => exportData("csv")} disabled={!dashboard}>Export CSV</GhostButton><GhostButton onClick={() => exportData("json")} disabled={!dashboard}>Export JSON</GhostButton><GhostButton onClick={() => void load()} disabled={loading}><i aria-hidden="true" className={`fa-solid fa-arrows-rotate mr-2 ${loading ? "animate-spin" : ""}`} />Refresh</GhostButton></div>
       </div>
 
       <Panel className="mb-6">
@@ -475,7 +475,7 @@ export default function AdminPage() {
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           <Panel><SectionTitle title="Active users and completed practice" note="Meaningful activity only" /><div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={dashboard.daily}><CartesianGrid stroke="#ffffff0d" /><XAxis dataKey="day" stroke="#71717a" tickFormatter={(value) => String(value).slice(5)} /><YAxis stroke="#71717a" allowDecimals={false} /><Tooltip contentStyle={tooltipStyle} /><Line type="monotone" dataKey="active_users" name="Active users" stroke="#b5ed5c" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="completed_practice" name="Completed practice" stroke="#38bdf8" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div></Panel>
-          <Panel><SectionTitle title="Training funnel" note="Unique visitors reaching each stage" /><div className="space-y-4">{dashboard.funnel.map((row, index) => { const priorUsers = dashboard.funnel[index - 1]?.users; return <div key={row.stage}><div className="mb-1 flex justify-between text-sm"><span>{row.stage}</span><span className="text-[var(--ink-muted)]">{integer.format(row.users)}{priorUsers ? ` · ${((100 * row.users) / priorUsers).toFixed(1)}%` : ""}</span></div><div className="h-3 rounded-full bg-white/[.05]"><div className="h-full rounded-full bg-emerald-400/70" style={{ width: `${Math.max(2, (100 * row.users) / maxFunnel)}%` }} /></div></div>; })}</div></Panel>
+          <Panel><SectionTitle title="Training funnel" note="Unique visitors reaching each stage" /><div className="space-y-4">{dashboard.funnel.map((row, index) => { const priorUsers = dashboard.funnel[index - 1]?.users; return <div key={row.stage}><div className="mb-1 flex justify-between text-sm"><span>{row.stage}</span><span className="text-[var(--ink-muted)]">{integer.format(row.users)}{priorUsers ? ` · ${((100 * row.users) / priorUsers).toFixed(1)}%` : ""}</span></div><div className="h-3 rounded-full bg-overlay/[.05]"><div className="h-full rounded-full bg-emerald-400/70" style={{ width: `${Math.max(2, (100 * row.users) / maxFunnel)}%` }} /></div></div>; })}</div></Panel>
         </div>
 
         <Panel className="mt-6"><SectionTitle title="Training performance" note="Accuracy, speed, completion, and change across the selected period" /><DataTable rows={dashboard.training} columns={[

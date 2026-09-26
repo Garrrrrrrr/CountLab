@@ -28,10 +28,10 @@ export function TrayVisual({ totalDecks, remainingDecks, style = "green", landma
   const fill = Math.min(100, discarded / totalDecks * 100);
   const colors = style === "red" ? "from-red-950 to-red-700" : style === "smoke" ? "from-zinc-900 to-zinc-600" : "from-emerald-950 to-emerald-600";
   return <div>
-    <div aria-label={`${discarded.toFixed(2)} decks discarded, ${remainingDecks.toFixed(2)} decks remaining`} className="relative h-40 overflow-hidden rounded-2xl border border-white/15 bg-black/40 shadow-inner [perspective:500px]">
+    <div aria-label={`${discarded.toFixed(2)} decks discarded, ${remainingDecks.toFixed(2)} decks remaining`} className="relative h-40 overflow-hidden rounded-2xl border border-overlay/15 bg-well/40 shadow-inner [perspective:500px]">
       <div className={`absolute inset-x-3 bottom-2 rounded-lg bg-gradient-to-t ${colors} transition-[height] duration-500`} style={{ height: `calc(${fill}% - 8px)` }} />
-      {landmarks && [25, 50, 75].map((value) => <div key={value} className="absolute inset-x-0 border-t border-dashed border-white/20" style={{ bottom: `${value}%` }}><span className="absolute right-2 -top-4 text-[10px] text-[var(--ink-muted)]">{value}% discarded</span></div>)}
-      <div className="absolute inset-0 rounded-2xl ring-8 ring-black/20 [transform:rotateX(-4deg)]" />
+      {landmarks && [25, 50, 75].map((value) => <div key={value} className="absolute inset-x-0 border-t border-dashed border-overlay/20" style={{ bottom: `${value}%` }}><span className="absolute right-2 -top-4 text-[10px] text-[var(--ink-muted)]">{value}% discarded</span></div>)}
+      <div className="absolute inset-0 rounded-2xl ring-8 ring-well/20 [transform:rotateX(-4deg)]" />
     </div>
     <div className="mt-2 flex justify-between text-xs text-[var(--ink-muted)]"><span>Discard tray</span><span>Fill shows cards already dealt</span></div>
   </div>;

@@ -163,9 +163,9 @@ export default function TestOut() {
         <h2 className="font-display text-2xl font-semibold">{meta.label}</h2>
         <p className="mt-2 text-[var(--ink-muted)]">{meta.description}</p>
         <dl className="mt-5 grid grid-cols-3 gap-3 text-center">
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Length</dt><dd className="mt-1 font-semibold">{stage.questions} {unit}{stage.questions === 1 ? "" : "s"}</dd></div>
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Time</dt><dd className="mt-1 font-semibold">{stage.timeLimitSeconds === null ? "Untimed" : formatClock(stage.timeLimitSeconds)}</dd></div>
-          <div className="rounded-xl bg-black/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Pass mark</dt><dd className="mt-1 font-semibold">{stage.passAccuracy}%</dd></div>
+          <div className="rounded-xl bg-well/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Length</dt><dd className="mt-1 font-semibold">{stage.questions} {unit}{stage.questions === 1 ? "" : "s"}</dd></div>
+          <div className="rounded-xl bg-well/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Time</dt><dd className="mt-1 font-semibold">{stage.timeLimitSeconds === null ? "Untimed" : formatClock(stage.timeLimitSeconds)}</dd></div>
+          <div className="rounded-xl bg-well/20 p-3"><dt className="text-xs text-[var(--ink-muted)]">Pass mark</dt><dd className="mt-1 font-semibold">{stage.passAccuracy}%</dd></div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-2">
           <Button className="min-h-11" onClick={() => setPhase("running")}>Start {meta.label.toLowerCase()}</Button>
@@ -207,7 +207,7 @@ export default function TestOut() {
           <div className="space-y-3">
             {config.sections.map((section) => {
               const meta = sectionMeta(section.id);
-              return <div key={section.id} className={`rounded-2xl border p-4 ${section.enabled ? "border-[var(--rule)] bg-[var(--paper)]" : "border-transparent bg-black/10 opacity-70"}`}>
+              return <div key={section.id} className={`rounded-2xl border p-4 ${section.enabled ? "border-[var(--rule)] bg-[var(--paper)]" : "border-transparent bg-well/10 opacity-70"}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{meta.label}</h3>
@@ -298,7 +298,7 @@ export default function TestOut() {
           <h2 className="font-display text-lg font-semibold">{config.name}</h2>
           <p className="mt-2 text-sm text-[var(--ink-muted)]">{summarise(config)}</p>
           <ul className="mt-4 space-y-2">
-            {enabledSections(config).map((section, order) => <li key={section.id} className="flex items-center justify-between gap-2 rounded-xl bg-black/20 px-3 py-2 text-sm">
+            {enabledSections(config).map((section, order) => <li key={section.id} className="flex items-center justify-between gap-2 rounded-xl bg-well/20 px-3 py-2 text-sm">
               <span className="truncate"><span className="text-[var(--ink-muted)]">{order + 1}.</span> {sectionMeta(section.id).label}</span>
               <Badge tone="cold">{section.questions}{sectionMeta(section.id).unit === "rounds" ? "R" : "Q"}</Badge>
             </li>)}

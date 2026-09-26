@@ -405,7 +405,7 @@ export function StrategyDrill() {
                   onClick={() => choose(a)}
                 >
                   <span>{ANSWER_NAMES[a]}</span>
-                  <kbd className="rounded border border-white/15 bg-black/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">
+                  <kbd className="rounded border border-overlay/15 bg-well/25 px-1.5 py-0.5 font-mono text-[.68rem] text-[var(--ink-muted)]">
                     {a}
                   </kbd>
                 </GhostButton>
@@ -707,7 +707,7 @@ export function DeviationDrill() {
                 ["Decks remaining", "3"],
                 ["True count", signed(tc)],
               ].map(([a, b]) => (
-                <div key={a} className="min-w-0 rounded-xl bg-black/20 p-2.5 sm:p-4">
+                <div key={a} className="min-w-0 rounded-xl bg-well/20 p-2.5 sm:p-4">
                   <p className="text-xs text-[var(--ink-muted)]">{a}</p>
                   <b className="text-xl sm:text-2xl">{b}</b>
                 </div>

@@ -35,7 +35,7 @@ export function CasinoChip({
       aria-label={`Select ${chipLabel(value)} chip`}
       aria-pressed={selected}
       onClick={onClick}
-      className={`pressable grid h-14 w-14 shrink-0 place-items-center rounded-full border-[5px] border-dashed text-xs font-black shadow-[0_7px_16px_#0008] ring-2 ring-black/30 ${chipColorClasses(value)} ${selected ? "-translate-y-1 ring-4 ring-[#a8ee72]" : ""}`}
+      className={`pressable grid h-14 w-14 shrink-0 place-items-center rounded-full border-[5px] border-dashed text-xs font-black shadow-[0_7px_16px_#0008] ring-2 ring-well/30 ${chipColorClasses(value)} ${selected ? "-translate-y-1 ring-4 ring-[#a8ee72]" : ""}`}
     >
       {chipLabel(value)}
     </button>
@@ -81,7 +81,7 @@ export function BetSpot({
         type="button"
         disabled={locked || !onAdd}
         onClick={onAdd}
-        className={`pressable mx-auto grid h-20 w-20 place-items-center rounded-full border-2 text-center sm:h-24 sm:w-24 ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-white/20 bg-black/10"}`}
+        className={`pressable mx-auto grid h-20 w-20 place-items-center rounded-full border-2 text-center sm:h-24 sm:w-24 ${amount ? "border-amber-300/70 bg-amber-300/10" : "border-dashed border-overlay/20 bg-well/10"}`}
       >
         <span><small className="block text-[.62rem] font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">{label}</small><b className="mt-1 block text-lg">${amount % 1 === 0 ? amount : amount.toFixed(2)}</b></span>
       </button>
@@ -108,7 +108,7 @@ export function CardRow({
       <div className="flex min-h-20 justify-start gap-1.5 overflow-x-auto pb-2 sm:justify-center sm:gap-2">
         {cards.map((card, index) => <PlayingCard key={`${card.rank}-${card.suit}-${index}`} card={card} size="table" animated dealIndex={index} fast />)}
         {Array.from({ length: hidden }, (_, index) => <PlayingCard key={`hidden-${index}`} hidden size="table" animated dealIndex={cards.length + index} fast />)}
-        {Array.from({ length: empty }, (_, index) => <div key={`empty-${index}`} className="h-20 w-14 shrink-0 rounded-xl border border-dashed border-white/10 lg:h-28 lg:w-20 2xl:h-32 2xl:w-24" />)}
+        {Array.from({ length: empty }, (_, index) => <div key={`empty-${index}`} className="h-20 w-14 shrink-0 rounded-xl border border-dashed border-overlay/10 lg:h-28 lg:w-20 2xl:h-32 2xl:w-24" />)}
       </div>
     </div>
   );
@@ -196,7 +196,7 @@ export function GameHistory({ rows }: { rows: GameHistoryRow[] }) {
   return (
     <div className="space-y-2">
       {rows.length ? rows.slice(0, 8).map((row) => (
-        <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-black/20 p-3 text-sm">
+        <div key={row.id} className="flex items-center justify-between gap-3 rounded-xl bg-well/20 p-3 text-sm">
           <div><b>{row.result}</b><p className="mt-0.5 text-xs text-[var(--ink-muted)]">{row.detail}</p></div>
           <div className="text-right"><b className={row.net >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{row.net >= 0 ? "+" : ""}${row.net.toFixed(2)}</b><p className="text-xs text-[var(--ink-muted)]">${row.bankroll.toFixed(2)}</p></div>
         </div>

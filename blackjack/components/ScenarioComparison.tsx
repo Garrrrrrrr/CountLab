@@ -132,7 +132,7 @@ export function ScenarioComparison() {
         </p>
       </div>
       <ScenarioPicker unsupported={unsupportedScenario} onLoad={({ name, config: c }) => setColumns((current) => [{ ...makeColumn(name), decks: c.decks, dealt: c.dealt, bankroll: c.bankroll, bettingUnit: c.baseBet, handsPerHour: c.handsPerHour, hours: c.hours, dealerHitsSoft17: c.dealerHitsSoft17, doubleAfterSplit: c.doubleAfterSplit, resplitAces: c.resplitAces, lateSurrender: c.lateSurrender, blackjackPayout: c.blackjackPayout, useIndices: c.useIndices !== false, ramp: scenarioRamp(c), handsByTrueCount: templateHandSchedule(c) }, ...current.slice(1)])} />
-      {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-white/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+      {bestHourlyEv >= 0 && <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-overlay/[.07] bg-[var(--paper-raised)] px-4 py-2.5 backdrop-blur-xl sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
         <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
           <PinnedStat label="Best scenario" value={columns[bestHourlyEv].name} sub="hourly EV" />
           <PinnedStat label="Hourly EV" value={money(results[bestHourlyEv].hourlyEv, 2)} sub="best of these" />
@@ -142,7 +142,7 @@ export function ScenarioComparison() {
       </div>}
 
       <div className="mb-5 flex justify-end">
-        <GhostButton onClick={addColumn} disabled={columns.length >= 4}><i className="fa-solid fa-plus mr-2" />Add scenario</GhostButton>
+        <GhostButton onClick={addColumn} disabled={columns.length >= 4}><i aria-hidden="true" className="fa-solid fa-plus mr-2" />Add scenario</GhostButton>
       </div>
 
       <div className={`grid gap-5 ${columns.length === 1 ? "" : "md:grid-cols-2"} ${columns.length > 2 ? "xl:grid-cols-3" : ""} ${columns.length > 3 ? "2xl:grid-cols-4" : ""}`}>
@@ -212,8 +212,8 @@ export function ScenarioComparison() {
               )}
               </Section>
 
-              <div className="mt-5 space-y-2 border-t border-white/[.07] pt-4">
-                <div className={`rounded-xl p-3 ${index === bestHourlyEv ? "bg-emerald-400/10 ring-1 ring-emerald-400/30" : "bg-black/20"}`}>
+              <div className="mt-5 space-y-2 border-t border-overlay/[.07] pt-4">
+                <div className={`rounded-xl p-3 ${index === bestHourlyEv ? "bg-emerald-400/10 ring-1 ring-emerald-400/30" : "bg-well/20"}`}>
                   <Metric label="Hourly EV" value={money(result.hourlyEv, 2)} sub={index === bestHourlyEv && columns.length > 1 ? "Best of these scenarios" : undefined} />
                 </div>
                 <Metric label="Trip EV" value={money(result.tripEv, 0)} sub={`± ${money(result.standardDeviation, 0)} SD`} />

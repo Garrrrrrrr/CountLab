@@ -98,7 +98,7 @@ export function AdminGameEditor({ locationId, game, onSaved, onCancel, onReload 
         <label className="grid gap-2 text-sm text-[var(--ink-muted)]">Actually verified on<input className={fieldClass} type="date" value={draft.verified_at?.slice(0, 10) ?? ""} onChange={(event) => change("verified_at", event.target.value || null)} /></label>
       </div>
       <label className="grid gap-2 text-sm text-[var(--ink-muted)]">Extra rules (JSON object)<textarea className={`${fieldClass} min-h-28 py-3 font-mono text-xs`} value={extraRules} onChange={(event) => setExtraRules(event.target.value)} /></label>
-      {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-red-400"><span>{error}</span>{error.startsWith("Another admin") && <GhostButton type="button" className="min-h-9 px-3 py-1 text-xs" onClick={onReload}>Reload latest</GhostButton>}</div>}
+      {error && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-[var(--negative)]"><span>{error}</span>{error.startsWith("Another admin") && <GhostButton type="button" className="min-h-9 px-3 py-1 text-xs" onClick={onReload}>Reload latest</GhostButton>}</div>}
       <div className="flex flex-wrap gap-3"><Button type="submit" disabled={saving}>{saving ? "Saving…" : game ? "Save game" : "Add game"}</Button><GhostButton type="button" onClick={onCancel}>Cancel</GhostButton></div>
     </form>
   </Panel>;

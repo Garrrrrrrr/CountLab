@@ -259,7 +259,7 @@ function QuestionBody({
 
   if (prompt.kind === "tray") {
     return <form className="mx-auto max-w-xl" onSubmit={(event) => { event.preventDefault(); onSubmit(answer); }}>
-      <Image src={`/deck-estimation/${prompt.file}`} alt="Discard tray" width={640} height={480} unoptimized className="mx-auto max-h-80 w-auto rounded-2xl border border-white/15 bg-black/40 object-contain shadow-inner" />
+      <Image src={`/deck-estimation/${prompt.file}`} alt="Discard tray" width={640} height={480} unoptimized className="mx-auto max-h-80 w-auto rounded-2xl border border-overlay/15 bg-well/40 object-contain shadow-inner" />
       <p className="mt-2 text-center text-xs text-[var(--ink-muted)]">{prompt.totalDecks}-deck shoe</p>
       <label className="mx-auto mt-6 block max-w-xs text-center text-sm text-[var(--ink-muted)]">Decks remaining
         <input autoFocus inputMode="decimal" className={`${inputClass} mt-2`} value={answer} onChange={(event) => onAnswer(event.target.value)} />
@@ -278,7 +278,7 @@ function QuestionBody({
             reader gives the number and the divisor with nothing tying them
             into a question. */}
         <div
-          className="grid place-items-center rounded-2xl bg-black/20 p-6 text-center"
+          className="grid place-items-center rounded-2xl bg-well/20 p-6 text-center"
           aria-label={`Running count ${signed(scenario.runningCount)} with ${scenario.estimatedDecksRemaining} decks remaining`}
         >
           <div>

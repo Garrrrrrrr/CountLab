@@ -35,7 +35,7 @@ export const GhostButton = ({
     className={`pressable min-h-11 rounded-lg border px-4 py-2.5 font-medium shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--paper)] disabled:cursor-not-allowed disabled:opacity-40 ${selected ? "border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] hover:opacity-90" : "border-[var(--rule)] bg-[var(--paper-raised)] text-[var(--ink)] hover:bg-[var(--paper)]"} ${className}`}
   />
 );
-export const MobileActionDock = ({
+export function MobileActionDock({
   children,
   className = "",
   label = "Available actions",
@@ -43,15 +43,31 @@ export const MobileActionDock = ({
   children: ReactNode;
   className?: string;
   label?: string;
-}) => (
-  <div
-    role="group"
-    aria-label={label}
-    className={`mobile-action-dock lg:hidden ${className}`}
-  >
-    {children}
-  </div>
-);
+}) {
+  const dock = useRef<HTMLDivElement>(null);
+  // The dock floats above the page, so publish its height for the footer to
+  // clear; otherwise the last links on the page sit underneath it.
+  useEffect(() => {
+    const element = dock.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const root = document.documentElement;
+    const update = () => root.style.setProperty("--dock-clearance", `${element.offsetHeight}px`);
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    update();
+    return () => { observer.disconnect(); root.style.removeProperty("--dock-clearance"); };
+  }, []);
+  return (
+    <div
+      ref={dock}
+      role="group"
+      aria-label={label}
+      className={`mobile-action-dock lg:hidden ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 export const Select = ({
   label,
   children,
@@ -254,7 +270,7 @@ export function Section({
     }
   }, [collapseOnMobile]);
   return (
-    <details ref={details} id={id} open={open} className="surface group min-w-0 rounded-2xl border border-white/[.07]">
+    <details ref={details} id={id} open={open} className="surface group min-w-0 rounded-2xl border border-overlay/[.07]">
       <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden sm:px-5">
         <span
           className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${tone === "accent" ? "bg-emerald-300/10 text-[var(--accent)]" : "bg-sky-300/10 text-[var(--info)]"}`}
@@ -270,7 +286,7 @@ export function Section({
           aria-hidden="true"
         />
       </summary>
-      <div className="border-t border-white/[.06] p-4 sm:p-5">{children}</div>
+      <div className="border-t border-overlay/[.06] p-4 sm:p-5">{children}</div>
     </details>
   );
 }

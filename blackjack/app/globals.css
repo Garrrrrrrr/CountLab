@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light is the default register. Dark tokens are shared by an explicit dark
+   choice, the system preference, and the casino floor (`.floor`), which always
+   plays on dark felt whatever the reader's theme. */
 :root {
   color-scheme: light;
   --paper: #ecefe8;
@@ -17,14 +20,22 @@
   --count-hot: #a64225;
   --focus: #3e6e8e;
   --accent: #176b46;
+  --accent-strong: #0f5c3e;
+  --on-accent: #f6f8f3;
   --negative: #b42318;
   --warning: #805b08;
   --info: #236787;
+  --overlay-rgb: 22 33 28;
+  --overlay-scale: 1.6;
+  --well-rgb: 22 33 28;
+  --well-scale: 0.28;
+  --shadow-color: 22 33 28;
   --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
   --font-ui: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-data: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+.floor {
   color-scheme: dark;
   --paper: #101915;
   --paper-raised: #16211c;
@@ -36,9 +47,16 @@
   --count-hot: #df6a47;
   --focus: #6f98ae;
   --accent: #6ee7b7;
+  --accent-strong: #6ee7b7;
+  --on-accent: #06281a;
   --negative: #fca5a5;
   --warning: #fcd34d;
   --info: #7dd3fc;
+  --overlay-rgb: 255 255 255;
+  --overlay-scale: 1;
+  --well-rgb: 0 0 0;
+  --well-scale: 1;
+  --shadow-color: 0 0 0;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -53,9 +71,16 @@
     --count-hot: #df6a47;
     --focus: #6f98ae;
     --accent: #6ee7b7;
+    --accent-strong: #6ee7b7;
+    --on-accent: #06281a;
     --negative: #fca5a5;
     --warning: #fcd34d;
     --info: #7dd3fc;
+    --overlay-rgb: 255 255 255;
+    --overlay-scale: 1;
+    --well-rgb: 0 0 0;
+    --well-scale: 1;
+    --shadow-color: 0 0 0;
   }
 }
 * {
@@ -102,7 +127,7 @@ button {
 .surface {
   border: 1px solid var(--rule);
   background: var(--paper-raised);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 1px 2px rgb(var(--shadow-color) / 0.06);
 }
 .field {
   border: 1px solid var(--rule);
@@ -124,17 +149,7 @@ button {
 .font-display { font-family: var(--font-display); }
 .font-data, .font-mono, table, [data-count], .count-rule { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .floor {
-  color-scheme: dark;
   background: var(--paper);
-  --paper: #101915;
-  --paper-raised: #16211c;
-  --ink: #e8eee7;
-  --ink-muted: #aebbb3;
-  --rule: #2a3a32;
-  --accent: #6ee7b7;
-  --negative: #fca5a5;
-  --warning: #fcd34d;
-  --info: #7dd3fc;
 }
 .pressable {
   transition:
@@ -155,11 +170,11 @@ button {
   left: 0.75rem;
   margin-inline: auto;
   max-width: 42rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--rule);
   border-radius: 1rem 1rem 0.4rem 0.4rem;
   padding: 0.5rem;
-  background: rgba(14, 19, 15, 0.96);
-  box-shadow: 0 -10px 34px rgba(0, 0, 0, 0.42);
+  background: color-mix(in srgb, var(--paper-raised) 96%, transparent);
+  box-shadow: 0 -10px 34px rgb(var(--shadow-color) / 0.22);
   backdrop-filter: blur(22px) saturate(145%);
 }
 .mobile-scroll-rail {
@@ -183,11 +198,12 @@ h2 {
 }
 kbd {
   margin-left: 0.4rem;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--rule);
   border-radius: 0.35rem;
   padding: 0.1rem 0.35rem;
+  font-family: var(--font-data);
   font-size: 0.7rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--paper);
 }
 @keyframes deal {
   from {
@@ -556,7 +572,7 @@ kbd {
   header,
   .mobile-action-dock {
     backdrop-filter: none !important;
-    background: #151916 !important;
+    background: var(--paper-raised) !important;
   }
 }
 @media (max-width: 639px) {
@@ -579,7 +595,7 @@ kbd {
 @media (prefers-contrast: more) {
   .surface,
   .field {
-    border-color: rgba(255, 255, 255, 0.32);
+    border-color: var(--ink-muted);
   }
 }
 

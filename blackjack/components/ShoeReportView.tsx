@@ -54,11 +54,11 @@ export function ShoeReportView({
             ["Duration", durationLabel(report.durationMs)],
             ["Net result", `${report.netResult >= 0 ? "+" : ""}$${report.netResult.toFixed(2)}`],
             ["Decisions", report.decisions],
-          ].map(([label, value]) => <div key={label} className="rounded-xl bg-black/20 p-4"><p className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}
+          ].map(([label, value]) => <div key={label} className="rounded-xl bg-well/20 p-4"><p className="text-xs uppercase tracking-wide text-[var(--ink-muted)]">{label}</p><strong className="mt-1 block text-2xl">{value}</strong></div>)}
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {(Object.entries(report.categories) as Array<[FullShoeGradingCategory, { correct: number; total: number; accuracy: number }]>).map(([category, result]) => (
-            <div key={category} className="rounded-xl border border-white/[.06] bg-white/[.025] p-4">
+            <div key={category} className="rounded-xl border border-overlay/[.06] bg-overlay/[.025] p-4">
               <p className="text-sm font-semibold">{category}</p>
               <p className="mt-2 text-3xl font-semibold text-[var(--accent)]">{result.accuracy}%</p>
               <p className="mt-1 text-xs text-[var(--ink-muted)]">{result.correct} of {result.total} correct</p>
