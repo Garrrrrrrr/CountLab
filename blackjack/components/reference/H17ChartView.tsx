@@ -26,7 +26,7 @@ const FIXED_RULES = "6 decks · Dealer hits soft 17 · Double after split";
 
 const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<ChartSurrenderRule>> = [
   { value: "late", label: "Late", ariaLabel: "Late surrender (LS)" },
-  { value: "early10", label: "Early vs 10", ariaLabel: "Early surrender vs 10 (ES10)" },
+  { value: "early10", label: "Early vs 10", ariaLabel: "Early vs 10 (early surrender, ES10)" },
 ];
 
 const PRACTICE = [

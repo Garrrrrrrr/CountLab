@@ -112,12 +112,12 @@ test("surrender saves once, only on a real change", async ({ page }, testInfo) =
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
-  await expect(page.getByRole("radio", { name: "No surrender" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "None (no surrender)" })).toBeChecked();
   await expect.poll(() => savedSurrender(page)).toBe("none");
   await page.waitForTimeout(900);
   expect(await writes()).toBe(1);
 
-  await page.getByRole("radio", { name: "Early surrender vs 10 (ES10)" }).click();
+  await page.getByRole("radio", { name: "Early vs 10 (early surrender, ES10)" }).click();
   await expect.poll(() => savedSurrender(page)).toBe("early");
   await expect(page.getByRole("link", { name: /Training default rules/ })).toContainText("ES10");
   await expect(page.getByText("Saved on this device", { exact: true })).toBeVisible();
@@ -133,14 +133,14 @@ test("the H17 chart never rewrites a saved 'no surrender'", async ({ page }, tes
   await hydrated(page);
   await expect(page.getByText("Your saved table has no surrender; skip the surrender table.")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Late surrender (LS)" })).not.toBeChecked();
-  await expect(page.getByRole("radio", { name: "Early surrender vs 10 (ES10)" })).not.toBeChecked();
+  await expect(page.getByRole("radio", { name: "Early vs 10 (early surrender, ES10)" })).not.toBeChecked();
   await page.getByRole("button", { name: "What is Surrender?" }).click();
   await page.getByLabel("16 versus dealer 10: The chart prints 0+").click();
   await page.waitForTimeout(900);
   expect(await writes()).toBe(0);
   expect(await savedSurrender(page)).toBe("none");
 
-  await page.getByRole("radio", { name: "Early surrender vs 10 (ES10)" }).click();
+  await page.getByRole("radio", { name: "Early vs 10 (early surrender, ES10)" }).click();
   await expect(page.getByTestId("h17-reference-rail-surrender").locator("tbody tr")).toHaveCount(7);
   await expect.poll(() => savedSurrender(page)).toBe("early");
 });
@@ -158,7 +158,7 @@ test("saved rules the reader has not touched follow changes made elsewhere", asy
     window.dispatchEvent(new Event("hilo-storage"));
   }, SETTINGS_KEY);
   await expect(page.getByRole("radio", { name: "Dealer stands on soft 17 (S17)" })).toBeChecked();
-  await expect(page.getByRole("radio", { name: "No surrender" })).toBeChecked();
+  await expect(page.getByRole("radio", { name: "None (no surrender)" })).toBeChecked();
   await expect(page.getByText("This table offers no surrender. Play every hand out from the hand tables.")).toBeVisible();
   await expect(page.getByRole("button", { name: /Reset to/ })).toHaveCount(0);
   // The chart repaints for the new rule: 11 v A hits at S17.
@@ -307,7 +307,7 @@ test("saved rules load without hydration errors on every chart", async ({ page }
     await page.getByRole("heading", { level: 1 }).waitFor();
     // Phones keep the rule controls folded away, so read the inputs directly.
     if (!path.includes("h17")) await expect(page.locator("input[aria-label='1 deck']")).toBeChecked();
-    else await expect(page.locator("input[aria-label='Early surrender vs 10 (ES10)']")).toBeChecked();
+    else await expect(page.locator("input[aria-label='Early vs 10 (early surrender, ES10)']")).toBeChecked();
   }
   expect(problems).toEqual([]);
 });

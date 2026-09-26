@@ -17,7 +17,8 @@ import { SavedRuleNote } from "./SavedRuleNote";
 const RULE_LAYOUT = "grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 md:grid-cols-1 md:justify-items-start md:gap-y-1";
 
 // The shared SegmentedControl's legend does not name its group for assistive
-// technology, so every option carries its rule in its own accessible name.
+// technology, so every option carries its rule in its own accessible name,
+// which contains the visible label so voice control can say what it sees.
 const DECK_OPTIONS: ReadonlyArray<SegmentOption<DeckChoice>> = [
   { value: "1", label: "1", ariaLabel: "1 deck" },
   { value: "2", label: "2", ariaLabel: "2 decks" },
@@ -32,9 +33,9 @@ const DAS_OPTIONS: ReadonlyArray<SegmentOption<"yes" | "no">> = [
   { value: "no", label: "No", ariaLabel: "Double after split: no" },
 ];
 const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<SurrenderRule>> = [
-  { value: "none", label: "None", ariaLabel: "No surrender" },
+  { value: "none", label: "None", ariaLabel: "None (no surrender)" },
   { value: "late", label: "Late", ariaLabel: "Late surrender (LS)" },
-  { value: "early", label: "Early vs 10", ariaLabel: "Early surrender vs 10 (ES10)" },
+  { value: "early", label: "Early vs 10", ariaLabel: "Early vs 10 (early surrender, ES10)" },
 ];
 const DOUBLE_OPTIONS: ReadonlyArray<SegmentOption<StrategyChartRules["doubleRule"]>> = [
   { value: "any", label: "Any two cards", ariaLabel: "Double on any two cards" },
@@ -42,8 +43,8 @@ const DOUBLE_OPTIONS: ReadonlyArray<SegmentOption<StrategyChartRules["doubleRule
   { value: "10-11", label: "Hard 10–11", ariaLabel: "Double on hard 10–11 only" },
 ];
 const HOLE_CARD_OPTIONS: ReadonlyArray<SegmentOption<"peek" | "enhc">> = [
-  { value: "peek", label: "Dealer peeks (US)", ariaLabel: "Dealer peeks for blackjack (US)" },
-  { value: "enhc", label: "No hole card (ENHC)", ariaLabel: "No hole card, European (ENHC)" },
+  { value: "peek", label: "Dealer peeks (US)", ariaLabel: "Dealer peeks (US) for blackjack" },
+  { value: "enhc", label: "No hole card (ENHC)", ariaLabel: "No hole card (ENHC), European" },
 ];
 
 const enable = <T extends string>(options: ReadonlyArray<SegmentOption<T>>, disabled: boolean) =>
