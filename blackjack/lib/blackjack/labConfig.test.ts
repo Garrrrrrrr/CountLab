@@ -113,7 +113,7 @@ describe("venues", () => {
   });
 
   it("leaves the play mode alone for venues saved without one", () => {
-    const rules = { ...preset.rules };
+    const rules: typeof DEFAULT_ADVANTAGE_RULES = { ...preset.rules };
     delete rules.useIndices;
     expect("useIndices" in venuePatch({ ...preset, rules })).toBe(false);
   });
