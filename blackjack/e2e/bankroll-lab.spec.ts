@@ -159,6 +159,16 @@ test("every choice group is named by its question", async ({ page }, testInfo) =
   await expect(page.getByRole("group", { name: "Blackjack pays" }).getByRole("radio", { name: "6:5" })).toBeVisible();
 });
 
+test("the optimal ramp shows its trade-off before it's built", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await openLab(page);
+  const tradeOff = page.getByTestId("optimal-trade-off");
+  await expect(tradeOff).toContainText(/Its SCORE is \$\d+ against \$\d+ for your ramp, so it earns less than your ramp at the same risk\./);
+  await page.getByRole("button", { name: "Build optimal ramp" }).click();
+  await expect(tradeOff).toHaveCount(0);
+});
+
 test("editing a step reprices the setup", async ({ page }) => {
   await prepare(page);
   await openLab(page);

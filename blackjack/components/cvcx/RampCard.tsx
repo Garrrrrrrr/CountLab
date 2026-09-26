@@ -20,6 +20,7 @@ const ROUNDING = [
   { value: 0.5, label: "Half units", phrase: "half units" },
   { value: 1, label: "Whole units", phrase: "whole units" },
 ] as const;
+const SCORE_DEFINITION = "Expected win per 100 rounds with a $10,000 bankroll at 13.5% risk of ruin, with the unit sized to match. It compares ramps and games regardless of stakes; higher is better.";
 const presetLabel = (name: string) => name.replace("-", "–");
 const spreadLabel = (spread: { min: number; max: number }) => `${unitLabel(spread.min)}–${unitLabel(spread.max)}`;
 
@@ -51,6 +52,9 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
   const optimalUnitNote = Number.isFinite(model.optimalUnit) && model.optimalUnit > 0
     ? `Sized for your ${riskLabel(config.targetRisk)} risk target, it suits a ${money(model.optimalUnit, 2)} unit.`
     : "This game has no edge to size a unit against.";
+  const yourScore = model.noBets ? 0 : model.result.cScore;
+  const scoreRatio = yourScore > 0 ? model.optimalScore / yourScore : Infinity;
+  const tradeOff = scoreRatio < 0.98 ? "less than" : scoreRatio > 1.02 ? "more than" : "about the same as";
   const maxBet = lab.directoryHints?.maxBet ?? null;
 
   const selectCount = (trueCount: number) => {
@@ -92,9 +96,19 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
               </GhostButton>
               <InlineUndo lab={lab} source="optimal" />
             </div>
-            <p className="min-w-0 flex-1 basis-64 text-xs leading-5 text-[var(--ink-muted)]">
-              A <span className="whitespace-nowrap">Kelly-weighted<HelpTip label="a Kelly-weighted ramp">Each count&apos;s bet grows with your edge there, divided by how much that count swings. It is the betting pattern that grows a bankroll fastest.</HelpTip></span> ramp for this game, capped at your {unitLabel(config.maxSpread)}× maximum spread and rounded to {rounding?.phrase ?? `${config.chipIncrement} units`}. It changes only the ramp. {optimalUnitNote}
-            </p>
+            <div className="min-w-0 flex-1 basis-64 text-xs leading-5 text-[var(--ink-muted)]">
+              <p>
+                A <span className="whitespace-nowrap">Kelly-weighted<HelpTip label="a Kelly-weighted ramp">Each count&apos;s bet grows with your edge there, divided by how much that count swings, starting from 1 unit at the first count where you have an edge. That makes a smooth ramp, but not always the one that earns the most: a steeper ramp that reaches its top bet sooner can earn more at the same risk. SCORE compares the two.</HelpTip></span> ramp for this game, capped at your {unitLabel(config.maxSpread)}× maximum spread and rounded to {rounding?.phrase ?? `${config.chipIncrement} units`}. It changes only the ramp. {optimalUnitNote}
+              </p>
+              {!model.usingOptimal && model.optimalScore > 0 && (
+                <p className="mt-1" data-testid="optimal-trade-off">
+                  Its <Term definition={SCORE_DEFINITION}>SCORE</Term> is <b className="font-data text-[var(--ink)]">{money(model.optimalScore)}</b>
+                  {yourScore > 0
+                    ? <> against <b className="font-data text-[var(--ink)]">{money(yourScore)}</b> for your ramp, so it earns {tradeOff} your ramp at the same risk.</>
+                    : model.noBets ? "; you aren't betting at any count yet." : "; your current ramp loses in this game."}
+                </p>
+              )}
+            </div>
           </div>
           {model.staleOptimal && (
             <Callout tone="info" className="mt-3" action={<GhostButton size="compact" onClick={lab.buildOptimal}>Rebuild optimal ramp</GhostButton>}>

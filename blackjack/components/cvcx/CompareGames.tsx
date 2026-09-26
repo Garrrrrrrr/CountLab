@@ -38,7 +38,7 @@ export function CompareGames({ lab, className = "" }: { lab: Lab; className?: st
         analyticsSection="compare_against_the_other_games"
       >
         <p className="max-w-2xl text-sm leading-6 text-[var(--ink-muted)]">
-          The nine audited games with your {money(config.baseBet)} unit and {money(config.bankroll)} bankroll, ranked by SCORE, which compares games regardless of stakes. Price them with your own ramp to see what switching tables alone would do, or give each game its own optimal ramp, capped at your {config.maxSpread}× maximum spread.
+          The nine audited games with your {money(config.baseBet)} unit and {money(config.bankroll)} bankroll, ranked by SCORE, which compares games regardless of stakes. Price them with your own ramp to see what switching tables alone would do, or give each game the ramp “Build optimal ramp” would make for it, capped at your {config.maxSpread}× maximum spread. That ramp is smooth, so it can score below a steeper preset.
         </p>
         <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2">
           <LabSegmented<CompareBasis>

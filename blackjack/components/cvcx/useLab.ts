@@ -84,6 +84,9 @@ function useLabModel(config: LabConfig) {
       scenario,
       result,
       optimalRamp,
+      /** The optimal ramp's SCORE, so its trade-off against the current ramp shows before anyone builds it. */
+      optimalScore: analyzeCvcx(scenario, optimalRamp, config.baseBet).cScore,
+      usingOptimal: sameRamp(activeRamp, optimalRamp),
       /** The unit the optimal ramp would suit at the target risk; shown as guidance, never applied by the ramp builder. */
       optimalUnit: riskSizedUnit(scenario, optimalRamp),
       noBets,
