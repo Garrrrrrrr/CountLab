@@ -20,7 +20,7 @@ interface SectionRow extends SectionResult {
 /**
  * The end-of-exam report.
  *
- * `SessionSummary` is the shared end-of-drill screen, but it has no notion of a
+ * `DrillSummary` (components/drill) is the shared end-of-drill screen, but it has no notion of a
  * pass, a per-section floor, or a certification date, so the exam gets its own
  * report rather than bending that one out of shape for a single caller.
  */

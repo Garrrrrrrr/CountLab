@@ -1,8 +1,28 @@
 "use client";
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, RefObject, useEffect, useRef } from "react";
 import { GhostButton, HelpTip, PageHeader, ProgressMeter, type Tone } from "../ui";
 
 export type DrillPhase = "setup" | "play" | "summary";
+
+/** The drill phase last shown on this page; module-level so it survives a drill mounting a new frame per phase. */
+let lastPhase: { path: string; phase: DrillPhase } | null = null;
+/**
+ * Entering a new phase of the same drill returns the page to the top and
+ * moves focus to that phase's `[data-drill-focus]` element, or its heading.
+ * Works whether a drill keeps one frame and changes `phase` or renders a new
+ * frame (or summary) per phase.
+ */
+export function usePhaseEntry(phase: DrillPhase, root: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const path = location.pathname;
+    const previous = lastPhase;
+    lastPhase = { path, phase };
+    if (!previous || previous.path !== path || previous.phase === phase) return;
+    window.scrollTo({ top: 0 });
+    const target = root.current?.querySelector<HTMLElement>("[data-drill-focus]") ?? root.current?.querySelector<HTMLElement>("h1");
+    target?.focus({ preventScroll: true });
+  }, [phase, root]);
+}
 
 /**
  * The page scaffold every drill shares: Setup -> Play -> Summary.
@@ -15,14 +35,7 @@ export type DrillPhase = "setup" | "play" | "summary";
  */
 export function DrillFrame({ eyebrow, title, description, actions, phase, width = "default", children }: { eyebrow: string; title: string; description?: ReactNode; actions?: ReactNode; phase: DrillPhase; width?: "default" | "wide"; children: ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
-  const previous = useRef(phase);
-  useEffect(() => {
-    if (previous.current === phase) return;
-    previous.current = phase;
-    window.scrollTo({ top: 0 });
-    const target = root.current?.querySelector<HTMLElement>("[data-drill-focus]") ?? root.current?.querySelector<HTMLElement>("h1");
-    target?.focus({ preventScroll: true });
-  }, [phase]);
+  usePhaseEntry(phase, root);
   return (
     <div ref={root} data-drill-phase={phase} className={`mx-auto min-w-0 ${width === "wide" ? "max-w-[90rem]" : "max-w-5xl"}`}>
       {phase === "play" ? (

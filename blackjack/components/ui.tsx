@@ -192,50 +192,6 @@ export function NumberField({
   );
 }
 
-/**
- * A number that may be left blank (e.g. an amount not yet entered). Unlike
- * NumberField it never substitutes a value: empty stays null, and a typed
- * minus sign is kept rather than clamped away.
- */
-export function OptionalNumberField({ label, value, onValueChange, min, max, prefix, suffix, placeholder, analyticsField, help, invalid = false, className = "" }: { label: string; value: number | null; onValueChange: (value: number | null) => void; min?: number; max?: number; prefix?: string; suffix?: string; placeholder?: string; analyticsField?: string; help?: ReactNode; invalid?: boolean; className?: string }) {
-  const [draft, setDraft] = useState(value === null ? "" : String(value));
-  const [focused, setFocused] = useState(false);
-  const helpId = useId();
-  useEffect(() => { if (!focused) setDraft(value === null ? "" : String(value)); }, [value, focused]);
-  const parse = (raw: string) => {
-    if (raw.trim() === "") return null;
-    const parsed = Number(raw);
-    if (!Number.isFinite(parsed)) return undefined;
-    return Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed));
-  };
-  return (
-    <label className="grid min-w-0 gap-2 text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">
-      {label}
-      <span className={`field flex min-h-11 w-full min-w-0 items-center rounded-xl ${focused ? "field-active" : ""} ${invalid ? "!border-[var(--negative)]" : ""} ${className}`}>
-        {prefix && <span className="pl-3 text-[var(--ink-muted)]">{prefix}</span>}
-        <input
-          inputMode="decimal"
-          type="text"
-          value={draft}
-          placeholder={placeholder}
-          aria-invalid={invalid || undefined}
-          aria-describedby={help ? helpId : undefined}
-          data-analytics-field={analyticsField}
-          onFocus={() => setFocused(true)}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            const parsed = parse(event.target.value);
-            if (parsed !== undefined) onValueChange(parsed);
-          }}
-          onBlur={() => { setFocused(false); const parsed = parse(draft); setDraft(parsed === null || parsed === undefined ? "" : String(parsed)); }}
-          className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-[.9rem] text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]"
-        />
-        {suffix && <span className="shrink-0 pr-3 text-[.85rem] text-[var(--ink-muted)]">{suffix}</span>}
-      </span>
-      {help && <span id={helpId} className="text-xs font-normal leading-5">{help}</span>}
-    </label>
-  );
-}
 export const Switch = ({
   label,
   checked,
@@ -293,7 +249,7 @@ export function Tabs<T extends string>({ value, onChange, items, label = "Sectio
   }}>{items.map((item) => <GhostButton key={item.value} selected={value === item.value} disabled={!ready} id={`${id}-${item.value}`} role={panelId ? "tab" : undefined} aria-controls={panelId} aria-selected={panelId ? value === item.value : undefined} aria-pressed={panelId ? undefined : value === item.value} tabIndex={value === item.value ? 0 : -1} onClick={() => onChange(item.value)} className="shrink-0 whitespace-nowrap">{item.label}</GhostButton>)}</div></>;
 }
 export function StickyBar({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-[var(--rule)] bg-[var(--paper-raised)]/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border ${className}`}>{children}</div>;
+  return <div className={`sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-4 mb-4 border-y border-[var(--rule)] bg-[var(--paper-raised)] px-4 py-2.5 sm:mx-0 sm:rounded-lg sm:border ${className}`}>{children}</div>;
 }
 export function CountRule({ value, min = -5, max = 10, label = "True count" }: { value?: number; min?: number; max?: number; label?: string }) {
   const position = value === undefined ? undefined : `${Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100))}%`;
@@ -423,7 +379,7 @@ export function PageHeader({ eyebrow, title, description, actions, children, com
     <div className={`${compact ? "mb-4" : "mb-6"} flex flex-wrap items-end justify-between gap-x-6 gap-y-4`}>
       <div className="min-w-0 max-w-3xl">
         {eyebrow && <p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--accent)]">{eyebrow}</p>}
-        <h1 className={`mt-2 font-display font-semibold ${compact ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"}`}>{title}</h1>
+        <h1 tabIndex={-1} className={`mt-2 font-display font-semibold outline-none ${compact ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"}`}>{title}</h1>
         {description && <p data-mobile-compact-description className="mt-3 text-[var(--ink-muted)]">{description}</p>}
         {children}
       </div>
@@ -456,13 +412,16 @@ export type SegmentOption<T extends string> = { value: T; label: ReactNode; icon
 export function SegmentedControl<T extends string>({ label, value, onChange, options, name, size = "default", fullWidth = false, className = "", hideLabel = false, help, analyticsField }: { label: string; value: T | null | undefined; onChange: (value: T) => void; options: ReadonlyArray<SegmentOption<T>>; name?: string; size?: "default" | "compact"; fullWidth?: boolean; className?: string; hideLabel?: boolean; help?: ReactNode; analyticsField?: string }) {
   const generated = useId();
   const groupName = name ?? `segment-${generated}`;
+  const labelId = `${generated}-label`;
+  // Named with aria-labelledby: a <legend> only names its fieldset as the first
+  // child, which would leave no room for the help tip beside it.
   return (
-    <fieldset className={`m-0 grid min-w-0 gap-2 border-0 p-0 ${className}`}>
+    <fieldset aria-labelledby={labelId} className={`m-0 grid min-w-0 gap-2 border-0 p-0 ${className}`}>
       <div className={hideLabel ? "sr-only" : "flex items-center gap-1"}>
-        <legend className="float-left p-0 text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">{label}</legend>
+        <span id={labelId} className="text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">{label}</span>
         {help && !hideLabel && <HelpTip label={label}>{help}</HelpTip>}
       </div>
-      <div className={`${fullWidth ? "flex w-full" : "inline-flex max-w-full"} clear-both min-w-0 gap-1 overflow-x-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-1`}>
+      <div className={`${fullWidth ? "flex w-full" : "inline-flex max-w-full"} min-w-0 gap-1 overflow-x-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-1`}>
         {options.map((option) => {
           const selected = option.value === value;
           return (

@@ -18,9 +18,8 @@ const RULE_LAYOUT = "justify-items-start gap-y-1";
 
 const SURRENDER_HELP = "Surrender gives up half your bet instead of playing the hand. Late (LS): offered after the dealer checks for blackjack. Early vs 10 (ES10): offered before that check when the dealer shows a 10, and late against an ace. Saved to your table rules, so the drills use it too.";
 
-// The shared SegmentedControl's legend does not name its group for assistive
-// technology, so every option carries its rule in its own accessible name,
-// which contains the visible label so voice control can say what it sees.
+// Each option's accessible name carries its unit ("1 deck", not "1") and
+// contains the visible label, so voice control can say what it sees.
 const DECK_OPTIONS: ReadonlyArray<SegmentOption<DeckChoice>> = [
   { value: "1", label: "1", ariaLabel: "1 deck" },
   { value: "2", label: "2", ariaLabel: "2 decks" },

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
+import { usePhaseEntry } from "./frame";
 import type { DrillType, Mistake, Session } from "@/lib/statistics/storage";
 import { Button, ButtonLink, Disclosure, GhostButton, Panel, PanelHeader, ProgressMeter, StatTile, type Tone } from "../ui";
 
@@ -49,9 +50,26 @@ export function DrillSummary({ session, onNew, onRetry, onChangeSetup, newLabel 
     { label: "Average response", value: `${(session.averageResponseTime / 1000).toFixed(1)}s` },
     { label: "Best streak", value: session.bestStreak, sub: "correct in a row" },
   ];
+  const root = useRef<HTMLDivElement>(null);
+  usePhaseEntry("summary", root);
   const nextDrill = next === undefined ? NEXT_DRILL[session.drill] : next;
   const rows = breakdown ? [...breakdown.rows].filter((row) => row.total > 0).sort((a, b) => a.correct / a.total - b.correct / b.total) : [];
   const shownRows = breakdown?.limit ? rows.slice(0, breakdown.limit) : rows;
+  const hiddenRows = rows.slice(shownRows.length);
+  const breakdownList = (items: typeof rows) => (
+    <ul className="space-y-3">
+      {items.map((row) => {
+        const share = row.correct / row.total;
+        const label = `${row.label}: ${row.correct} of ${row.total} correct`;
+        return (
+          <li key={row.label}>
+            <div className="mb-1 flex justify-between gap-3 text-sm"><span>{row.href ? <Link href={row.href} className="hover:underline">{row.label}</Link> : row.label}</span><span className="font-data text-[var(--ink-muted)]">{row.correct}/{row.total}</span></div>
+            <ProgressMeter label={label} value={row.correct} max={row.total} tone={share >= 0.85 ? "good" : share >= 0.7 ? "warn" : "bad"} valueText={`${Math.round(share * 100)}%`} />
+          </li>
+        );
+      })}
+    </ul>
+  );
   const mistakes = session.mistakes;
   const mistakeList = (items: readonly Mistake[], offset = 0) => (
     <ol className="space-y-2.5">
@@ -69,7 +87,7 @@ export function DrillSummary({ session, onNew, onRetry, onChangeSetup, newLabel 
     </ol>
   );
   return (
-    <div className="mx-auto min-w-0 max-w-3xl space-y-5">
+    <div ref={root} className="mx-auto min-w-0 max-w-3xl space-y-5">
       <div>
         <p className="font-data text-xs font-semibold uppercase tracking-[.18em] text-[var(--accent)]">{eyebrow}</p>
         <h1 tabIndex={-1} data-drill-focus="" className="mt-2 font-display text-4xl font-semibold outline-none">{title ?? `${session.correct} / ${session.questions}`}</h1>
@@ -87,18 +105,8 @@ export function DrillSummary({ session, onNew, onRetry, onChangeSetup, newLabel 
       {shownRows.length > 0 && (
         <Panel>
           <PanelHeader title={breakdown!.title} description="Weakest first." />
-          <ul className="space-y-3">
-            {shownRows.map((row) => {
-              const share = row.correct / row.total;
-              const label = `${row.label}: ${row.correct} of ${row.total} correct`;
-              return (
-                <li key={row.label}>
-                  <div className="mb-1 flex justify-between gap-3 text-sm"><span>{row.href ? <Link href={row.href} className="hover:underline">{row.label}</Link> : row.label}</span><span className="font-data text-[var(--ink-muted)]">{row.correct}/{row.total}</span></div>
-                  <ProgressMeter label={label} value={row.correct} max={row.total} tone={share >= 0.85 ? "good" : share >= 0.7 ? "warn" : "bad"} valueText={`${Math.round(share * 100)}%`} />
-                </li>
-              );
-            })}
-          </ul>
+          {breakdownList(shownRows)}
+          {hiddenRows.length > 0 && <Disclosure className="mt-3" summary={`Show ${hiddenRows.length} more`}>{breakdownList(hiddenRows)}</Disclosure>}
         </Panel>
       )}
       {detail ?? (mistakes.length > 0 && (

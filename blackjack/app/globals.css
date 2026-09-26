@@ -699,6 +699,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .lab-workspace > .lab-panel { margin-bottom: 1rem; }
   .lab-results { position: static !important; max-height: none !important; overflow: visible !important; }
   .lab-tabs, .lab-dock, .lab-next { display: none !important; }
+}
 
 /* === reference-charts === */
 /* The strategy charts: /reference, /reference/deviations, /reference/h17-chart. */
@@ -892,6 +893,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   [data-reference-page] .ref-hand-col { width: 30px; }
   [data-reference-page] .ref-grid { border-spacing: 1px; }
   [data-reference-page] .ref-rail { overflow: visible; }
+}
 
 /* === counting-drills === */
 /* While a counting drill is being played on a phone or tablet, the drill owns
@@ -917,6 +919,7 @@ html:has([data-counting-play]) {
   [data-counting-play] section[aria-label="Session progress"] > div > :first-child { min-width: 0; }
   /* Answers stay large (and above 16px, so iOS never zooms into the field). */
   [data-counting-drill] input[data-answer-field] { font-size: 1.75rem !important; }
+}
 
 /* === strategy-drills === */
 /* The H17 chart keypad also serves touch screens 1024px and wider (a tablet in

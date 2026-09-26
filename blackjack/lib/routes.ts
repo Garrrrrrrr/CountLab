@@ -112,7 +112,7 @@ export const ROUTE_DESCRIPTIONS: Record<string, string> = {
   "/directory": "Find published casino games by location, table limits, reported rules, and report date.",
   "/bet-spread-recommender": "Compare candidate spreads for your bankroll and preferred risk level.",
   "/simulation": "Stress-test a saved game through reproducible simulations and inspect possible outcomes.",
-  "/journal": "Record sessions and transactions, then compare actual results with your expected performance.",
+  "/journal": "Log casino sessions and bankroll deposits, then see whether your results match what the game should pay.",
   "/compare": "Compare games and bet ramps side by side to understand which assumptions change the result.",
   "/trip-planner": "Choose a bankroll and estimate the range of outcomes over your next trip.",
   "/practice": "Start with running count, learn strategy, and combine your skills in a full shoe.",

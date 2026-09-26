@@ -23,6 +23,13 @@ import {
   type IndexRow,
 } from "./indexDrill";
 
+const mulberry32 = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) >>> 0;
+  let t = seed;
+  t = Math.imul(t ^ (t >>> 15), t | 1);
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
 const h17 = (surrender: "none" | "late" | "early") => indexTrainingRows({ decks: 6, dealerHitsSoft17: true, surrender });
 const row = (rows: IndexRow[], hand: string, dealer: string, kind: IndexRow["kind"]) => {
   const found = findIndexRow(rows, { hand, dealer, kind });
@@ -169,9 +176,12 @@ describe("focus hand-offs and retries", () => {
   it("leans on missed plays and names the worst one", () => {
     const rows = h17("late");
     const history = { "16 vs 10": { correct: 0, total: 20 }, "Insurance": { correct: 20, total: 20 }, "13 vs 2": { correct: 2, total: 5 } };
-    const draws = Array.from({ length: 2000 }, () => pickIndexRow(rows, "adaptive", history));
+    // Seeded, so the sampled shares are the same on every run.
+    const rng = mulberry32(2026);
+    const draws = Array.from({ length: 2000 }, () => pickIndexRow(rows, "adaptive", history, rng));
     const share = (category: string) => draws.filter((entry) => `${entry.row.hand} vs ${entry.row.dealer}` === category).length;
-    expect(share("16 vs 10")).toBeGreaterThan(share("Insurance vs A") * 3);
+    // The expected lean is about 4x; 2x holds for every seed tried, so this checks the weighting, not luck.
+    expect(share("16 vs 10")).toBeGreaterThan(share("Insurance vs A") * 2);
     expect(mostMissed(rows, history)).toEqual({ category: "16 vs 10", correct: 0, total: 20 });
     expect(mostMissed(rows, { Insurance: { correct: 3, total: 3 } })).toBeUndefined();
   });

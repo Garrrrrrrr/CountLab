@@ -5,10 +5,9 @@ import { parseAmount, type AmountEntry } from "@/lib/blackjack/journalForm";
 const textOf = (value: AmountEntry) => typeof value === "number" ? String(value) : "";
 
 /**
- * A dollar amount that may be blank. It looks and behaves like the kit's
- * OptionalNumberField, except that it reads "$1,250" as 1250 and reports text
- * that isn't a number as "invalid", keeping it on screen, where the kit field
- * would fall back to the last value that parsed ("1" of "1,250"). The parent
+ * A dollar amount that may be blank. It reads "$1,250" as 1250 and reports
+ * text that isn't a number as "invalid", keeping it on screen rather than
+ * falling back to the last value that parsed ("1" of "1,250"). The parent
  * shows the error message, so it can sit below a row of controls.
  */
 export function AmountField({ label, value, onValueChange, onBlur, invalid = false, describedBy, analyticsField }: {
