@@ -46,8 +46,8 @@ const DOUBLE_OPTIONS: ReadonlyArray<SegmentOption<StrategyChartRules["doubleRule
   { value: "10-11", label: narrowHard("10–11"), ariaLabel: "Double on hard 10–11 only" },
 ];
 const HOLE_CARD_OPTIONS: ReadonlyArray<SegmentOption<"peek" | "enhc">> = [
-  { value: "peek", label: "Dealer peeks (US)", ariaLabel: "Dealer peeks (US) for blackjack" },
-  { value: "enhc", label: "No hole card (ENHC)", ariaLabel: "No hole card (ENHC), European" },
+  { value: "peek", label: <><span className="max-[359px]:hidden">Dealer peeks</span><span className="min-[360px]:hidden">Peeks</span> (US)</>, ariaLabel: "Dealer peeks (US) for blackjack" },
+  { value: "enhc", label: <>No hole card<span className="max-[359px]:hidden"> (ENHC)</span></>, ariaLabel: "No hole card (ENHC), European" },
 ];
 
 const enable = <T extends string>(options: ReadonlyArray<SegmentOption<T>>, disabled: boolean) =>
