@@ -653,10 +653,11 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
 @media (min-width: 768px) { .ref-hand-col { width: 40px; } }
 @media (max-width: 359px) { .ref-hand-col { width: 28px; } }
 
-/* Cells: 32px rows for basic strategy; index rows are taller for the chip. */
+/* Cells: 32px rows for basic strategy; index rows are taller for the chip,
+   and still short enough for the whole hard table on a phone's first screen. */
 .ref-cell { font-size: 13px; outline: none; }
 .ref-cell-basic { height: 32px; }
-.ref-cell-index { height: 44px; }
+.ref-cell-index { height: 38px; }
 @media (min-width: 768px) {
   .ref-cell { font-size: 14px; }
   .ref-cell-index { height: 40px; }

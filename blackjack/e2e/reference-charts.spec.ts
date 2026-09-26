@@ -355,6 +355,19 @@ test("the folded rules panel keeps labels clear of their options and Done in vie
   }
 });
 
+test("the whole hard table is on a phone's first screen in both views", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ["/reference/", "/reference/deviations/"]) {
+    await page.goto(path);
+    await hydrated(page);
+    const hard = await page.getByTestId("chart-rail-hard").boundingBox();
+    const nav = await page.getByRole("navigation", { name: "Mobile navigation" }).boundingBox();
+    expect(hard!.y + hard!.height, path).toBeLessThanOrEqual(nav!.y);
+  }
+});
+
 test("saved rules load without hydration errors on every chart", async ({ page }) => {
   await prepare(page, { settings: { decks: 1, dealerHitsSoft17: false, doubleAfterSplit: false, surrender: "early" } });
   const problems: string[] = [];

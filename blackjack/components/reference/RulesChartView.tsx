@@ -214,7 +214,8 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
         description={view === "index"
           ? "Basic strategy plus every Hi-Lo index play (also called a deviation): the hands where the true count changes the best play, and what each one is worth."
           : "The best play for every starting hand under your table rules. Find your hand on the left and the dealer's upcard across the top; select any cell to see the play in plain words."}
-        shortDescription={view === "index" ? "Basic strategy plus the count-based plays. Tap any cell to see why." : "Find your hand, then the dealer's card. Tap any cell to see why."}
+        // The index view's taller rows need the line on phones; its key follows the hard table.
+        shortDescription={view === "index" ? undefined : "Find your hand, then the dealer's card. Tap any cell to see why."}
         printLine={`Rules: ${rulesSummary(rules, "long")}`}
         actions={(
           <>

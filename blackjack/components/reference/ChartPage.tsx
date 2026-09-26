@@ -6,12 +6,12 @@ import { useHydrated } from "@/lib/useMediaQuery";
 
 /**
  * The top of a chart page. On phones it keeps to the title, one line of
- * guidance and the actions, so the first table starts on the first screen;
- * the full description and the eyebrow come back from the small breakpoint,
- * and on wide screens the actions sit beside the title. `printLine` appears
- * only on paper, under the title.
+ * guidance (or none, where the first table needs the room) and the actions,
+ * so the first table starts on the first screen; the full description and the
+ * eyebrow come back from the small breakpoint, and on wide screens the actions
+ * sit beside the title. `printLine` appears only on paper, under the title.
  */
-export function ChartHeader({ title, description, shortDescription, actions, printLine }: { title: string; description: ReactNode; shortDescription: ReactNode; actions: ReactNode; printLine?: string }) {
+export function ChartHeader({ title, description, shortDescription, actions, printLine }: { title: string; description: ReactNode; shortDescription?: ReactNode; actions: ReactNode; printLine?: string }) {
   return (
     <div className="mb-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-3 sm:mb-4 print:mb-2 print:block">
       <div className="min-w-0">
@@ -19,8 +19,8 @@ export function ChartHeader({ title, description, shortDescription, actions, pri
         <h1 className="font-display text-3xl font-semibold sm:mt-2 sm:text-4xl print:mt-0 print:text-2xl">{title}</h1>
         {printLine && <p className="mt-1 hidden text-[10px] text-[var(--ink)] print:block">{printLine}</p>}
       </div>
-      <p data-mobile-compact-description className="-mt-1.5 w-full max-w-4xl text-[var(--ink-muted)] sm:order-last sm:mt-0 print:hidden">
-        <span className="sm:hidden">{shortDescription}</span>
+      <p data-mobile-compact-description className={`-mt-1.5 w-full max-w-4xl text-[var(--ink-muted)] sm:order-last sm:mt-0 print:hidden ${shortDescription ? "" : "max-sm:hidden"}`}>
+        {shortDescription && <span className="sm:hidden">{shortDescription}</span>}
         <span className="hidden sm:inline">{description}</span>
       </p>
       <div className="no-print flex min-w-0 items-center gap-2 max-sm:w-full sm:flex-wrap">{actions}</div>
