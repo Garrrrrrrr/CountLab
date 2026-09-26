@@ -45,3 +45,33 @@ Each of the first three has an e2e regression test that failed on the pre-fix bu
 - Screenshots of all routes in both themes at 1440px and 390px, plus 320px header, drawer, palette, and sign-in views, were reviewed after the changes.
 
 Not re-verified here: authenticated sign-in and sync against a real Supabase project (no credentials in this environment), physical iOS/Android devices, and the numerical models.
+
+---
+
+# Part 2 — tool redesigns and navigation
+
+The first pass left the tools themselves as they were. The second pass rebuilt the five most-used ones and the sidebar on a shared kit, so each works the same way: one clear primary action, plain-language labels with help on demand, and layouts that fit a phone.
+
+## Navigation
+
+The sidebar used to put nearly every tool under two tabs, **Analyze** and **Practice**. It is now five collapsible groups named after what people come to do: **Practice**, **Plan & analyze**, **Track results**, **Table games** and **Reference**. The group you are in opens automatically, and the others remember whether you collapsed them. Each group with a landing page lists it first ("All drills", "Overview", "All games"). `lib/routes.ts` (`NAV_GROUPS`) is the single list behind the sidebar, tool search, breadcrumbs and page titles, so they can no longer drift apart.
+
+A phone's bottom bar can't hold twenty tools. It keeps the four most-used destinations (Dashboard, Practice, Charts, Journal), and a **Menu** button opens the full grouped list.
+
+## Shared kit
+
+`components/ui.tsx` gained accessible segmented controls (native radios with a group name), toggletip help and term definitions, steppers, callouts, empty states, progress meters, a focus-managed `Sheet` (only the top dialog responds to Escape), toasts and a single live announcer. `components/drill/` is a kit for every drill: the same **Setup → Play → Summary** frame, a sticky progress bar, a feedback panel that explains each miss, a summary that ranks weak spots and suggests the next drill, and focus that moves to each new phase.
+
+## Tools
+
+| Tool | What it looks like now |
+| --- | --- |
+| Game & Bankroll Lab | Three numbered steps (Game, Bankroll, Bet ramp) beside a pinned Results card that answers "what do I win, how much does it swing, can my bankroll take it". Ramp presets, a step editor with steppers and a bar chart, an optimal-ramp builder that says what it trades away, a trip outlook, a ranked comparison with other games, and a scenario/venue library. On phones the steps become tabs, with a compact results bar pinned above the bottom nav. |
+| Session Journal | An overview (results vs expectation, bankroll health, chart) with **Log session** as the one primary action. Logging asks only for date, hours and won/lost plus an amount; the game comes preloaded from your last session, a saved venue, a Lab scenario or a Simulator setup, behind "Change game". Sessions, venues, cash movements and import/export are tabs; editing and deposits open in sheets, with unsaved-changes guards. |
+| Strategy charts | A one-line rules bar, a color key, and four clearly titled tables (hard, soft, pairs, surrender first). Any cell explains its play in plain words; the index view marks every count-based change and ranks them. Links go straight into the matching drills. |
+| Counting drills | Named session presets (Starter, One-deck speed, Six-deck casino, …) with a customize panel, a progress card with the benchmark target, a numeric answer pad, and summaries that show where counts drifted. |
+| Strategy drills | One setup (Mixed / Weak spots / Tricky, round length), action buttons with keyboard keys, a feedback panel that shows the hand's place on the chart, and a summary by hand type with "See it on the chart" links. |
+
+## How it was built and checked
+
+Each tool was redesigned from a written spec in its own git worktree, with its own unit and end-to-end tests, then merged. The merged tree was reviewed for accessibility, cross-tool handoffs (Lab scenarios into the Journal, Simulator and other tools; chart ↔ drill links; drills → Statistics and Dashboard), visual consistency in both themes at 1440, 390 and 320px, and dead code.
