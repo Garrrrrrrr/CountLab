@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { announce, Badge, Button, ButtonLink, SegmentedControl } from "@/components/ui";
 import type { SegmentOption } from "@/components/ui";
@@ -16,7 +16,7 @@ import { ChartGrid, softRowLabel } from "./ChartGrid";
 import type { CellPosition } from "./ChartGrid";
 import { H17ChartKey } from "./ChartKey";
 import { ChartHeader, ChartPanel, PrintButton, PrintFooter } from "./ChartPage";
-import { ChartToolbar, JumpRail } from "./ChartToolbar";
+import { ChartToolbar, JumpRail, RulesPanelButton, useRulesPanel } from "./ChartToolbar";
 import { PracticeLinks } from "./PracticeLinks";
 import { SavedRuleNote } from "./SavedRuleNote";
 import { useSavedSurrender } from "./useChartRules";
@@ -48,18 +48,7 @@ export function H17ChartView() {
   const sections = useMemo(() => buildH17Chart(rule), [rule]);
   const cells = useMemo(() => new Map(sections.flatMap((section) => section.cells.flat().map((cell) => [cell.key, cell] as const))), [sections]);
   const charts = useRef<HTMLDivElement>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
-  const rulesButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!panelOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setPanelOpen(false);
-      rulesButton.current?.focus();
-    };
-    addEventListener("keydown", onKeyDown);
-    return () => removeEventListener("keydown", onKeyDown);
-  }, [panelOpen]);
+  const panel = useRulesPanel();
 
   const onSurrender = useCallback((value: ChartSurrenderRule) => {
     if (!choose(value === "early10" ? "early" : "late")) return;
@@ -96,23 +85,9 @@ export function H17ChartView() {
           label="Chart sections"
           className="md:hidden"
           items={[{ href: "#pairs", label: "Pairs" }, { href: "#soft", label: "Soft" }, { href: "#hard", label: "Hard" }, { href: "#surrender", label: "Surrender" }]}
-          leading={(
-            <button
-              ref={rulesButton}
-              type="button"
-              disabled={!hydrated}
-              aria-expanded={panelOpen}
-              aria-controls="h17-rules"
-              onClick={() => setPanelOpen((open) => !open)}
-              className="pressable inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[var(--ink)] bg-[var(--ink)] px-3 font-data text-xs font-semibold text-[var(--paper)] disabled:opacity-60"
-            >
-              <i className="fa-solid fa-sliders" aria-hidden="true" />
-              <span><span className="sr-only">Table rules: </span>6D &middot; H17 &middot; DAS &middot; {rule === "early10" ? "ES10" : "LS"}</span>
-              <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${panelOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-            </button>
-          )}
+          leading={<RulesPanelButton panelId="h17-rules" summary={`6D \u00b7 H17 \u00b7 DAS \u00b7 ${rule === "early10" ? "ES10" : "LS"}`} open={panel.open} onToggle={panel.toggle} button={panel.button} disabled={!hydrated} />}
         />
-        <div id="h17-rules" className={`${panelOpen ? "flex" : "hidden"} flex-col gap-2.5 pb-2 pt-2.5 md:flex md:flex-row md:flex-wrap md:items-center md:gap-x-5 md:gap-y-2 md:p-0`}>
+        <div id="h17-rules" className={`${panel.open ? "flex" : "hidden"} flex-col gap-2.5 pb-2 pt-2.5 md:flex md:flex-row md:flex-wrap md:items-center md:gap-x-5 md:gap-y-2 md:p-0`}>
           <p className="text-sm font-semibold">{FIXED_RULES}</p>
           <Badge className="self-start md:self-auto">Fixed for this chart</Badge>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 md:border-l md:border-[var(--rule)] md:pl-5">
@@ -129,7 +104,7 @@ export function H17ChartView() {
           </div>
           {noSurrenderNote}
           <div className="flex justify-end md:hidden">
-            <Button size="compact" enterAction={false} onClick={() => { setPanelOpen(false); rulesButton.current?.focus(); }} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
+            <Button size="compact" enterAction={false} onClick={panel.close} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
           </div>
         </div>
       </ChartToolbar>

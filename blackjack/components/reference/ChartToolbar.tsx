@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode, RefObject } from "react";
 
 /**
  * The chart's rules bar: a labelled region pinned under the app header (on
@@ -75,5 +75,51 @@ export function JumpRail({ label, items, leading, className = "" }: { label: str
         ))}
       </div>
     </nav>
+  );
+}
+
+/**
+ * The phone rules panel's open state. Escape and "Done" close it and hand
+ * focus back to the button that opened it; `onChange` hears every change.
+ */
+export function useRulesPanel(onChange?: (open: boolean) => void) {
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const listener = useRef(onChange);
+  useEffect(() => { listener.current = onChange; }, [onChange]);
+  const toggle = useCallback((next: boolean) => {
+    setOpen(next);
+    listener.current?.(next);
+  }, []);
+  const close = useCallback(() => {
+    toggle(false);
+    button.current?.focus();
+  }, [toggle]);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    addEventListener("keydown", onKeyDown);
+    return () => removeEventListener("keydown", onKeyDown);
+  }, [open, close]);
+  return { open, toggle, close, button };
+}
+
+/** The phone rail's first chip: the rules in short form, opening the panel that edits them. */
+export function RulesPanelButton({ panelId, summary, open, onToggle, button, disabled, badge }: { panelId: string; summary: string; open: boolean; onToggle: (open: boolean) => void; button: RefObject<HTMLButtonElement | null>; disabled: boolean; badge?: ReactNode }) {
+  return (
+    <button
+      ref={button}
+      type="button"
+      disabled={disabled}
+      aria-expanded={open}
+      aria-controls={panelId}
+      onClick={() => onToggle(!open)}
+      className="pressable inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[var(--ink)] bg-[var(--ink)] px-3 font-data text-xs font-semibold text-[var(--paper)] disabled:opacity-60"
+    >
+      <i className="fa-solid fa-sliders" aria-hidden="true" />
+      <span><span className="sr-only">Table rules: </span>{summary}</span>
+      {badge}
+      <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+    </button>
   );
 }

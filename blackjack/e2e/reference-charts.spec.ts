@@ -197,6 +197,9 @@ test("N and Shift+N step through the index plays", async ({ page }, testInfo) =>
   await expect(page.locator("[data-cell='hard:16v10']")).toBeFocused();
   await page.keyboard.press("Shift+N");
   await expect(page.locator("[data-cell='hard:16v9']")).toBeFocused();
+  // Stepping back from the first index play wraps to the last, in the surrender table.
+  await page.keyboard.press("Shift+N");
+  await expect(page.locator("[data-cell='surrender:14v10']")).toBeFocused();
 });
 
 test("the focus ring stands out against every cell fill", async ({ page }, testInfo) => {

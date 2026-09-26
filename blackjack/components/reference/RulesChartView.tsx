@@ -151,10 +151,10 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
     if (panelOpen.current) keys.forEach((key) => deferred.current.add(key));
     else startFlash(keys);
     const examples = changed.slice(0, 3).map((cell) => shortCellName(cell.section, cell.row, cell.dealer)).join(", ");
-    const count = changed.length ? `${changed.length} ${changed.length === 1 ? "cell" : "cells"} changed (${examples}${changed.length > 3 ? ", …" : ""})` : "no cells changed";
+    const count = changed.length ? `${changed.length} ${changed.length === 1 ? "cell" : "cells"} changed (${examples}${changed.length > 3 ? ", …" : ""})` : "No cells changed";
     const savedNote = change.label.startsWith("Surrender") ? ` Saved ${user ? "to your account" : "on this device"}.` : "";
     clearTimeout(announceTimer.current);
-    announceTimer.current = setTimeout(() => announce(`${change.label}: ${count}.${savedNote}`), ANNOUNCE_DELAY_MS);
+    announceTimer.current = setTimeout(() => announce(`${change.label}. ${count}.${savedNote}`), ANNOUNCE_DELAY_MS);
   }, [chart, startFlash, user]);
 
   const onRule = useCallback(<K extends keyof StrategyChartRules>(key: K, value: StrategyChartRules[K]) => {
@@ -181,11 +181,14 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
     const plays = Array.from(charts.current?.querySelectorAll<HTMLElement>("[data-index-play]") ?? []);
     if (!from || !plays.length) return;
     event.preventDefault();
-    const after = plays.findIndex((cell) => from.compareDocumentPosition(cell) & Node.DOCUMENT_POSITION_FOLLOWING);
+    // Where the focused cell sits among the index plays (or would, if it has
+    // none), then one step either way, wrapping at the ends.
+    const count = plays.length;
     const here = plays.indexOf(from);
-    const next = event.shiftKey
-      ? plays[(here >= 0 ? here - 1 : (after < 0 ? plays.length : after) - 1 + plays.length) % plays.length]
-      : plays[here >= 0 ? (here + 1) % plays.length : after < 0 ? 0 : after];
+    const after = plays.findIndex((cell) => from.compareDocumentPosition(cell) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const start = here >= 0 ? here : after < 0 ? count : after;
+    const step = event.shiftKey ? -1 : here >= 0 ? 1 : 0;
+    const next = plays[(((start + step) % count) + count) % count];
     next.focus();
     next.scrollIntoView({ block: "nearest" });
   };

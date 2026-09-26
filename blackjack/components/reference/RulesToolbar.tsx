@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button, SegmentedControl } from "@/components/ui";
 import type { SegmentOption } from "@/components/ui";
 import { deckChoice, decksForChoice, rulesSummary } from "@/lib/blackjack/referenceChartModel";
@@ -10,7 +10,7 @@ import type { StrategyChartRules } from "@/lib/blackjack/strategyChart";
 import type { SurrenderRule } from "@/lib/statistics/storage";
 import { useAuth } from "@/lib/supabase/AuthProvider";
 import { useHydrated } from "@/lib/useMediaQuery";
-import { ChartToolbar, JumpRail } from "./ChartToolbar";
+import { ChartToolbar, JumpRail, RulesPanelButton, useRulesPanel } from "./ChartToolbar";
 import { SavedRuleNote } from "./SavedRuleNote";
 
 /** On phones the label sits left of its options; from tablets up it sits above them, so every rule fits one row. */
@@ -74,30 +74,9 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
 }) {
   const hydrated = useHydrated();
   const { user, loading, continueAsGuest } = useAuth();
-  const [panelOpen, setPanelOpen] = useState(false);
+  const panel = useRulesPanel(onPanelChange);
   const [moreOpen, setMoreOpen] = useState(false);
-  const rulesButton = useRef<HTMLButtonElement>(null);
   const locked = !hydrated;
-
-  const openPanel = (open: boolean) => {
-    setPanelOpen(open);
-    onPanelChange?.(open);
-  };
-  const closePanel = () => {
-    openPanel(false);
-    rulesButton.current?.focus();
-  };
-  useEffect(() => {
-    if (!panelOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setPanelOpen(false);
-      onPanelChange?.(false);
-      rulesButton.current?.focus();
-    };
-    addEventListener("keydown", onKeyDown);
-    return () => removeEventListener("keydown", onKeyDown);
-  }, [panelOpen, onPanelChange]);
 
   const summary = rulesSummary(rules, "short");
   const resetLabel = hasSavedRules ? "Reset to my rules" : "Reset to defaults";
@@ -117,25 +96,20 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
         className="md:hidden"
         items={sections}
         leading={(
-          <button
-            ref={rulesButton}
-            type="button"
+          <RulesPanelButton
+            panelId="reference-rules"
+            summary={summary}
+            open={panel.open}
+            onToggle={panel.toggle}
+            button={panel.button}
             disabled={locked}
-            aria-expanded={panelOpen}
-            aria-controls="reference-rules"
-            onClick={() => openPanel(!panelOpen)}
-            className="pressable inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[var(--ink)] bg-[var(--ink)] px-3 font-data text-xs font-semibold text-[var(--paper)] disabled:opacity-60"
-          >
-            <i className="fa-solid fa-sliders" aria-hidden="true" />
-            <span><span className="sr-only">Table rules: </span>{summary}</span>
-            {hydrated && <CountBadge count={differences} label={` (${differences} changed from your saved rules)`} />}
-            <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${panelOpen ? "rotate-180" : ""}`} aria-hidden="true" />
-          </button>
+            badge={hydrated && <CountBadge count={differences} label={` (${differences} changed from your saved rules)`} />}
+          />
         )}
       />
       <div
         id="reference-rules"
-        className={`${panelOpen ? "flex" : "hidden"} max-h-[60dvh] flex-col gap-2.5 overflow-y-auto overscroll-contain pb-2 pt-2.5 md:flex md:max-h-none md:flex-row md:flex-wrap md:items-end md:gap-x-4 md:gap-y-2 md:overflow-visible md:p-0`}
+        className={`${panel.open ? "flex" : "hidden"} max-h-[60dvh] flex-col gap-2.5 overflow-y-auto overscroll-contain pb-2 pt-2.5 md:flex md:max-h-none md:flex-row md:flex-wrap md:items-end md:gap-x-4 md:gap-y-2 md:overflow-visible md:p-0`}
       >
         <SegmentedControl
           label="Decks"
@@ -219,7 +193,7 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
           </Link>
         </div>
         <div className="flex justify-end md:hidden">
-          <Button size="compact" enterAction={false} onClick={closePanel} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
+          <Button size="compact" enterAction={false} onClick={panel.close} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
         </div>
       </div>
     </ChartToolbar>
