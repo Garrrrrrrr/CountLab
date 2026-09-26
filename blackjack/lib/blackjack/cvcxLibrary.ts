@@ -147,6 +147,20 @@ export const cvcxLibrary = {
     write(TEMPLATES_KEY, next, store);
     return template;
   },
+  /**
+   * Replaces a saved scenario with new inputs (and optionally a new name),
+   * keeping its id, so links that already point at it open the update. It
+   * moves to the front, like a fresh save, so the item someone keeps working
+   * on is never the first to be dropped at the cap. Unknown ids change nothing.
+   */
+  updateTemplate(id: string, config: CvcxTemplateConfig, name?: string, store?: StorageLike) {
+    const templates = this.templates(store);
+    const existing = templates.find((template) => template.id === id);
+    if (!existing) return undefined;
+    const updated: CvcxTemplate = { ...existing, name: name?.trim() || existing.name, config };
+    write(TEMPLATES_KEY, [updated, ...templates.filter((template) => template.id !== id)], store);
+    return updated;
+  },
   deleteTemplate(id: string, store?: StorageLike) {
     write(TEMPLATES_KEY, this.templates(store).filter((template) => template.id !== id), store);
   },

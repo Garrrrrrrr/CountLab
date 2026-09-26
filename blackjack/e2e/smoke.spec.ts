@@ -15,7 +15,8 @@ test("desktop lab navigation has visible primary controls", async ({ page }, tes
   await page.goto("/cvcx/");
   await expect(page.getByRole("heading", { name: /game.*bankroll/i })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Tools" }).getByRole("link", { name: "All drills" })).toBeVisible();
-  await expect(page.getByLabel("Audited true-count range")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Results" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Bet ramp chart/ })).toBeVisible();
 });
 
 test("phone navigation reaches everyday destinations and opens the full menu", async ({ page }, testInfo) => {
