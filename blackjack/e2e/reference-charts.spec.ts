@@ -165,6 +165,27 @@ test("saved rules the reader has not touched follow changes made elsewhere", asy
   await expect(page.getByLabel("11 versus dealer A: Hit")).toBeVisible();
 });
 
+test("the folded rules button counts changes against the saved rules as they move", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/reference/");
+  await hydrated(page);
+  const rules = page.getByRole("button", { name: /^Table rules/ });
+  await rules.click();
+  await page.getByRole("radio", { name: "1 deck", exact: true }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(rules).toBeFocused();
+  await expect(rules).toHaveAccessibleName(/1D .*\(1 changed from your saved rules\)/);
+  // Saving the same deck count elsewhere makes the reader's pick the saved rule.
+  await page.evaluate((key) => {
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) || "{}"), decks: 1, dealerHitsSoft17: false }));
+    window.dispatchEvent(new Event("hilo-storage"));
+  }, SETTINGS_KEY);
+  await expect(rules).toHaveAccessibleName(/1D · S17/);
+  await expect(rules).not.toHaveAccessibleName(/changed/);
+});
+
 test("the grid is one Tab stop per table and explains the focused cell", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await prepare(page);
@@ -297,6 +318,40 @@ test("narrow screens keep tokens, chips and the view switch inside their boxes",
     await page.getByRole("heading", { level: 1 }).waitFor();
     const overflowing = await page.locator(".ref-cell .ref-chip").evaluateAll((chips) => chips.filter((chip) => chip.getBoundingClientRect().width > (chip.parentElement as HTMLElement).clientWidth).length);
     expect(overflowing, `${width}px`).toBe(0);
+  }
+});
+
+test("the folded rules panel keeps labels clear of their options and Done in view", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  for (const [width, height] of [[320, 568], [360, 640]] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto("/reference/");
+    await hydrated(page);
+    await page.getByRole("button", { name: /^Table rules/ }).click();
+    const done = page.getByRole("button", { name: "Done" });
+    await expect(done).toBeInViewport({ ratio: 1 });
+    const rail = await page.getByRole("navigation", { name: "Chart sections" }).boundingBox();
+    const doneBox = await done.boundingBox();
+    expect(doneBox!.x + doneBox!.width, `Done inside the rail at ${width}px`).toBeLessThanOrEqual(rail!.x + rail!.width);
+    await page.getByRole("button", { name: "More rules" }).click();
+    const problems = await page.locator("#reference-rules fieldset").evaluateAll((groups) => groups.flatMap((group) => {
+      const name = group.querySelector("legend")?.textContent ?? "?";
+      const options = group.querySelector(":scope > div:last-child")!;
+      const box = options.getBoundingClientRect();
+      // The label row holds the legend; a visually hidden one is 1px wide.
+      const label = group.querySelector(":scope > div:first-child")!.getBoundingClientRect();
+      const issues: string[] = [];
+      if (options.scrollWidth > options.clientWidth) issues.push(`${name}: options scroll`);
+      if (box.right > document.documentElement.clientWidth) issues.push(`${name}: options leave the screen`);
+      const overlaps = label.width > 1 && label.left < box.right && label.right > box.left && label.top < box.bottom && label.bottom > box.top;
+      if (overlaps) issues.push(`${name}: label under its options`);
+      return issues;
+    }));
+    expect(problems, `${width}px`).toEqual([]);
+    await done.click();
+    await expect(page.locator("#reference-rules")).toBeHidden();
+    await expect(page.getByRole("button", { name: /^Table rules/ })).toBeFocused();
   }
 });
 

@@ -127,8 +127,8 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
   const explainer = useRef<ExplainerApi | null>(null);
 
   // Flash the cells a rule change repaints and say what changed, once the
-  // reader pauses. While the phone rules panel covers the chart the flash
-  // waits for it to close.
+  // reader pauses. The rules panel can cover some of the chart, so the cells
+  // changed while it was open flash again when it closes.
   const pendingChange = useRef<{ label: string; at: number } | null>(null);
   const previous = useRef(chart);
   const panelOpen = useRef(false);
@@ -150,8 +150,8 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
     if (!change || Date.now() - change.at > 1000 || before.view !== chart.view) return;
     const changed = changedCells(before, chart);
     const keys = new Set(changed.map((cell) => cell.key));
+    startFlash(keys);
     if (panelOpen.current) keys.forEach((key) => deferred.current.add(key));
-    else startFlash(keys);
     const examples = changed.slice(0, 3).map((cell) => shortCellName(cell.section, cell.row, cell.dealer)).join(", ");
     const count = changed.length ? `${changed.length} ${changed.length === 1 ? "cell" : "cells"} changed (${examples}${changed.length > 3 ? ", …" : ""})` : "No cells changed";
     const savedNote = change.label.startsWith("Surrender") ? ` Saved ${user ? "to your account" : "on this device"}.` : "";

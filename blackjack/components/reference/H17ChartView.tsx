@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import { announce, Badge, Button, ButtonLink, SegmentedControl } from "@/components/ui";
+import { announce, Badge, ButtonLink, SegmentedControl } from "@/components/ui";
 import type { SegmentOption } from "@/components/ui";
 import { buildH17Chart, softRowTotal } from "@/lib/blackjack/referenceChartModel";
 import type { H17Section } from "@/lib/blackjack/referenceChartModel";
@@ -28,6 +28,8 @@ const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<ChartSurrenderRule>> = [
   { value: "late", label: "Late", ariaLabel: "Late surrender (LS)" },
   { value: "early10", label: "Early vs 10", ariaLabel: "Early vs 10 (early surrender, ES10)" },
 ];
+
+const SECTION_LINKS = [{ href: "#pairs", label: "Pairs" }, { href: "#soft", label: "Soft" }, { href: "#hard", label: "Hard" }, { href: "#surrender", label: "Surrender" }] as const;
 
 const PRACTICE = [
   { href: "/training/h17-chart", title: "H17 Chart drill", description: "Fill in this chart from memory, cell by cell.", icon: "fa-table-cells" },
@@ -84,8 +86,8 @@ export function H17ChartView() {
         <JumpRail
           label="Chart sections"
           className="md:hidden"
-          items={[{ href: "#pairs", label: "Pairs" }, { href: "#soft", label: "Soft" }, { href: "#hard", label: "Hard" }, { href: "#surrender", label: "Surrender" }]}
-          leading={<RulesPanelButton panelId="h17-rules" summary={`6D \u00b7 H17 \u00b7 DAS \u00b7 ${rule === "early10" ? "ES10" : "LS"}`} open={panel.open} onToggle={panel.toggle} button={panel.button} disabled={!hydrated} />}
+          items={panel.open ? [] : SECTION_LINKS}
+          leading={<RulesPanelButton panelId="h17-rules" summary={`6D \u00b7 H17 \u00b7 DAS \u00b7 ${rule === "early10" ? "ES10" : "LS"}`} open={panel.open} onToggle={panel.toggle} onDone={panel.close} button={panel.button} disabled={!hydrated} />}
         />
         <div id="h17-rules" className={`${panel.open ? "flex" : "hidden"} flex-col gap-2.5 pb-2 pt-2.5 md:flex md:flex-row md:flex-wrap md:items-center md:gap-x-5 md:gap-y-2 md:p-0`}>
           <p className="text-sm font-semibold">{FIXED_RULES}</p>
@@ -103,9 +105,6 @@ export function H17ChartView() {
             <SavedRuleNote savedAt={savedAt} signedIn={Boolean(user)} />
           </div>
           {noSurrenderNote}
-          <div className="flex justify-end md:hidden">
-            <Button size="compact" enterAction={false} onClick={panel.close} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
-          </div>
         </div>
       </ChartToolbar>
       <div ref={charts} className="ref-charts">

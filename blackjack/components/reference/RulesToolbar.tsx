@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button, SegmentedControl } from "@/components/ui";
+import { Button, HelpTip, SegmentedControl } from "@/components/ui";
 import type { SegmentOption } from "@/components/ui";
 import { deckChoice, decksForChoice, rulesSummary } from "@/lib/blackjack/referenceChartModel";
 import type { ChartView, DeckChoice } from "@/lib/blackjack/referenceChartModel";
@@ -13,8 +13,10 @@ import { useHydrated } from "@/lib/useMediaQuery";
 import { ChartToolbar, JumpRail, RulesPanelButton, useRulesPanel } from "./ChartToolbar";
 import { SavedRuleNote } from "./SavedRuleNote";
 
-/** On phones the label sits left of its options; from tablets up it sits above them, so every rule fits one row. */
-const RULE_LAYOUT = "grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 md:grid-cols-1 md:justify-items-start md:gap-y-1";
+/** Every label sits above its options, so two rules share a row on phones and all of them share one on wide screens. */
+const RULE_LAYOUT = "justify-items-start gap-y-1";
+
+const SURRENDER_HELP = "Surrender gives up half your bet instead of playing the hand. Late (LS): offered after the dealer checks for blackjack. Early vs 10 (ES10): offered before that check when the dealer shows a 10, and late against an ace. Saved to your table rules, so the drills use it too.";
 
 // The shared SegmentedControl's legend does not name its group for assistive
 // technology, so every option carries its rule in its own accessible name,
@@ -37,10 +39,12 @@ const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<SurrenderRule>> = [
   { value: "late", label: "Late", ariaLabel: "Late surrender (LS)" },
   { value: "early", label: "Early vs 10", ariaLabel: "Early vs 10 (early surrender, ES10)" },
 ];
+/** Below 360px the totals drop "Hard" so the three options fit the panel. */
+const narrowHard = (total: string) => <><span className="max-[359px]:hidden">Hard </span>{total}</>;
 const DOUBLE_OPTIONS: ReadonlyArray<SegmentOption<StrategyChartRules["doubleRule"]>> = [
   { value: "any", label: "Any two cards", ariaLabel: "Double on any two cards" },
-  { value: "9-11", label: "Hard 9–11", ariaLabel: "Double on hard 9–11 only" },
-  { value: "10-11", label: "Hard 10–11", ariaLabel: "Double on hard 10–11 only" },
+  { value: "9-11", label: narrowHard("9–11"), ariaLabel: "Double on hard 9–11 only" },
+  { value: "10-11", label: narrowHard("10–11"), ariaLabel: "Double on hard 10–11 only" },
 ];
 const HOLE_CARD_OPTIONS: ReadonlyArray<SegmentOption<"peek" | "enhc">> = [
   { value: "peek", label: "Dealer peeks (US)", ariaLabel: "Dealer peeks (US) for blackjack" },
@@ -56,9 +60,10 @@ function CountBadge({ count, label }: { count: number; label: string }) {
 }
 
 /**
- * The table rules, always in view beside the chart they change. On phones
- * they fold into a "Table rules" button at the start of a rail of section
- * links, and open in place under it.
+ * The table rules, always in view beside the chart they change. Wide screens
+ * show them all in one pinned row. Below that they fold into a "Table rules"
+ * button at the start of a rail of section links, so the pinned bar stays one
+ * line tall, and open in place under it with Done beside the button.
  */
 export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differences, moreRulesChanged, savedAt, onRule, onSurrender, onReset, onPanelChange }: {
   view: ChartView;
@@ -94,14 +99,15 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
     <ChartToolbar label="Table rules">
       <JumpRail
         label="Chart sections"
-        className="md:hidden"
-        items={sections}
+        className="xl:hidden"
+        items={panel.open ? [] : sections}
         leading={(
           <RulesPanelButton
             panelId="reference-rules"
             summary={summary}
             open={panel.open}
             onToggle={panel.toggle}
+            onDone={panel.close}
             button={panel.button}
             disabled={locked}
             badge={hydrated && <CountBadge count={differences} label={` (${differences} changed from your saved rules)`} />}
@@ -110,7 +116,7 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
       />
       <div
         id="reference-rules"
-        className={`${panel.open ? "flex" : "hidden"} max-h-[60dvh] flex-col gap-2.5 overflow-y-auto overscroll-contain pb-2 pt-2.5 md:flex md:max-h-none md:flex-row md:flex-wrap md:items-end md:gap-x-4 md:gap-y-2 md:overflow-visible md:p-0`}
+        className={`${panel.open ? "flex" : "hidden"} max-h-[60dvh] flex-wrap items-end gap-x-4 gap-y-2.5 overflow-y-auto overscroll-contain pb-2 pt-2.5 xl:flex xl:max-h-none xl:gap-y-2 xl:overflow-visible xl:p-0`}
       >
         <SegmentedControl
           label="Decks"
@@ -139,17 +145,21 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
           options={enable(DAS_OPTIONS, locked)}
           help="Whether you may double down on a hand after splitting a pair (DAS). When you can, more pairs are worth splitting."
         />
-        <div className="md:flex md:items-end md:gap-2 md:self-stretch xl:border-l xl:border-[var(--rule)] xl:pl-4">
+        {/* The one saved rule: its label row carries the saved marker, so it costs no extra row. */}
+        <div className="grid justify-items-start gap-1 xl:self-stretch xl:border-l xl:border-[var(--rule)] xl:pl-4">
+          <div className="flex min-h-6 items-center gap-1">
+            <span aria-hidden="true" className="text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">Surrender</span>
+            <HelpTip label="Surrender">{SURRENDER_HELP}</HelpTip>
+            <SavedRuleNote savedAt={savedAt} signedIn={Boolean(user)} className="ml-1.5" />
+          </div>
           <SegmentedControl
             label="Surrender"
+            hideLabel
             size="compact"
-            className={RULE_LAYOUT}
             value={rules.surrender}
             onChange={onSurrender}
             options={enable(SURRENDER_OPTIONS, locked || loading)}
-            help="Surrender gives up half your bet instead of playing the hand. Late (LS): offered after the dealer checks for blackjack. Early vs 10 (ES10): offered before that check when the dealer shows a 10, and late against an ace. Saved to your table rules, so the drills use it too."
           />
-          <SavedRuleNote savedAt={savedAt} signedIn={Boolean(user)} />
         </div>
         <button
           type="button"
@@ -157,20 +167,20 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
           aria-expanded={moreOpen}
           aria-controls="reference-more-rules"
           onClick={() => setMoreOpen((open) => !open)}
-          className="pressable inline-flex min-h-11 items-center gap-2 self-start rounded-lg px-2 text-sm font-semibold text-[var(--ink)] hover:bg-overlay/[.06] disabled:opacity-40 md:min-h-9 md:self-auto [@media(pointer:coarse)]:min-h-11"
+          className="pressable inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-[var(--ink)] hover:bg-overlay/[.06] disabled:opacity-40 xl:min-h-9 [@media(pointer:coarse)]:min-h-11"
         >
           More rules
           {hydrated && <CountBadge count={moreRulesChanged} label=" changed" />}
           <i className={`fa-solid fa-chevron-down text-[.6rem] text-[var(--ink-muted)] transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
         {hydrated && differences > 0 && (
-          <Button variant="quiet" size="compact" enterAction={false} onClick={onReset} aria-label={resetLabel} title={resetLabel} className="inline-flex items-center gap-2 self-start md:ml-auto md:self-auto [@media(pointer:coarse)]:min-h-11">
+          <Button variant="quiet" size="compact" enterAction={false} onClick={onReset} aria-label={resetLabel} title={resetLabel} className="inline-flex min-h-11 items-center gap-2 xl:ml-auto xl:min-h-9 [@media(pointer:coarse)]:min-h-11">
             <i className="fa-solid fa-rotate-left text-xs" aria-hidden="true" />
-            <span className="md:hidden">{resetLabel}</span>
-            <span className="hidden md:inline">Reset</span>
+            <span className="xl:hidden">{resetLabel}</span>
+            <span className="hidden xl:inline">Reset</span>
           </Button>
         )}
-        <div id="reference-more-rules" className={`${moreOpen ? "flex" : "hidden"} flex-col gap-2.5 border-t border-[var(--rule)] pt-2.5 md:basis-full md:flex-row md:flex-wrap md:items-end md:gap-x-4 md:gap-y-2 md:pt-2`}>
+        <div id="reference-more-rules" className={`${moreOpen ? "flex" : "hidden"} basis-full flex-wrap items-end gap-x-4 gap-y-2.5 border-t border-[var(--rule)] pt-2.5 xl:gap-y-2 xl:pt-2`}>
           <SegmentedControl
             label="Double on"
             size="compact"
@@ -189,12 +199,9 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
             options={enable(HOLE_CARD_OPTIONS, locked)}
             help="Without a hole card the dealer checks for blackjack only after you play, so a dealer blackjack also takes the extra money from a double or split. The chart stops doubling and splitting against a 10 or ace (except A,A vs 10)."
           />
-          <Link href="/settings" onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline md:ml-auto md:min-h-9">
+          <Link href="/settings" onClick={() => { if (!user) continueAsGuest(); }} className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline xl:ml-auto xl:min-h-9">
             Edit saved table rules in Settings
           </Link>
-        </div>
-        <div className="flex justify-end md:hidden">
-          <Button size="compact" enterAction={false} onClick={panel.close} className="[@media(pointer:coarse)]:min-h-11">Done</Button>
         </div>
       </div>
     </ChartToolbar>

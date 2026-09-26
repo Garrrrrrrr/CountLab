@@ -51,16 +51,23 @@ const RAIL_LINK = "pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 
 export function JumpRail({ label, items, leading, className = "" }: { label: string; items: ReadonlyArray<{ href: `#${string}` | `/${string}`; label: string }>; leading?: ReactNode; className?: string }) {
   const rail = useRef<HTMLDivElement>(null);
   const [fade, setFade] = useState({ start: false, end: false });
+  const update = useCallback(() => {
+    const element = rail.current;
+    if (!element) return;
+    const start = element.scrollLeft > 2;
+    const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 2;
+    setFade((current) => (current.start === start && current.end === end ? current : { start, end }));
+  }, []);
   useEffect(() => {
     const element = rail.current;
     if (!element) return;
-    const update = () => setFade({ start: element.scrollLeft > 2, end: element.scrollLeft + element.clientWidth < element.scrollWidth - 2 });
-    update();
     element.addEventListener("scroll", update, { passive: true });
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(update);
     observer?.observe(element);
     return () => { element.removeEventListener("scroll", update); observer?.disconnect(); };
-  }, []);
+  }, [update]);
+  // The rail keeps its size when its links change, so check the edges again.
+  useEffect(() => update(), [update, items]);
   return (
     <nav aria-label={label} className={className}>
       <div ref={rail} data-fade-start={fade.start || undefined} data-fade-end={fade.end || undefined} className="ref-jump-rail mobile-scroll-rail flex items-center gap-1.5 overflow-x-auto py-0.5">
@@ -79,7 +86,7 @@ export function JumpRail({ label, items, leading, className = "" }: { label: str
 }
 
 /**
- * The phone rules panel's open state. Escape and "Done" close it and hand
+ * The folded rules panel's open state. Escape and "Done" close it and hand
  * focus back to the button that opened it; `onChange` hears every change.
  */
 export function useRulesPanel(onChange?: (open: boolean) => void) {
@@ -104,22 +111,33 @@ export function useRulesPanel(onChange?: (open: boolean) => void) {
   return { open, toggle, close, button };
 }
 
-/** The phone rail's first chip: the rules in short form, opening the panel that edits them. */
-export function RulesPanelButton({ panelId, summary, open, onToggle, button, disabled, badge }: { panelId: string; summary: string; open: boolean; onToggle: (open: boolean) => void; button: RefObject<HTMLButtonElement | null>; disabled: boolean; badge?: ReactNode }) {
+/**
+ * The rail's first chip: the rules in short form, opening the panel that
+ * edits them. While the panel is open, Done sits beside it (the rail drops its
+ * section links meanwhile), so closing never needs a scroll through the panel.
+ */
+export function RulesPanelButton({ panelId, summary, open, onToggle, onDone, button, disabled, badge }: { panelId: string; summary: string; open: boolean; onToggle: (open: boolean) => void; onDone: () => void; button: RefObject<HTMLButtonElement | null>; disabled: boolean; badge?: ReactNode }) {
   return (
-    <button
-      ref={button}
-      type="button"
-      disabled={disabled}
-      aria-expanded={open}
-      aria-controls={panelId}
-      onClick={() => onToggle(!open)}
-      className="pressable inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[var(--ink)] bg-[var(--ink)] px-3 font-data text-xs font-semibold text-[var(--paper)] disabled:opacity-60"
-    >
-      <i className="fa-solid fa-sliders" aria-hidden="true" />
-      <span><span className="sr-only">Table rules: </span>{summary}</span>
-      {badge}
-      <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
-    </button>
+    <>
+      <button
+        ref={button}
+        type="button"
+        disabled={disabled}
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => onToggle(!open)}
+        className="pressable inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border border-[var(--ink)] bg-[var(--ink)] px-3 font-data text-xs font-semibold text-[var(--paper)] disabled:opacity-60"
+      >
+        <i className="fa-solid fa-sliders" aria-hidden="true" />
+        <span><span className="sr-only sm:not-sr-only">Table rules: </span>{summary}</span>
+        {badge}
+        <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+      {open && (
+        <button type="button" onClick={onDone} className="pressable inline-flex min-h-11 shrink-0 items-center rounded-full border border-[var(--ink)] bg-[var(--paper)] px-3.5 text-sm font-semibold text-[var(--ink)]">
+          Done
+        </button>
+      )}
+    </>
   );
 }
