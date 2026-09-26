@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useId } from "react";
-import { HelpTip, Panel } from "@/components/ui";
+import { HelpTip, Panel, type SegmentOption } from "@/components/ui";
 
 /**
  * One numbered input card of the Lab (1 Game, 2 Bankroll, 3 Bet ramp). The
@@ -61,5 +61,48 @@ export function StatusMark({ tone, icon, children }: { tone: "good" | "warn" | "
       {icon && <i className={`fa-solid ${icon} text-[.7rem]`} aria-hidden="true" />}
       {children}
     </span>
+  );
+}
+
+/**
+ * The kit's SegmentedControl, with its group named by its question. The kit
+ * nests its <legend> inside a <div>, where browsers don't use it to name the
+ * fieldset, so screen readers hear "6:5" without "Blackjack pays". This copy
+ * names the fieldset with aria-labelledby and otherwise matches the kit; it
+ * can go once components/ui.tsx makes the legend the fieldset's first child.
+ */
+export function LabSegmented<T extends string>({ label, value, onChange, options, name, size = "default", fullWidth = false, className = "", hideLabel = false, help, analyticsField }: { label: string; value: T | null | undefined; onChange: (value: T) => void; options: ReadonlyArray<SegmentOption<T>>; name?: string; size?: "default" | "compact"; fullWidth?: boolean; className?: string; hideLabel?: boolean; help?: ReactNode; analyticsField?: string }) {
+  const generated = useId();
+  const groupName = name ?? `segment-${generated}`;
+  const labelId = `${generated}-label`;
+  return (
+    <fieldset aria-labelledby={labelId} className={`m-0 grid min-w-0 gap-2 border-0 p-0 ${className}`}>
+      <div className={hideLabel ? "sr-only" : "flex items-center gap-1"}>
+        <span id={labelId} className="text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">{label}</span>
+        {help && !hideLabel && <HelpTip label={label}>{help}</HelpTip>}
+      </div>
+      <div className={`${fullWidth ? "flex w-full" : "inline-flex max-w-full"} min-w-0 gap-1 overflow-x-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-1`}>
+        {options.map((option) => {
+          const selected = option.value === value;
+          return (
+            <label key={option.value} className={`pressable relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 font-semibold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--focus)] has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40 ${fullWidth ? "flex-1" : ""} ${size === "compact" ? "min-h-9 text-xs [@media(pointer:coarse)]:min-h-11" : "min-h-10 text-sm [@media(pointer:coarse)]:min-h-11"} ${selected ? "bg-[var(--ink)] text-[var(--paper)] shadow-sm" : "text-[var(--ink-muted)] hover:bg-overlay/[.06] hover:text-[var(--ink)]"}`}>
+              <input
+                type="radio"
+                name={groupName}
+                value={option.value}
+                checked={selected}
+                disabled={option.disabled}
+                aria-label={option.ariaLabel}
+                data-analytics-field={analyticsField}
+                onChange={() => { if (!selected) onChange(option.value); }}
+                className="absolute inset-0 m-0 cursor-pointer appearance-none rounded-lg opacity-0 disabled:cursor-not-allowed"
+              />
+              {option.icon && <i className={`fa-solid ${option.icon} text-xs`} aria-hidden="true" />}
+              <span aria-hidden={option.ariaLabel ? true : undefined}>{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }

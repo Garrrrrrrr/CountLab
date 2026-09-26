@@ -16,7 +16,8 @@ import {
   tcLabel,
   type RampStep,
 } from "@/lib/blackjack/rampSteps";
-import { announce, GhostButton, SegmentedControl, Stepper } from "@/components/ui";
+import { announce, GhostButton, Stepper } from "@/components/ui";
+import { LabSegmented } from "./parts";
 
 /** Focuses the units field of the step that starts at `from`. */
 export function focusStepUnits(from: number) {
@@ -67,7 +68,8 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
             const range = stepRangeLabel(step);
             const rest = step.to >= MAX_TC ? "and up" : step.to === step.from ? "only" : `to ${tcLabel(step.to)}`;
             return (
-              <li key={step.from}>
+              // Keyed by position: moving a step's start must keep its row, and the focused select in it.
+              <li key={index}>
                 <fieldset data-step-from={step.from} className="m-0 min-w-0 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-2.5">
                   <legend className="sr-only">Step {index + 1}: true count {range}</legend>
                   <div className="lab-step">
@@ -95,7 +97,7 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
                     </p>
                     <div className="flex items-center gap-2 [grid-area:hands]">
                       <span aria-hidden="true" className="lab-step-caption text-xs font-medium text-[var(--ink-muted)]">Hands</span>
-                      <SegmentedControl
+                      <LabSegmented
                         label={`Hands at ${range}`}
                         hideLabel
                         name={`step-hands-${step.from}`}

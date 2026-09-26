@@ -6,8 +6,8 @@ import { money, percent, riskLabel } from "@/lib/blackjack/labFormat";
 import { playedSpread } from "@/lib/blackjack/labModel";
 import { handsSummary, stepsSummary, toSteps, unitLabel } from "@/lib/blackjack/rampSteps";
 import { BetSpreadTable } from "@/components/BetSpreadTable";
-import { Callout, GhostButton, HelpTip, NumberField, SegmentedControl, Term } from "@/components/ui";
-import { LabSelect, StatusMark, StepCard } from "./parts";
+import { Callout, GhostButton, HelpTip, NumberField, Term } from "@/components/ui";
+import { LabSegmented, LabSelect, StatusMark, StepCard } from "./parts";
 import { RampChart } from "./RampChart";
 import { focusStepUnits, RampSteps } from "./RampSteps";
 import type { Lab } from "./useLab";
@@ -71,7 +71,7 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
 
       <div className="grid gap-4">
         <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-          <SegmentedControl
+          <LabSegmented
             label="Start from"
             name="ramp-preset"
             analyticsField="preset"
@@ -135,7 +135,7 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
         <RampChart rows={model.result.rows} unit={config.baseBet} sittingOutBelow={config.wongInAt} summary={stepsSummary(steps, config.wongInAt)} onSelect={selectCount} />
 
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <SegmentedControl<RampView> label="Edit as" name="ramp-view" size="compact" analyticsField="ramp_view" value={view} onChange={chooseView} options={[{ value: "steps", label: "Steps" }, { value: "table", label: "Every count" }]} />
+          <LabSegmented<RampView> label="Edit as" name="ramp-view" size="compact" analyticsField="ramp_view" value={view} onChange={chooseView} options={[{ value: "steps", label: "Steps" }, { value: "table", label: "Every count" }]} />
           <div className="flex flex-wrap gap-2" role="group" aria-label="Change the whole ramp">
             <GhostButton size="compact" aria-label="Halve every bet" onClick={() => lab.scaleRamp(0.5)}>½×</GhostButton>
             <GhostButton size="compact" aria-label="Double every bet" onClick={() => lab.scaleRamp(2)}>2×</GhostButton>

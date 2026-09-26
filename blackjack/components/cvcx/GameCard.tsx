@@ -4,8 +4,8 @@ import { track } from "@/lib/analytics/track";
 import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { hasAuditedRules, ruleStates, type DoubleRule } from "@/lib/blackjack/labConfig";
 import { dealtPercent, percent } from "@/lib/blackjack/labFormat";
-import { Callout, GhostButton, HelpTip, NumberField, SegmentedControl, Switch } from "@/components/ui";
-import { StepCard } from "./parts";
+import { Callout, GhostButton, HelpTip, NumberField, Switch } from "@/components/ui";
+import { LabSegmented, StepCard } from "./parts";
 import type { Lab } from "./useLab";
 
 /**
@@ -25,7 +25,7 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
   return (
     <StepCard id="game" step={1} title="Game" summary={`${config.decks} decks · ${config.dealt} dealt (${dealtPercent(config.decks, config.dealt)}%) · Hi-Lo`}>
       <div className="lab-fields">
-        <SegmentedControl
+        <LabSegmented
           label="Decks"
           name="decks"
           analyticsField="number_of_decks"
@@ -35,7 +35,7 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
           onChange={(value) => { const decks = Number(value) as 6 | 8; edit({ decks, dealt: decks === 6 ? 4.5 : 6 }); }}
           options={[{ value: "6", label: "6 decks" }, { value: "8", label: "8 decks" }]}
         />
-        <SegmentedControl
+        <LabSegmented
           label="Penetration"
           name="penetration"
           analyticsField="penetration"
@@ -51,7 +51,7 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
           }))}
         />
         <NumberField label="Rounds per hour" value={config.handsPerHour} min={1} suffix="rounds/hr" analyticsField="rounds_per_hour" help="About 100 at a typical table; fewer when it's full." onValueChange={(handsPerHour) => edit({ handsPerHour })} />
-        <SegmentedControl
+        <LabSegmented
           label="How you play hands"
           name="play-variation"
           analyticsField="play_variation"
@@ -89,10 +89,10 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
             Change rules
           </summary>
           <div className="lab-fields mt-2">
-            <SegmentedControl label="Dealer on soft 17" name="soft-17" analyticsField="dealer_hits_soft_17" fullWidth className="lab-seg" value={config.dealerHitsSoft17 ? "h17" : "s17"} onChange={(value) => edit({ dealerHitsSoft17: value === "h17" })} options={[{ value: "h17", label: "Hits (H17)" }, { value: "s17", label: "Stands (S17)" }]} />
-            <SegmentedControl label="Blackjack pays" name="payout" analyticsField="blackjack_payout" fullWidth className="lab-seg" value={String(config.blackjackPayout)} onChange={(value) => edit({ blackjackPayout: Number(value) as 1.5 | 1.2 })} options={[{ value: "1.5", label: "3:2" }, { value: "1.2", label: "6:5" }]} />
-            <SegmentedControl<DoubleRule> label="Doubling allowed on" name="double-rule" analyticsField="double_rule" fullWidth className="lab-seg" value={config.doubleRule} onChange={(doubleRule) => edit({ doubleRule })} options={[{ value: "any2", label: "Any two cards" }, { value: "9to11", label: "9–11 only" }, { value: "10to11", label: "10–11 only" }]} />
-            <SegmentedControl label="Dealer hole card" name="hole-card" analyticsField="strategy" fullWidth className="lab-seg" help="With a hole card the dealer peeks for blackjack before you act. With no hole card (European), doubles and splits are lost to a dealer blackjack." value={config.europeanNoHoleCard ? "enhc" : "peek"} onChange={(value) => edit({ europeanNoHoleCard: value === "enhc" })} options={[{ value: "peek", label: "Peeks (American)" }, { value: "enhc", label: "No hole card (European)" }]} />
+            <LabSegmented label="Dealer on soft 17" name="soft-17" analyticsField="dealer_hits_soft_17" fullWidth className="lab-seg" value={config.dealerHitsSoft17 ? "h17" : "s17"} onChange={(value) => edit({ dealerHitsSoft17: value === "h17" })} options={[{ value: "h17", label: "Hits (H17)" }, { value: "s17", label: "Stands (S17)" }]} />
+            <LabSegmented label="Blackjack pays" name="payout" analyticsField="blackjack_payout" fullWidth className="lab-seg" value={String(config.blackjackPayout)} onChange={(value) => edit({ blackjackPayout: Number(value) as 1.5 | 1.2 })} options={[{ value: "1.5", label: "3:2" }, { value: "1.2", label: "6:5" }]} />
+            <LabSegmented<DoubleRule> label="Doubling allowed on" name="double-rule" analyticsField="double_rule" fullWidth className="lab-seg" value={config.doubleRule} onChange={(doubleRule) => edit({ doubleRule })} options={[{ value: "any2", label: "Any two cards" }, { value: "9to11", label: "9–11 only" }, { value: "10to11", label: "10–11 only" }]} />
+            <LabSegmented label="Dealer hole card" name="hole-card" analyticsField="strategy" fullWidth className="lab-seg" help="With a hole card the dealer peeks for blackjack before you act. With no hole card (European), doubles and splits are lost to a dealer blackjack." value={config.europeanNoHoleCard ? "enhc" : "peek"} onChange={(value) => edit({ europeanNoHoleCard: value === "enhc" })} options={[{ value: "peek", label: "Peeks (American)" }, { value: "enhc", label: "No hole card (European)" }]} />
             <Switch label="Double after split" checked={config.doubleAfterSplit} onChange={setSwitch("doubleAfterSplit", "double_after_splitting")} />
             <Switch label="Resplit aces" checked={config.resplitAces} onChange={setSwitch("resplitAces", "resplitting_aces")} />
             <Switch label="Late surrender" checked={config.lateSurrender} onChange={setSwitch("lateSurrender", "late_surrender")} />

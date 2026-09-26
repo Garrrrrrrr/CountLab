@@ -86,6 +86,33 @@ test("arrowing through the ramp presets never touches the betting unit", async (
   await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
 });
 
+test("moving a step's start from the keyboard keeps focus on it", async ({ page }) => {
+  await prepare(page);
+  await openLab(page);
+  await show(page, "Bet ramp");
+  const start = page.getByRole("combobox", { name: /^Step \d+ starts at$/ }).last();
+  const before = Number(await start.inputValue());
+  await start.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(start).toBeFocused();
+  await expect(start).toHaveValue(String(before + 1));
+  await page.keyboard.press("ArrowDown");
+  await expect(start).toBeFocused();
+  await expect(start).toHaveValue(String(before + 2));
+});
+
+test("every choice group is named by its question", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await openLab(page);
+  await page.locator("summary").filter({ hasText: "Change rules" }).click();
+  await page.locator("summary").filter({ hasText: "Compare with other games" }).click();
+  for (const name of ["Decks", "Penetration", "How you play hands", "Dealer on soft 17", "Blackjack pays", "Doubling allowed on", "Dealer hole card", "Start from", "Edit as", "Price each game with"]) {
+    await expect(page.getByRole("group", { name, exact: true }), name).toHaveCount(1);
+  }
+  await expect(page.getByRole("group", { name: "Blackjack pays" }).getByRole("radio", { name: "6:5" })).toBeVisible();
+});
+
 test("editing a step reprices the setup", async ({ page }) => {
   await prepare(page);
   await openLab(page);
