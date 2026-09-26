@@ -574,6 +574,28 @@ test("browser Back closes an open sheet instead of leaving the journal", async (
   await expect(page.getByRole("heading", { name: "Session Journal" })).toBeVisible();
 });
 
+test("browser Back out of a Lab scenario's form drops the link, so a reload doesn't reopen it", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "Back is the phone's way out of a sheet.");
+  await seedJournal(page, { sessions: [session()], templates: [weekend] });
+  await page.goto("/dashboard/");
+  await page.goto("/journal/?scenario=weekend");
+  const sheet = page.getByRole("dialog", { name: "Log session" });
+  await expect(sheet).toContainText("Loaded “Weekend 6-deck game” from the Lab");
+  // The onward links are listed once and are full-size touch targets.
+  const lab = sheet.getByRole("link", { name: "Lab", exact: true });
+  await expect(lab).toHaveCount(1);
+  const box = await lab.boundingBox();
+  expect(box?.height).toBeGreaterThanOrEqual(44);
+  expect(box?.width).toBeGreaterThanOrEqual(44);
+
+  await page.goBack();
+  await expect(sheet).toHaveCount(0);
+  await expect(page).toHaveURL(/\/journal\/$/);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Session Journal" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
 test("deleting a session moves focus to the next one", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await seedJournal(page, { sessions: [

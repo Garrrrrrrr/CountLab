@@ -81,15 +81,7 @@ export function SessionJournal() {
   const target = targetBankrollId(bankrollId, scope.defaultBankrollId);
   const hasAnyData = data.sessions.length > 0 || data.transactions.length > 0;
 
-  const sheetHistory = useSheetHistory(() => {
-    if (guard.current && !guard.current()) return false;
-    setOverlay(null);
-    return true;
-  });
-  const openSheet = (next: Overlay, hash?: string) => {
-    if (SHEETS.has(next.kind)) sheetHistory.enter(hash);
-    setOverlay(next);
-  };
+  /** Drops `?scenario=` once its form is saved or dismissed, so a reload doesn't open it again. */
   const stripScenario = () => {
     const params = new URLSearchParams(location.search);
     if (!params.has("scenario")) return;
@@ -97,9 +89,20 @@ export function SessionJournal() {
     const search = params.toString();
     window.history.replaceState(null, "", `${location.pathname}${search ? `?${search}` : ""}${location.hash}`);
   };
+  const fromScenario = overlay?.kind === "log" && overlay.mode === "new" && Boolean(overlay.scenario);
+  const sheetHistory = useSheetHistory(() => {
+    if (guard.current && !guard.current()) return false;
+    setOverlay(null);
+    // Back has already returned to the link's own address.
+    if (fromScenario) stripScenario();
+    return true;
+  });
+  const openSheet = (next: Overlay, hash?: string) => {
+    if (SHEETS.has(next.kind)) sheetHistory.enter(hash);
+    setOverlay(next);
+  };
   const closeOverlay = () => {
     const wasSheet = overlay && SHEETS.has(overlay.kind);
-    const fromScenario = overlay?.kind === "log" && overlay.mode === "new" && overlay.scenario;
     setOverlay(null);
     guard.current = null;
     if (wasSheet) sheetHistory.leave(fromScenario ? stripScenario : undefined);
