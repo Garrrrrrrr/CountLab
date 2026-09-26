@@ -31,8 +31,10 @@ test("phone navigation reaches everyday destinations and opens the full menu", a
     expect(box?.height).toBeGreaterThanOrEqual(44);
   }
   await bar.getByRole("button", { name: "Menu" }).click();
-  const menu = page.getByRole("complementary", { name: "Primary navigation" });
+  // The open drawer is a modal dialog; choosing a tool closes it.
+  const menu = page.getByRole("dialog", { name: "Primary navigation" });
   await menu.getByRole("link", { name: "Trip Planner" }).click();
   await expect(page).toHaveURL(/\/trip-planner\/$/);
-  await expect(menu.getByRole("link", { name: "Trip Planner" })).not.toBeInViewport();
+  await expect(menu).toHaveCount(0);
+  await expect(page.locator("#primary-navigation").getByRole("link", { name: "Trip Planner" })).not.toBeInViewport();
 });

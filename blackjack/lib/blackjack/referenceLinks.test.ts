@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { referenceHref } from "./referenceLinks";
+import { linkedCellKey, referenceHref } from "./referenceLinks";
 
 describe("referenceHref", () => {
   it("names one cell with encoded parameters", () => {
@@ -12,5 +12,18 @@ describe("referenceHref", () => {
     expect(referenceHref("strategy")).toBe("/reference");
     expect(referenceHref("deviations", null)).toBe("/reference/deviations");
     expect(referenceHref("h17")).toBe("/reference/h17-chart");
+  });
+});
+
+describe("linkedCellKey", () => {
+  it("reads back the cell a link names, in the charts' key format", () => {
+    expect(linkedCellKey(new URL(referenceHref("strategy", { section: "soft", hand: "A,8", dealer: "10" }), "https://x.test").search)).toBe("soft:A,8v10");
+    expect(linkedCellKey("?section=surrender&hand=15&dealer=A")).toBe("surrender:15vA");
+  });
+
+  it("names no cell when a parameter is missing or blank", () => {
+    expect(linkedCellKey("")).toBeNull();
+    expect(linkedCellKey("?section=hard&hand=16")).toBeNull();
+    expect(linkedCellKey("?section=hard&hand=&dealer=10")).toBeNull();
   });
 });

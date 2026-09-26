@@ -57,7 +57,7 @@ export function SaveScenario({ lab, open, onClose }: { lab: Lab; open: boolean; 
     >
       {saved ? (
         <div>
-          <h3 ref={savedHeading} tabIndex={-1} aria-live="polite" className="font-display text-lg font-semibold outline-none">Saved “{saved.name}”</h3>
+          <h3 ref={savedHeading} tabIndex={-1} className="font-display text-lg font-semibold outline-none">Saved “{saved.name}”</h3>
           <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">Open it in another planning tool. Each opens this saved copy; later changes here travel only when you update it.</p>
           <p className="mb-2 mt-4 text-[.8rem] font-medium text-[var(--ink-muted)]">Open it in:</p>
           <ScenarioDestinations template={saved} />

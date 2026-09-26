@@ -75,3 +75,16 @@ A phone's bottom bar can't hold twenty tools. It keeps the four most-used destin
 ## How it was built and checked
 
 Each tool was redesigned from a written spec in its own git worktree, with its own unit and end-to-end tests, then merged. The merged tree was reviewed for accessibility, cross-tool handoffs (Lab scenarios into the Journal, Simulator and other tools; chart ↔ drill links; drills → Statistics and Dashboard), visual consistency in both themes at 1440, 390 and 320px, and dead code.
+
+## Post-merge review
+
+Two reviewers exercised the merged build in a browser: one for accessibility (axe on every redesigned route in both themes at 1440 and 390px, keyboard-only runs of every drill, sheet and menu), one for cross-tool flows (every internal link, scenario handoffs, directory → Lab, drills → Statistics/Dashboard/Checklist, Journal CRUD, chart ↔ drill links). A visual pass covered the same routes at 1440, 390 and 320px. Each finding was confirmed in the code before it was fixed:
+
+- **Enter on a "More options" disclosure started the drill** instead of opening it (and on a summary, started a new round and lost the review). The page's Enter shortcut now ignores disclosures, tabs, options and switches.
+- **Focus got lost** after closing tool search (it now returns to the button that opened it, including inside the phone menu), after closing a Journal sheet opened from the phone dock (the dock is hidden, not removed, while a sheet is open), and after pressing "Change" on a drill's one-line setup (focus moves to the first choice).
+- **Tabbing through the Log session form without typing** asked "Discard this session?" on close: number fields reported a change on every blur. They now report only real changes.
+- **"See it on the chart" from a drill opened the chart at the top.** The strategy and deviation charts now scroll to, focus and explain the named cell.
+- Help tips now speak their text when opened; each toast is announced once (no nested live regions); the phone menu is a labelled modal dialog while open; the Journal's "scenario not found" notices are announced; two contrast misses (Lab penetration percentages in light, the Hi-Lo −1 value in dark) now pass AA; the closed phone menu no longer casts a shadow onto the page.
+- Removed code the redesigns left unused (`CountRule`, `FieldCaption`, a stray type) and made the drill copy's spelling consistent.
+
+Each keyboard and chart-link fix has an end-to-end regression test (`e2e/keyboard-focus.spec.ts`, and the chart-link case in `e2e/reference-charts.spec.ts`).

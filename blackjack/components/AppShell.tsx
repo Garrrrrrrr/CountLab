@@ -2,7 +2,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_SETTINGS, storage, SURRENDER_RULE_LABEL, type Settings, type SurrenderRule } from "@/lib/statistics/storage";
 import { computeStreak } from "@/lib/statistics/streaks";
 import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     [paletteOpen, setPaletteOpen] = useState(false),
     [paletteReady, setPaletteReady] = useState(false),
     [paletteQuery, setPaletteQuery] = useState(""),
-    navigation = useRef<HTMLElement>(null),
+    navigation = useRef<HTMLDivElement>(null),
     [collapsed, setCollapsed] = useState<string[]>([]),
     isAdmin = useIsAdmin();
   const { user, guest, syncStatus } = useAuth();
@@ -76,7 +76,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch { /* the choice lasts for this visit */ }
     return next;
   });
-  useModalFocus(open && !paletteOpen, navigation, () => setOpen(false));
+  // Closing the search opened from the phone drawer returns to the drawer's search button.
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const returnToSearch = useRef(false);
+  const drawerFocus = useMemo(() => ({ get current() { const target = returnToSearch.current ? searchButton.current : null; returnToSearch.current = false; return target; } }), []);
+  useModalFocus(open && !paletteOpen, navigation, () => setOpen(false), drawerFocus);
   useModalFocus(paletteOpen, palette, () => setPaletteOpen(false));
   useEffect(() => {
     const media = matchMedia("(min-width: 1024px)");
@@ -124,6 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   const paletteMatches = searchTools(paletteQuery);
   const goTo = (href: string) => {
+    returnToSearch.current = false;
     setPaletteOpen(false);
     setPaletteQuery("");
     setOpen(false);
@@ -135,7 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       if (!storage.settings().shortcuts || document.querySelector("[aria-modal='true']")) return;
       const target = event.target;
       if (target instanceof Element) {
-        if (target.closest("input, select, textarea, a, [contenteditable='true']")) return;
+        if (target.closest("input, select, textarea, a, summary, [contenteditable='true'], [role='button'], [role='tab'], [role='option'], [role='switch'], [role='menuitem']")) return;
         const focusedButton = target.closest("button") as HTMLButtonElement | null;
         if (focusedButton && !focusedButton.disabled) return;
       }
@@ -164,14 +169,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           onClick={closeDrawer}
         />
       )}
-      <aside
+      {/* On phones the open drawer is a modal dialog; on desktop it is a plain column around the Tools nav. */}
+      <div
         id="primary-navigation"
         inert={!open && !desktop}
         tabIndex={-1}
         ref={navigation}
-        aria-label="Primary navigation"
+        role={open && !desktop ? "dialog" : undefined}
+        aria-modal={open && !desktop ? true : undefined}
+        aria-label={open && !desktop ? "Primary navigation" : undefined}
         data-analytics-nav="sidebar"
-        className={`${open ? "translate-x-0 shadow-[20px_0_70px_rgba(0,0,0,.18)]" : "-translate-x-full"} fixed inset-y-0 z-40 flex w-[min(17rem,86vw)] flex-col overflow-y-auto border-r border-[var(--rule)] bg-[var(--paper-raised)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] transition-[transform,box-shadow] duration-300 ease-out lg:w-[17rem] lg:translate-x-0 lg:shadow-none`}
+        className={`${open ? "translate-x-0 shadow-[20px_0_70px_rgba(0,0,0,.18)]" : "-translate-x-full"} no-print fixed inset-y-0 z-40 flex w-[min(17rem,86vw)] flex-col overflow-y-auto border-r border-[var(--rule)] bg-[var(--paper-raised)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] transition-[transform,box-shadow] duration-300 ease-out lg:w-[17rem] lg:translate-x-0 lg:shadow-none`}
       >
         <div className="mb-5 flex items-center justify-between gap-2">
           <Link href="/" onClick={closeDrawer} aria-label="CountLab home" className="ml-1 rounded-xl">
@@ -179,7 +187,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <button type="button" onClick={closeDrawer} aria-label="Close menu" className="pressable grid h-11 w-11 place-items-center rounded-xl border border-[var(--rule)] text-sm lg:hidden"><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
         </div>
-        <button type="button" disabled={!paletteReady} onClick={() => setPaletteOpen(true)} className="pressable mb-4 flex min-h-11 w-full shrink-0 items-center justify-between rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3 text-sm text-[var(--ink-muted)] hover:border-[var(--ink-muted)] hover:text-[var(--ink)] lg:min-h-10"><span><i className="fa-solid fa-magnifying-glass mr-2" aria-hidden="true" />Find a tool</span><kbd className="hidden lg:inline">Ctrl / ⌘ K</kbd></button>
+        <button ref={searchButton} type="button" disabled={!paletteReady} onClick={() => { returnToSearch.current = open; setPaletteOpen(true); }} className="pressable mb-4 flex min-h-11 w-full shrink-0 items-center justify-between rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3 text-sm text-[var(--ink-muted)] hover:border-[var(--ink-muted)] hover:text-[var(--ink)] lg:min-h-10"><span><i className="fa-solid fa-magnifying-glass mr-2" aria-hidden="true" />Find a tool</span><kbd className="hidden lg:inline">Ctrl / ⌘ K</kbd></button>
         <nav aria-label="Tools" className="flex flex-1 flex-col gap-1">
           <Link onClick={closeDrawer} href="/dashboard" aria-current={path === "/dashboard" ? "page" : undefined} className={navItemClass(path === "/dashboard")}><i className={`fa-solid fa-house ${navIconClass(path === "/dashboard")}`} aria-hidden="true" />Dashboard</Link>
           {NAV_GROUPS.map((group) => {
@@ -218,7 +226,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               : <><b className="block text-[var(--ink)]">{guest ? "Guest mode" : "Not signed in"}</b>Progress stays on this device. <Link href="/signin" onClick={closeDrawer} className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">{guest ? "Add an account" : "Sign in"}</Link> for backup and sync.</>}
           </div>
         </nav>
-      </aside>
+      </div>
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col lg:pl-[17rem]">
         <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center gap-2 border-b border-[var(--rule)] bg-[var(--paper-raised)] pl-3 pr-3 pt-[env(safe-area-inset-top)] sm:gap-3 sm:pl-5 sm:pr-5 md:px-8">
           <Link href="/" aria-label="CountLab home" className="shrink-0 rounded-[.65rem] lg:hidden"><BrandMark size="sm" /></Link>
@@ -229,8 +237,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </ol>
           </nav>
           {streakDays > 0 && (
-            <span aria-label={`${streakDays}-day practice streak`} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 text-[.72rem] font-semibold text-[var(--warning)]">
-              <i className="fa-solid fa-fire mr-1.5" aria-hidden="true" />{streakDays}
+            <span title={`${streakDays}-day practice streak`} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 text-[.72rem] font-semibold text-[var(--warning)]">
+              <i className="fa-solid fa-fire mr-1.5" aria-hidden="true" /><span aria-hidden="true">{streakDays}</span><span className="sr-only">{streakDays}-day practice streak</span>
             </span>
           )}
           <Link
@@ -319,7 +327,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div role="presentation" className="fixed inset-0 z-[80] grid place-items-start bg-black/45 p-4 pt-[max(5rem,12vh)] backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && setPaletteOpen(false)}>
           <div ref={palette} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Find a tool" className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--rule)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-2xl">
             <label className="sr-only" htmlFor="command-palette-input">Find a tool</label>
-            <div className="flex items-center border-b border-[var(--rule)] px-4"><i className="fa-solid fa-magnifying-glass text-[var(--ink-muted)]" aria-hidden="true" /><input id="command-palette-input" role="combobox" aria-expanded="true" aria-controls="tool-results" aria-autocomplete="list" aria-activedescendant={paletteMatches.length ? `tool-result-${paletteIndex}` : undefined} autoFocus value={paletteQuery} onChange={(event) => { setPaletteQuery(event.target.value); setPaletteIndex(0); }} onKeyDown={(event) => { if (event.key === "Escape") setPaletteOpen(false); if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setPaletteIndex((index) => Math.max(0, Math.min(paletteMatches.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))); } if (event.key === "Enter" && paletteMatches[paletteIndex]) goTo(paletteMatches[paletteIndex][1]); }} placeholder="Search tools, drills, and games…" className="min-h-14 w-full bg-transparent px-3 text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /><button type="button" aria-label="Close tool search" onClick={() => setPaletteOpen(false)} className="min-h-11 rounded-lg px-3 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)]"><kbd className="ml-0">Esc</kbd></button></div>
+            <div className="flex items-center border-b border-[var(--rule)] px-4"><i className="fa-solid fa-magnifying-glass text-[var(--ink-muted)]" aria-hidden="true" /><input id="command-palette-input" role="combobox" aria-expanded="true" aria-controls="tool-results" aria-autocomplete="list" aria-activedescendant={paletteMatches.length ? `tool-result-${paletteIndex}` : undefined} value={paletteQuery} onChange={(event) => { setPaletteQuery(event.target.value); setPaletteIndex(0); }} onKeyDown={(event) => { if (event.key === "Escape") setPaletteOpen(false); if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setPaletteIndex((index) => Math.max(0, Math.min(paletteMatches.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))); } if (event.key === "Enter" && paletteMatches[paletteIndex]) goTo(paletteMatches[paletteIndex][1]); }} placeholder="Search tools, drills, and games…" className="min-h-14 w-full bg-transparent px-3 text-[var(--ink)] outline-none placeholder:text-[var(--ink-muted)]" /><button type="button" aria-label="Close tool search" onClick={() => setPaletteOpen(false)} className="min-h-11 rounded-lg px-3 text-sm text-[var(--ink-muted)] hover:text-[var(--ink)]"><kbd className="ml-0">Esc</kbd></button></div>
             <div id="tool-results" role="listbox" aria-label="Matching tools" className="max-h-[min(60svh,30rem)] overflow-y-auto p-2">
               {paletteMatches.map(([name, href, icon, toolArea], index) => <button id={`tool-result-${index}`} role="option" aria-selected={paletteIndex === index} tabIndex={-1} type="button" key={href} onMouseMove={() => setPaletteIndex(index)} onClick={() => goTo(href)} className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm ${paletteIndex === index ? "bg-[var(--paper)] ring-1 ring-inset ring-[var(--focus)]" : ""}`}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[var(--rule)] bg-[var(--paper)] text-[var(--count-cold)]"><i className={`fa-solid ${icon} text-xs`} aria-hidden="true" /></span><span className="min-w-0 flex-1"><span className="block font-medium">{name}</span>{ROUTE_DESCRIPTIONS[href] && <span className="block truncate text-xs text-[var(--ink-muted)]">{ROUTE_DESCRIPTIONS[href]}</span>}</span><span className="shrink-0 text-xs text-[var(--ink-muted)]">{toolArea}</span></button>)}
               {!paletteMatches.length && <p className="p-4 text-sm text-[var(--ink-muted)]">No matching tool. Try “count”, “bankroll”, or “chart”.</p>}

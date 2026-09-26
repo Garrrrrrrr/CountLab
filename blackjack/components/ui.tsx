@@ -148,7 +148,8 @@ export function NumberField({
       max ?? Infinity,
       Math.max(min ?? -Infinity, parsed),
     );
-    onValueChange(normalized);
+    // Leaving a field without changing it is not an edit.
+    if (normalized !== value) onValueChange(normalized);
     setDraft(String(normalized));
   };
   const field = (
@@ -466,6 +467,10 @@ function useToggletip() {
     place();
   }, [open, place]);
   useIsomorphicLayoutEffect(() => { if (open && note.current) place(); }, [open, container, place]);
+  // The note is portaled away from its button, so speak it when it opens; otherwise a screen reader hears only "expanded".
+  useEffect(() => {
+    if (open && note.current) announce(note.current.innerText || note.current.textContent || "");
+  }, [open, container]);
   useEffect(() => {
     if (!open) return;
     const dismiss = (event: Event) => {
@@ -692,9 +697,9 @@ const EMPTY_TOASTS: ToastItem[] = [];
 export function ToastViewport() {
   const items = useSyncExternalStore(subscribeToasts, () => toasts, () => EMPTY_TOASTS);
   return (
-    <div data-modal-companion="" aria-live="polite" className="pointer-events-none fixed inset-x-3 bottom-[calc(5rem+var(--dock-clearance,0px)+env(safe-area-inset-bottom))] z-[97] flex flex-col items-center gap-2 lg:bottom-6">
+    <div data-modal-companion="" className="pointer-events-none fixed inset-x-3 bottom-[calc(5rem+var(--dock-clearance,0px)+env(safe-area-inset-bottom))] z-[97] flex flex-col items-center gap-2 lg:bottom-6">
       {items.map((item) => (
-        <div key={item.id} role="status" className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl border border-[var(--rule)] bg-[var(--ink)] px-4 py-3 text-sm text-[var(--paper)] shadow-2xl">
+        <div key={item.id} role="status" aria-atomic="true" className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl border border-[var(--rule)] bg-[var(--ink)] px-4 py-3 text-sm text-[var(--paper)] shadow-2xl">
           <i className={`fa-solid ${item.tone === "bad" ? "fa-circle-exclamation" : item.tone === "warn" ? "fa-triangle-exclamation" : item.tone === "info" ? "fa-circle-info" : "fa-circle-check"} shrink-0`} aria-hidden="true" />
           <span className="min-w-0 flex-1">{item.message}</span>
           {item.action && <button type="button" onClick={() => { item.action!.onClick(); dismissToast(item.id); }} className="min-h-9 shrink-0 rounded-lg px-2 font-semibold underline underline-offset-2">{item.action.label}</button>}

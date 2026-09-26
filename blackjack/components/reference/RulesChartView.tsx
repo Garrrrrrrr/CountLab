@@ -7,6 +7,7 @@ import type { SegmentOption } from "@/components/ui";
 import { DEVIATION_RANKING_METADATA } from "@/lib/blackjack/deviationRanking";
 import { buildRulesChart, changedCells, indexPlayCounts, rankIndexPlays, rulesSummary, shortCellName, softRowTotal } from "@/lib/blackjack/referenceChartModel";
 import type { ChartView, RulesSection } from "@/lib/blackjack/referenceChartModel";
+import { linkedCellKey } from "@/lib/blackjack/referenceLinks";
 import type { StrategyChartRules } from "@/lib/blackjack/strategyChart";
 import type { SurrenderRule } from "@/lib/statistics/storage";
 import { useAuth } from "@/lib/supabase/AuthProvider";
@@ -125,6 +126,14 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
   const ranking = useMemo(() => (view === "index" ? rankIndexPlays(rules, chart) : null), [rules, chart, view]);
   const charts = useRef<HTMLDivElement>(null);
   const explainer = useRef<ExplainerApi | null>(null);
+  // A drill's "See it on the chart" link names one cell: open its explanation once the chart responds to input.
+  const linkedCellShown = useRef(false);
+  useEffect(() => {
+    if (!hydrated || linkedCellShown.current) return;
+    linkedCellShown.current = true;
+    const key = linkedCellKey(location.search);
+    if (key) explainer.current?.show(key);
+  }, [hydrated]);
 
   // Flash the cells a rule change repaints and say what changed, once the
   // reader pauses. The rules panel can cover some of the chart, so the cells

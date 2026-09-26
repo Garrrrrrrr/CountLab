@@ -47,7 +47,7 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
           options={GAME_OPTIONS[config.decks].map((option) => ({
             value: String(option.dealt),
             ariaLabel: `${option.dealt} of ${config.decks} decks dealt, ${dealtPercent(config.decks, option.dealt)}%`,
-            label: <span className="flex flex-col items-center leading-tight"><span>{option.dealt}</span><span className="text-[.68rem] font-medium opacity-80">{dealtPercent(config.decks, option.dealt)}%</span></span>,
+            label: <span className="flex flex-col items-center leading-tight"><span>{option.dealt}</span><span className="text-[.68rem] font-medium">{dealtPercent(config.decks, option.dealt)}%</span></span>,
           }))}
         />
         <NumberField label="Rounds per hour" value={config.handsPerHour} min={1} suffix="rounds/hr" analyticsField="rounds_per_hour" help="About 100 at a typical table; fewer when it's full." onValueChange={(handsPerHour) => edit({ handsPerHour })} />

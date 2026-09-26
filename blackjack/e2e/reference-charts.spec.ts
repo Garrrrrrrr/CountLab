@@ -421,3 +421,15 @@ test("printing from the dark theme stays dark on light, on one page, with every 
     expect((pdf.toString("latin1").match(/\/Type\s*\/Page[^s]/g) ?? []).length, format).toBe(1);
   }
 });
+
+test("a drill's chart link opens the cell it names", async ({ page }) => {
+  await prepare(page);
+  // The Basic Strategy drill links a missed 2,2 vs 5 here; the pairs table sits below the first screen.
+  await page.goto("/reference/?section=pairs&hand=2%2C2&dealer=5");
+  const cell = page.locator("[data-cell='pairs:2,2v5']");
+  await expect(cell).toBeFocused();
+  await expect(cell).toHaveAttribute("data-pinned", "");
+  await expect(cell).toBeInViewport();
+  await page.goto("/reference/deviations/?section=surrender&hand=15&dealer=A");
+  await expect(page.locator("[data-cell='surrender:15vA']")).toBeFocused();
+});

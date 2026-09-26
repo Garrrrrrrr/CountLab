@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { KeyLegend, SetupCard } from "@/components/drill";
 import { SegmentedControl } from "@/components/ui";
 import { ROUND_LENGTHS, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
@@ -63,13 +63,21 @@ export function StrategySetup<T extends string>({ settings, notices, compact, on
   footnote?: ReactNode;
 }) {
   const current = modes.find((option) => option.value === mode) ?? modes[0];
+  // "Change" replaces itself with the full setup, so focus moves to the first choice rather than falling to the page.
+  const choices = useRef<HTMLDivElement>(null);
+  const expanding = useRef(false);
+  useEffect(() => {
+    if (compact || !expanding.current) return;
+    expanding.current = false;
+    choices.current?.querySelector<HTMLElement>("input:checked, input, button")?.focus();
+  }, [compact]);
   return (
     <div className="max-w-2xl">
       <SetupCard title="Set up your round" notice={notices} startLabel={`Start ${length} hands`} onStart={onStart} footnote={footnote}>
         {compact ? (
-          <SetupSentence parts={[`${length} hands`, current.label, EXPLAIN_SHORT[explain], rulesShort(settings)]} onChange={onExpand} />
+          <SetupSentence parts={[`${length} hands`, current.label, EXPLAIN_SHORT[explain], rulesShort(settings)]} onChange={() => { expanding.current = true; onExpand(); }} />
         ) : (
-          <>
+          <div ref={choices} className="contents">
             <div className="grid gap-2">
               <SegmentedControl label={modeLabel} value={mode} onChange={onMode} options={modes} fullWidth analyticsField="drill_mode" />
               <p className="text-xs leading-5 text-[var(--ink-muted)]">{current.help}</p>
@@ -102,7 +110,7 @@ export function StrategySetup<T extends string>({ settings, notices, compact, on
                 )}
               </div>
             </MoreOptions>
-          </>
+          </div>
         )}
       </SetupCard>
     </div>

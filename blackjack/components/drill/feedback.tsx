@@ -58,7 +58,7 @@ export function FeedbackPanel({ ok, title, detail, rows, cause, children, visual
       {(link || action) && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {action}
-          {link && <Link href={link.href} className="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline">{link.label} <i className="fa-solid fa-arrow-up-right-from-square ml-0.5 text-[.65rem]" aria-hidden="true" /></Link>}
+          {link && <Link href={link.href} className="text-sm font-semibold text-[var(--accent)] underline-offset-2 hover:underline">{link.label} <i className="fa-solid fa-arrow-right ml-0.5 text-[.65rem]" aria-hidden="true" /></Link>}
         </div>
       )}
     </div>

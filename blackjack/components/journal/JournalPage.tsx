@@ -246,7 +246,7 @@ export function SessionJournal() {
     ),
     data.merged > 0 && <Callout key="merged" tone="info" onDismiss={() => dismiss("merged")}>Merged {data.merged} duplicate bankroll{data.merged === 1 ? "" : "s"}.</Callout>,
     !arrivalDismissed && arrival.status === "missing" && (
-      <Callout key="missing" tone="info" onDismiss={() => { setArrivalDismissed(true); stripScenario(); }}>
+      <Callout key="missing" tone="info" live onDismiss={() => { setArrivalDismissed(true); stripScenario(); }}>
         The linked scenario isn&apos;t saved on this account and device. Choose a saved game from Start from when you log a session.
       </Callout>
     ),
@@ -254,6 +254,7 @@ export function SessionJournal() {
       <Callout
         key="unsupported"
         tone="warn"
+        live
         title={`“${arrival.scenario.name}” can't be logged here`}
         onDismiss={() => { setArrivalDismissed(true); stripScenario(); }}
         action={<>
@@ -385,14 +386,15 @@ export function SessionJournal() {
 
       <p className="mt-10 max-w-3xl text-xs leading-5 text-[var(--ink-muted)]">Expected results and swings come from CountLab&apos;s audited true-count simulation for the rules, spread and play you entered — the same engine as the Game &amp; Bankroll Lab. They are never fitted to your results.</p>
 
-      {!overlay && (
+      {/* Hidden rather than removed while a sheet is open, so closing the sheet returns focus to the button that opened it. */}
+      <div hidden={overlay !== null}>
         <MobileActionDock label="Session journal actions">
           <div className="flex gap-2">
             <Button className="flex-1 whitespace-nowrap" disabled={!data.ready} onClick={() => openLog()}><i className="fa-solid fa-plus mr-2 text-xs" aria-hidden="true" />Log session</Button>
             <GhostButton aria-label="Deposit or withdrawal" title="Deposit or withdrawal" disabled={!data.ready} className="w-11 shrink-0 px-0" onClick={() => openCash()}><i className="fa-solid fa-money-bill-transfer" aria-hidden="true" /></GhostButton>
           </div>
         </MobileActionDock>
-      )}
+      </div>
 
       {overlay?.kind === "log" && (
         <LogSessionSheet

@@ -4,8 +4,9 @@
  * The reference pages open on their own tab from the bare path; the `section`,
  * `hand` and `dealer` parameters additionally name one cell for the page to
  * highlight. Row labels are the charts' own (`16`, `A,8`, `T,T`, `8,8`), so the
- * values are encoded with URLSearchParams: a comma is `%2C`. A page that does
- * not read the parameters yet still lands on the right chart.
+ * values are encoded with URLSearchParams: a comma is `%2C`. The strategy and
+ * deviation charts open that cell's explanation; any other page still lands on
+ * the right chart.
  */
 export type ReferenceChart = "strategy" | "deviations" | "h17";
 
@@ -28,4 +29,11 @@ export function referenceHref(chart: ReferenceChart, cell?: ChartCell | null): s
   if (!cell) return PATH[chart];
   const params = new URLSearchParams({ section: cell.section, hand: cell.hand, dealer: cell.dealer });
   return `${PATH[chart]}/?${params.toString()}`;
+}
+
+/** The chart cell key (`section:handvdealer`) a link names, or null when it names none. */
+export function linkedCellKey(search: string): string | null {
+  const params = new URLSearchParams(search);
+  const [section, hand, dealer] = ["section", "hand", "dealer"].map((name) => params.get(name)?.trim());
+  return section && hand && dealer ? `${section}:${hand}v${dealer}` : null;
 }

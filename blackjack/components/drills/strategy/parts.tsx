@@ -109,7 +109,7 @@ export function SetupSentence({ parts, onChange }: { parts: readonly string[]; o
         <span className="sr-only">This round: </span>
         {parts.map((part, index) => <span key={part}>{index > 0 && <span aria-hidden="true" className="text-[var(--ink-muted)]"> · </span>}{index > 0 && <span className="sr-only">, </span>}{part}</span>)}
       </p>
-      <GhostButton size="compact" aria-expanded={false} onClick={onChange}>Change</GhostButton>
+      <GhostButton size="compact" onClick={onChange}>Change</GhostButton>
     </div>
   );
 }

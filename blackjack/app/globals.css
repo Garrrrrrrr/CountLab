@@ -44,7 +44,7 @@
   --rule: #2a3a32;
   --count-flat: #a7b1ac;
   --count-warm: #d6b13b;
-  --count-hot: #df6a47;
+  --count-hot: #e57756;
   --focus: #6f98ae;
   --accent: #6ee7b7;
   --accent-strong: #6ee7b7;
@@ -68,7 +68,7 @@
     --rule: #2a3a32;
     --count-flat: #a7b1ac;
     --count-warm: #d6b13b;
-    --count-hot: #df6a47;
+    --count-hot: #e57756;
     --focus: #6f98ae;
     --accent: #6ee7b7;
     --accent-strong: #6ee7b7;
@@ -569,6 +569,7 @@ kbd {
 @media (prefers-reduced-transparency: reduce) {
   .surface,
   aside,
+  #primary-navigation,
   header,
   .mobile-action-dock {
     backdrop-filter: none !important;
