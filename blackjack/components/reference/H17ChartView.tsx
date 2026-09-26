@@ -80,7 +80,7 @@ export function H17ChartView() {
       <ChartHeader
         title="H17 deviation chart"
         description="The answer key for the H17 chart recall drill: 6 decks, dealer hits soft 17, double after split. White cells with an amber edge are Hi-Lo index plays; select any cell to see what it means."
-        shortDescription="The answer key for the H17 chart recall drill. Tap any cell to see what it means."
+        shortDescription="The printed chart the H17 drill grades. Tap any cell to see what it means."
         printLine={`Rules: ${FIXED_RULES.toLowerCase()} · ${rule === "early10" ? "early surrender vs 10" : "late surrender"}`}
         actions={(
           <>

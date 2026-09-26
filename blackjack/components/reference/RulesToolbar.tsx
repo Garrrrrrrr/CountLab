@@ -16,6 +16,8 @@ import { SavedRuleNote } from "./SavedRuleNote";
 /** On phones the label sits left of its options; from tablets up it sits above them, so every rule fits one row. */
 const RULE_LAYOUT = "grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 md:grid-cols-1 md:justify-items-start md:gap-y-1";
 
+// The shared SegmentedControl's legend does not name its group for assistive
+// technology, so every option carries its rule in its own accessible name.
 const DECK_OPTIONS: ReadonlyArray<SegmentOption<DeckChoice>> = [
   { value: "1", label: "1", ariaLabel: "1 deck" },
   { value: "2", label: "2", ariaLabel: "2 decks" },
@@ -26,8 +28,8 @@ const SOFT17_OPTIONS: ReadonlyArray<SegmentOption<"s17" | "h17">> = [
   { value: "h17", label: "H17", ariaLabel: "Dealer hits soft 17 (H17)" },
 ];
 const DAS_OPTIONS: ReadonlyArray<SegmentOption<"yes" | "no">> = [
-  { value: "yes", label: "Yes" },
-  { value: "no", label: "No" },
+  { value: "yes", label: "Yes", ariaLabel: "Double after split: yes" },
+  { value: "no", label: "No", ariaLabel: "Double after split: no" },
 ];
 const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<SurrenderRule>> = [
   { value: "none", label: "None", ariaLabel: "No surrender" },
@@ -35,12 +37,12 @@ const SURRENDER_OPTIONS: ReadonlyArray<SegmentOption<SurrenderRule>> = [
   { value: "early", label: "Early vs 10", ariaLabel: "Early surrender vs 10 (ES10)" },
 ];
 const DOUBLE_OPTIONS: ReadonlyArray<SegmentOption<StrategyChartRules["doubleRule"]>> = [
-  { value: "any", label: "Any two cards" },
-  { value: "9-11", label: "Hard 9–11" },
-  { value: "10-11", label: "Hard 10–11" },
+  { value: "any", label: "Any two cards", ariaLabel: "Double on any two cards" },
+  { value: "9-11", label: "Hard 9–11", ariaLabel: "Double on hard 9–11 only" },
+  { value: "10-11", label: "Hard 10–11", ariaLabel: "Double on hard 10–11 only" },
 ];
 const HOLE_CARD_OPTIONS: ReadonlyArray<SegmentOption<"peek" | "enhc">> = [
-  { value: "peek", label: "Dealer peeks (US)" },
+  { value: "peek", label: "Dealer peeks (US)", ariaLabel: "Dealer peeks for blackjack (US)" },
   { value: "enhc", label: "No hole card (ENHC)", ariaLabel: "No hole card, European (ENHC)" },
 ];
 
@@ -98,6 +100,7 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
   }, [panelOpen, onPanelChange]);
 
   const summary = rulesSummary(rules, "short");
+  const resetLabel = hasSavedRules ? "Reset to my rules" : "Reset to defaults";
   const sections: ReadonlyArray<{ href: `#${string}` | `/${string}`; label: string }> = [
     { href: "#hard", label: "Hard" },
     { href: "#soft", label: "Soft" },
@@ -186,9 +189,10 @@ export function RulesToolbar({ view, rules, savedDecks, hasSavedRules, differenc
           <i className={`fa-solid fa-chevron-down text-[.6rem] text-[var(--ink-muted)] transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
         </button>
         {hydrated && differences > 0 && (
-          <Button variant="quiet" size="compact" enterAction={false} onClick={onReset} className="inline-flex items-center gap-2 self-start md:ml-auto md:self-auto [@media(pointer:coarse)]:min-h-11">
+          <Button variant="quiet" size="compact" enterAction={false} onClick={onReset} aria-label={resetLabel} title={resetLabel} className="inline-flex items-center gap-2 self-start md:ml-auto md:self-auto [@media(pointer:coarse)]:min-h-11">
             <i className="fa-solid fa-rotate-left text-xs" aria-hidden="true" />
-            {hasSavedRules ? "Reset to my rules" : "Reset to defaults"}
+            <span className="md:hidden">{resetLabel}</span>
+            <span className="hidden md:inline">Reset</span>
           </Button>
         )}
         <div id="reference-more-rules" className={`${moreOpen ? "flex" : "hidden"} flex-col gap-2.5 border-t border-[var(--rule)] pt-2.5 md:basis-full md:flex-row md:flex-wrap md:items-end md:gap-x-4 md:gap-y-2 md:pt-2`}>

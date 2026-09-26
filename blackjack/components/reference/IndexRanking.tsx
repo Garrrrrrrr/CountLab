@@ -31,6 +31,7 @@ function PlayRow({ play, rank, max, hidden, onShow, disabled }: { play: RankedPl
       <span className="col-span-3 col-start-1 row-start-2 min-w-0 text-sm leading-5 text-[var(--ink)] sm:col-span-2 sm:col-start-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto print:col-span-1 print:col-start-auto print:row-start-auto print:text-[9px] print:leading-4">
         {play.sentence}
         {!play.available && <span className="ml-1 whitespace-nowrap text-xs font-semibold text-[var(--warning)]">Not available under these rules</span>}
+        {!play.showLabel && <span className="block text-xs text-[var(--ink-muted)]">Also in the chart key, above the tables.</span>}
       </span>
       <span className="col-span-3 col-start-1 row-start-3 flex min-w-0 items-center gap-2 text-sm sm:col-span-2 sm:col-start-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:block print:col-span-1 print:col-start-auto print:row-start-auto print:block">
         {value ? (
@@ -46,12 +47,10 @@ function PlayRow({ play, rank, max, hidden, onShow, disabled }: { play: RankedPl
         {value && <>Changes the play {value.fires.toFixed(2)} times per 100 rounds</>}
       </span>
       <span className="col-start-3 row-start-1 justify-self-end lg:col-start-auto lg:row-start-auto print:hidden">
-        {play.showLabel ? (
+        {play.showLabel && (
           <button type="button" disabled={disabled} onClick={() => onShow(play.key)} aria-label={play.showLabel} title={play.showLabel} className="pressable grid h-11 w-11 place-items-center rounded-lg border border-[var(--rule)] bg-[var(--paper)] text-sm text-[var(--ink)] hover:border-[var(--ink-muted)] disabled:opacity-40">
             <i className="fa-solid fa-crosshairs" aria-hidden="true" />
           </button>
-        ) : (
-          <span className="block w-11 text-right text-[.68rem] leading-4 text-[var(--ink-muted)] lg:w-auto">Shown in the chart key</span>
         )}
       </span>
     </li>
@@ -70,9 +69,9 @@ export function IndexRanking({ ranking, rules, onShow, disabled }: { ranking: Ra
     <section id="index-plays-ranked" aria-labelledby="index-ranking-heading" className="ref-ranking ref-anchor surface min-w-0 rounded-2xl p-4 sm:p-5 print:break-before-page print:border-0 print:p-0 print:shadow-none">
       <h2 id="index-ranking-heading" data-analytics-section="index_play_ranking" className="font-display text-xl font-semibold">Index plays ranked by value</h2>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--ink-muted)] print:text-[9px] print:leading-4">
-        Learn them from the top. Value is what adding one play to basic strategy earns, in betting units per 100 rounds, with a 1–12 bet spread{" "}
+        Learn them from the top. Value is what adding one play to basic strategy earns, in betting units{" "}
         <HelpTip label="Units">A unit is your minimum bet. +0.05 units per 100 rounds is 5 cents per 100 rounds at a $1 unit.</HelpTip>
-        {" "}Priced for {rules.dealerHitsSoft17 ? "H17" : "S17"} tables {surrenderOn ? "with" : "without"} surrender.
+        {" "}per 100 rounds, with a 1–12 bet spread. Priced for {rules.dealerHitsSoft17 ? "H17" : "S17"} tables {surrenderOn ? "with" : "without"} surrender.
       </p>
       <ol aria-labelledby="index-ranking-heading" className="mt-3">
         {ranked.map((play, index) => (

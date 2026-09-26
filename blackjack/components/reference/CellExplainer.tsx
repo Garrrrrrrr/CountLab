@@ -31,6 +31,8 @@ const cellFrom = (target: EventTarget | null) =>
 export function CellExplainer({ containerRef, render, apiRef }: { containerRef: RefObject<HTMLElement | null>; render: (key: string, source: ExplainSource) => ReactNode; apiRef?: RefObject<ExplainerApi | null> }) {
   const [active, setActive] = useState<Active>(null);
   const current = useRef<Active>(null);
+  /** Hover previews pause while "Show on chart" scrolls the page under a resting pointer. */
+  const hoverPausedUntil = useRef(0);
   const id = useId();
   const update = useCallback((next: Active) => {
     current.current = next;
@@ -41,17 +43,25 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
     const root = containerRef.current;
     if (!root) return;
     let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+    // A keyboard user's card stays put when the page scrolls under a resting
+    // mouse; moving the mouse hands hover back.
+    let keyboardFocus = false;
     const clearHover = () => clearTimeout(hoverTimer);
+    const hoverAllowed = () => current.current?.source !== "pin" && !(keyboardFocus && current.current?.source === "focus") && Date.now() >= hoverPausedUntil.current;
     const onPointerOver = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse" || current.current?.source === "pin") return;
+      if (event.pointerType !== "mouse" || !hoverAllowed()) return;
       const cell = cellFrom(event.target);
       clearHover();
-      if (!cell) {
-        if (current.current?.source === "hover") hoverTimer = setTimeout(() => update(null), HOVER_DELAY_MS);
-        return;
-      }
-      hoverTimer = setTimeout(() => update({ key: cell.dataset.cell!, source: "hover" }), HOVER_DELAY_MS);
+      hoverTimer = setTimeout(() => {
+        if (!hoverAllowed()) return;
+        if (cell) update({ key: cell.dataset.cell!, source: "hover" });
+        else if (current.current?.source === "hover") update(null);
+      }, HOVER_DELAY_MS);
     };
+    const onPointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "mouse" && (event.movementX || event.movementY)) keyboardFocus = false;
+    };
+    const onAnyKey = () => { keyboardFocus = true; };
     const onPointerLeave = () => {
       clearHover();
       if (current.current?.source === "hover") update(null);
@@ -84,6 +94,8 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
       update(null);
     };
     root.addEventListener("pointerover", onPointerOver);
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("keydown", onAnyKey, true);
     root.addEventListener("pointerleave", onPointerLeave);
     root.addEventListener("focusin", onFocusIn);
     root.addEventListener("focusout", onFocusOut);
@@ -93,6 +105,8 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
     return () => {
       clearHover();
       root.removeEventListener("pointerover", onPointerOver);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("keydown", onAnyKey, true);
       root.removeEventListener("pointerleave", onPointerLeave);
       root.removeEventListener("focusin", onFocusIn);
       root.removeEventListener("focusout", onFocusOut);
@@ -125,13 +139,19 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
         const cell = containerRef.current?.querySelector<HTMLElement>(`[data-cell="${CSS.escape(key)}"]`);
         if (!cell) return;
         const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+        hoverPausedUntil.current = Date.now() + 1500;
+        // Focus and pin once the scroll settles, so the card lands beside the
+        // cell rather than where it was. Settling twice (the fallback timer and
+        // a late scrollend) only re-pins the same cell.
+        const settle = () => {
+          removeEventListener("scrollend", settle);
+          cell.focus({ preventScroll: true });
+          update({ key, source: "pin" });
+        };
         cell.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
-        cell.focus({ preventScroll: true });
-        // Pin once the scroll settles, so the card lands beside the cell rather than where it was.
-        let done = false;
-        const pin = () => { if (done) return; done = true; removeEventListener("scrollend", pin); update({ key, source: "pin" }); };
-        addEventListener("scrollend", pin, { once: true });
-        setTimeout(pin, smooth ? 400 : 0);
+        if (!smooth) { settle(); return; }
+        addEventListener("scrollend", settle);
+        setTimeout(settle, 700);
       },
     };
     return () => { apiRef.current = null; };
