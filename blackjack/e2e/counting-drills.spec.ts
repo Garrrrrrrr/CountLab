@@ -310,6 +310,17 @@ test.describe("counting benchmark", () => {
     await expect(main(page).getByRole("radio", { name: /^Quarter deck/ })).toBeChecked();
   });
 
+  test("starting a Benchmark hand-off leaves the reader's Settings and the rules step alone", async ({ page }) => {
+    await page.goto("/training/benchmark/");
+    await main(page).getByRole("link", { name: "Practice Running Count" }).click();
+    await expect(main(page).getByRole("radio", { name: /^One-deck speed/ })).toBeChecked();
+    await clickVisible(page, "Start counting");
+    await expect(page.getByRole("region", { name: "Session progress" })).toBeVisible();
+    const stored = await page.evaluate((prefix) => ({ rules: localStorage.getItem(`${prefix}countlab:onboarding-rules-saved`), settings: localStorage.getItem(`${prefix}hilo:settings`) }), PREFIX);
+    expect(stored.rules).toBeNull();
+    expect(stored.settings === null || JSON.parse(stored.settings).countingPreset !== "one-deck-speed").toBe(true);
+  });
+
   test("a weak spot opens True Count focused on it", async ({ page }) => {
     const base = { questions: 10, correct: 5, accuracy: 50, averageResponseTime: 2000, bestStreak: 2, mistakes: [], date: new Date().toISOString() };
     await seedOnce(page, { [`${PREFIX}hilo:sessions`]: [{ ...base, id: "tc", drill: "True Count", categories: { "negative, 0.5-deck divisor": { correct: 1, total: 5 }, "positive, 0.5-deck divisor": { correct: 4, total: 5 } } }] });

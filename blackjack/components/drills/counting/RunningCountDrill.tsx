@@ -127,6 +127,8 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
   const [lastPicked, setLastPicked] = useState<RunningCardId>(() => lastCard.current ?? initial.setup.preset);
   const [customizeOpen, setCustomizeOpen] = useState(() => !saved && !initial.focusCard && lastCard.current === null);
   const [focusNote, setFocusNote] = useState(() => (!saved && initial.focusCard ? initial.focusCard : undefined));
+  /** Whether the reader picked a card or changed a setting here; a hand-off alone is not their choice. */
+  const chose = useRef(false);
 
   const [phase, setPhase] = useState<Phase>(saved ? saved.phase : "setup");
   const [cards, setCards] = useState<Card[]>(saved?.cards ?? []);
@@ -255,8 +257,11 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     // One preset change per session started (not per card browsed), saved as the Settings default.
     if (card !== lastCard.current) track("difficulty_changed", { drill: DRILL, from: lastCard.current ?? "custom", to: card ?? "custom" });
     lastCard.current = card;
-    if (card && card !== "starter" && card !== storage.settings().countingPreset) storage.saveSettings({ ...storage.settings(), countingPreset: card });
-    rememberSetup(card);
+    // A hand-off (a Benchmark target or a weak spot) sets up this session only;
+    // the reader's own pick is what becomes their Settings default.
+    const ownChoice = chose.current || card !== initial.arrivalCard;
+    if (ownChoice && card && card !== "starter" && card !== storage.settings().countingPreset) storage.saveSettings({ ...storage.settings(), countingPreset: card });
+    if (ownChoice || !initial.focusCard) rememberSetup(card);
     setPreset(tag);
     setCards(makeCountSequence(setup.decks, setup.amount, setup.bias));
     setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setElapsed(0);
@@ -367,6 +372,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
   };
 
   const onPickCard = (id: RunningCardId) => {
+    chose.current = true;
     const next = cardSetup(id, setup);
     setSetup(next);
     setPreset(next.preset);
@@ -411,7 +417,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
             <RunningSetup
               setup={setup}
               matched={matched}
-              onChange={(next) => setSetup((current) => ({ ...current, ...next }))}
+              onChange={(next) => { chose.current = true; setSetup((current) => ({ ...current, ...next })); }}
               onPickCard={onPickCard}
               onReset={() => onPickCard(lastPicked)}
               resetLabel={`Reset to ${resetTitle}`}
