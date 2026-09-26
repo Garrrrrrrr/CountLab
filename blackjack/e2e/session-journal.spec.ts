@@ -744,10 +744,11 @@ test("the journal fits a 320px phone, empty and with data", async ({ page }, tes
     presets: [{ ...aria, id: "hammond", name: "Horseshoe Hammond Casino & Hotel" }],
   });
   // The shell clips sideways overflow, so the page never scrolls; check that each record control is on screen.
-  const offscreen = () => page.locator("#journal-records-panel").locator(":is(button, input, li, table, .overflow-x-auto):visible").evaluateAll((nodes) => nodes.filter((node) => {
+  // (Against the width set here: a phone's innerWidth grows to fit content that overflows.)
+  const offscreen = (width: number) => page.locator("#journal-records-panel").locator(":is(button, input, li, table, .overflow-x-auto):visible").evaluateAll((nodes, right) => nodes.filter((node) => {
     const box = node.getBoundingClientRect();
-    return !node.parentElement?.closest(".overflow-x-auto") && (box.left < -1 || box.right > innerWidth + 1);
-  }).map((node) => `${node.tagName} ${node.textContent?.trim().slice(0, 30)}`));
+    return !node.parentElement?.closest(".overflow-x-auto") && (box.left < -1 || box.right > right + 1);
+  }).map((node) => `${node.tagName} ${node.textContent?.trim().slice(0, 30)}`), width);
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 640 });
     for (const path of ["/journal/", "/journal/#cash", "/journal/#venues"]) {
@@ -755,7 +756,7 @@ test("the journal fits a 320px phone, empty and with data", async ({ page }, tes
       await page.getByRole("heading", { name: "Session Journal" }).waitFor();
       await expect(page.locator("#journal-records-panel li").first()).toBeVisible();
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-      expect(await offscreen(), `${path} at ${width}px`).toEqual([]);
+      expect(await offscreen(width), `${path} at ${width}px`).toEqual([]);
     }
   }
   await page.getByRole("group", { name: "Session journal actions" }).getByRole("button", { name: "Log session" }).click();
@@ -768,7 +769,7 @@ test("the journal fits a 320px phone, empty and with data", async ({ page }, tes
   expect(await dialog.evaluate((element) => Array.from(element.querySelectorAll<HTMLElement>(".overflow-y-auto")).every((scroller) => scroller.scrollWidth <= scroller.clientWidth))).toBe(true);
   const clipped = await page.getByRole("dialog").locator(":is(button, input, select, label):visible").evaluateAll((nodes) => nodes.filter((node) => {
     const box = node.getBoundingClientRect();
-    return !node.closest(".overflow-x-auto") && (box.left < -1 || box.right > innerWidth + 1);
+    return !node.closest(".overflow-x-auto") && (box.left < -1 || box.right > 321);
   }).map((node) => node.textContent?.trim().slice(0, 30)));
   expect(clipped).toEqual([]);
 

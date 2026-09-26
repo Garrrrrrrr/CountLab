@@ -99,11 +99,15 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
                   <button type="button" data-session-row={session.id} onClick={() => onOpen(session.id)} className="pressable flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3.5 py-3 text-left hover:border-[var(--ink-muted)]">
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold"><DateCell date={session.date} /></span>
-                      <span className="block truncate text-sm text-[var(--ink-muted)]">
-                        {casinoText(session) || "Not recorded"}
-                        {session.notes?.trim() && <i className="fa-solid fa-note-sticky ml-1.5 text-xs" aria-hidden="true" />}
+                      {/* The notes mark sits outside the truncated text, so a long casino name can't hide it or push its
+                          screen-reader text past the screen edge (the relative box keeps that text in place). */}
+                      <span className="relative flex min-w-0 items-center gap-1.5 text-sm text-[var(--ink-muted)]">
+                        <span className="truncate">
+                          {casinoText(session) || "Not recorded"}
+                          {showBankroll && ` · ${bankrollNames.get(session.bankrollId) ?? ""}`}
+                        </span>
+                        {session.notes?.trim() && <i className="fa-solid fa-note-sticky shrink-0 text-xs" aria-hidden="true" />}
                         {session.notes?.trim() && <span className="sr-only">, has notes</span>}
-                        {showBankroll && ` · ${bankrollNames.get(session.bankrollId) ?? ""}`}
                       </span>
                       <span className="block text-xs text-[var(--ink-muted)]">{hoursLabel(session.hours)} · Expected {outcome ? signedMoney(outcome.tripEv) : "—"}</span>
                     </span>
