@@ -45,17 +45,30 @@ export function useChartView(initial: ChartView) {
   const fromPath = viewForPath(normalizePath(pathname ?? ""));
   const [view, setView] = useState<ChartView>(fromPath ?? initial);
   const shown = useRef(view);
+  // The view the head describes. The route renders its own metadata, but
+  // Back to an address this page pushed restores the tree of the route it was
+  // pushed from, so the page can mount at one address with the other's head.
+  const head = useRef(initial);
 
   useEffect(() => {
-    if (!fromPath || fromPath === shown.current) return;
-    shown.current = fromPath;
-    setView(fromPath);
-    syncHead(VIEW_PATH[fromPath]);
+    if (!fromPath) return;
+    if (fromPath !== shown.current) {
+      shown.current = fromPath;
+      setView(fromPath);
+    }
+    if (fromPath === head.current) return;
+    head.current = fromPath;
+    const path = VIEW_PATH[fromPath];
+    syncHead(path);
+    // Again after the route's own metadata has had its chance to commit.
+    const frame = requestAnimationFrame(() => syncHead(path));
+    return () => cancelAnimationFrame(frame);
   }, [fromPath]);
 
   const choose = useCallback((next: ChartView) => {
     if (next === shown.current) return;
     shown.current = next;
+    head.current = next;
     setView(next);
     syncHead(VIEW_PATH[next]);
     window.history.pushState(null, "", VIEW_PATH[next] + location.search + location.hash);

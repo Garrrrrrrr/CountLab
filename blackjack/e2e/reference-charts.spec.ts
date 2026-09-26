@@ -52,6 +52,7 @@ test("the view switch carries the title, canonical address and Back", async ({ p
   await prepare(page);
   await page.goto("/reference/");
   await expect(page).toHaveTitle(/Strategy charts/);
+  await page.getByRole("radio", { name: "1 deck", exact: true }).click();
   await page.getByRole("radio", { name: "With index plays", exact: true }).click();
   await expect(page).toHaveURL(/\/reference\/deviations\/$/);
   await expect(page).toHaveTitle(/Index deviation chart/);
@@ -63,11 +64,36 @@ test("the view switch carries the title, canonical address and Back", async ({ p
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Basic strategy chart");
   await expect(page.getByRole("radio", { name: "Basic strategy", exact: true })).toBeChecked();
   await expect(page).toHaveTitle(/Strategy charts/);
+  // Back stays on this page, so the rules picked for this visit are still there.
+  await expect(page.getByRole("radio", { name: "1 deck", exact: true })).toBeChecked();
 
   await page.goForward();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index deviation chart");
   await page.reload();
   await expect(page.getByRole("radio", { name: "With index plays", exact: true })).toBeChecked();
+});
+
+test("coming Back to a view reached with the switch restores its own title and canonical address", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  const tools = page.getByRole("navigation", { name: "Tools" });
+  for (const view of [
+    { from: "/reference/", switchTo: "With index plays", title: /Index deviation chart/, h1: "Index deviation chart", canonical: /\/reference\/deviations\/$/ },
+    { from: "/reference/deviations/", switchTo: "Basic strategy", title: /Strategy charts/, h1: "Basic strategy chart", canonical: /\/reference\/$/ },
+  ]) {
+    await page.goto(view.from);
+    await hydrated(page);
+    await page.getByRole("radio", { name: view.switchTo, exact: true }).click();
+    await expect(page).toHaveTitle(view.title);
+    await tools.getByRole("link", { name: "H17 deviation chart", exact: true }).click();
+    await expect(page).toHaveTitle(/H17 deviation chart/);
+    // Back remounts the page with the tree of the address the switch left.
+    await page.goBack();
+    await expect(page.getByRole("heading", { level: 1 }), `switched from ${view.from}`).toHaveText(view.h1);
+    await expect(page).toHaveTitle(view.title);
+    await expect(page.locator("link[rel='canonical']")).toHaveAttribute("href", view.canonical);
+    await expect(page.locator("meta[property='og:url']")).toHaveAttribute("content", view.canonical);
+  }
 });
 
 test("surrender saves once, only on a real change", async ({ page }, testInfo) => {
