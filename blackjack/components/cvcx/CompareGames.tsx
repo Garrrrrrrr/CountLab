@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { count, dealtPercent, money, percent } from "@/lib/blackjack/labFormat";
 import { compareGames, type CompareBasis, type GameComparison } from "@/lib/blackjack/labModel";
 import { GhostButton, Section } from "@/components/ui";
-import { LabSegmented, StatusMark } from "./parts";
+import { InlineUndo, LabSegmented, StatusMark } from "./parts";
 import type { Lab } from "./useLab";
 
 const gameName = (row: GameComparison) => `${row.decks} decks, ${row.dealt} dealt`;
@@ -40,16 +40,19 @@ export function CompareGames({ lab, className = "" }: { lab: Lab; className?: st
         <p className="max-w-2xl text-sm leading-6 text-[var(--ink-muted)]">
           The nine audited games with your {money(config.baseBet)} unit and {money(config.bankroll)} bankroll, ranked by SCORE, which compares games regardless of stakes. Price them with your own ramp to see what switching tables alone would do, or give each game its own optimal ramp, capped at your {config.maxSpread}× maximum spread.
         </p>
-        <LabSegmented<CompareBasis>
-          label="Price each game with"
-          name="compare-basis"
-          size="compact"
-          analyticsField="compare_basis"
-          className="lab-seg mt-3"
-          value={basis}
-          onChange={setBasis}
-          options={[{ value: "yours", label: "Your bet ramp" }, { value: "optimal", label: "Its own optimal ramp" }]}
-        />
+        <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2">
+          <LabSegmented<CompareBasis>
+            label="Price each game with"
+            name="compare-basis"
+            size="compact"
+            analyticsField="compare_basis"
+            className="lab-seg"
+            value={basis}
+            onChange={setBasis}
+            options={[{ value: "yours", label: "Your bet ramp" }, { value: "optimal", label: "Its own optimal ramp" }]}
+          />
+          <InlineUndo lab={lab} source="compare" />
+        </div>
         <div className="lab-compare mt-4">
           <ol className="lab-compare-list grid gap-2" aria-label="Games ranked by SCORE">
             {rows.map((row, index) => (

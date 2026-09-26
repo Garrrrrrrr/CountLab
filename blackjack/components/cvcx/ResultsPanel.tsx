@@ -6,7 +6,7 @@ import { DASH, money, percent, riskLabel } from "@/lib/blackjack/labFormat";
 import { labBlocker } from "@/lib/blackjack/labModel";
 import { unsupportedScenario } from "@/components/ScenarioPicker";
 import { Button, Callout, GhostButton, HelpTip, StatTile, Term, type Tone } from "@/components/ui";
-import { StatusMark } from "./parts";
+import { InlineUndo, StatusMark } from "./parts";
 import type { Lab } from "./useLab";
 
 /**
@@ -79,7 +79,7 @@ export function ResultsPanel({ lab, onShowRules, className = "", ref }: { lab: L
         {blocker ? (
           <div className="mt-2 text-xs leading-5 text-[var(--ink-muted)]" id="simulate-blocked">
             <p>{blocker.reason}</p>
-            {blocker.fix === "rules" && <GhostButton size="compact" className="mt-2" onClick={lab.resetRules}>Reset to audited rules</GhostButton>}
+            {blocker.fix === "rules" && <GhostButton size="compact" className="mt-2" onClick={() => lab.resetRules("results")}>Reset to audited rules</GhostButton>}
             {blocker.fix === "hands" && <GhostButton size="compact" className="mt-2" onClick={lab.oneHandEverywhere}>Use 1 hand everywhere</GhostButton>}
           </div>
         ) : (
@@ -87,6 +87,7 @@ export function ResultsPanel({ lab, onShowRules, className = "", ref }: { lab: L
             {target.reuse ? <>Opens “{target.name}” in the Session Simulator to run simulated shoes.</> : <>Saves this setup as “{target.name}” and opens it in the Session Simulator to run simulated shoes.</>}
           </p>
         )}
+        <InlineUndo lab={lab} source="results" className="mt-2" />
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/analytics/track";
 import { RAMPS } from "@/lib/blackjack/advantage";
@@ -51,6 +51,9 @@ import { useScenarioFromUrl } from "@/components/ScenarioPicker";
 import { announce, dismissToast, toast } from "@/components/ui";
 
 export type DirectoryHandoff = { title: string; detail: string; error: boolean };
+/** Where the control that made a bulk change sits, so its Undo can appear right beside it. */
+export type UndoSource = "header" | "preset" | "optimal" | "ramp" | "rules" | "results" | "compare";
+export type PendingUndo = { source: UndoSource; message: string };
 /** Facts from a directory game that matter next to specific controls. */
 export type DirectoryHints = { midShoeUnverified: boolean; maxBet: number | null };
 
@@ -58,6 +61,12 @@ const DEFAULT_KEY = configKey(DEFAULT_LAB_CONFIG);
 const RAMP_FIELDS: (keyof LabConfig)[] = ["ramp", "hands", "wongInAt"];
 const useClientLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 const presetLabel = (name: string) => name.replace("-", "–");
+/** Undo is retired by the next direct edit, not by a clock; the toast only needs to stay long enough to be read and reached. */
+const UNDO_TOAST_MS = 120_000;
+const TEXT_ENTRY = new Set(["text", "search", "email", "url", "tel", "password", "number"]);
+/** Fields where Ctrl+Z belongs to the browser's own text undo. */
+const isTextEntry = (element: Element) =>
+  element instanceof HTMLTextAreaElement || (element instanceof HTMLInputElement && TEXT_ENTRY.has(element.type)) || (element instanceof HTMLElement && element.isContentEditable);
 
 /** Pricing for the current inputs. Everything on the page reads from this one computation. */
 function useLabModel(config: LabConfig) {
@@ -93,8 +102,9 @@ export type LabModel = ReturnType<typeof useLabModel>;
  * The Lab's working state and every action on it. Direct edits apply at once;
  * changes that replace several inputs together (a preset over a custom ramp,
  * the optimal ramp, a reset, a load, another game) are confirmed with a toast
- * whose Undo restores exactly the inputs that change touched, until the next
- * direct edit.
+ * whose Undo restores exactly the inputs that change touched. Until the next
+ * direct edit, the same Undo also sits beside the control that made the
+ * change and answers Ctrl+Z, so it never depends on reaching the toast.
  */
 export function useLab() {
   const router = useRouter();
@@ -107,18 +117,53 @@ export function useLab() {
   const [venues, setVenues] = useState<VenuePreset[]>([]);
   const [directoryHandoff, setDirectoryHandoff] = useState<DirectoryHandoff | null>(null);
   const [directoryHints, setDirectoryHints] = useState<DirectoryHints | null>(null);
-  const undo = useRef<{ toastId: number; token: object } | null>(null);
+  const undo = useRef<{ toastId: number; token: object; source: UndoSource; restore: () => void } | null>(null);
+  const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   const model = useLabModel(config);
 
   const key = useMemo(() => configKey(config), [config]);
   const edited = active !== null && key !== active.snapshot;
   const pristine = active === null && key === DEFAULT_KEY;
 
-  const retireUndo = () => {
+  const retireUndo = useCallback(() => {
     if (!undo.current) return;
     dismissToast(undo.current.toastId);
     undo.current = null;
+    setPendingUndo(null);
+  }, []);
+
+  /** Restores what the pending bulk change replaced: from the toast, the inline Undo button, or Ctrl+Z. */
+  const undoLast = useCallback(() => {
+    const pending = undo.current;
+    if (!pending) return;
+    retireUndo();
+    pending.restore();
+    track("cvcx_input_changed", { input: "undo" });
+    announce("Change undone.");
+  }, [retireUndo]);
+
+  /** Confirms a bulk change with a toast, and keeps its Undo beside the control that made it until the next direct edit. */
+  const offerUndo = (message: string, source: UndoSource, restore: () => void) => {
+    retireUndo();
+    const token = {};
+    const toastId = toast({ message, tone: "good", duration: UNDO_TOAST_MS, action: { label: "Undo", onClick: () => { if (undo.current?.token === token) undoLast(); } } });
+    undo.current = { toastId, token, source, restore };
+    setPendingUndo({ source, message });
   };
+
+  // Ctrl+Z (⌘Z) undoes a pending bulk change, except where it belongs to a text field or an open dialog.
+  useEffect(() => {
+    if (!pendingUndo) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "z") return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target && (isTextEntry(target) || target.closest("[role='dialog']"))) return;
+      event.preventDefault();
+      undoLast();
+    };
+    addEventListener("keydown", onKeyDown);
+    return () => removeEventListener("keydown", onKeyDown);
+  }, [pendingUndo, undoLast]);
 
   /** A direct edit. Re-entering the same value is not an edit and keeps any pending Undo. */
   const edit = (patch: Partial<LabConfig>, options: { boundaries?: number[] } = {}) => {
@@ -130,7 +175,7 @@ export function useLab() {
   };
 
   /** Several inputs at once, with an Undo that restores only those inputs (and the open scenario, when it changes). */
-  const bulk = (patch: Partial<LabConfig>, message: string, next?: { active: ActiveScenario | null }) => {
+  const bulk = (patch: Partial<LabConfig>, message: string, source: UndoSource, next?: { active: ActiveScenario | null }) => {
     const previous = changedFields(config, patch);
     const previousActive = active;
     // Nothing to change (a reset of a ramp that is already the preset): say so, offer no Undo.
@@ -138,28 +183,14 @@ export function useLab() {
       announce(message);
       return;
     }
-    retireUndo();
     setConfig((current) => ({ ...current, ...patch }));
     setStepBoundaries(null);
     if (next) setActive(next.active);
-    const token = {};
-    const toastId = toast({
-      message,
-      tone: "good",
-      action: {
-        label: "Undo",
-        onClick: () => {
-          if (undo.current?.token !== token) return;
-          undo.current = null;
-          setConfig((current) => ({ ...current, ...previous }));
-          setStepBoundaries(null);
-          if (next) setActive(previousActive);
-          track("cvcx_input_changed", { input: "undo" });
-          announce("Change undone.");
-        },
-      },
+    offerUndo(message, source, () => {
+      setConfig((current) => ({ ...current, ...previous }));
+      setStepBoundaries(null);
+      if (next) setActive(previousActive);
     });
-    undo.current = { toastId, token };
   };
 
   /* ---------------------------- Library lists ---------------------------- */
@@ -221,7 +252,7 @@ export function useLab() {
     const nextActive = { id: template.id, name: template.name, snapshot: configKey(next) };
     track("cvcx_template_loaded", { name: template.name });
     if (source === "library") {
-      bulk(next, `Loaded “${template.name}”.`, { active: nextActive });
+      bulk(next, `Loaded “${template.name}”.`, "header", { active: nextActive });
       return;
     }
     setConfig(next);
@@ -279,21 +310,28 @@ export function useLab() {
   const setPreset = (name: string) => {
     track("cvcx_preset_selected", { preset: name });
     const patch = { rampName: name, ramp: presetRamp(name), maxSpread: rampSpread(RAMPS[name]) };
-    // Replacing a ramp someone built by hand is worth an Undo; switching between presets is not.
-    if (isPresetName(config.rampName)) edit(patch);
-    else bulk(patch, `Switched to the ${presetLabel(name)} ramp.`);
+    const message = `Switched to the ${presetLabel(name)} ramp.`;
+    const pending = undo.current;
+    // Replacing a ramp someone built by hand is worth an Undo; switching between presets is not…
+    if (!isPresetName(config.rampName)) bulk(patch, message, "preset");
+    // …except while comparing presets after replacing one: the Undo still leads back to the ramp they replaced.
+    else if (pending?.source === "preset") {
+      setConfig((current) => ({ ...current, ...patch }));
+      setStepBoundaries(null);
+      offerUndo(message, "preset", pending.restore);
+    } else edit(patch);
   };
 
   const buildOptimal = () => {
     track("cvcx_calculation_run", { decks: model.rules.decks, penetration: model.rules.penetration, bankroll: config.bankroll, baseBet: config.baseBet, spread: config.rampName, handsPerHour: config.handsPerHour });
-    bulk({ rampName: OPTIMAL_RAMP_NAME, ramp: model.optimalRamp }, "Built the optimal ramp for this game.");
+    bulk({ rampName: OPTIMAL_RAMP_NAME, ramp: model.optimalRamp }, "Built the optimal ramp for this game.", "optimal");
   };
 
   const resetRamp = () => {
     const preset = isPresetName(config.rampName) ? config.rampName : "1-8";
     track("cvcx_preset_selected", { preset });
     track("cvcx_reset", { stage: "bet_spread" });
-    bulk({ rampName: preset, ramp: presetRamp(preset), maxSpread: rampSpread(RAMPS[preset]), wongInAt: null, hands: expandHands(undefined) }, `Bet ramp reset to the ${presetLabel(preset)} spread.`);
+    bulk({ rampName: preset, ramp: presetRamp(preset), maxSpread: rampSpread(RAMPS[preset]), wongInAt: null, hands: expandHands(undefined) }, `Bet ramp reset to the ${presetLabel(preset)} spread.`, "ramp");
   };
 
   const scaleRamp = (factor: number) => {
@@ -313,20 +351,20 @@ export function useLab() {
     edit({ rampName: CUSTOM_RAMP_NAME, ramp: next.ramp, hands: next.hands }, { boundaries: steps.map((step) => step.from) });
   };
 
-  const oneHandEverywhere = () => bulk({ hands: expandHands(undefined) }, "Now playing 1 hand at every count.");
+  const oneHandEverywhere = () => bulk({ hands: expandHands(undefined) }, "Now playing 1 hand at every count.", "results");
 
   /* -------------------------------- Game --------------------------------- */
 
-  const resetRules = () => {
+  const resetRules = (source: "rules" | "results") => {
     track("cvcx_input_changed", { input: "rules_reset" });
-    bulk({ ...AUDITED_RULES }, "Rules reset to the audited game.");
+    bulk({ ...AUDITED_RULES }, "Rules reset to the audited game.", source);
   };
 
   const switchGame = (row: GameComparison, withRamp: boolean) => {
     track("cvcx_input_changed", { input: "game_from_compare" });
     const game = `${row.decks} decks, ${row.dealt} dealt`;
-    if (withRamp) bulk({ decks: row.decks, dealt: row.dealt, ramp: row.ramp, rampName: OPTIMAL_RAMP_NAME }, `Switched to ${game} with its optimal ramp.`);
-    else bulk({ decks: row.decks, dealt: row.dealt }, `Switched to ${game}.`);
+    if (withRamp) bulk({ decks: row.decks, dealt: row.dealt, ramp: row.ramp, rampName: OPTIMAL_RAMP_NAME }, `Switched to ${game} with its optimal ramp.`, "compare");
+    else bulk({ decks: row.decks, dealt: row.dealt }, `Switched to ${game}.`, "compare");
   };
 
   const applyUnit = (unit: number) => {
@@ -335,7 +373,7 @@ export function useLab() {
     announce(`Betting unit set to $${unit}.`);
   };
 
-  const startOver = () => bulk({ ...DEFAULT_LAB_CONFIG }, "Started over with the example setup.", { active: null });
+  const startOver = () => bulk({ ...DEFAULT_LAB_CONFIG }, "Started over with the example setup.", "header", { active: null });
 
   /* ------------------------------ Library -------------------------------- */
 
@@ -355,7 +393,7 @@ export function useLab() {
     if (active?.id === template.id) setActive(null);
   };
 
-  const loadVenue = (preset: VenuePreset) => bulk(venuePatch(preset), `Loaded venue “${preset.name}”.`);
+  const loadVenue = (preset: VenuePreset) => bulk(venuePatch(preset), `Loaded venue “${preset.name}”.`, "header");
   const saveVenue = (name: string) => venuePresetLibrary.savePreset(name, model.rules, config.ramp);
   const deleteVenue = (preset: VenuePreset) => venuePresetLibrary.deletePreset(preset.id);
 
@@ -394,6 +432,8 @@ export function useLab() {
     directoryHandoff,
     directoryHints,
     dismissDirectoryHandoff: () => setDirectoryHandoff(null),
+    pendingUndo,
+    undoLast,
     edit,
     setPreset,
     buildOptimal,

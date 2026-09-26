@@ -1,6 +1,7 @@
 "use client";
 
 import { Callout, GhostButton, PageHeader } from "@/components/ui";
+import { InlineUndo } from "./parts";
 import type { Lab } from "./useLab";
 
 /**
@@ -42,6 +43,7 @@ export function LabHeader({ lab, onOpenLibrary, onOpenSave }: { lab: Lab; onOpen
             Start over
           </button>
         )}
+        <InlineUndo lab={lab} source="header" className="no-print" />
       </div>
     </PageHeader>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { ReactNode, useId } from "react";
-import { HelpTip, Panel, type SegmentOption } from "@/components/ui";
+import { ReactNode, useEffect, useId } from "react";
+import { GhostButton, HelpTip, KeyHint, Panel, type SegmentOption } from "@/components/ui";
+import type { Lab, UndoSource } from "./useLab";
 
 /**
  * One numbered input card of the Lab (1 Game, 2 Bankroll, 3 Bet ramp). The
@@ -61,6 +62,33 @@ export function StatusMark({ tone, icon, children }: { tone: "good" | "warn" | "
       {icon && <i className={`fa-solid ${icon} text-[.7rem]`} aria-hidden="true" />}
       {children}
     </span>
+  );
+}
+
+/**
+ * The pending Undo for a bulk change, beside the control that made it, until
+ * the next direct edit. The toast offers the same Undo, but it sits at the end
+ * of the page; this one is a Tab away. Ctrl+Z (⌘Z) does the same.
+ */
+export function InlineUndo({ lab, source, className = "" }: { lab: Lab; source: UndoSource; className?: string }) {
+  const pending = lab.pendingUndo;
+  if (pending?.source !== source) return null;
+  return <UndoButton message={pending.message} onUndo={lab.undoLast} className={className} />;
+}
+
+function UndoButton({ message, onUndo, className }: { message: string; onUndo: () => void; className: string }) {
+  const id = useId();
+  // Some changes remove the control that made them (Start over, a fix button); keep keyboard focus here instead of losing it.
+  useEffect(() => {
+    if (!document.activeElement || document.activeElement === document.body) document.getElementById(id)?.focus();
+  }, [id]);
+  // Only ever rendered after a change in the browser, so reading the platform here can't cause a hydration mismatch.
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  return (
+    <GhostButton id={id} size="compact" className={className} onClick={onUndo} aria-label={`Undo: ${message}`} aria-keyshortcuts="Control+Z Meta+Z">
+      <i className="fa-solid fa-rotate-left mr-2" aria-hidden="true" />Undo
+      <span className="ml-2 [@media(pointer:coarse)]:hidden"><KeyHint>{mac ? "⌘Z" : "Ctrl+Z"}</KeyHint></span>
+    </GhostButton>
   );
 }
 

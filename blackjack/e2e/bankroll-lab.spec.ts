@@ -43,13 +43,13 @@ test("Enter never presses a Lab action, even while Undo and a unit suggestion ar
   await prepare(page);
   await openLab(page);
   await page.getByRole("button", { name: "Build optimal ramp" }).click();
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Use a \$\d+ betting unit$/ })).toBeVisible();
   await page.getByRole("heading", { name: "Game & Bankroll Lab" }).click();
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Betting unit", { exact: true })).toHaveValue("15");
   await expect(page.getByText("Optimal", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
 });
 
 test("the optimal ramp changes only the ramp and can be undone", async ({ page }) => {
@@ -59,7 +59,7 @@ test("the optimal ramp changes only the ramp and can be undone", async ({ page }
   await page.getByRole("button", { name: "Build optimal ramp" }).click();
   await expect(page.getByRole("radio", { name: "1–12 spread" })).not.toBeChecked();
   await expect(page.getByLabel("Betting unit", { exact: true })).toHaveValue("15");
-  await page.getByRole("button", { name: "Undo" }).click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.getByRole("radio", { name: "1–12 spread" })).toBeChecked();
 });
 
@@ -68,7 +68,7 @@ test("a direct edit retires the Undo offer and survives", async ({ page }, testI
   await prepare(page);
   await openLab(page);
   await page.getByRole("button", { name: "Build optimal ramp" }).click();
-  await expect(page.getByRole("button", { name: "Undo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
   await page.getByLabel("Available bankroll", { exact: true }).fill("30000");
   await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
   await expect(page.getByLabel("Available bankroll", { exact: true })).toHaveValue("30000");
@@ -84,6 +84,52 @@ test("arrowing through the ramp presets never touches the betting unit", async (
   await expect(page.getByRole("radio", { name: "1–8 spread" })).toBeChecked();
   await expect(page.getByLabel("Betting unit", { exact: true })).toHaveValue("15");
   await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
+});
+
+test("Undo is a Tab away from the change, answers Ctrl+Z, and never times out", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await page.clock.install();
+  await prepare(page);
+  await openLab(page);
+  const preset = page.getByRole("radio", { name: "1–12 spread" });
+  await page.getByRole("button", { name: "Build optimal ramp" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(preset).not.toBeChecked();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Undo: Built the optimal ramp for this game." })).toBeFocused();
+  await page.clock.fastForward(60_000);
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(preset).toBeChecked();
+  await expect(page.getByRole("button", { name: /^Undo/ })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Build optimal ramp" }).click();
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(preset).toBeChecked();
+
+  // Start over removes its own button, so focus moves to its Undo instead of the page.
+  await page.getByLabel("Available bankroll", { exact: true }).fill("30000");
+  await page.getByRole("button", { name: "Start over" }).focus();
+  await page.keyboard.press("Enter");
+  const undoStart = page.getByRole("button", { name: "Undo: Started over with the example setup." });
+  await expect(undoStart).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Available bankroll", { exact: true })).toHaveValue("30000");
+});
+
+test("comparing presets after replacing a custom ramp keeps the way back to it", async ({ page }) => {
+  await prepare(page);
+  await openLab(page);
+  await show(page, "Bet ramp");
+  await page.getByLabel("Units at +4 and up", { exact: true }).fill("16");
+  await page.getByRole("radio", { name: "1–4 spread" }).check();
+  await expect(page.getByLabel("Units at +4 and up", { exact: true })).toHaveValue("4");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("radio", { name: "1–8 spread" })).toBeChecked();
+  await page.getByRole("radio", { name: "1–12 spread" }).check();
+  await page.getByRole("button", { name: "Undo: Switched to the 1–12 ramp." }).click();
+  await expect(page.getByLabel("Units at +4 and up", { exact: true })).toHaveValue("16");
+  await expect(page.getByText("Custom", { exact: true })).toBeVisible();
 });
 
 test("moving a step's start from the keyboard keeps focus on it", async ({ page }) => {

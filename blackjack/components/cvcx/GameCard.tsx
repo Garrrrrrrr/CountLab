@@ -5,7 +5,7 @@ import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
 import { hasAuditedRules, ruleStates, type DoubleRule } from "@/lib/blackjack/labConfig";
 import { dealtPercent, percent } from "@/lib/blackjack/labFormat";
 import { Callout, GhostButton, HelpTip, NumberField, Switch } from "@/components/ui";
-import { LabSegmented, StepCard } from "./parts";
+import { InlineUndo, LabSegmented, StepCard } from "./parts";
 import type { Lab } from "./useLab";
 
 /**
@@ -97,9 +97,12 @@ export function GameCard({ lab, rulesOpen, onRulesOpenChange }: { lab: Lab; rule
             <Switch label="Resplit aces" checked={config.resplitAces} onChange={setSwitch("resplitAces", "resplitting_aces")} />
             <Switch label="Late surrender" checked={config.lateSurrender} onChange={setSwitch("lateSurrender", "late_surrender")} />
           </div>
-          <GhostButton size="compact" disabled={audited} onClick={lab.resetRules} className="mt-4">
-            <i className="fa-solid fa-rotate-left mr-2" aria-hidden="true" />Reset to audited rules
-          </GhostButton>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <GhostButton size="compact" disabled={audited} onClick={() => lab.resetRules("rules")}>
+              <i className="fa-solid fa-rotate-left mr-2" aria-hidden="true" />Reset to audited rules
+            </GhostButton>
+            <InlineUndo lab={lab} source="rules" />
+          </div>
         </details>
 
         {model.estimated && (

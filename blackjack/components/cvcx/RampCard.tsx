@@ -7,7 +7,7 @@ import { playedSpread } from "@/lib/blackjack/labModel";
 import { handsSummary, stepsSummary, toSteps, unitLabel } from "@/lib/blackjack/rampSteps";
 import { BetSpreadTable } from "@/components/BetSpreadTable";
 import { Callout, GhostButton, HelpTip, NumberField, Term } from "@/components/ui";
-import { LabSegmented, LabSelect, StatusMark, StepCard } from "./parts";
+import { InlineUndo, LabSegmented, LabSelect, StatusMark, StepCard } from "./parts";
 import { RampChart } from "./RampChart";
 import { focusStepUnits, RampSteps } from "./RampSteps";
 import type { Lab } from "./useLab";
@@ -81,13 +81,17 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
             options={PRESET_NAMES.map((name) => ({ value: name, label: presetLabel(name), ariaLabel: `${presetLabel(name)} spread` }))}
           />
           {!isPresetName(config.rampName) && <span className="mb-2.5"><StatusMark tone="neutral">{config.rampName === OPTIMAL_RAMP_NAME ? "Optimal" : "Custom"}</StatusMark></span>}
+          <InlineUndo lab={lab} source="preset" className="mb-1" />
         </div>
 
         <div className="rounded-xl border border-[var(--rule)] p-3">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <GhostButton size="compact" onClick={lab.buildOptimal}>
-              <i className="fa-solid fa-wand-magic-sparkles mr-2" aria-hidden="true" />Build optimal ramp
-            </GhostButton>
+            <div className="flex flex-wrap items-center gap-2">
+              <GhostButton size="compact" onClick={lab.buildOptimal}>
+                <i className="fa-solid fa-wand-magic-sparkles mr-2" aria-hidden="true" />Build optimal ramp
+              </GhostButton>
+              <InlineUndo lab={lab} source="optimal" />
+            </div>
             <p className="min-w-0 flex-1 basis-64 text-xs leading-5 text-[var(--ink-muted)]">
               A <span className="whitespace-nowrap">Kelly-weighted<HelpTip label="a Kelly-weighted ramp">Each count&apos;s bet grows with your edge there, divided by how much that count swings. It is the betting pattern that grows a bankroll fastest.</HelpTip></span> ramp for this game, capped at your {unitLabel(config.maxSpread)}× maximum spread and rounded to {rounding?.phrase ?? `${config.chipIncrement} units`}. It changes only the ramp. {optimalUnitNote}
             </p>
@@ -140,6 +144,7 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
             <GhostButton size="compact" aria-label="Halve every bet" onClick={() => lab.scaleRamp(0.5)}>½×</GhostButton>
             <GhostButton size="compact" aria-label="Double every bet" onClick={() => lab.scaleRamp(2)}>2×</GhostButton>
             <GhostButton size="compact" aria-label={`Reset the bet ramp to ${presetLabel(isPresetName(config.rampName) ? config.rampName : "1-8")}`} onClick={lab.resetRamp}>Reset ramp</GhostButton>
+            <InlineUndo lab={lab} source="ramp" />
           </div>
         </div>
 

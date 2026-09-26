@@ -681,6 +681,11 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
 @media (min-width: 1024px) {
   .lab-dock { bottom: 0.75rem; }
 }
+/* From lg the kit's toasts stop clearing --dock-clearance, but the Lab keeps
+   its dock until xl; lift the toasts (and their Undo) above it. */
+@media (min-width: 1024px) and (max-width: 1279.98px) {
+  body:has(.lab-dock) div[data-modal-companion][aria-live] { bottom: calc(1.5rem + var(--dock-clearance, 0px)); }
+}
 /* Compare: a ranked list in narrow columns, a table where it fits. */
 .lab-compare { container-type: inline-size; }
 .lab-compare-table { display: none; }
