@@ -465,6 +465,19 @@ export interface IndexRanking {
   widestInterval: number;
 }
 
+export interface IndexPlayCounts { total: number; ranked: number; afterHitting: number; unmeasured: number }
+
+/**
+ * How many index plays these rules have, split the way the ranking lists
+ * them, so every count on the page adds up. The total includes insurance.
+ */
+export function indexPlayCounts(ranking: IndexRanking): IndexPlayCounts {
+  const ranked = ranking.ranked.length;
+  const afterHitting = ranking.afterSurrender.length;
+  const unmeasured = ranking.unmeasured.length;
+  return { total: ranked + afterHitting + unmeasured, ranked, afterHitting, unmeasured };
+}
+
 const KIND: Record<RulesSectionId, RankedPlay["kind"]> = { hard: "Hard", soft: "Soft", pairs: "Pair", surrender: "Surrender" };
 const SHOW_KIND: Record<RulesSectionId, string> = { hard: "hard", soft: "soft", pairs: "pair", surrender: "surrender" };
 const byValue = (a: RankedPlay, b: RankedPlay) => (b.value?.ev ?? 0) - (a.value?.ev ?? 0);

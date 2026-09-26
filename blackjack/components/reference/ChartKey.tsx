@@ -1,7 +1,7 @@
 "use client";
 
 import { HelpTip } from "@/components/ui";
-import type { CellTone, ChartView, H17Tone } from "@/lib/blackjack/referenceChartModel";
+import type { CellTone, ChartView, H17Tone, IndexPlayCounts } from "@/lib/blackjack/referenceChartModel";
 import type { StrategyChartRules } from "@/lib/blackjack/strategyChart";
 import { H17_TONE_STYLE, SWATCH, TONE_STYLE } from "./cellStyles";
 
@@ -41,8 +41,17 @@ function Swatch({ tone, text, style }: { tone: string; text: string; style: stri
 
 const TRUE_COUNT_HELP = "Your running count divided by the decks still to be dealt. Index plays are the hands where the true count makes a different play better than basic strategy.";
 
+/** "36 index plays for these rules, insurance included (5 apply only after hitting or splitting)." */
+function countLine({ total, afterHitting, unmeasured }: IndexPlayCounts) {
+  const parts = [
+    afterHitting ? `${afterHitting} apply only after hitting or splitting` : "",
+    unmeasured ? `${unmeasured} not measured yet` : "",
+  ].filter(Boolean);
+  return `${total} index plays for these rules, insurance included${parts.length ? ` (${parts.join("; ")})` : ""}. `;
+}
+
 /** Every code on the rules chart in plain words, right above the tables. */
-export function RulesChartKey({ view, rules, indexCount }: { view: ChartView; rules: StrategyChartRules; indexCount: number }) {
+export function RulesChartKey({ view, rules, counts }: { view: ChartView; rules: StrategyChartRules; counts: IndexPlayCounts | null }) {
   const restricted = rules.doubleRule !== "any" || rules.europeanNoHoleCard;
   return (
     <div className="ref-key min-w-0 space-y-2 print:space-y-1">
@@ -69,7 +78,7 @@ export function RulesChartKey({ view, rules, indexCount }: { view: ChartView; ru
         <span>T = any 10-value card (10, J, Q, K). </span>
         {view === "basic" && <span>Basic strategy never takes insurance or even money. </span>}
         {rules.surrender !== "none" && <span>Surrender is on: check the Surrender table first; the other tables are for hands you play out. </span>}
-        {view === "index" && <span>{indexCount} index plays for these rules. </span>}
+        {view === "index" && counts && <span>{countLine(counts)}</span>}
         {view === "index" && rules.decks <= 2 && <span>The indices shown are the 4–8 deck sets. </span>}
         {view === "index" && restricted && <span>Dashed chips aren&apos;t available under your double or hole-card rule. </span>}
         {view === "index" && <span className="print:hidden">The printed H17 chart writes S+4&#8593; as 4+. </span>}

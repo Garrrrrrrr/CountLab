@@ -85,7 +85,7 @@ export function IndexRanking({ ranking, rules, onShow, disabled }: { ranking: Ra
       </p>
       {ranked.length > TOP && (
         <Button variant="quiet" size="compact" enterAction={false} disabled={disabled} onClick={() => setShowAll((all) => !all)} className="no-print mt-3 [@media(pointer:coarse)]:min-h-11">
-          {showAll ? `Show the top ${TOP}` : `Show all ${ranked.length} index plays`}
+          {showAll ? `Show the top ${TOP}` : `Show all ${ranked.length} ranked plays`}
         </Button>
       )}
       {afterSurrender.length > 0 && (

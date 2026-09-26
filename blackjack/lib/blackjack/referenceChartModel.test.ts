@@ -13,6 +13,7 @@ import {
   formatValue,
   h17PlainSentence,
   handName,
+  indexPlayCounts,
   rankIndexPlays,
   rulesSummary,
 } from "./referenceChartModel";
@@ -189,6 +190,15 @@ describe("rankIndexPlays", () => {
     expect(restricted.ranked.find((play) => play.key === "hard:9v2")!.available).toBe(false);
     expect(restricted.total).toBeLessThan(open.total);
   });
+
+  for (const combo of combos) {
+    it(`counts ${combo.dealerHitsSoft17 ? "H17" : "S17"} ${combo.surrender} plays the same way in the key and the ranking`, () => {
+      const chart = buildRulesChart(combo, "index");
+      const counts = indexPlayCounts(rankIndexPlays(combo, chart));
+      expect(counts.total, "every chart play plus insurance").toBe(chart.indexCount + 1);
+      expect(counts.ranked + counts.afterHitting + counts.unmeasured).toBe(counts.total);
+    });
+  }
 
   it("says how few plays carry most of the value", () => {
     const { topShare, ranked } = rankIndexPlays(DEFAULT_CHART_RULES);

@@ -5,7 +5,7 @@ import type { KeyboardEvent, ReactNode } from "react";
 import { announce, ButtonLink, Section, SegmentedControl } from "@/components/ui";
 import type { SegmentOption } from "@/components/ui";
 import { DEVIATION_RANKING_METADATA } from "@/lib/blackjack/deviationRanking";
-import { buildRulesChart, changedCells, rankIndexPlays, rulesSummary, shortCellName, softRowTotal } from "@/lib/blackjack/referenceChartModel";
+import { buildRulesChart, changedCells, indexPlayCounts, rankIndexPlays, rulesSummary, shortCellName, softRowTotal } from "@/lib/blackjack/referenceChartModel";
 import type { ChartView, RulesSection } from "@/lib/blackjack/referenceChartModel";
 import type { StrategyChartRules } from "@/lib/blackjack/strategyChart";
 import type { SurrenderRule } from "@/lib/statistics/storage";
@@ -251,7 +251,7 @@ export function RulesChartView({ initialView }: { initialView: ChartView }) {
       <div ref={charts} className="ref-charts" onKeyDown={onChartsKeyDown}>
         <div className="ref-charts-grid grid items-start gap-3 md:gap-4 print:gap-1.5">
           <div className="ref-key-slot col-span-full">
-            <RulesChartKey view={view} rules={rules} indexCount={chart.indexCount} />
+            <RulesChartKey view={view} rules={rules} counts={ranking && indexPlayCounts(ranking)} />
           </div>
           {chart.sections.map((section) => (
             <ChartPanel

@@ -400,7 +400,7 @@ test("printing from the dark theme stays dark on light, on one page, with every 
   await prepare(page, { settings: { theme: "dark" } });
   await page.goto("/reference/deviations/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.getByRole("button", { name: /Show all \d+ index plays/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Show all \d+ ranked plays/ })).toBeVisible();
   await page.emulateMedia({ media: "print" });
   const onWhite = (selector: string) => page.locator(selector).first().evaluate((element) => {
     const rgb = getComputedStyle(element).color.match(/[\d.]+/g)!.slice(0, 3).map(Number);
