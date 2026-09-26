@@ -134,6 +134,29 @@ test.describe("running count", () => {
     await expect(main(page).getByText("Running count so far")).toBeVisible();
   });
 
+  test("self-paced dealing waits for Space, and P pauses but Ctrl+P does not", async ({ page }) => {
+    await page.goto("/training/running-count/?session=starter");
+    await main(page).getByRole("button", { name: "Customize" }).click();
+    await main(page).getByRole("combobox", { name: "Time on screen" }).selectOption("0");
+    await expect(main(page).getByText(/Custom settings/)).toBeVisible();
+    await expect(main(page).getByRole("button", { name: "Reset to Starter" })).toBeVisible();
+    await clickVisible(page, "Start counting");
+    const hud = page.getByRole("region", { name: "Session progress" });
+    await expect(main(page).getByRole("button", { name: "Deal next" })).toBeVisible({ timeout: 10_000 });
+    await expect(hud).toContainText("Card 1 of 20");
+    await page.waitForTimeout(1500);
+    await expect(hud).toContainText("Card 1 of 20");
+    await expectOneEnterAction(page, "Deal next");
+    await page.keyboard.press("Space");
+    await expect(hud).toContainText("Card 2 of 20");
+    await page.evaluate(() => dispatchEvent(new KeyboardEvent("keydown", { key: "p", ctrlKey: true, bubbles: true })));
+    await expect(main(page).getByRole("heading", { name: "Paused" })).toHaveCount(0);
+    await page.keyboard.press("p");
+    await expect(main(page).getByRole("heading", { name: "Paused" })).toBeVisible();
+    await page.keyboard.press("p");
+    await expect(main(page).getByRole("button", { name: "Deal next" })).toBeVisible();
+  });
+
   test("an unfinished session synced after the page opened is offered, not overwritten", async ({ page }) => {
     await page.goto("/training/running-count/");
     await expect(main(page).getByRole("button", { name: "Customize" })).toBeVisible();
@@ -336,11 +359,12 @@ test("verdicts, selected sessions and tray labels keep AA contrast in both theme
     const foreground = luminance();
     return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
   });
+  // Colours fade between themes, so each check polls until the transition has finished.
   await page.goto("/training/true-count/");
   await main(page).getByRole("radio", { name: /^Tray \+ division/ }).check();
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
-    expect(await contrastOf("main label:has(input[type='radio']:checked) span.font-semibold"), `${theme} selected session`).toBeGreaterThanOrEqual(4.5);
+    await expect.poll(() => contrastOf("main label:has(input[type='radio']:checked) span.font-semibold"), { message: `${theme} selected session` }).toBeGreaterThanOrEqual(4.5);
   }
   await clickVisible(page, /Start \d+ questions/);
   await main(page).getByLabel("Estimated decks remaining").fill("1");
@@ -349,8 +373,8 @@ test("verdicts, selected sessions and tray labels keep AA contrast in both theme
   await expect(main(page).getByRole("group", { name: "Not quite" })).toBeVisible();
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
-    expect(await contrastOf("main [role='group'][aria-labelledby] p[id]"), `${theme} verdict`).toBeGreaterThanOrEqual(4.5);
-    expect(await contrastOf("main [role='group'][aria-labelledby] td"), `${theme} answer row`).toBeGreaterThanOrEqual(4.5);
-    expect(await contrastOf("main [aria-label*='decks discarded'] span.rounded"), `${theme} tray label`).toBeGreaterThanOrEqual(4.5);
+    await expect.poll(() => contrastOf("main [role='group'][aria-labelledby] p[id]"), { message: `${theme} verdict` }).toBeGreaterThanOrEqual(4.5);
+    await expect.poll(() => contrastOf("main [role='group'][aria-labelledby] td"), { message: `${theme} answer row` }).toBeGreaterThanOrEqual(4.5);
+    await expect.poll(() => contrastOf("main [aria-label*='decks discarded'] span.rounded"), { message: `${theme} tray label` }).toBeGreaterThanOrEqual(4.5);
   }
 });
