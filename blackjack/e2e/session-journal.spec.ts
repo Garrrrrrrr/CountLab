@@ -648,6 +648,11 @@ test("the journal fits a 320px phone, empty and with data", async ({ page }, tes
   await page.getByRole("group", { name: "Session journal actions" }).getByRole("button", { name: "Log session" }).click();
   await expect(page.getByRole("dialog", { name: "Log session" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  // Every part of the form, including the expanded game and per-count bets, fits the width.
+  const dialog = page.getByRole("dialog", { name: "Log session" });
+  await dialog.getByRole("button", { name: "Change game" }).click();
+  await dialog.getByText("Customize bet per count").click();
+  expect(await dialog.evaluate((element) => Array.from(element.querySelectorAll<HTMLElement>(".overflow-y-auto")).every((scroller) => scroller.scrollWidth <= scroller.clientWidth))).toBe(true);
   const clipped = await page.getByRole("dialog").locator(":is(button, input, select, label):visible").evaluateAll((nodes) => nodes.filter((node) => {
     const box = node.getBoundingClientRect();
     return !node.closest(".overflow-x-auto") && (box.left < -1 || box.right > innerWidth + 1);

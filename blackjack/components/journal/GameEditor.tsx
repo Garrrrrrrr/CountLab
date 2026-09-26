@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { Fragment, useId, useMemo, useState } from "react";
 import { analytics } from "@/lib/analytics";
 import { track } from "@/lib/analytics/track";
 import { calculateCountRows, fillRampFromTrueCount, RAMPS } from "@/lib/blackjack/advantage";
@@ -197,7 +197,11 @@ export function GameEditor({ game, source, onGame, location, onLocation, hours, 
             <p className="rounded-xl bg-overlay/[.04] px-3 py-2 font-data text-xs leading-6 text-[var(--ink)]">
               <span className="sr-only">Bet by true count: </span>
               {rampSummary(game.ramp, game.bettingUnit).map((group, index) => (
-                <span key={group.counts} className="whitespace-nowrap">{index > 0 && <span aria-hidden="true" className="text-[var(--ink-muted)]"> · </span>}{index === 0 ? "TC " : ""}{group.counts} <b className={group.bet === "sit out" ? "font-normal italic text-[var(--ink-muted)]" : ""}>{group.bet}</b></span>
+                // Each count and its bet stay together; the line wraps between them.
+                <Fragment key={group.counts}>
+                  {index > 0 && <span aria-hidden="true" className="text-[var(--ink-muted)]"> · </span>}
+                  <span className="whitespace-nowrap">{index === 0 ? "TC " : ""}{group.counts} <b className={group.bet === "sit out" ? "font-normal italic text-[var(--ink-muted)]" : ""}>{group.bet}</b></span>
+                </Fragment>
               ))}
             </p>
             <Disclosure summary="Customize bet per count" analyticsSection="customize_bet_per_count">
