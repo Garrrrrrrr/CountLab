@@ -10,15 +10,17 @@ type Setup = {
   settings?: Record<string, unknown>;
   focus?: { drill: string; category: string };
   seed?: Record<string, unknown>;
+  /** Accept analytics, so events queue in local storage (the export has no endpoint to send them to). */
+  analytics?: boolean;
 };
 
-/** A guest with analytics declined; optional device setup, saved settings, a practice focus and stored keys. */
+/** A guest with analytics declined (unless asked); optional device setup, saved settings, a practice focus and stored keys. */
 async function prepare(page: Page, setup: Setup = {}) {
-  await page.addInitScript(({ pref, devPref, settings, focus, seed, account }) => {
+  await page.addInitScript(({ pref, devPref, settings, focus, seed, analytics, account }) => {
     if (sessionStorage.getItem("e2e-prepared")) return;
     sessionStorage.setItem("e2e-prepared", "1");
     localStorage.setItem("countlab:analytics:consent_seen", "1");
-    localStorage.setItem("countlab:analytics:consent", "denied");
+    localStorage.setItem("countlab:analytics:consent", analytics ? "granted" : "denied");
     localStorage.setItem("countlab-install-dismissed", "1");
     localStorage.setItem("countlab:guest", "1");
     if (pref) localStorage.setItem("countlab:drill-setup:basic-strategy", JSON.stringify(pref));
@@ -33,6 +35,9 @@ const hud = (page: Page) => page.getByRole("region", { name: "Session progress" 
 /** The HUD's "Correct" figure: "right of answered". */
 const answered = (page: Page, count: number) => expect(hud(page).locator("dd").first()).toHaveText(new RegExp(`of ${count}$`));
 const sessions = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]"), SESSIONS);
+/** The properties of each queued analytics event with this name. */
+const queued = (page: Page, name: string) => page.evaluate((event) => (JSON.parse(localStorage.getItem("countlab:analytics:pending_events") || "[]") as Array<{ event: string; properties: Record<string, unknown> }>)
+  .filter((item) => item.event === event).map((item) => item.properties), name);
 
 /** Answers the hand on screen with a key it accepts: H on a play question, N on a surrender question. */
 async function answerByKey(page: Page) {
@@ -278,6 +283,42 @@ test.describe("basic strategy on a keyboard", () => {
     await page.waitForTimeout(300);
     await expect(hud(page).locator("dd").first()).toHaveText("0 of 0");
     await expect(page.getByText("Keyboard shortcuts are off.")).toBeVisible();
+  });
+});
+
+test.describe("analytics", () => {
+  test.skip(({ isMobile }) => isMobile, "Keyboard flows run on desktop.");
+
+  test("viewing Setup starts nothing; Start sends the round's mode, and Tricky keeps the saved mode readable", async ({ page }) => {
+    await prepare(page, { analytics: true, pref: { explain: "never" } });
+    await page.goto("/training/basic-strategy/");
+    await page.getByRole("radio", { name: "Tricky hands" }).click();
+    await page.waitForTimeout(800);
+    expect(await queued(page, "practice_started")).toEqual([]);
+    // Mixed and Tricky are both "standard" to analytics, so switching between them is not a mode change.
+    expect(await queued(page, "practice_mode_changed")).toEqual([]);
+
+    await page.getByRole("button", { name: "Start 10 hands" }).click();
+    await expect.poll(() => queued(page, "practice_started")).toEqual([expect.objectContaining({ drill: "basic_strategy", mode: "standard", question_target: 10 })]);
+    await answerByKey(page);
+    await answered(page, 1);
+    await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "null")?.state, PROGRESS)).toMatchObject({ q: 1, mode: "standard", variant: "tricky" });
+  });
+
+  test("Continue round deals and reports the saved round's mode, not the one Setup preselected", async ({ page }) => {
+    await prepare(page, {
+      analytics: true,
+      focus: { drill: "Basic Strategy", category: "Soft totals" },
+      seed: {
+        [PROGRESS]: { drill: "Basic Strategy", updatedAt: new Date().toISOString(), state: { q: 3, mode: "standard", correctCount: 2, streak: 0, best: 2, totalMs: 3000, mistakes: [], categories: { Pairs: { correct: 2, total: 3 } } } },
+      },
+    });
+    await page.goto("/training/basic-strategy/");
+    await expect(page.getByRole("radio", { name: "Weak spots" })).toBeChecked();
+    await page.getByRole("button", { name: "Continue round" }).click();
+    await expect(hud(page).getByText("Hand 4 of 10", { exact: true })).toBeVisible();
+    await expect(hud(page).getByText(/Leaning on/)).toHaveCount(0);
+    await expect.poll(() => queued(page, "practice_started")).toEqual([expect.objectContaining({ mode: "standard" })]);
   });
 });
 

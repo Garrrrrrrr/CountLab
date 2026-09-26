@@ -44,11 +44,18 @@ const DRILL = "Basic Strategy" as const;
 const PREF_KEY = "countlab:drill-setup:basic-strategy";
 const SLOW_MS = 3000;
 
-/** Saved progress ("hilo:progress:Basic Strategy"). */
-type StrategySaved = SavedRound<StrategyQuestion> & { mode: StrategyMode };
+/**
+ * Saved progress ("hilo:progress:Basic Strategy"). `mode` keeps its two
+ * original values; a Tricky round adds the optional `variant`, so an older
+ * version reads it as a Mixed round instead of an unknown mode.
+ */
+type StrategySaved = SavedRound<StrategyQuestion> & { mode: "standard" | "adaptive"; variant?: "tricky" };
 type Pref = { mode: StrategyMode; length: RoundLength; explain: ExplainMode };
 const DEFAULT_PREF: Pref = { mode: "standard", length: 10, explain: "mistakes" };
 const modeOf = (value: unknown): StrategyMode => (value === "adaptive" || value === "tricky" ? value : "standard");
+/** The mode as saved progress and analytics know it: Tricky is a kind of Mixed ("standard"). */
+const contractMode = (mode: StrategyMode) => (mode === "adaptive" ? "adaptive" : "standard");
+const savedModeOf = (state: Partial<StrategySaved> | undefined) => modeOf(state?.variant === "tricky" ? "tricky" : state?.mode);
 
 const REFERENCE = { href: "/reference", label: "View strategy reference" };
 const DESCRIPTION = "See your hand and the dealer's upcard, then pick the play. Wrong answers stop with the reason and where the hand sits on the chart.";
@@ -74,11 +81,11 @@ function boot(settings: Settings, pref: Pref) {
     : undefined;
   const restoredRound = isResumable(progress) ? restoreRound(progress!.state, keepFor(settings)) : undefined;
   const resuming = Boolean(restoredRound && !focus);
-  const start: RoundStart<StrategyQuestion> = resuming
-    ? { phase: "play", plan: restoredRound!.plan, tally: restoredRound!.tally, resumedAt: progress!.updatedAt }
-    : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false }, tally: EMPTY_TALLY };
   // A focus hand-off preselects Weak spots; progress saved before any answer still restores its mode.
-  const mode = focus?.usable ? "adaptive" : progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode;
+  const mode = focus?.usable ? "adaptive" : progress?.state?.mode ? savedModeOf(progress.state) : pref.mode;
+  const start: RoundStart<StrategyQuestion> = resuming
+    ? { phase: "play", plan: { ...restoredRound!.plan, mode }, tally: restoredRound!.tally, resumedAt: progress!.updatedAt }
+    : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false, mode }, tally: EMPTY_TALLY };
   // A round whose remaining hands the table no longer deals (surrender switched off elsewhere) is set aside.
   const dropped = isResumable(progress) && !restoredRound;
   return { start, focus, mode, dropped };
@@ -115,23 +122,27 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
     drill: DRILL,
     deal: (index, plan) => {
       const queued = plan.retry ? plan.queue?.[index] : undefined;
-      const question = queued ?? drawStrategyQuestion({ mode, surrender: settings.surrender, focus: mode === "adaptive" ? focusPick()?.category : undefined });
+      const dealing = modeOf(plan.mode);
+      const question = queued ?? drawStrategyQuestion({ mode: dealing, surrender: settings.surrender, focus: dealing === "adaptive" ? focusPick()?.category : undefined });
       return resolveStrategyHand(question, rules);
     },
     grade: (hand, chosen) => ({ ok: chosen === hand.correct, category: hand.category, mistake: strategyMistake(hand, chosen as StrategyAnswer) }),
     presented: (hand, attempt) => track("question_presented", { drill: DRILL, category: hand.category, scenario: strategyScenario(hand), attempt }),
     answered: ({ hand, chosen, ok, ms, number }, streak, plan) => {
-      if (mode === "adaptive" && !plan.retry) recordAnswer(DRILL, hand.category, ok);
+      if (modeOf(plan.mode) === "adaptive" && !plan.retry) recordAnswer(DRILL, hand.category, ok);
       playTone(ok, settings.sound);
-      track("basic_strategy_answered", { ok, chosen, correct: hand.correct, category: hand.category, mode, scenario: strategyScenario(hand), responseTimeMs: ms, attempt: number, streak });
+      track("basic_strategy_answered", { ok, chosen, correct: hand.correct, category: hand.category, mode: contractMode(modeOf(plan.mode)), scenario: strategyScenario(hand), responseTimeMs: ms, attempt: number, streak });
     },
     skipped: (hand, attempt, elapsedMs) => track("answer_skipped", { drill: DRILL, category: hand.category, scenario: strategyScenario(hand), attempt, elapsedMs }),
-    started: (plan) => ({ drill: DRILL, mode, questionTarget: plan.length, ...startedRules(settings) }),
+    started: (plan) => ({ drill: DRILL, mode: contractMode(modeOf(plan.mode)), questionTarget: plan.length, ...startedRules(settings) }),
     spoken: (hand) => `${spokenHand(hand.player, hand.dealer)}.${hand.askingSurrender ? " Surrender?" : ""}`,
     verdict: ({ hand, chosen, ok }, full) => ok
       ? `Correct. ${STRATEGY_ANSWER_NAMES[hand.correct]}.`
       : `Not quite. You chose ${STRATEGY_ANSWER_NAMES[chosen as StrategyAnswer]}; the play is ${STRATEGY_ANSWER_NAMES[hand.correct]}.${full ? ` ${hand.explanation}` : ""}`,
-    progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies StrategySaved),
+    progress: (plan, tally) => {
+      const planned = modeOf(plan.mode);
+      return { ...saveRound(plan, tally), mode: contractMode(planned), ...(planned === "tricky" ? { variant: "tricky" as const } : {}) } satisfies StrategySaved;
+    },
   };
   const round = useStrategyRound(adapter, initial.start);
   usePhaseEntry(round.phase);
@@ -139,11 +150,12 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
   const unfinished = isResumable(unfinishedProgress) ? restoreRound(unfinishedProgress!.state, keepFor(settings)) : undefined;
 
   const chooseMode = (next: StrategyMode) => {
-    track("practice_mode_changed", { drill: DRILL, from: mode, to: next });
+    // The event keeps its two values: Mixed and Tricky are both "standard".
+    if (contractMode(next) !== contractMode(mode)) track("practice_mode_changed", { drill: DRILL, from: contractMode(mode), to: contractMode(next) });
     setMode(next);
     remember({ mode: next });
   };
-  const newPlan = (): RoundPlan<StrategyQuestion> => ({ length, explain, retry: false });
+  const newPlan = (): RoundPlan<StrategyQuestion> => ({ length, explain, retry: false, mode });
   const startFromSetup = () => {
     if (unfinished) { setConfirmReplace(true); return; }
     setFocus(undefined);
@@ -151,9 +163,10 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
   };
   const resumeUnfinished = () => {
     if (!unfinished || !unfinishedProgress) return;
-    setMode(modeOf(unfinishedProgress.state?.mode));
+    const saved = savedModeOf(unfinishedProgress.state);
+    setMode(saved);
     setFocus(undefined);
-    round.resume(unfinished.plan, unfinished.tally, unfinishedProgress.updatedAt);
+    round.resume({ ...unfinished.plan, mode: saved }, unfinished.tally, unfinishedProgress.updatedAt);
   };
   const retry = (questions: ReadonlyArray<StrategyQuestion | null>) => {
     const queue = strategyRetryQueue(questions, settings.surrender);
@@ -161,7 +174,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
       toast({ message: "Those hands are surrender questions, and your table has no surrender now.", tone: "info" });
       return;
     }
-    round.start({ length: queue.length, explain: round.plan.explain, retry: true, queue });
+    round.start({ length: queue.length, explain: round.plan.explain, retry: true, queue, mode: round.plan.mode });
   };
 
   const header = { eyebrow: "Strategy drill", title: "Basic Strategy" };
@@ -190,7 +203,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
   if (round.phase === "play") {
     const hand = round.hand;
     if (!hand) return null;
-    const pick = mode === "adaptive" && !round.plan.retry ? focusPick() : undefined;
+    const pick = modeOf(round.plan.mode) === "adaptive" && !round.plan.retry ? focusPick() : undefined;
     const chip = round.plan.retry
       ? <span className="hidden rounded-full border border-[var(--rule)] px-2.5 py-1 text-xs font-semibold text-[var(--ink)] sm:inline-flex">Retrying your misses</span>
       : pick && (

@@ -82,12 +82,13 @@ function boot(settings: Settings, pref: Pref) {
   const category = peekPracticeFocus(DRILL);
   const focus: Focus | undefined = category ? { label: /^insurance/i.test(category) ? "insurance" : category, rows: focusRows(category, rows) } : undefined;
   const restoredRound = isResumable(progress) ? restoreRound(progress!.state, keepFor(rows)) : undefined;
+  const mode = progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode;
   const start: RoundStart<IndexQueueItem> = restoredRound && !focus
-    ? { phase: "play", plan: restoredRound.plan, tally: restoredRound.tally, resumedAt: progress!.updatedAt }
-    : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false }, tally: EMPTY_TALLY };
+    ? { phase: "play", plan: { ...restoredRound.plan, mode }, tally: restoredRound.tally, resumedAt: progress!.updatedAt }
+    : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false, mode }, tally: EMPTY_TALLY };
   // A round whose remaining hands the rules no longer deal (surrender switched off elsewhere) is set aside.
   const dropped = isResumable(progress) && !restoredRound;
-  return { start, focus, mode: progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode, dropped };
+  return { start, focus, mode, dropped };
 }
 
 const TC_TONE = (tc: number) => (tc <= -3 ? "var(--count-cold)" : tc < 0 ? "var(--count-low)" : tc === 0 ? "var(--count-flat)" : tc < 3 ? "var(--count-warm)" : "var(--count-hot)");
@@ -119,7 +120,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
       const queued = plan.retry ? plan.queue?.[index] : index % 2 === 0 ? plan.queue?.[index / 2] : undefined;
       const seeded = queued && findIndexRow(rows, queued);
       if (queued && seeded) return resolveIndexHand(seeded, queued.tc);
-      const entry = pickIndexRow(rows, mode, history);
+      const entry = pickIndexRow(rows, modeOf(plan.mode), history);
       return resolveIndexHand(entry, drawTrueCount(entry.row));
     },
     grade: (hand, chosen) => ({ ok: chosen === hand.correct, category: indexCategory(hand), mistake: indexMistake(hand, chosen as DeviationAction) }),
@@ -134,7 +135,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
     verdict: ({ hand, chosen, ok }, full) => ok
       ? `Correct. ${indexAnswerName(hand.correct, hand.kind)}.`
       : `Not quite. You chose ${indexAnswerName(chosen as DeviationAction, hand.kind)}; the play is ${indexAnswerName(hand.correct, hand.kind)}.${full ? ` ${indexReasoning(hand)}` : ""}`,
-    progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies DeviationSaved),
+    progress: (plan, tally) => ({ ...saveRound(plan, tally), mode: modeOf(plan.mode) } satisfies DeviationSaved),
   };
   const round = useStrategyRound(adapter, initial.start);
   usePhaseEntry(round.phase);
@@ -143,7 +144,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
 
   const newPlan = (): RoundPlan<IndexQueueItem> => {
     const queue = focus?.rows.length ? focusQueue(focus.rows) : undefined;
-    return { length, explain, retry: false, queue };
+    return { length, explain, retry: false, queue, mode };
   };
   const startFromSetup = () => {
     if (unfinished) { setConfirmReplace(true); return; }
@@ -158,7 +159,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
       toast({ message: "Those plays are not index plays under your table rules now.", tone: "info" });
       return;
     }
-    round.start({ length: items.length, explain: round.plan.explain, retry: true, queue: items });
+    round.start({ length: items.length, explain: round.plan.explain, retry: true, queue: items, mode: round.plan.mode });
   };
   const header = { eyebrow: "Strategy drill", title: "Deviations" };
 
@@ -168,7 +169,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
       <StrategySummary
         session={round.session}
         drillTitle={header.title}
-        onPlayAgain={() => round.start({ length, explain, retry: false })}
+        onPlayAgain={() => round.start({ length, explain, retry: false, mode })}
         onRetry={() => retry(indexRetryQueue(round.session!.mistakes, rows))}
         onChangeSetup={round.changeSetup}
         breakdownTitle="By hand"
@@ -251,7 +252,12 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
                 detail={savedRoundDetail(unfinished)}
                 answered={unfinished.tally.answered}
                 updatedAt={unfinishedProgress.updatedAt}
-                onResume={() => { setMode(modeOf(unfinishedProgress.state?.mode)); setFocus(undefined); round.resume(unfinished.plan, unfinished.tally, unfinishedProgress.updatedAt); }}
+                onResume={() => {
+                  const saved = modeOf(unfinishedProgress.state?.mode);
+                  setMode(saved);
+                  setFocus(undefined);
+                  round.resume({ ...unfinished.plan, mode: saved }, unfinished.tally, unfinishedProgress.updatedAt);
+                }}
                 onDiscard={() => { round.discard(); reloadUnfinished(); }}
               />
             )}

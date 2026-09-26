@@ -16,6 +16,12 @@ export interface RoundPlan<Q> {
   explain: ExplainMode;
   retry: boolean;
   queue?: Q[];
+  /**
+   * The drill's practice mode for this round, fixed when it starts or
+   * resumes, so dealing and analytics never read a Setup choice made later
+   * (or not yet committed, as when Continue round restores a saved mode).
+   */
+  mode?: string;
 }
 
 export interface RoundAnswer<H> {
