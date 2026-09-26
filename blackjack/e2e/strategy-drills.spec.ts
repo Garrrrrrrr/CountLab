@@ -337,6 +337,45 @@ test.describe("deviations", () => {
     await answered(page, 1);
   });
 
+  test("a retry round survives a reload before and after its first answer", async ({ page }) => {
+    // The focused play is dealt at counts just below, at and above its index, so always hitting misses some of them.
+    await prepare(page, { devPref: { explain: "never" }, focus: { drill: "Deviations", category: "16 vs 10" } });
+    await page.goto("/training/deviations/");
+    await page.getByRole("button", { name: "Start 10 hands" }).click();
+    for (let hand = 0; hand < 10; hand += 1) {
+      await answered(page, hand);
+      const choice = await page.getByRole("heading", { level: 2, name: /^(The dealer shows an ace|Surrender at true count)/ }).count();
+      await page.keyboard.press(choice ? "n" : "h");
+    }
+    const retry = page.getByRole("button", { name: /^Retry mistakes \((\d+)\)$/ });
+    await expect(retry).toBeVisible();
+    const count = Number((await retry.textContent())!.match(/\((\d+)\)/)![1]);
+    await retry.click();
+    await expect(hud(page).getByText(`Retry 1 of ${count}`, { exact: true })).toBeVisible();
+
+    // Left before the first answer: the next visit says it picked up the retry round, with a way out.
+    await page.waitForTimeout(600);
+    await page.reload();
+    await expect(page.getByText("Picked up your retry round")).toBeVisible();
+    await expect(hud(page).getByText(`Retry 1 of ${count}`, { exact: true })).toBeVisible();
+
+    const choice = await page.getByRole("heading", { level: 2, name: /^(The dealer shows an ace|Surrender at true count)/ }).count();
+    await page.keyboard.press(choice ? "n" : "h");
+    await answered(page, 1);
+    await page.waitForTimeout(600);
+    await page.reload();
+    await expect(page.getByText("Picked up where you left off")).toBeVisible();
+    await expect(hud(page).getByText(`Retry 2 of ${count}`, { exact: true })).toBeVisible();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:progress:Deviations") || "null")?.state);
+    expect(saved).toMatchObject({ q: 1, retry: true, length: count });
+    expect(saved.queue).toHaveLength(count);
+
+    await page.getByRole("button", { name: "Discard round" }).click();
+    await page.getByRole("dialog", { name: "Discard this round?" }).getByRole("button", { name: "Discard round" }).click();
+    await expect(page.getByRole("heading", { name: "Set up your round" })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("countlab:account:guest:hilo:progress:Deviations"))).toBeNull();
+  });
+
   test("a play the rules have no index for says so and seeds nothing", async ({ page }) => {
     await prepare(page, { focus: { drill: "Deviations", category: "12 vs 9" } });
     await page.goto("/training/deviations/");

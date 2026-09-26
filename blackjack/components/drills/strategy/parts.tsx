@@ -136,24 +136,32 @@ export function PracticeLines({ drill, sessions, unit, showLast = true }: { dril
   );
 }
 
+/** What a discard confirmation loses: "Its 3 answers will not be saved.", or that nothing is lost. */
+function discardedAnswers(answered: number, owner: "Its" | "Your") {
+  if (answered === 0) return "Nothing in it has been answered yet, so no answers are lost.";
+  const count = answered === 1 ? "1 answer" : `${answered} answers`;
+  return owner === "Its" ? `Its ${count} will not be saved.` : `Your ${count} in this round will not be saved.`;
+}
+
 /**
- * Resumed progress, made visible: where the round picks up, and a way to
- * discard it that says how many answers go with it.
+ * Resumed progress, made visible: where the round picks up (including a retry
+ * or focused round resumed before its first answer), and a way to discard it
+ * that says how many answers go with it.
  */
-export function RoundResumeNotice({ detail, answered, updatedAt, onDiscard }: { detail: string; answered: number; updatedAt?: string; onDiscard: () => void }) {
+export function RoundResumeNotice({ title, detail, answered, updatedAt, onDiscard }: { title: string; detail: string; answered: number; updatedAt?: string; onDiscard: () => void }) {
   const [confirming, setConfirming] = useState(false);
   const [saved, setSaved] = useState("");
   useEffect(() => { setSaved(relativeTime(updatedAt)); }, [updatedAt]);
   return (
     <>
-      <Callout tone="info" title="Picked up where you left off" action={<GhostButton size="compact" onClick={() => setConfirming(true)}>Discard round</GhostButton>}>
-        {detail} Your earlier answers are kept.{saved && ` Saved ${saved}.`}
+      <Callout tone="info" title={title} action={<GhostButton size="compact" onClick={() => setConfirming(true)}>Discard round</GhostButton>}>
+        {detail}{answered > 0 && " Your earlier answers are kept."}{saved && ` Saved ${saved}.`}
       </Callout>
       <ConfirmModal
         open={confirming}
         tone="danger"
         title="Discard this round?"
-        description={`${answered === 1 ? "Your 1 answer" : `Your ${answered} answers`} in this round will not be saved. Rounds you finished are not affected.`}
+        description={`${discardedAnswers(answered, "Your")} Rounds you finished are not affected.`}
         confirmLabel="Discard round"
         cancelLabel="Keep going"
         onCancel={() => setConfirming(false)}
@@ -181,7 +189,7 @@ export function UnfinishedRoundCallout({ detail, answered, updatedAt, onResume, 
         open={confirming}
         tone="danger"
         title={`Discard the unfinished ${noun}?`}
-        description={`${answered === 1 ? "Its 1 answer" : `Its ${answered} answers`} will not be saved.`}
+        description={discardedAnswers(answered, "Its")}
         confirmLabel={`Discard ${noun}`}
         cancelLabel="Keep it"
         onCancel={() => setConfirming(false)}

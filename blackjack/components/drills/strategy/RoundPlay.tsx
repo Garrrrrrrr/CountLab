@@ -60,6 +60,11 @@ export function RoundPlay<H, Q>({ drillTitle, reference, round, dockLabel, optio
   const current = isPaused ? tally.answered : Math.min(tally.answered + 1, plan.length);
   const progressLabel = `${plan.retry ? "Retry" : "Hand"} ${current} of ${plan.length}`;
   const nextLabel = last ? "See results" : "Next hand";
+  // A resumed round says so until its next answer, even one resumed before its first (a retry or focused round).
+  const resumed = round.resumedAt !== undefined && !isPaused && {
+    title: tally.answered > 0 ? "Picked up where you left off" : plan.retry ? "Picked up your retry round" : "Picked up your focused round",
+    detail: tally.answered > 0 ? `${progressLabel}.` : plan.retry ? `${progressLabel}: the hands you missed last time.` : `${progressLabel}. It mixes the play you chose to focus on with other plays.`,
+  };
 
   const answerable = (option: PadOption) => !option.disabled;
   useDrillKeys(isPaused || session ? {} : Object.fromEntries(options.filter(answerable).map((option) => [option.letter.toLowerCase(), () => round.answer(option.value)])), !isPaused);
@@ -130,9 +135,7 @@ export function RoundPlay<H, Q>({ drillTitle, reference, round, dockLabel, optio
           <DrillStage
             label={progressLabel}
             className="!p-3 sm:!p-6 [scroll-margin-top:.5rem] sm:[scroll-margin-top:4.5rem] lg:[scroll-margin-top:calc(4rem+5.5rem)]"
-            banner={round.resumedAt !== undefined && round.tally.answered > 0 && !isPaused && (
-              <RoundResumeNotice detail={`${progressLabel}.`} answered={tally.answered} updatedAt={round.resumedAt} onDiscard={() => round.discard()} />
-            )}
+            banner={resumed && <RoundResumeNotice {...resumed} answered={tally.answered} updatedAt={round.resumedAt} onDiscard={() => round.discard()} />}
           >
             {strip && !isPaused && <LastAnswerStrip key={round.last?.number} ok={strip.ok} summary={strip.summary}>{strip.details}</LastAnswerStrip>}
             {table}
