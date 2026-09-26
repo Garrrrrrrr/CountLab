@@ -85,7 +85,9 @@ function boot(settings: Settings, pref: Pref) {
   const start: RoundStart<IndexQueueItem> = restoredRound && !focus
     ? { phase: "play", plan: restoredRound.plan, tally: restoredRound.tally, resumedAt: progress!.updatedAt }
     : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false }, tally: EMPTY_TALLY };
-  return { start, focus, mode: progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode };
+  // A round whose remaining hands the rules no longer deal (surrender switched off elsewhere) is set aside.
+  const dropped = isResumable(progress) && !restoredRound;
+  return { start, focus, mode: progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode, dropped };
 }
 
 const TC_TONE = (tc: number) => (tc <= -3 ? "var(--count-cold)" : tc < 0 ? "var(--count-low)" : tc === 0 ? "var(--count-flat)" : tc < 3 ? "var(--count-warm)" : "var(--count-hot)");
@@ -101,7 +103,11 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
   const [expanded, setExpanded] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
 
-  useEffect(() => { consumePracticeFocus(DRILL); }, []);
+  const [setAside, setSetAside] = useState(initial.dropped);
+  useEffect(() => {
+    consumePracticeFocus(DRILL);
+    if (initial.dropped) storage.clearProgress(DRILL);
+  }, [initial]);
 
   const rows = useMemo(() => rowsFor(settings), [settings]);
   const history = historyTotals(sessions, DRILL);
@@ -131,7 +137,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
     progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies DeviationSaved),
   };
   const round = useStrategyRound(adapter, initial.start);
-  const unfinishedProgress = useUnfinishedProgress<Partial<DeviationSaved>>(DRILL, round.phase === "setup");
+  const [unfinishedProgress, reloadUnfinished] = useUnfinishedProgress<Partial<DeviationSaved>>(DRILL, round.phase === "setup");
   const unfinished = isResumable(unfinishedProgress) ? restoreRound(unfinishedProgress!.state, keepFor(rows)) : undefined;
 
   const newPlan = (): RoundPlan<IndexQueueItem> => {
@@ -224,10 +230,11 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
     <DrillFrame {...header} description={DESCRIPTION} phase="setup" actions={<ReferenceLink {...REFERENCE} />}>
       <StrategySetup
         settings={settings}
-        compact={hasHistory && !expanded && !focus && round.notice === undefined}
+        compact={hasHistory && !expanded && !focus && !setAside && round.notice === undefined}
         onExpand={() => setExpanded(true)}
-        notices={(round.notice || focus || unfinished) && (
+        notices={(round.notice || focus || unfinished || setAside) && (
           <div className="grid gap-3">
+            {setAside && <Callout tone="info" title="Your unfinished round was set aside" onDismiss={() => setSetAside(false)}>Its remaining plays are not index plays under your current table rules.</Callout>}
             {round.notice === "nothing-saved" && <Callout tone="info" title="Nothing was answered, so nothing was saved." onDismiss={() => round.setNotice(undefined)} />}
             {focus && (focus.rows.length ? (
               <Callout tone="info" title={`Focusing on ${focus.label}`} onDismiss={() => setFocus(undefined)}>
@@ -244,7 +251,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
                 answered={unfinished.tally.answered}
                 updatedAt={unfinishedProgress.updatedAt}
                 onResume={() => { setMode(modeOf(unfinishedProgress.state?.mode)); setFocus(undefined); round.resume(unfinished.plan, unfinished.tally, unfinishedProgress.updatedAt); }}
-                onDiscard={() => round.discard()}
+                onDiscard={() => { round.discard(); reloadUnfinished(); }}
               />
             )}
           </div>
@@ -276,7 +283,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
         confirmLabel="Discard and start"
         cancelLabel="Keep it"
         onCancel={() => setConfirmReplace(false)}
-        onConfirm={() => { setConfirmReplace(false); begin(); }}
+        onConfirm={() => { setConfirmReplace(false); begin(); reloadUnfinished(); }}
       />
     </DrillFrame>
   );

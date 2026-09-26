@@ -14,8 +14,8 @@ import { makeSession, storage, type Mistake, type Session, type Settings } from 
 import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { reveal, useNow, useStoredSessions, useStrategySettings } from "../hooks";
-import { PracticeLines, ReferenceLink } from "../parts";
+import { reveal, useNow, useStoredSessions, useStrategySettings, useUnfinishedProgress } from "../hooks";
+import { PracticeLines, ReferenceLink, UnfinishedRoundCallout } from "../parts";
 import { ChartKeypad } from "./ChartKeypad";
 import { SectionKeys } from "./ChartKeys";
 import { ChartSection, type CellMode } from "./ChartSection";
@@ -101,6 +101,7 @@ export function H17ChartDrill() {
   const [confirmGrade, setConfirmGrade] = useState(false);
   const [mistakeRows, setMistakeRows] = useState(false);
   const keypad = useMediaQuery("(max-width: 1023px), (pointer: coarse)");
+  const [unfinished, reloadUnfinished] = useUnfinishedProgress<Partial<H17Saved>>(DRILL, phase === "setup");
   const wide = useMediaQuery("(min-width: 640px)");
   const hintId = useId();
   const [mac] = useState(isMac);
@@ -360,6 +361,7 @@ export function H17ChartDrill() {
     setActiveMs(0);
     if (segment.current !== null) segment.current = Date.now();
     storage.clearProgress(DRILL);
+    reloadUnfinished();
     selectAt(0);
   };
   const clearSurrender = () => {
@@ -483,8 +485,9 @@ export function H17ChartDrill() {
     return (
       <DrillFrame eyebrow={wide ? header.eyebrow : ""} title={header.title} phase="play" width="wide" actions={<ReferenceLink {...REFERENCE} className="hidden sm:inline-flex" />}>
         <DrillHud
-          progress={{ done: grade.answered, total: grade.total, label: `${scope === "retry" ? "Retry: " : scope === "index" ? "Index cells: " : ""}${answeredLabel}` }}
-          stats={[
+          progress={{ done: grade.answered, total: grade.total, label: wide ? `${scope === "retry" ? "Retry: " : scope === "index" ? "Index cells: " : ""}${answeredLabel}` : `${grade.answered}/${grade.total} filled · ${clockText(shownMs)}` }}
+          // Phones keep the bar to one line (count, time, Grade), leaving the chart as much room as the keypad allows.
+          stats={!wide ? [] : [
             ...(feedback === "live" ? [
               { id: "right", label: "Right", value: settled.right, tone: "good" as const },
               { id: "wrong", label: "Wrong", value: settled.wrong, tone: settled.wrong ? "bad" as const : "neutral" as const },
@@ -564,6 +567,25 @@ export function H17ChartDrill() {
     );
   }
 
+  const remote = unfinished && filled === 0 ? filledEntries(unfinished.state?.entries) : {};
+  const remoteCount = Object.keys(remote).length;
+  const continueRemote = () => {
+    const state = unfinished!.state!;
+    const restoredTable = state.surrenderTable === "late" || state.surrenderTable === "early10" ? state.surrenderTable : table;
+    setEntries(remote);
+    if (CHOICES.includes(state.choice as SectionChoice)) setPick(state.scope === "index" ? "index" : (state.choice as SectionChoice));
+    if (state.feedback === "end" || state.feedback === "live") setFeedback(state.feedback);
+    setTable(restoredTable);
+    setActiveMs(typeof state.activeMs === "number" && state.activeMs >= 0 ? state.activeMs : 0);
+    setStartedAt(typeof state.startedAt === "number" ? state.startedAt : Date.now());
+    startPlay(false, state.scope && Array.isArray(state.only) ? { only: state.only, scope: state.scope } : {});
+  };
+  const notices = (mismatchNotice || remoteCount > 0) ? (
+    <div className="grid gap-3">
+      {remoteCount > 0 && <UnfinishedRoundCallout noun="chart" detail={`${remoteCount} ${remoteCount === 1 ? "cell" : "cells"} filled.`} answered={remoteCount} updatedAt={unfinished?.updatedAt} resumeLabel="Continue chart" onResume={continueRemote} onDiscard={() => { storage.clearProgress(DRILL); reloadUnfinished(); }} />}
+      {mismatchNotice}
+    </div>
+  ) : undefined;
   return (
     <DrillFrame {...header} description={DESCRIPTION} phase="setup" actions={<ReferenceLink {...REFERENCE} />}>
       <ChartSetup
@@ -576,7 +598,7 @@ export function H17ChartDrill() {
         filled={filled}
         surrenderLocked={surrenderKeys.length > 0}
         onClearSurrender={clearSurrender}
-        notices={mismatchNotice || undefined}
+        notices={notices}
         firstTime={!sessions.some((session) => session.drill === DRILL)}
         onStart={start}
         onClear={() => setConfirmClear(true)}

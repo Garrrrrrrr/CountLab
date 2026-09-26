@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { BlackjackRules } from "@/lib/blackjack/types";
 import { answeredInProgress } from "@/lib/statistics/drillRound";
 import { storage, surrenderFlags, type DrillProgress, type DrillType, type Session, type Settings } from "@/lib/statistics/storage";
@@ -73,16 +73,16 @@ export function isResumable(progress: DrillProgress<{ q?: number; categories?: R
  * Unfinished progress that turned up while Setup was open: synced from
  * another device after the page loaded. Resuming stays the reader's choice.
  */
-export function useUnfinishedProgress<T>(drill: DrillType, watching: boolean) {
+export function useUnfinishedProgress<T>(drill: DrillType, watching: boolean): [DrillProgress<T> | null, () => void] {
   const [progress, setProgress] = useState<DrillProgress<T> | null>(null);
+  const reload = useCallback(() => setProgress(storage.progress<T>(drill)), [drill]);
   useEffect(() => {
     if (!watching) return;
-    const load = () => setProgress(storage.progress<T>(drill));
-    load();
-    addEventListener("hilo-storage", load);
-    return () => removeEventListener("hilo-storage", load);
-  }, [drill, watching]);
-  return watching ? progress : null;
+    reload();
+    addEventListener("hilo-storage", reload);
+    return () => removeEventListener("hilo-storage", reload);
+  }, [reload, watching]);
+  return [watching ? progress : null, reload];
 }
 
 /** The table rules the strategy engine wants, from the saved settings. */

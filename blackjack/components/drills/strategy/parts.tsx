@@ -148,7 +148,7 @@ export function RoundResumeNotice({ detail, answered, updatedAt, onDiscard }: { 
 }
 
 /** Unfinished progress found while Setup is open (another device, or a focus hand-off): resume or discard. */
-export function UnfinishedRoundCallout({ detail, answered, updatedAt, onResume, onDiscard, resumeLabel = "Continue round" }: { detail: string; answered: number; updatedAt?: string; onResume: () => void; onDiscard: () => void; resumeLabel?: string }) {
+export function UnfinishedRoundCallout({ detail, answered, updatedAt, onResume, onDiscard, resumeLabel = "Continue round", noun = "round" }: { detail: string; answered: number; updatedAt?: string; onResume: () => void; onDiscard: () => void; resumeLabel?: string; noun?: "round" | "chart" }) {
   const [confirming, setConfirming] = useState(false);
   const [saved, setSaved] = useState("");
   useEffect(() => { setSaved(relativeTime(updatedAt)); }, [updatedAt]);
@@ -156,7 +156,7 @@ export function UnfinishedRoundCallout({ detail, answered, updatedAt, onResume, 
     <>
       <Callout
         tone="info"
-        title="You have an unfinished round"
+        title={`You have an unfinished ${noun}`}
         action={<><GhostButton size="compact" onClick={onResume}><i className="fa-solid fa-play mr-1.5 text-xs" aria-hidden="true" />{resumeLabel}</GhostButton><GhostButton size="compact" onClick={() => setConfirming(true)}>Discard</GhostButton></>}
       >
         {detail}{saved && ` · saved ${saved}`}
@@ -164,9 +164,9 @@ export function UnfinishedRoundCallout({ detail, answered, updatedAt, onResume, 
       <ConfirmModal
         open={confirming}
         tone="danger"
-        title="Discard the unfinished round?"
+        title={`Discard the unfinished ${noun}?`}
         description={`${answered === 1 ? "Its 1 answer" : `Its ${answered} answers`} will not be saved.`}
-        confirmLabel="Discard round"
+        confirmLabel={`Discard ${noun}`}
         cancelLabel="Keep it"
         onCancel={() => setConfirming(false)}
         onConfirm={() => { setConfirming(false); onDiscard(); }}

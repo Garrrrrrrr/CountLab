@@ -79,7 +79,9 @@ function boot(settings: Settings, pref: Pref) {
     : { phase: "setup", plan: { length: pref.length, explain: pref.explain, retry: false }, tally: EMPTY_TALLY };
   // A focus hand-off preselects Weak spots; progress saved before any answer still restores its mode.
   const mode = focus?.usable ? "adaptive" : progress?.state?.mode ? modeOf(progress.state.mode) : pref.mode;
-  return { start, focus, mode };
+  // A round whose remaining hands the table no longer deals (surrender switched off elsewhere) is set aside.
+  const dropped = isResumable(progress) && !restoredRound;
+  return { start, focus, mode, dropped };
 }
 
 function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Partial<Pref>) => void }) {
@@ -94,9 +96,11 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
   const [confirmReplace, setConfirmReplace] = useState(false);
 
   // The hand-off is one-shot: clear it now, whether or not it was for this drill.
+  const [setAside, setSetAside] = useState(initial.dropped);
   useEffect(() => {
     consumePracticeFocus(DRILL);
     if (initial.focus?.usable) forceDue(DRILL, initial.focus.category);
+    if (initial.dropped) storage.clearProgress(DRILL);
   }, [initial]);
 
   const rules = rulesFromSettings(settings);
@@ -130,7 +134,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
     progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies StrategySaved),
   };
   const round = useStrategyRound(adapter, initial.start);
-  const unfinishedProgress = useUnfinishedProgress<Partial<StrategySaved>>(DRILL, round.phase === "setup");
+  const [unfinishedProgress, reloadUnfinished] = useUnfinishedProgress<Partial<StrategySaved>>(DRILL, round.phase === "setup");
   const unfinished = isResumable(unfinishedProgress) ? restoreRound(unfinishedProgress!.state, keepFor(settings)) : undefined;
 
   const chooseMode = (next: StrategyMode) => {
@@ -238,10 +242,11 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
     <DrillFrame {...header} description={DESCRIPTION} phase="setup" actions={<ReferenceLink {...REFERENCE} />}>
       <StrategySetup
         settings={settings}
-        compact={hasHistory && !expanded && !focus && round.notice === undefined}
+        compact={hasHistory && !expanded && !focus && !setAside && round.notice === undefined}
         onExpand={() => setExpanded(true)}
-        notices={(round.notice || focus || unfinished) && (
+        notices={(round.notice || focus || unfinished || setAside) && (
           <div className="grid gap-3">
+            {setAside && <Callout tone="info" title="Your unfinished round was set aside" onDismiss={() => setSetAside(false)}>Its remaining hands are surrender questions, and your table rules no longer include surrender.</Callout>}
             {round.notice === "nothing-saved" && <Callout tone="info" title="Nothing was answered, so nothing was saved." onDismiss={() => round.setNotice(undefined)} />}
             {focus && (focus.usable ? (
               <Callout tone="info" title={`Focusing on ${focus.category}`} onDismiss={() => setFocus(undefined)}>
@@ -258,7 +263,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
                 answered={unfinished.tally.answered}
                 updatedAt={unfinishedProgress.updatedAt}
                 onResume={resumeUnfinished}
-                onDiscard={() => round.discard()}
+                onDiscard={() => { round.discard(); reloadUnfinished(); }}
               />
             )}
           </div>
@@ -284,7 +289,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
         confirmLabel="Discard and start"
         cancelLabel="Keep it"
         onCancel={() => setConfirmReplace(false)}
-        onConfirm={() => { setConfirmReplace(false); setFocus(undefined); round.start(newPlan()); }}
+        onConfirm={() => { setConfirmReplace(false); setFocus(undefined); round.start(newPlan()); reloadUnfinished(); }}
       />
     </DrillFrame>
   );
