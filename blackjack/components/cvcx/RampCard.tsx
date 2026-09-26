@@ -21,7 +21,7 @@ const ROUNDING = [
   { value: 1, label: "Whole units", phrase: "whole units" },
 ] as const;
 const presetLabel = (name: string) => name.replace("-", "–");
-const spreadLabel = (spread: { min: number; max: number } | null) => (spread ? `${unitLabel(spread.min)}–${unitLabel(spread.max)}` : "no bets");
+const spreadLabel = (spread: { min: number; max: number }) => `${unitLabel(spread.min)}–${unitLabel(spread.max)}`;
 
 /** Step 3: how much to bet at each true count, built from a preset, the optimal ramp, or by hand. */
 export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => void }) {
@@ -39,9 +39,10 @@ export function RampCard({ lab, onInteract }: { lab: Lab; onInteract?: () => voi
   const start = config.wongInAt ?? -8;
   const steps = useMemo(() => toSteps(config.ramp, config.hands, { start, boundaries: lab.stepBoundaries ?? [] }), [config.ramp, config.hands, start, lab.stepBoundaries]);
   const spread = playedSpread(model.activeRamp);
+  const played = spread ? ` (${spreadLabel(spread)})` : "";
   const label = isPresetName(config.rampName) ? `${presetLabel(config.rampName)} spread`
-    : config.rampName === OPTIMAL_RAMP_NAME ? `Optimal ramp (${spreadLabel(spread)})`
-      : `${config.rampName === CUSTOM_RAMP_NAME ? "Custom ramp" : config.rampName} (${spreadLabel(spread)})`;
+    : config.rampName === OPTIMAL_RAMP_NAME ? `Optimal ramp${played}`
+      : `${config.rampName === CUSTOM_RAMP_NAME ? "Custom ramp" : config.rampName}${played}`;
   const summary = spread
     ? `${label} · ${money(spread.min * config.baseBet)}–${money(spread.max * config.baseBet)} · plays ${percent(model.result.playedFrequency, 0)} of rounds`
     : `${label} · not betting at any count`;

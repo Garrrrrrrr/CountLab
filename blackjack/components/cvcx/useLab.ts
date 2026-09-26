@@ -204,7 +204,12 @@ export function useLab() {
     const timer = setTimeout(() => writeDraft(draft), 250);
     return () => clearTimeout(timer);
   }, [config, active, draftName]);
-  useEffect(() => () => { if (latestDraft.current) writeDraft(latestDraft.current); }, []);
+  // Leaving the page (in the app or by a full navigation) saves any change still waiting to be written.
+  useEffect(() => {
+    const flush = () => { if (latestDraft.current) writeDraft(latestDraft.current); };
+    addEventListener("pagehide", flush);
+    return () => { removeEventListener("pagehide", flush); flush(); };
+  }, []);
 
   const loadTemplate = (template: CvcxTemplate, source: "url" | "library") => {
     const next = normalizeConfig(template.config);

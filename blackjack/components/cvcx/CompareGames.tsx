@@ -65,7 +65,7 @@ export function CompareGames({ lab, className = "" }: { lab: Lab; className?: st
               </li>
             ))}
           </ol>
-          <table className="lab-compare-table w-full text-right text-sm">
+          <table className="lab-compare-table w-full text-right text-sm [font-family:var(--font-ui)] [&_td]:px-2 [&_th]:px-2">
             <caption className="sr-only">Games ranked by SCORE</caption>
             <thead className="text-xs text-[var(--ink-muted)]">
               <tr>
@@ -81,12 +81,12 @@ export function CompareGames({ lab, className = "" }: { lab: Lab; className?: st
             <tbody>
               {rows.map((row, index) => (
                 <tr key={`${row.decks}-${row.dealt}`} className={`border-t border-[var(--rule)] ${row.current ? "bg-[color:color-mix(in_srgb,var(--accent)_7%,transparent)]" : ""}`}>
-                  <td className="py-2 text-left text-[var(--ink-muted)]">#{index + 1}</td>
+                  <td className="py-2 text-left font-data text-[var(--ink-muted)]">#{index + 1}</td>
                   <th scope="row" className="py-2 text-left font-semibold">{row.decks}D · {row.dealt} dealt <span className="font-normal text-[var(--ink-muted)]">({dealtPercent(row.decks, row.dealt)}%)</span></th>
-                  <td className="font-semibold">{money(row.result.cScore)}</td>
-                  <td>{money(row.result.hourlyEv, 2)}</td>
-                  <td>{percent(row.result.riskOfRuin)}</td>
-                  <td>{count(row.result.nZeroRounds)}</td>
+                  <td className="font-data font-semibold">{money(row.result.cScore)}</td>
+                  <td className="font-data">{money(row.result.hourlyEv, 2)}</td>
+                  <td className="font-data">{percent(row.result.riskOfRuin)}</td>
+                  <td className="font-data">{count(row.result.nZeroRounds)}</td>
                   <td className="py-1.5 pl-3">{action(row)}</td>
                 </tr>
               ))}

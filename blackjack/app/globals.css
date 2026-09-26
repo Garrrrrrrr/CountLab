@@ -684,7 +684,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
 /* Compare: a ranked list in narrow columns, a table where it fits. */
 .lab-compare { container-type: inline-size; }
 .lab-compare-table { display: none; }
-@container (min-width: 40rem) {
+@container (min-width: 44rem) {
   .lab-compare-list { display: none; }
   .lab-compare-table { display: table; }
 }
