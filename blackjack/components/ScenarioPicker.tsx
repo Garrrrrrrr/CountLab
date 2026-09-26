@@ -16,28 +16,56 @@ export function unsupportedScenario(config: CvcxTemplateConfig, simulation = fal
   return undefined;
 }
 
+/** The tools a saved scenario can be opened in, each reading `?scenario=<id>`. */
+export const SCENARIO_DESTINATIONS = [["Lab", "/cvcx"], ["Simulate", "/simulation"], ["Compare", "/compare"], ["Plan trip", "/trip-planner"], ["Journal", "/journal"]] as const;
+export const scenarioHref = (href: string, id: string) => `${href}?scenario=${encodeURIComponent(id)}`;
+
+export type ScenarioArrival =
+  | { status: "none" }
+  | { status: "loaded"; scenario: CvcxTemplate }
+  | { status: "unsupported"; scenario: CvcxTemplate; reason: string }
+  | { status: "missing"; id: string };
+
+/**
+ * Applies `?scenario=<id>` once on arrival: loads the saved template through
+ * `onLoad` unless `unsupported` gives a reason, and reports what happened so
+ * each tool can say so in its own words.
+ */
+export function useScenarioFromUrl(onLoad: (scenario: CvcxTemplate) => void, unsupported?: (config: CvcxTemplateConfig) => string | undefined): ScenarioArrival {
+  const [arrival, setArrival] = useState<ScenarioArrival>({ status: "none" });
+  const loadRef = useRef(onLoad), unsupportedRef = useRef(unsupported);
+  useEffect(() => { loadRef.current = onLoad; unsupportedRef.current = unsupported; }, [onLoad, unsupported]);
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get("scenario");
+    if (!id) return;
+    const scenario = cvcxLibrary.templates().find((entry) => entry.id === id);
+    if (!scenario) { setArrival({ status: "missing", id }); return; }
+    const reason = unsupportedRef.current?.(scenario.config);
+    if (reason) setArrival({ status: "unsupported", scenario, reason });
+    else { loadRef.current(scenario); setArrival({ status: "loaded", scenario }); }
+  }, []);
+  return arrival;
+}
+
 /** Reuses the existing, versioned Lab template library across analysis tools. */
 export function ScenarioPicker({ onLoad, current, unsupported, disabled = false }: { disabled?: boolean; onLoad: (scenario: CvcxTemplate) => void; current?: () => CvcxTemplateConfig; unsupported?: (config: CvcxTemplateConfig) => string | undefined }) {
   const [templates, setTemplates] = useState<CvcxTemplate[]>([]);
   const [selected, setSelected] = useState("");
   const [name, setName] = useState("");
   const [notice, setNotice] = useState("");
-  const loadRef = useRef(onLoad), unsupportedRef = useRef(unsupported);
-  useEffect(() => { loadRef.current = onLoad; unsupportedRef.current = unsupported; }, [onLoad, unsupported]);
+  const arrival = useScenarioFromUrl(onLoad, unsupported);
   useEffect(() => {
     const refresh = () => setTemplates(cvcxLibrary.templates());
     refresh();
-    const id = new URLSearchParams(location.search).get("scenario");
-    const scenario = cvcxLibrary.templates().find((entry) => entry.id === id);
-    if (scenario) {
-      setSelected(scenario.id);
-      const reason = unsupportedRef.current?.(scenario.config);
-      if (reason) setNotice(reason);
-      else { loadRef.current(scenario); setNotice(`Loaded ${scenario.name}. Edits here apply to this tool until you save a scenario.`); }
-    } else if (id) setNotice("This scenario is not saved on this account and device. Choose a saved scenario below.");
     addEventListener(cvcxLibrary.event, refresh);
     return () => removeEventListener(cvcxLibrary.event, refresh);
   }, []);
+  useEffect(() => {
+    if (arrival.status === "none") return;
+    if (arrival.status === "missing") { setNotice("This scenario is not saved on this account and device. Choose a saved scenario below."); return; }
+    setSelected(arrival.scenario.id);
+    setNotice(arrival.status === "unsupported" ? arrival.reason : `Loaded ${arrival.scenario.name}. Edits here apply to this tool until you save a scenario.`);
+  }, [arrival]);
   const chosen = templates.find((entry) => entry.id === selected);
   return <section className="surface no-print mb-5 rounded-xl p-4" aria-label="Shared analysis scenario">
     <details>
@@ -50,7 +78,7 @@ export function ScenarioPicker({ onLoad, current, unsupported, disabled = false 
     </div>
     </details>
     {chosen && <p className="mt-3 text-xs text-[var(--ink-muted)]">Open saved snapshot: {chosen.name}</p>}
-    {chosen && <div className="mt-3 flex flex-wrap gap-4 text-sm">{[["Lab", "/cvcx"], ["Simulate", "/simulation"], ["Compare", "/compare"], ["Plan trip", "/trip-planner"], ["Journal", "/journal"]].map(([label, href]) => <Link key={href} className="inline-flex min-h-9 items-center text-[var(--accent)] underline" href={`${href}?scenario=${encodeURIComponent(chosen.id)}`}>{label} →</Link>)}</div>}
+    {chosen && <div className="mt-3 flex flex-wrap gap-4 text-sm">{SCENARIO_DESTINATIONS.map(([label, href]) => <Link key={href} className="inline-flex min-h-9 items-center text-[var(--accent)] underline" href={scenarioHref(href, chosen.id)}>{label} →</Link>)}</div>}
     {notice && <p role="status" className="mt-3 text-sm text-[var(--ink-muted)]">{notice}</p>}
   </section>;
 }

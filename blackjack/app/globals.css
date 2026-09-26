@@ -599,6 +599,18 @@ kbd {
   }
 }
 
+/* BetSpreadTable in container layout: cards until its own box can hold the table. */
+.bet-table-host { container-type: inline-size; }
+.bet-table-host > .bet-table { display: none; }
+@container (min-width: 46rem) {
+  .bet-table-host[data-density="full"] > .bet-cards { display: none; }
+  .bet-table-host[data-density="full"] > .bet-table { display: block; }
+}
+@container (min-width: 35rem) {
+  .bet-table-host[data-density="compact"] > .bet-cards { display: none; }
+  .bet-table-host[data-density="compact"] > .bet-table { display: block; }
+}
+
 /* Public content and shared controls use semantic tokens in both themes. */
 a:focus-visible, button:focus-visible, summary:focus-visible {
   outline: 2px solid var(--focus); outline-offset: 3px;

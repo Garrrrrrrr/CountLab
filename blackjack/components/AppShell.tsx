@@ -13,6 +13,7 @@ import { headerTitle, isKnownRoute, NAV_GROUPS, type NavGroup, normalizePath, ro
 import { useIsAdmin } from "@/lib/supabase/admin";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { BrandLockup, BrandMark } from "./Brand";
+import { LiveAnnouncer, ToastViewport } from "./ui";
 
 /** The rules badge is tight on width, so the rule gets an abbreviation rather than its full label. */
 const SURRENDER_BADGE: Record<SurrenderRule, string> = { none: "No surrender", late: "LS", early: "ES10" };
@@ -312,6 +313,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           Menu
         </button>
       </nav>
+      <ToastViewport />
+      <LiveAnnouncer />
       {paletteOpen && (
         <div role="presentation" className="fixed inset-0 z-[80] grid place-items-start bg-black/45 p-4 pt-[max(5rem,12vh)] backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && setPaletteOpen(false)}>
           <div ref={palette} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Find a tool" className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-[var(--rule)] bg-[var(--paper-raised)] text-[var(--ink)] shadow-2xl">

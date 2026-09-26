@@ -16,156 +16,179 @@ const money = (value: number, digits = 0) =>
     : "Not available";
 const percent = (value: number, digits = 2, signed = false) =>
   `${signed && value >= 0 ? "+" : ""}${(value * 100).toFixed(digits)}%`;
+const units = (bet: number, unit: number) => `${Number((bet / unit).toFixed(2))}u`;
+const countTone = (trueCount: number) => trueCount < 0 ? "text-[var(--negative)]" : trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]";
+const edgeTone = (advantage: number) => advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]";
+/** The largest frequency in a ramp is well under 30%; scale bars to the busiest count so they stay readable. */
+const barWidth = (frequency: number, rows: CountRow[]) => `${Math.max(2, (frequency / Math.max(...rows.map((row) => row.frequency), 1e-9)) * 100)}%`;
 
-/** The per-true-count bet/hands table shared by the Bankroll Lab and the session journal, so both price a ramp identically. */
+/**
+ * The per-true-count bet/hands table shared by the Bankroll Lab and the
+ * session journal, so both price a ramp identically.
+ *
+ * Narrow spaces get one card per count; wide ones get a table. `layout`
+ * decides what "wide" means: the viewport (md and up), or the table's own
+ * container, for callers that place it in a column or side panel. `density`
+ * "compact" folds frequency and edge into the count cell so the table fits a
+ * 40rem sheet.
+ */
 export function BetSpreadTable({
   rows,
   onBetChange,
   onZeroBet,
   onHandsChange,
+  layout = "viewport",
+  density = "full",
+  unit,
+  showFrequencyBars = false,
+  lockedReason,
 }: {
   rows: CountRow[];
   onBetChange: (trueCount: number, bet: number) => void;
   /**
-   * Handles the Zero button separately from a typed bet. Callers that spread an
-   * entered bet across neighbouring counts need Zero to stay a single-cell
-   * action — it is how you wong out of one count without flattening the rest.
+   * Handles Sit out separately from a typed bet. Callers that spread an entered
+   * bet across neighbouring counts need Sit out to stay a single-cell action:
+   * it is how you wong out of one count without flattening the rest.
    * Defaults to a zero-dollar `onBetChange`.
    */
   onZeroBet?: (trueCount: number) => void;
   onHandsChange: (trueCount: number, hands: number) => void;
+  layout?: "viewport" | "container";
+  density?: "full" | "compact";
+  /** When given, bets are also shown in units of this size. */
+  unit?: number;
+  showFrequencyBars?: boolean;
+  /** A reason a count cannot be bet (e.g. below the wong-in point); its bet controls are disabled. */
+  lockedReason?: (trueCount: number) => string | undefined;
 }) {
   const zeroBet = onZeroBet ?? ((trueCount: number) => onBetChange(trueCount, 0));
-  return (
-    <>
-      {/* Below md a 7-column table needs sideways scrolling to edit a single
-          row, so narrow viewports get one card per true count instead —
-          every control reachable with a straight thumb scroll. */}
-      <div className="grid gap-2.5 md:hidden">
-        {rows.map((row) => (
-          <div key={row.trueCount} className="rounded-xl border border-overlay/[.07] bg-overlay/[.02] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className={`text-base font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}>
-                {row.label}
-              </span>
-              <span className="text-right text-xs text-[var(--ink-muted)]">
-                {percent(row.frequency, 2)} freq ·{" "}
-                <span className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{percent(row.advantage, 3, true)}</span>
+  const showUnits = unit !== undefined && unit > 0;
+  const compact = density === "compact";
+  const hands = (row: CountRow, locked: boolean, size: "card" | "cell") => (
+    <div role="group" aria-label={`Hands at true count ${row.label}`} className="inline-flex gap-1">
+      {HAND_CHOICES.map((count) => (
+        <button
+          key={count}
+          type="button"
+          aria-pressed={row.playerHands === count}
+          aria-label={`${count} hands at true count ${row.label}`}
+          disabled={locked}
+          onClick={() => onHandsChange(row.trueCount, count)}
+          className={`min-w-11 rounded-lg border font-data text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-35 ${size === "card" ? "min-h-11" : "min-h-9 [@media(pointer:coarse)]:min-h-11"} ${row.playerHands === count ? "border-emerald-500/40 bg-emerald-400/15 text-[var(--accent)]" : "border-[var(--rule)] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
+        >
+          {count}
+        </button>
+      ))}
+    </div>
+  );
+  const sitOut = (row: CountRow, locked: boolean, size: "card" | "cell") => (
+    <button
+      type="button"
+      aria-label={`Sit out at true count ${row.label}`}
+      disabled={locked || row.bet === 0}
+      onClick={() => zeroBet(row.trueCount)}
+      className={`shrink-0 rounded-lg border border-[var(--rule)] px-3 text-xs font-semibold text-[var(--ink-muted)] hover:border-[var(--ink-muted)] hover:text-[var(--ink)] disabled:cursor-default disabled:opacity-35 ${size === "card" ? "min-h-11" : "min-h-9 [@media(pointer:coarse)]:min-h-11"}`}
+    >
+      Sit out
+    </button>
+  );
+  const frequencyBar = (row: CountRow) => showFrequencyBars && (
+    <span aria-hidden="true" className="mt-1 block h-1 overflow-hidden rounded-full bg-overlay/[.08]"><span className="block h-full rounded-full bg-[var(--count-low)]" style={{ width: barWidth(row.frequency, rows) }} /></span>
+  );
+
+  const cards = (
+    <div className={`bet-cards grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2.5 ${layout === "viewport" ? "md:hidden" : ""}`}>
+      {rows.map((row) => {
+        const reason = lockedReason?.(row.trueCount);
+        return (
+          <div key={row.trueCount} className={`min-w-0 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-3 ${reason ? "opacity-75" : ""}`}>
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <span className={`font-data text-base font-bold ${countTone(row.trueCount)}`}>{row.label}</span>
+              <span className="min-w-0 text-right text-xs text-[var(--ink-muted)]">
+                {percent(row.frequency, 2)} of rounds · <span className={edgeTone(row.advantage)}>{percent(row.advantage, 3, true)} edge</span>
+                {frequencyBar(row)}
               </span>
             </div>
-            <div className="mt-2.5 flex items-center gap-2">
+            <div className="mt-2.5 flex min-w-0 items-center gap-2">
               <NumberField
                 ariaLabel={`Bet at true count ${row.label}`}
                 value={Math.round(row.bet * 100) / 100}
                 min={0}
                 prefix="$"
-                className="flex-1"
+                suffix={showUnits ? units(row.bet, unit!) : undefined}
+                disabled={Boolean(reason)}
+                className="min-w-0 flex-1"
                 onValueChange={(value) => onBetChange(row.trueCount, value)}
               />
-              <button
-                type="button"
-                aria-label={`Zero bet at true count ${row.label}`}
-                disabled={row.bet === 0}
-                onClick={() => zeroBet(row.trueCount)}
-                className="min-h-11 shrink-0 rounded-lg border border-red-400/20 bg-red-400/[.06] px-3 text-xs font-semibold text-[var(--negative)] hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
-              >
-                Zero
-              </button>
+              {sitOut(row, Boolean(reason), "card")}
             </div>
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <div className="inline-flex gap-1.5">
-                {HAND_CHOICES.map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    aria-pressed={row.playerHands === count}
-                    aria-label={`${count} hands at true count ${row.label}`}
-                    onClick={() => onHandsChange(row.trueCount, count)}
-                    className={`min-h-11 min-w-11 rounded-lg border text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-overlay/[.08] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
-                  >
-                    {count}X
-                  </button>
-                ))}
-              </div>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-3">
+              {hands(row, Boolean(reason), "card")}
               <span className="text-right text-xs text-[var(--ink-muted)]">
-                {money(row.totalBet, 0)} action ·{" "}
-                <span className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>{money(row.frequency * row.advantage * row.totalBet, 3)}</span>
+                {money(row.totalBet, 0)} bet ·{" "}
+                <span className={edgeTone(row.advantage)}>{money(row.frequency * row.advantage * row.totalBet, 3)} EV</span>
               </span>
             </div>
+            {reason && <p className="mt-2 text-xs text-[var(--ink-muted)]">{reason}</p>}
           </div>
-        ))}
-      </div>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[720px] text-right text-sm">
-          <thead className="text-[var(--ink-muted)]">
-            <tr>
-              <th className="pb-3 text-left">True count</th>
-              <th className="pb-3">Frequency</th>
-              <th className="pb-3">Advantage</th>
-              <th className="pb-3 text-left">Bet / hand</th>
-              <th className="pb-3 text-left">Hands</th>
-              <th className="pb-3">Total action</th>
-              <th className="pb-3">EV / round</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.trueCount} className="border-t border-overlay/[.06]">
-                <td
-                  className={`py-2.5 text-left font-bold ${row.trueCount < 0 ? "text-[var(--negative)]" : row.trueCount > 0 ? "text-[var(--accent)]" : "text-[var(--ink)]"}`}
-                >
+        );
+      })}
+    </div>
+  );
+
+  const table = (
+    <div className={`bet-table overflow-x-auto ${layout === "viewport" ? "hidden md:block" : ""}`}>
+      <table className={`w-full text-right text-sm ${compact ? "min-w-[34rem]" : "min-w-[44rem]"}`}>
+        <thead className="text-xs text-[var(--ink-muted)]">
+          <tr>
+            <th scope="col" className="pb-3 text-left font-medium">True count</th>
+            {!compact && <th scope="col" className="pb-3 font-medium">How often</th>}
+            {!compact && <th scope="col" className="pb-3 font-medium">Your edge</th>}
+            <th scope="col" className="pb-3 pl-4 text-left font-medium">Bet per hand</th>
+            <th scope="col" className="pb-3 pl-3 text-left font-medium">Hands</th>
+            <th scope="col" className="pb-3 font-medium">Total bet</th>
+            <th scope="col" className="pb-3 font-medium">EV per round</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const reason = lockedReason?.(row.trueCount);
+            return (
+              <tr key={row.trueCount} title={reason} className={`border-t border-[var(--rule)] ${reason ? "opacity-70" : ""}`}>
+                <th scope="row" className={`py-2 text-left font-data font-bold ${countTone(row.trueCount)}`}>
                   {row.label}
-                </td>
-                <td>{percent(row.frequency, 2)}</td>
-                <td className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
-                  {percent(row.advantage, 3, true)}
-                </td>
-                <td className="py-2">
+                  {compact && <span className="block text-[.7rem] font-normal text-[var(--ink-muted)]">{percent(row.frequency, 1)} · <span className={edgeTone(row.advantage)}>{percent(row.advantage, 2, true)}</span></span>}
+                  {reason && <span className="sr-only">. {reason}</span>}
+                </th>
+                {!compact && <td className="font-data">{percent(row.frequency, 2)}{frequencyBar(row)}</td>}
+                {!compact && <td className={`font-data ${edgeTone(row.advantage)}`}>{percent(row.advantage, 3, true)}</td>}
+                <td className="py-2 pl-4">
                   <div className="flex items-center gap-2">
                     <NumberField
                       ariaLabel={`Bet at true count ${row.label}`}
                       value={Math.round(row.bet * 100) / 100}
                       min={0}
                       prefix="$"
-                      className="w-28"
+                      suffix={showUnits ? units(row.bet, unit!) : undefined}
+                      disabled={Boolean(reason)}
+                      className={showUnits ? "w-36" : "w-28"}
                       onValueChange={(value) => onBetChange(row.trueCount, value)}
                     />
-                    <button
-                      type="button"
-                      aria-label={`Zero bet at true count ${row.label}`}
-                      disabled={row.bet === 0}
-                      onClick={() => zeroBet(row.trueCount)}
-                      className="min-h-9 rounded-lg border border-red-400/20 bg-red-400/[.06] px-2.5 text-xs font-semibold text-[var(--negative)] hover:bg-red-400/[.12] disabled:cursor-default disabled:opacity-35"
-                    >
-                      Zero
-                    </button>
+                    {sitOut(row, Boolean(reason), "cell")}
                   </div>
                 </td>
-                <td className="py-2 text-left">
-                  <div className="inline-flex gap-1">
-                    {HAND_CHOICES.map((count) => (
-                      <button
-                        key={count}
-                        type="button"
-                        aria-pressed={row.playerHands === count}
-                        aria-label={`${count} hands at true count ${row.label}`}
-                        onClick={() => onHandsChange(row.trueCount, count)}
-                        className={`rounded-md border px-2 py-1 text-xs font-semibold ${row.playerHands === count ? "border-emerald-300/40 bg-emerald-300/15 text-[var(--accent)]" : "border-overlay/[.08] text-[var(--ink-muted)] hover:bg-overlay/[.05]"}`}
-                      >
-                        {count}X
-                      </button>
-                    ))}
-                  </div>
-                </td>
-                <td>{money(row.totalBet, 0)}</td>
-                <td className={row.advantage >= 0 ? "text-[var(--accent)]" : "text-[var(--negative)]"}>
-                  {money(row.frequency * row.advantage * row.totalBet, 3)}
-                </td>
+                <td className="py-2 pl-3 text-left">{hands(row, Boolean(reason), "cell")}</td>
+                <td className="font-data">{money(row.totalBet, 0)}</td>
+                <td className={`font-data ${edgeTone(row.advantage)}`}>{money(row.frequency * row.advantage * row.totalBet, 3)}</td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
+
+  return layout === "container"
+    ? <div className="bet-table-host min-w-0" data-density={density}>{cards}{table}</div>
+    : <>{cards}{table}</>;
 }
