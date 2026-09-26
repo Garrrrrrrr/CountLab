@@ -47,6 +47,7 @@ export interface GameDraft {
 /** Where the game in the form came from, shown so a remembered game is never a surprise. */
 export type GameSource =
   | { kind: "latest"; date: string; location?: string }
+  | { kind: "casino"; date: string; location: string }
   | { kind: "venue"; name: string }
   | { kind: "scenario"; name: string; id: string }
   | { kind: "setup"; name: string }
@@ -294,6 +295,7 @@ export const handsSummary = (game: GameDraft) => hasHandOverrides(game) ? "hands
 export function sourceLabel(source: GameSource) {
   switch (source.kind) {
     case "latest": return `From your latest session (${shortDate(source.date)}${source.location ? ` · ${source.location}` : ""})`;
+    case "casino": return `From your last ${source.location} session (${shortDate(source.date)})`;
     case "venue": return `From saved venue: ${source.name}`;
     case "scenario": return `From Lab scenario: ${source.name}`;
     case "setup": return `From Simulator setup: ${source.name}`;
@@ -390,6 +392,6 @@ export function gameForCasino(name: string, sessions: JournalSession[], presets:
 
 /** Penetration choices for a deck count, keeping an off-list value (e.g. from a CSV import) selectable. */
 export function penetrationOptions(decks: 6 | 8, current: number) {
-  const options = GAME_OPTIONS[decks].map((option) => option.dealt);
+  const options: number[] = GAME_OPTIONS[decks].map((option) => option.dealt);
   return options.includes(current) ? options : [...options, current].sort((a, b) => a - b);
 }
