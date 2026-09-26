@@ -369,7 +369,15 @@ test("Enter opens the log form and never logs by itself", async ({ page }, testI
   await page.keyboard.press("Escape");
   await expect(sheet.getByText("Discard this session?")).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Keep editing" })).toBeFocused();
-  await sheet.getByRole("button", { name: "Keep editing" }).click();
+  // Escape again keeps editing, with focus back where it was.
+  await page.keyboard.press("Escape");
+  await expect(sheet.getByText("Discard this session?")).toHaveCount(0);
+  await expect(sheet.getByLabel("Amount won or lost")).toBeFocused();
+  // Keeping the edits after Cancel lands on Cancel again, not on the page.
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet.getByRole("button", { name: "Keep editing" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(sheet.getByRole("button", { name: "Cancel" })).toBeFocused();
   await expect(sheet.getByLabel("Amount won or lost")).toHaveValue("75");
   await sheet.getByRole("button", { name: "Close" }).click();
   await sheet.getByRole("button", { name: "Discard" }).click();

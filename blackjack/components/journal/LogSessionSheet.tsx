@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import type { CvcxTemplate } from "@/lib/blackjack/cvcxLibrary";
 import { journalLibrary, type Bankroll, type JournalSession } from "@/lib/blackjack/journal";
@@ -13,7 +13,7 @@ import type { SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
 import { Button, Callout, GhostButton, HelpTip, NumberField, SegmentedControl, Select, Sheet, toast } from "../ui";
 import { AmountField } from "./AmountField";
-import { DiscardBar } from "./DiscardBar";
+import { DiscardBar, useDiscardGuard } from "./DiscardBar";
 import { GameEditor, ScenarioLinks } from "./GameEditor";
 import { FieldError, VerdictBadge } from "./parts";
 
@@ -48,7 +48,6 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const [snapshot, setSnapshot] = useState(initial);
   const [attempted, setAttempted] = useState(false);
   const [amountLeft, setAmountLeft] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const dateInput = useRef<HTMLInputElement>(null);
   const hoursWrap = useRef<HTMLDivElement>(null);
@@ -60,17 +59,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const amountErrorId = useId();
   const casinoListId = useId();
   const sessionForm = useFormAnalytics("journal_session");
-  const dirty = !same(draft, snapshot);
-  const dirtyRef = useRef(dirty);
-  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
-  useEffect(() => {
-    registerGuard(() => {
-      if (!dirtyRef.current) return true;
-      setDiscarding(true);
-      return false;
-    });
-    return () => registerGuard(null);
-  }, [registerGuard]);
+  const { discarding, requestClose, keepEditing, onSheetClose, actionsRef } = useDiscardGuard({ dirty: !same(draft, snapshot), onClose, registerGuard });
   // Edits start on the date; a new entry starts on the hours, the first thing that changes after a session.
   const initialFocus = useMemo(() => ({ get current() { return mode === "edit" ? dateInput.current : hoursWrap.current?.querySelector("input") ?? null; } }), [mode]);
 
@@ -138,10 +127,6 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const guardEnter = (event: KeyboardEvent<HTMLFormElement>) => {
     if (event.key === "Enter" && (event.target as HTMLElement).closest("[data-enter-local]")) event.preventDefault();
   };
-  const requestClose = () => {
-    if (dirty) setDiscarding(true);
-    else onClose();
-  };
 
   const summary: ReactNode = (
     <div className="min-w-0 text-sm leading-6">
@@ -156,13 +141,13 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const footer = discarding ? (
     <DiscardBar
       message={mode === "edit" ? "Discard your changes?" : "Discard this session?"}
-      onKeep={() => setDiscarding(false)}
+      onKeep={keepEditing}
       onDiscard={() => { setDraft(snapshot); onClose(); }}
     />
   ) : (
     <div className="grid gap-3">
       <div className="hidden sm:block">{summary}</div>
-      <div className="flex flex-wrap justify-end gap-2">
+      <div ref={actionsRef} className="flex flex-wrap justify-end gap-2">
         <GhostButton type="button" className="flex-1 sm:flex-none" onClick={requestClose}>Cancel</GhostButton>
         {mode === "new" && <GhostButton type="button" className="hidden sm:inline-flex" onClick={() => save(true)}>Save and log another</GhostButton>}
         <Button type="submit" form={formId} enterAction={false} className="flex-[2] whitespace-nowrap sm:flex-none">
@@ -176,7 +161,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
     <Sheet
       open
       title={mode === "edit" ? "Edit session" : "Log session"}
-      onClose={() => discarding ? undefined : requestClose()}
+      onClose={onSheetClose}
       initialFocusRef={initialFocus}
       footer={footer}
     >

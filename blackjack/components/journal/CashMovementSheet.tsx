@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import { isJournalDate, journalLibrary, type Bankroll, type BankrollTransaction } from "@/lib/blackjack/journal";
 import { AMOUNT_FORMAT_ERROR, localDateString, type AmountEntry } from "@/lib/blackjack/journalForm";
 import { money } from "@/lib/blackjack/journalFormat";
 import { Button, GhostButton, SegmentedControl, Select, Sheet } from "../ui";
 import { AmountField } from "./AmountField";
-import { DiscardBar } from "./DiscardBar";
+import { DiscardBar, useDiscardGuard } from "./DiscardBar";
 import { FieldError } from "./parts";
 
 type CashDraft = { type: "deposit" | "withdrawal"; amount: AmountEntry; date: string; bankrollId: string; note: string };
@@ -28,7 +28,6 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   const [snapshot, setSnapshot] = useState(initial);
   const [attempted, setAttempted] = useState(false);
   const [amountLeft, setAmountLeft] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   const formId = useId();
   const dateId = useId();
   const dateErrorId = useId();
@@ -37,13 +36,7 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   const amountWrap = useRef<HTMLDivElement>(null);
   const dateInput = useRef<HTMLInputElement>(null);
   const transactionForm = useFormAnalytics("journal_transaction");
-  const dirty = !same(draft, snapshot);
-  const dirtyRef = useRef(dirty);
-  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
-  useEffect(() => {
-    registerGuard(() => { if (!dirtyRef.current) return true; setDiscarding(true); return false; });
-    return () => registerGuard(null);
-  }, [registerGuard]);
+  const { discarding, requestClose, keepEditing, onSheetClose, actionsRef } = useDiscardGuard({ dirty: !same(draft, snapshot), onClose, registerGuard });
   const [initialFocus] = useState(() => ({ get current() { return amountWrap.current?.querySelector("input") ?? null; } }));
 
   const update = (patch: Partial<CashDraft>) => setDraft((current) => ({ ...current, ...patch }));
@@ -71,15 +64,14 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
       amountWrap.current?.querySelector("input")?.focus();
     }
   };
-  const requestClose = () => dirty ? setDiscarding(true) : onClose();
   const verb = draft.type === "deposit" ? "Record deposit" : "Record withdrawal";
 
   const footer = discarding ? (
-    <DiscardBar message="Discard this deposit or withdrawal?" onKeep={() => setDiscarding(false)} onDiscard={onClose} />
+    <DiscardBar message="Discard this deposit or withdrawal?" onKeep={keepEditing} onDiscard={onClose} />
   ) : (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-[var(--ink-muted)]">Bankroll after: <b className="font-data text-[var(--ink)]">{money(after)}</b></p>
-      <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+      <div ref={actionsRef} className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
         <GhostButton type="button" className="flex-1 sm:flex-none" onClick={requestClose}>Cancel</GhostButton>
         <GhostButton type="button" className="hidden sm:inline-flex" onClick={() => record(true)}>Record and add another</GhostButton>
         <Button type="submit" form={formId} enterAction={false} className="flex-[2] whitespace-nowrap sm:flex-none">{verb}</Button>
@@ -88,7 +80,7 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   );
 
   return (
-    <Sheet open title="Deposit or withdrawal" description="Bankroll = session results + deposits − withdrawals." onClose={() => discarding ? undefined : requestClose()} initialFocusRef={initialFocus} footer={footer}>
+    <Sheet open title="Deposit or withdrawal" description="Bankroll = session results + deposits − withdrawals." onClose={onSheetClose} initialFocusRef={initialFocus} footer={footer}>
       <form id={formId} ref={form} noValidate onSubmit={(event) => { event.preventDefault(); record(false); }} onChange={() => transactionForm.start("inputs")} className="grid gap-4">
         <SegmentedControl<"deposit" | "withdrawal">
           label="Type"
