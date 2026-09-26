@@ -395,7 +395,7 @@ test("selected choices, rule chips and the Estimated mark keep their contrast in
     page.getByRole("tab", { selected: true }),
     page.locator("label:has(input:checked)").filter({ hasText: "6 decks" }),
     page.getByRole("listitem").filter({ hasText: "Dealer stands on soft 17" }),
-    page.getByRole("button", { name: /Estimated results/ }).locator("span").first(),
+    page.getByRole("button", { name: /Estimated results/, includeHidden: true }).locator("span").first(),
   ];
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
