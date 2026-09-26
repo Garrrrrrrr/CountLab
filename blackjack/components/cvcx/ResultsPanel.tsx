@@ -25,7 +25,7 @@ export function ResultsPanel({ lab, onShowRules, className = "", ref }: { lab: L
     : unsupportedScenario(toTemplateConfig(config), true) ? labBlocker(config, "simulation") : undefined;
   const target = lab.simulationTarget();
   return (
-    <section ref={ref} id="results" aria-labelledby="results-title" className={`surface lab-results min-w-0 scroll-mt-20 rounded-[1.35rem] p-4 sm:p-5 ${className}`}>
+    <section ref={ref} id="results" aria-labelledby="results-title" className={`surface lab-results min-w-0 scroll-mt-20 rounded-[1.35rem] p-4 sm:p-5 xl:p-4 ${className}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 id="results-title" tabIndex={-1} className="font-display text-lg font-semibold outline-none">Results</h2>
         <span className="inline-flex items-center gap-1">
@@ -63,7 +63,7 @@ export function ResultsPanel({ lab, onShowRules, className = "", ref }: { lab: L
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2">
         <StatTile size="sm" label="Hourly swing" value={model.noBets ? DASH : `±${money(result.sdPerHour)}`} sub="1 standard deviation" help="About 2 in 3 hours finish within this amount of the expected win." />
         <StatTile size="sm" label="Risk of ruin" tone={model.noBets ? "neutral" : ruinTone} value={model.noBets ? DASH : percent(result.riskOfRuin)} sub={`of losing all ${money(config.bankroll)}`} help="The chance of losing your whole bankroll if you keep playing these stakes indefinitely." />
         <StatTile size="sm" label="Bankroll needed" value={model.noBets || !Number.isFinite(result.requiredBankroll) ? DASH : money(result.requiredBankroll)} sub={model.noBets ? "nothing is bet" : Number.isFinite(result.requiredBankroll) ? `for ${riskLabel(risk)} risk of ruin` : "no edge to size against"} />
@@ -72,7 +72,7 @@ export function ResultsPanel({ lab, onShowRules, className = "", ref }: { lab: L
 
       <BankrollFit lab={lab} />
 
-      <div className="mt-4 border-t border-[var(--rule)] pt-4">
+      <div className="mt-3 border-t border-[var(--rule)] pt-3">
         <Button enterAction={false} disabled={Boolean(blocker)} onClick={lab.simulate} className="w-full">
           <i className="fa-solid fa-dice mr-2" aria-hidden="true" />Simulate this game
         </Button>
