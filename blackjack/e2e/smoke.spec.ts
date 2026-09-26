@@ -14,18 +14,24 @@ test("desktop lab navigation has visible primary controls", async ({ page }, tes
   await prepareGuest(page);
   await page.goto("/cvcx/");
   await expect(page.getByRole("heading", { name: /game.*bankroll/i })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Practice" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Tools" }).getByRole("link", { name: "All drills" })).toBeVisible();
   await expect(page.getByLabel("Audited true-count range")).toBeVisible();
 });
 
-test("phone has the dashboard and four area destinations with usable tap targets", async ({ page }, testInfo) => {
+test("phone navigation reaches everyday destinations and opens the full menu", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop-chromium", "Mobile smoke coverage.");
   await prepareGuest(page);
   await page.goto("/dashboard/");
-  for (const name of ["Dashboard", "Practice", "Analyze", "Games", "Reference"]) {
-    const link = page.getByLabel("Mobile navigation").getByRole("link", { name });
+  const bar = page.getByLabel("Mobile navigation");
+  for (const name of ["Dashboard", "Practice", "Charts", "Journal"]) {
+    const link = bar.getByRole("link", { name });
     await expect(link).toBeVisible();
     const box = await link.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(44);
   }
+  await bar.getByRole("button", { name: "Menu" }).click();
+  const menu = page.getByRole("complementary", { name: "Primary navigation" });
+  await menu.getByRole("link", { name: "Trip Planner" }).click();
+  await expect(page).toHaveURL(/\/trip-planner\/$/);
+  await expect(menu.getByRole("link", { name: "Trip Planner" })).not.toBeInViewport();
 });

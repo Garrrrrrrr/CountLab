@@ -648,7 +648,7 @@ type AreaItem = { name: string; href: string; icon: string; step?: string; modes
 const AREA_PAGES: Record<"analyze" | "play", { eyebrow: string; title: string; description: string; sequence?: string; items: readonly AreaItem[]; extra?: AreaItem }> = {
   analyze: {
     eyebrow: "Analysis workspace",
-    title: "Analyze",
+    title: "Plan & analyze",
     description: "Build a game once and carry it through every tool. Save a scenario in the Lab, then simulate it, compare alternatives, plan a trip, and record what actually happened.",
     sequence: "Suggested order",
     items: [
@@ -663,7 +663,7 @@ const AREA_PAGES: Record<"analyze" | "play", { eyebrow: string; title: string; d
   },
   play: {
     eyebrow: "Casino table games",
-    title: "Games",
+    title: "Table games",
     description: "Take the concepts to the felt. Each game has a chip-based table with its own bankroll, a strategy reference, and an analyzer for the hard decisions.",
     items: [
       { name: "Double Down Madness", href: "/double-down-madness", icon: "fa-bolt", modes: [["Play", "game"], ["EV calculator", "calculator"], ["Strategy", "strategy"], ["Deviations", "deviations"]] },

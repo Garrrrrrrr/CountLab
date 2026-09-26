@@ -72,7 +72,7 @@ test("a guest who chooses to sign in reaches the form", async ({ page }) => {
 test("the analysis landing lays out the suggested order and games deep-link to their modes", async ({ page }) => {
   await prepare(page, { guest: true });
   await page.goto("/analyze/");
-  await expect(page.getByRole("link", { name: "Game & Bankroll Lab" })).toHaveAttribute("href", "/cvcx/");
+  await expect(page.locator("main").getByRole("link", { name: "Game & Bankroll Lab" })).toHaveAttribute("href", "/cvcx/");
   await expect(page.getByText("Step 1", { exact: true })).toBeVisible();
   await page.goto("/play/");
   await page.getByRole("list", { name: "Ultimate Texas Hold'em sections" }).getByRole("link", { name: "Analyzer" }).click();
@@ -139,4 +139,23 @@ test("public pages and the footer fit a 320px screen", async ({ page }) => {
     }).map((link) => link.textContent));
     expect(covered, path).toEqual([]);
   }
+});
+
+test("the desktop sidebar lists every tool by group and remembers collapsed groups", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "The sidebar is permanent on desktop only.");
+  await prepare(page, { guest: true });
+  await page.goto("/practice/");
+  const nav = page.getByRole("navigation", { name: "Tools" });
+  for (const name of ["Running Count", "Game & Bankroll Lab", "Session Journal", "Chase the Flush", "Index deviation chart"]) {
+    await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+  }
+  await nav.getByRole("button", { name: "Table games" }).click();
+  await expect(nav.getByRole("button", { name: "Table games" })).toHaveAttribute("aria-expanded", "false");
+  await expect(nav.getByRole("link", { name: "Chase the Flush" })).toBeHidden();
+  await page.reload();
+  await expect(nav.getByRole("link", { name: "Chase the Flush" })).toBeHidden();
+  // Opening a tool in a collapsed group reveals that group and marks the page.
+  await page.goto("/chase-flush/");
+  await expect(nav.getByRole("link", { name: "Chase the Flush" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText("Table games");
 });

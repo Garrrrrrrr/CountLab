@@ -9,10 +9,10 @@ import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
 import { setStreakBadge } from "@/lib/pwa/appBadge";
 import { useModalFocus } from "@/lib/useModalFocus";
 import { useAuth } from "@/lib/supabase/AuthProvider";
-import { AREAS, headerTitle, isKnownRoute, normalizePath, routeArea, ROUTE_DESCRIPTIONS, searchTools, TOOL_ROUTES } from "@/lib/routes";
+import { headerTitle, isKnownRoute, NAV_GROUPS, type NavGroup, normalizePath, routeArea, ROUTE_DESCRIPTIONS, searchTools } from "@/lib/routes";
 import { useIsAdmin } from "@/lib/supabase/admin";
 import { CONTACT_EMAIL } from "@/lib/contact";
-import { BrandLockup } from "./Brand";
+import { BrandLockup, BrandMark } from "./Brand";
 
 /** The rules badge is tight on width, so the rule gets an abbreviation rather than its full label. */
 const SURRENDER_BADGE: Record<SurrenderRule, string> = { none: "No surrender", late: "LS", early: "ES10" };
@@ -23,7 +23,10 @@ const FullShoeGame = dynamic(() => import("@/components/FullShoeGame").then((m) 
 const Onboarding = dynamic(() => import("@/components/Onboarding").then((m) => ({ default: m.Onboarding })), { loading: () => null });
 
 const navItemClass = (active: boolean) =>
-  `pressable group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-overlay/[.08] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-overlay/[.045] hover:text-[var(--ink)]"}`;
+  `pressable group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[.86rem] font-medium lg:min-h-9 ${active ? "bg-overlay/[.08] text-[var(--ink)] before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--accent)]" : "text-[var(--ink-muted)] hover:bg-overlay/[.045] hover:text-[var(--ink)]"}`;
+const NAV_COLLAPSED_KEY = "countlab:nav-collapsed";
+/** Each group's overview page, where it has one, is listed first under a label that says what it holds. */
+const HUB_LABEL: Partial<Record<NavGroup["id"], string>> = { practice: "All drills", plan: "Overview", games: "All games" };
 const navIconClass = (active: boolean) => `w-4 text-center text-[.78rem] ${active ? "text-[var(--accent)]" : ""}`;
 const pillClass = "pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-[var(--rule)] bg-[var(--paper)] px-3 text-[.72rem] font-semibold tracking-[.02em] text-[var(--ink)] hover:border-[var(--ink-muted)]";
 
@@ -49,6 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     [paletteReady, setPaletteReady] = useState(false),
     [paletteQuery, setPaletteQuery] = useState(""),
     navigation = useRef<HTMLElement>(null),
+    [collapsed, setCollapsed] = useState<string[]>([]),
     isAdmin = useIsAdmin();
   const { user, guest, syncStatus } = useAuth();
   // The shared 404 page is prerendered under its own path, so unknown URLs get
@@ -57,6 +61,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   const area = known ? routeArea(path) : undefined;
   const title = known ? headerTitle(path) : "Page not found";
   const floor = FLOOR_ROUTES.has(path);
+  const activeGroup = known ? NAV_GROUPS.find((group) => group.hub === path || group.items.some((item) => item.href === path))?.id : undefined;
+  // Collapsed groups are a reading preference, restored after mount so the prerendered sidebar matches first paint.
+  useEffect(() => {
+    try { setCollapsed(JSON.parse(localStorage.getItem(NAV_COLLAPSED_KEY) || "[]")); } catch { /* keep every group open */ }
+  }, []);
+  // Arriving at a tool inside a collapsed group opens that group so the current page is never hidden.
+  useEffect(() => {
+    if (activeGroup) setCollapsed((current) => current.includes(activeGroup) ? current.filter((id) => id !== activeGroup) : current);
+  }, [activeGroup]);
+  const toggleGroup = (id: string) => setCollapsed((current) => {
+    const next = current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+    try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch { /* the choice lasts for this visit */ }
+    return next;
+  });
   useModalFocus(open && !paletteOpen, navigation, () => setOpen(false));
   useModalFocus(paletteOpen, palette, () => setPaletteOpen(false));
   useEffect(() => {
@@ -137,16 +155,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className={`flex min-h-dvh flex-col overflow-x-clip text-[var(--ink)] ${floor ? "floor" : ""}`}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[120] focus:rounded-lg focus:bg-[var(--paper-raised)] focus:p-4">Skip to content</a>
-      <button
-        type="button"
-        aria-label="Toggle navigation"
-        aria-controls="primary-navigation"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="pressable fixed left-3 top-[calc(.625rem+env(safe-area-inset-top))] z-50 grid h-11 w-11 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] text-sm shadow-lg lg:hidden"
-      >
-        <i className={`fa-solid ${open ? "fa-xmark" : "fa-bars"}`} aria-hidden="true" />
-      </button>
       {open && (
         <button
           type="button"
@@ -164,42 +172,58 @@ export function AppShell({ children }: { children: ReactNode }) {
         data-analytics-nav="sidebar"
         className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 flex w-[min(17rem,86vw)] flex-col overflow-y-auto border-r border-[var(--rule)] bg-[var(--paper-raised)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] shadow-[20px_0_70px_rgba(0,0,0,.18)] transition-transform duration-300 ease-out lg:w-[17rem] lg:translate-x-0 lg:shadow-none`}
       >
-        <Link href="/" onClick={closeDrawer} aria-label="CountLab home" className="mb-7 ml-12 rounded-xl lg:ml-1">
-          <BrandLockup />
-        </Link>
-        <nav className="flex flex-1 flex-col gap-5">
-          <div className="space-y-1">
-            <Link onClick={closeDrawer} href="/dashboard" aria-current={path === "/dashboard" ? "page" : undefined} className={navItemClass(path === "/dashboard")}><i className={`fa-solid fa-house ${navIconClass(path === "/dashboard")}`} aria-hidden="true" />Dashboard</Link>
-            {AREAS.map(({ name, href, icon }) => {
-              const active = area?.name === name;
-              return <Link onClick={closeDrawer} key={href} href={href} aria-current={active ? (path === href ? "page" : "location") : undefined} className={navItemClass(active)}><i className={`fa-solid ${icon} ${navIconClass(active)}`} aria-hidden="true" />{name}</Link>;
-            })}
-          </div>
-          <button type="button" disabled={!paletteReady} onClick={() => setPaletteOpen(true)} className="pressable flex min-h-11 w-full items-center justify-between rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3 text-sm text-[var(--ink-muted)] hover:border-[var(--ink-muted)] hover:text-[var(--ink)]"><span><i className="fa-solid fa-magnifying-glass mr-2" aria-hidden="true" />Find a tool</span><kbd className="hidden lg:inline">Ctrl / ⌘ K</kbd></button>
-          <div className="border-t border-[var(--rule)] pt-4">
-            <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Utility</p>
-            {TOOL_ROUTES.filter(([, href, , toolArea]) => toolArea === "Utility" && href !== "/dashboard").map(([name, href, icon]) => <Link onClick={closeDrawer} key={href} href={href} aria-current={path === href ? "page" : undefined} className={navItemClass(path === href)}><i className={`fa-solid ${icon} ${navIconClass(path === href)}`} aria-hidden="true" />{name}</Link>)}
+        <div className="mb-5 flex items-center justify-between gap-2">
+          <Link href="/" onClick={closeDrawer} aria-label="CountLab home" className="ml-1 rounded-xl">
+            <BrandLockup />
+          </Link>
+          <button type="button" onClick={closeDrawer} aria-label="Close menu" className="pressable grid h-11 w-11 place-items-center rounded-xl border border-[var(--rule)] text-sm lg:hidden"><i className="fa-solid fa-xmark" aria-hidden="true" /></button>
+        </div>
+        <button type="button" disabled={!paletteReady} onClick={() => setPaletteOpen(true)} className="pressable mb-4 flex min-h-11 w-full shrink-0 items-center justify-between rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3 text-sm text-[var(--ink-muted)] hover:border-[var(--ink-muted)] hover:text-[var(--ink)] lg:min-h-10"><span><i className="fa-solid fa-magnifying-glass mr-2" aria-hidden="true" />Find a tool</span><kbd className="hidden lg:inline">Ctrl / ⌘ K</kbd></button>
+        <nav aria-label="Tools" className="flex flex-1 flex-col gap-1">
+          <Link onClick={closeDrawer} href="/dashboard" aria-current={path === "/dashboard" ? "page" : undefined} className={navItemClass(path === "/dashboard")}><i className={`fa-solid fa-house ${navIconClass(path === "/dashboard")}`} aria-hidden="true" />Dashboard</Link>
+          {NAV_GROUPS.map((group) => {
+            const expanded = !collapsed.includes(group.id);
+            const items = group.hub && HUB_LABEL[group.id] ? [{ name: HUB_LABEL[group.id]!, href: group.hub, icon: "fa-grip" }, ...group.items] : group.items;
+            return (
+              <div key={group.id} className="mt-3">
+                <button type="button" onClick={() => toggleGroup(group.id)} aria-expanded={expanded} aria-controls={`nav-group-${group.id}`} className={`pressable flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-[.7rem] font-bold uppercase tracking-[.14em] hover:bg-overlay/[.045] lg:min-h-8 ${activeGroup === group.id ? "text-[var(--ink)]" : "text-[var(--ink-muted)]"}`}>
+                  <span className="flex-1">{group.name}</span>
+                  <i className={`fa-solid fa-chevron-down text-[.6rem] transition-transform ${expanded ? "" : "-rotate-90"}`} aria-hidden="true" />
+                </button>
+                <ul id={`nav-group-${group.id}`} hidden={!expanded} className="mt-0.5 space-y-0.5">
+                  {items.map((item) => {
+                    const current = path === item.href;
+                    return <li key={item.href}><Link onClick={closeDrawer} href={item.href} aria-current={current ? "page" : undefined} className={navItemClass(current)}><i className={`fa-solid ${item.icon} ${navIconClass(current)}`} aria-hidden="true" /><span className="truncate">{item.name}</span></Link></li>;
+                  })}
+                </ul>
+              </div>
+            );
+          })}
+          <div className="mt-4 border-t border-[var(--rule)] pt-3">
+            <Link onClick={closeDrawer} href="/settings" aria-current={path === "/settings" ? "page" : undefined} className={navItemClass(path === "/settings")}><i className={`fa-solid fa-gear ${navIconClass(path === "/settings")}`} aria-hidden="true" />Settings</Link>
           </div>
           {isAdmin && (
-            <div>
-              <p className="mb-2 px-3 text-[.63rem] font-bold uppercase tracking-[.18em] text-[var(--ink-muted)]">Admin</p>
-              <div className="space-y-1">
+            <div className="mt-3">
+              <p className="mb-1 px-3 text-[.7rem] font-bold uppercase tracking-[.14em] text-[var(--ink-muted)]">Admin</p>
+              <div className="space-y-0.5">
                 <Link onClick={closeDrawer} href="/admin" aria-current={path === "/admin" ? "page" : undefined} className={navItemClass(path === "/admin")}><i className={`fa-solid fa-chart-simple ${navIconClass(path === "/admin")}`} aria-hidden="true" />Analytics</Link>
                 <Link onClick={closeDrawer} href="/admin/directory" aria-current={path === "/admin/directory" ? "page" : undefined} className={navItemClass(path === "/admin/directory")}><i className={`fa-solid fa-map-location-dot ${navIconClass(path === "/admin/directory")}`} aria-hidden="true" />Game directory</Link>
               </div>
             </div>
           )}
-          <div className="mt-auto rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-3 text-xs leading-5 text-[var(--ink-muted)]">
+          <div className="flex-1" aria-hidden="true" />
+          <div className="mt-6 rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-3 text-xs leading-5 text-[var(--ink-muted)]">
             {user ? <><b className="block text-[var(--ink)]">Signed in</b>Training and journal sync to your account.</>
               : <><b className="block text-[var(--ink)]">{guest ? "Guest mode" : "Not signed in"}</b>Progress stays on this device. <Link href="/signin" onClick={closeDrawer} className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">{guest ? "Add an account" : "Sign in"}</Link> for backup and sync.</>}
           </div>
         </nav>
       </aside>
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col lg:pl-[17rem]">
-        <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center gap-2 border-b border-[var(--rule)] bg-[var(--paper-raised)] pl-16 pr-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:gap-3 sm:pr-5 md:pr-8 lg:pl-8">
+        <header className="sticky top-0 z-30 flex h-[calc(4rem+env(safe-area-inset-top))] min-w-0 items-center gap-2 border-b border-[var(--rule)] bg-[var(--paper-raised)] pl-3 pr-3 pt-[env(safe-area-inset-top)] sm:gap-3 sm:pl-5 sm:pr-5 md:px-8">
+          <Link href="/" aria-label="CountLab home" className="shrink-0 rounded-[.65rem] lg:hidden"><BrandMark size="sm" /></Link>
           <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
             <ol className="flex min-w-0 items-center gap-2 text-sm">
-              {area && area.href !== path && <li className="hidden shrink-0 items-center gap-2 sm:flex"><Link href={area.href} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">{area.name}</Link><i className="fa-solid fa-chevron-right text-[.6rem] text-[var(--ink-muted)]" aria-hidden="true" /></li>}
+              {area && area.href !== path && <li className="hidden shrink-0 items-center gap-2 sm:flex">{area.href ? <Link href={area.href} className="text-[var(--ink-muted)] hover:text-[var(--ink)]">{area.name}</Link> : <span className="text-[var(--ink-muted)]">{area.name}</span>}<i className="fa-solid fa-chevron-right text-[.6rem] text-[var(--ink-muted)]" aria-hidden="true" /></li>}
               <li className="min-w-0 truncate font-semibold" aria-current="page">{title}</li>
             </ol>
           </nav>
@@ -258,23 +282,35 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--rule)] bg-[var(--paper-raised)] px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.1)] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-[var(--rule)] bg-[var(--paper-raised)] px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(0,0,0,.1)] lg:hidden"
       >
-        {[{ name: "Dashboard", href: "/dashboard", icon: "fa-house" }, ...AREAS].map(({ name, href, icon }) => {
-          const active = name === "Dashboard" ? path === "/dashboard" : area?.name === name;
-          return (
-            <Link
-              key={href}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={`pressable relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.66rem] font-medium ${active ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}`}
-            >
-              {active && <span aria-hidden="true" className="absolute top-0 h-0.5 w-8 rounded-full bg-[var(--accent)]" />}
-              <i className={`fa-solid ${icon} text-sm`} aria-hidden="true" />
-              {name}
-            </Link>
-          );
-        })}
+        {([
+          { name: "Dashboard", href: "/dashboard", icon: "fa-house", active: path === "/dashboard" },
+          { name: "Practice", href: "/practice", icon: "fa-bolt", active: activeGroup === "practice" },
+          { name: "Charts", href: "/reference", icon: "fa-table-cells-large", active: activeGroup === "reference" },
+          { name: "Journal", href: "/journal", icon: "fa-book", active: path === "/journal" },
+        ] as const).map(({ name, href, icon, active }) => (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={`pressable relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.66rem] font-medium ${active ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}`}
+          >
+            {active && <span aria-hidden="true" className="absolute top-0 h-0.5 w-8 rounded-full bg-[var(--accent)]" />}
+            <i className={`fa-solid ${icon} text-sm`} aria-hidden="true" />
+            {name}
+          </Link>
+        ))}
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-controls="primary-navigation"
+          aria-expanded={open}
+          className={`pressable relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl text-[.66rem] font-medium ${open || (activeGroup && !["practice", "reference"].includes(activeGroup) && path !== "/journal") ? "text-[var(--accent)]" : "text-[var(--ink-muted)]"}`}
+        >
+          <i className="fa-solid fa-bars text-sm" aria-hidden="true" />
+          Menu
+        </button>
       </nav>
       {paletteOpen && (
         <div role="presentation" className="fixed inset-0 z-[80] grid place-items-start bg-black/45 p-4 pt-[max(5rem,12vh)] backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && setPaletteOpen(false)}>
