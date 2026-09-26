@@ -9,24 +9,28 @@ async function prepareGuest(page: Page) {
   });
 }
 
-test("reference opens the combined strategy and deviations chart", async ({ page }, testInfo) => {
+test("reference opens the strategy chart and switches to index plays", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop navigation coverage.");
   await prepareGuest(page);
   await page.goto("/reference/");
 
-  await expect(page.getByRole("heading", { name: "Basic strategy chart" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Strategy" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { level: 1, name: "Basic strategy chart" })).toBeVisible();
+  const basic = page.getByRole("radio", { name: "Basic strategy", exact: true });
+  const index = page.getByRole("radio", { name: "With index plays", exact: true });
+  await expect(basic).toBeChecked();
 
-  await page.getByRole("tab", { name: "Index deviations" }).click();
-  await expect(page.getByRole("heading", { name: "Index deviation chart" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+  await index.click();
+  await expect(page.getByRole("heading", { level: 1, name: "Index deviation chart" })).toBeVisible();
+  await expect(index).toBeChecked();
+  await expect(page).toHaveURL(new RegExp("/reference/deviations/$"));
 
   await page.goto("/reference/deviations/");
-  await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radio", { name: "With index plays", exact: true })).toBeChecked();
 
   await page.goto("/reference/h17-chart/");
-  await expect(page.getByRole("tab", { name: "H17 chart" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("heading", { name: "H17 deviation chart" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "H17 deviation chart" })).toBeVisible();
+  // The printed H17 chart is an index chart, so its way back is the index view.
+  await expect(page.getByRole("link", { name: "Chart for your rules" })).toHaveAttribute("href", "/reference/deviations/");
 });
 
 test("practice organizes drills by skill", async ({ page }, testInfo) => {
@@ -40,7 +44,7 @@ test("practice organizes drills by skill", async ({ page }, testInfo) => {
   await expect(page.getByRole("link", { name: /full shoe/i }).first()).toHaveAttribute("href", "/training/full-shoe/");
 });
 
-test("deviation drill opens its matching reference tab", async ({ page }, testInfo) => {
+test("deviation drill opens its matching reference view", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop drill navigation coverage.");
   await prepareGuest(page);
   await page.goto("/training/deviations/");
@@ -50,5 +54,6 @@ test("deviation drill opens its matching reference tab", async ({ page }, testIn
   await reference.click();
 
   await expect(page).toHaveURL(/\/reference\/deviations\/$/);
-  await expect(page.getByRole("tab", { name: "Index deviations" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radio", { name: "With index plays", exact: true })).toBeChecked();
+  await expect(page.getByRole("heading", { level: 1, name: "Index deviation chart" })).toBeVisible();
 });
