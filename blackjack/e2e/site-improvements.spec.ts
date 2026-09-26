@@ -20,21 +20,22 @@ test("new visitors can try a drill and read reference without an account", async
   await expect(page.getByRole("heading", { name: "Full Shoe Blackjack" })).toHaveCount(0);
 });
 
-test("reference tabs support arrow keys and link to their panel", async ({ page }) => {
+test("reference view switch supports arrow keys and updates the address", async ({ page }) => {
   await prepare(page);
   await page.goto("/reference/");
-  const strategy = page.getByRole("tab", { name: "Strategy", exact: true });
-  await expect(strategy).toBeEnabled();
-  await strategy.focus();
-  await expect(strategy).toBeFocused();
-  await strategy.press("ArrowRight");
-  const deviations = page.getByRole("tab", { name: "Index deviations" });
-  await expect(deviations).toBeFocused();
-  await expect(deviations).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("tabpanel")).toBeVisible();
+  const basic = page.getByRole("radio", { name: "Basic strategy", exact: true });
+  await expect(basic).toBeEnabled();
+  await basic.focus();
+  await expect(basic).toBeFocused();
+  await basic.press("ArrowRight");
+  const index = page.getByRole("radio", { name: "With index plays", exact: true });
+  await expect(index).toBeFocused();
+  await expect(index).toBeChecked();
+  await expect(page).toHaveURL(new RegExp("/reference/deviations/$"));
+  await expect(page.getByRole("heading", { level: 1, name: "Index deviation chart" })).toBeVisible();
 });
 
-test("reference tabs wait for their keyboard handlers when JavaScript is delayed", async ({ page }) => {
+test("reference view switch waits for its handlers when JavaScript is delayed", async ({ page }) => {
   await prepare(page);
   let releaseScripts!: () => void;
   const scriptsReady = new Promise<void>((resolve) => { releaseScripts = resolve; });
@@ -44,17 +45,17 @@ test("reference tabs wait for their keyboard handlers when JavaScript is delayed
   });
   try {
     await page.goto("/reference/", { waitUntil: "commit" });
-    const strategy = page.getByRole("tab", { name: "Strategy", exact: true });
-    await expect(strategy).toBeVisible();
-    await expect(strategy).toBeDisabled();
+    const basic = page.getByRole("radio", { name: "Basic strategy", exact: true });
+    await expect(basic).toBeVisible();
+    await expect(basic).toBeDisabled();
     releaseScripts();
-    await expect(strategy).toBeEnabled();
-    await strategy.focus();
-    await strategy.press("ArrowRight");
-    const deviations = page.getByRole("tab", { name: "Index deviations" });
-    await expect(deviations).toBeFocused();
-    await expect(deviations).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toHaveAccessibleName("Index deviations");
+    await expect(basic).toBeEnabled();
+    await basic.focus();
+    await basic.press("ArrowRight");
+    const index = page.getByRole("radio", { name: "With index plays", exact: true });
+    await expect(index).toBeFocused();
+    await expect(index).toBeChecked();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Index deviation chart");
   } finally {
     releaseScripts();
     await page.unrouteAll({ behavior: "wait" });
