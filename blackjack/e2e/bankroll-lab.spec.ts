@@ -267,8 +267,17 @@ test("a venue saved in the Lab fills the Journal and restores its play mode", as
   await sheet.getByRole("textbox", { name: "Venue name" }).fill("Riverside");
   await sheet.getByRole("button", { name: "Save venue" }).click();
   await page.keyboard.press("Escape");
+  // The Journal offers saved venues as a starting point for a logged session.
   await page.goto("/journal/");
-  await expect(page.locator("select option", { hasText: "Riverside" }).first()).toBeAttached();
+  await page.getByRole("button", { name: "Log session" }).first().click();
+  const logSheet = page.getByRole("dialog", { name: "Log session" });
+  // With no sessions yet there is no latest game to reuse, so the game editor starts open.
+  await expect(logSheet.getByRole("button", { name: "Change game" })).toHaveAttribute("aria-expanded", "true");
+  const startFrom = logSheet.getByLabel("Start from");
+  await expect(startFrom.locator("option", { hasText: "Riverside" })).toBeAttached();
+  await startFrom.selectOption({ label: "Riverside" });
+  await expect(logSheet.getByText("From saved venue: Riverside")).toBeVisible();
+  await expect(logSheet.getByLabel("Casino name (optional)")).toHaveValue("Riverside");
   await openLab(page);
   await page.getByRole("radio", { name: "Hi-Lo with indices" }).check();
   await page.getByRole("button", { name: /^Scenarios/ }).click();
