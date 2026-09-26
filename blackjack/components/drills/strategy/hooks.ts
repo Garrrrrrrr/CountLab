@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { BlackjackRules } from "@/lib/blackjack/types";
 import { answeredInProgress } from "@/lib/statistics/drillRound";
 import { storage, surrenderFlags, type DrillProgress, type DrillType, type Session, type Settings } from "@/lib/statistics/storage";
@@ -83,6 +83,27 @@ export function useUnfinishedProgress<T>(drill: DrillType, watching: boolean): [
     return () => removeEventListener("hilo-storage", reload);
   }, [reload, watching]);
   return [watching ? progress : null, reload];
+}
+
+/**
+ * The kit's phase-change behaviour, run from above the phase switch: entering
+ * Setup, Play or Summary returns the page to the top and moves focus to the
+ * new phase's `[data-drill-focus]` (the play stage or the summary heading),
+ * else its focusable h1. DrillFrame does this only when one frame's `phase`
+ * prop changes, but each phase here mounts its own frame and Summary has
+ * none, so its effect never fires. The first render is left alone, so a page
+ * load keeps the browser's scroll and focus.
+ */
+export function usePhaseEntry(phase: string) {
+  const previous = useRef(phase);
+  useEffect(() => {
+    if (previous.current === phase) return;
+    previous.current = phase;
+    scrollTo({ top: 0 });
+    const main = document.querySelector("main");
+    const target = main?.querySelector<HTMLElement>("[data-drill-focus]") ?? main?.querySelector<HTMLElement>("h1[tabindex]");
+    target?.focus({ preventScroll: true });
+  }, [phase]);
 }
 
 /** The table rules the strategy engine wants, from the saved settings. */

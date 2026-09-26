@@ -37,7 +37,7 @@ import { restoreRound, saveRound, savedRoundDetail, type SavedRound } from "./pr
 import { RoundPlay, type PausedView } from "./RoundPlay";
 import { StrategySetup, type ModeOption } from "./StrategySetup";
 import { StrategySummary } from "./StrategySummary";
-import { isResumable, peekPracticeFocus, playTone, rulesFromSettings, startedRules, useStoredSessions, useStrategySettings, useUnfinishedProgress } from "./hooks";
+import { isResumable, peekPracticeFocus, playTone, rulesFromSettings, startedRules, useStoredSessions, usePhaseEntry, useStrategySettings, useUnfinishedProgress } from "./hooks";
 import { useStrategyRound, type RoundAdapter, type RoundAnswer, type RoundPlan, type RoundStart } from "./useStrategyRound";
 
 const DRILL = "Basic Strategy" as const;
@@ -134,6 +134,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
     progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies StrategySaved),
   };
   const round = useStrategyRound(adapter, initial.start);
+  usePhaseEntry(round.phase);
   const [unfinishedProgress, reloadUnfinished] = useUnfinishedProgress<Partial<StrategySaved>>(DRILL, round.phase === "setup");
   const unfinished = isResumable(unfinishedProgress) ? restoreRound(unfinishedProgress!.state, keepFor(settings)) : undefined;
 

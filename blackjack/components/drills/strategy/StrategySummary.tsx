@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useEffect } from "react";
 import { DrillSummary, type SummaryTile } from "@/components/drill";
 import { announce, Callout, GhostButton, Panel, PanelHeader } from "@/components/ui";
 import type { Mistake, Session } from "@/lib/statistics/storage";
@@ -31,16 +31,14 @@ export function StrategySummary({ session, drillTitle, onPlayAgain, onRetry, onC
   footer?: ReactNode;
   tiles?: ReadonlyArray<SummaryTile>;
 }) {
-  const root = useRef<HTMLDivElement>(null);
+  // The page returns to the top and the heading takes focus on entering Summary (usePhaseEntry).
   useEffect(() => {
-    scrollTo({ top: 0 });
-    root.current?.querySelector<HTMLElement>("[data-drill-focus]")?.focus({ preventScroll: true });
     announce(`Round complete. ${session.correct} of ${session.questions} correct.`);
   }, [session]);
   const rows = Object.entries(session.categories ?? {}).map(([label, value]) => ({ label, ...value }));
   const retried = session.tags?.includes("retry");
   return (
-    <div ref={root} className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       <DrillSummary
         session={session}
         eyebrow={retried ? "Retry complete" : "Round complete"}

@@ -71,7 +71,11 @@ test.describe("H17 chart on a keyboard", () => {
     const dialog = page.getByRole("dialog", { name: "Grade with blank cells?" });
     await expect(dialog).toContainText("97 of 100 cells are still blank");
     await dialog.getByRole("button", { name: "Grade anyway" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: /H17 Chart: \d+ of 100/ })).toBeVisible();
+    // The score opens at the top of the page with focus on it, not scrolled down to the last selected cell.
+    const score = page.getByRole("heading", { level: 1, name: /H17 Chart: \d+ of 100/ });
+    await expect(score).toBeInViewport();
+    await expect(score).toBeFocused();
+    await expect(page.getByRole("button", { name: "Start a new chart" })).toBeInViewport();
 
     const cell = page.getByLabel("Hard totals 17 versus 5");
     await expect(cell).toHaveAttribute("readonly", "");

@@ -41,7 +41,7 @@ import { restoreRound, saveRound, savedRoundDetail, type SavedRound } from "./pr
 import { RoundPlay, type PausedView } from "./RoundPlay";
 import { StrategySetup, type ModeOption } from "./StrategySetup";
 import { StrategySummary } from "./StrategySummary";
-import { isResumable, peekPracticeFocus, playTone, startedRules, useStoredSessions, useStrategySettings, useUnfinishedProgress } from "./hooks";
+import { isResumable, peekPracticeFocus, playTone, startedRules, useStoredSessions, usePhaseEntry, useStrategySettings, useUnfinishedProgress } from "./hooks";
 import { useStrategyRound, type RoundAdapter, type RoundAnswer, type RoundPlan, type RoundStart } from "./useStrategyRound";
 
 const DRILL = "Deviations" as const;
@@ -137,6 +137,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
     progress: (plan, tally) => ({ ...saveRound(plan, tally), mode } satisfies DeviationSaved),
   };
   const round = useStrategyRound(adapter, initial.start);
+  usePhaseEntry(round.phase);
   const [unfinishedProgress, reloadUnfinished] = useUnfinishedProgress<Partial<DeviationSaved>>(DRILL, round.phase === "setup");
   const unfinished = isResumable(unfinishedProgress) ? restoreRound(unfinishedProgress!.state, keepFor(rows)) : undefined;
 

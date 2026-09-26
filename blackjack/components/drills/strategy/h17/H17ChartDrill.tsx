@@ -14,7 +14,7 @@ import { makeSession, storage, type Mistake, type Session, type Settings } from 
 import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { useWakeLock } from "@/lib/pwa/useWakeLock";
 import { useMediaQuery } from "@/lib/useMediaQuery";
-import { reveal, useNow, useStoredSessions, useStrategySettings, useUnfinishedProgress } from "../hooks";
+import { reveal, useNow, usePhaseEntry, useStoredSessions, useStrategySettings, useUnfinishedProgress } from "../hooks";
 import { PracticeLines, ReferenceLink, UnfinishedRoundCallout } from "../parts";
 import { ChartKeypad } from "./ChartKeypad";
 import { SectionKeys } from "./ChartKeys";
@@ -22,6 +22,8 @@ import { ChartSection, type CellMode } from "./ChartSection";
 import { ChartSetup, type ChartFeedback, type ChartPick } from "./ChartSetup";
 
 const DRILL = "H17 Chart" as const;
+/** The graded chart opens with no cell selected, so no reading shows until one is picked. */
+const NO_CELL = -1;
 const REFERENCE = { href: "/reference/h17-chart", label: "View H17 reference" };
 const DESCRIPTION = "Fill in the H17 deviation chart from memory. Type a letter for each play, or a count like 4+ where the play changes with the count.";
 const CHOICES: readonly SectionChoice[] = ["all", "pairs", "soft", "hard", "surrender"];
@@ -285,11 +287,19 @@ export function H17ChartDrill() {
   const register = useCallback((index: number, element: HTMLInputElement | null) => { inputs.current[index] = element; }, []);
   const onSelect = useCallback((index: number) => { setFocus(index); }, []);
 
-  // Keep the selected cell on screen, clear of the header and the keypad.
+  // Entering a phase opens at the top of the page and focuses its heading (or, on a keyboard, the first blank cell).
+  usePhaseEntry(phase);
+
+  // Keep a newly selected cell on screen, clear of the header and the keypad; in the graded chart, its reading too.
   const previousFocus = useRef(focus);
+  const shownPhase = useRef(phase);
   useEffect(() => {
-    if (previousFocus.current === focus) return;
+    const moved = previousFocus.current !== focus;
+    const entered = shownPhase.current !== phase;
     previousFocus.current = focus;
+    shownPhase.current = phase;
+    // A new phase is not a new selection: the page stays at its top.
+    if (!moved || entered) return;
     const cell = inputs.current[focus]?.closest("td");
     if (!cell) return;
     // The rail scrolls sideways to the cell; the page then clears the header and the keypad.
@@ -300,8 +310,11 @@ export function H17ChartDrill() {
       if (box.left < frame.left + sticky) rail.scrollBy({ left: -Math.ceil((frame.left + sticky - box.left) / step) * step });
       else if (box.right > frame.right - fade) rail.scrollBy({ left: Math.ceil((box.right - frame.right + fade) / step) * step });
     }
-    requestAnimationFrame(() => reveal(cell));
-  }, [focus]);
+    requestAnimationFrame(() => {
+      reveal(cell);
+      reveal(document.querySelector("[data-cell-reading]"));
+    });
+  }, [focus, phase]);
 
   /* ---- Grading ---- */
   const gradeNow = () => {
@@ -330,7 +343,7 @@ export function H17ChartDrill() {
     setResult(session);
     setResultMs(duration);
     setPhase("summary");
-    setFocus(0);
+    setFocus(NO_CELL);
     announce(`Chart graded: ${grade.correct} of ${grade.total}.`);
   };
   const askGrade = () => {
