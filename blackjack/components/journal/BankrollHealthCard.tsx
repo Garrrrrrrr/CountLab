@@ -4,6 +4,9 @@ import type { BankrollHealth } from "@/lib/blackjack/journalAnalysis";
 import { money, percent, shortDate, signedMoney } from "@/lib/blackjack/journalFormat";
 import { Callout, GhostButton, Panel, StatTile } from "../ui";
 
+/** Units under $10 keep their cents, so a tiny safe unit never reads as "$0". */
+const unitMoney = (value: number) => money(value, value < 10 && value % 1 ? 2 : 0);
+
 const ROR_HELP = "The chance of losing this whole bankroll if you keep playing this game at this unit. CountLab aims for 5% or less.";
 
 /**
@@ -31,8 +34,8 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
   const overbet = health?.unitRatio != null && health.unitRatio > 1;
   const verdict = health === null ? null
     : health.unitRatio === null ? "This game has no positive expectation, so no unit size makes it survivable."
-    : overbet ? `Your ${money(health.bettingUnit)} unit is ${health.unitRatio.toFixed(1)}× what this bankroll supports at ${percent(health.targetRisk, 0)} risk of ruin. Drop to ${money(health.recommendedUnit)} or add to the bankroll.`
-    : `Your ${money(health.bettingUnit)} unit is within what this bankroll supports — ${money(health.recommendedUnit)} would be the full ${percent(health.targetRisk, 0)}-risk size.`;
+    : overbet ? `Your ${unitMoney(health.bettingUnit)} unit is ${health.unitRatio.toFixed(1)}× what this bankroll supports at ${percent(health.targetRisk, 0)} risk of ruin. Drop to ${unitMoney(health.recommendedUnit)} or add to the bankroll.`
+    : `Your ${unitMoney(health.bettingUnit)} unit is within what this bankroll supports — ${unitMoney(health.recommendedUnit)} would be the full ${percent(health.targetRisk, 0)}-risk size.`;
 
   let body: ReactNode;
   if (sessionCount === 0) {
@@ -83,8 +86,8 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
           <StatTile
             size="sm"
             label="Safe unit"
-            value={health.recommendedUnit > 0 && Number.isFinite(health.recommendedUnit) ? money(health.recommendedUnit) : "—"}
-            sub={health.unitRatio === null ? "No positive edge" : `You bet ${money(health.bettingUnit)} (${health.unitRatio.toFixed(1)}×)`}
+            value={health.recommendedUnit > 0 && Number.isFinite(health.recommendedUnit) ? unitMoney(health.recommendedUnit) : "—"}
+            sub={health.unitRatio === null ? "No positive edge" : `You bet ${unitMoney(health.bettingUnit)} (${health.unitRatio.toFixed(1)}×)`}
             help="The betting unit that keeps risk of ruin at 5% for this bankroll and spread."
           />
           <StatTile

@@ -5,13 +5,13 @@ import type { CvcxTemplate } from "@/lib/blackjack/cvcxLibrary";
 import { journalLibrary, type Bankroll, type JournalSession } from "@/lib/blackjack/journal";
 import { classifySessionAssessment, theoreticalSessionOutcome } from "@/lib/blackjack/journalAnalysis";
 import {
-  applyVenue, casinoNames, gameFields, gameForCasino, gameFromSession, SESSION_ERRORS, sameGame, sessionPayload, signedResult, usesVenue, validateSessionDraft,
+  applyVenue, casinoNames, gameFields, gameForCasino, gameFromSession, nextEntryDraft, SESSION_ERRORS, sameGame, sessionPayload, signedResult, usesVenue, validateSessionDraft,
   type GameDraft, type GameSource, type SessionDraft, type SessionField,
 } from "@/lib/blackjack/journalForm";
 import { longDate, shortDate, signedMoney } from "@/lib/blackjack/journalFormat";
 import type { SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
-import { Button, Callout, GhostButton, HelpTip, NumberField, OptionalNumberField, SegmentedControl, Select, Sheet } from "../ui";
+import { Button, Callout, GhostButton, HelpTip, NumberField, OptionalNumberField, SegmentedControl, Select, Sheet, toast } from "../ui";
 import { DiscardBar } from "./DiscardBar";
 import { GameEditor, ScenarioLinks } from "./GameEditor";
 import { FieldError, VerdictBadge } from "./parts";
@@ -108,11 +108,17 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
     lastSave.current = Date.now();
     const payload = sessionPayload(draft);
     const record = mode === "edit" && sessionId ? journalLibrary.updateSession(sessionId, payload) : journalLibrary.addSession(payload);
-    if (!record) return;
+    if (!record) {
+      // Deleted on another device or tab while this form was open.
+      sessionForm.failed("not_found");
+      toast({ message: "This session no longer exists, so the changes weren't saved.", tone: "bad" });
+      onClose();
+      return;
+    }
     sessionForm.succeeded();
     onSaved({ record, draft, another });
     if (another) {
-      const next = { ...draft, direction: null, amount: null, expenses: 0, notes: "" };
+      const next = nextEntryDraft(draft);
       setDraft(next);
       setSnapshot(next);
       setAttempted(false);
