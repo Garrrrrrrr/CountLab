@@ -210,6 +210,17 @@ export function SessionJournal() {
 
   const detailsSession = overlay?.kind === "details" ? data.sessions.find((session) => session.id === overlay.sessionId) : undefined;
   const detailsOutcome = detailsSession && (scope.outcomes.get(detailsSession.id) ?? theoreticalSessionOutcome(detailsSession));
+  // A session deleted by a sync or another tool while its details are open
+  // leaves nothing to show; close properly, so the Back entry and the phone dock recover.
+  const detailsGone = overlay?.kind === "details" && !detailsSession;
+  const closeOverlayLatest = useRef(closeOverlay);
+  closeOverlayLatest.current = closeOverlay;
+  useEffect(() => {
+    if (!detailsGone) return;
+    closeOverlayLatest.current();
+    toast({ message: "This session was deleted elsewhere, so its details closed." });
+    setFocusRequest({ fallback: "#journal-records-panel" });
+  }, [detailsGone]);
   const openDetails = (id: string) => {
     openSheet({ kind: "details", sessionId: id });
     // Session notes and actions used to expand in place; opening them is still a result being expanded.

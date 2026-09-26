@@ -596,6 +596,23 @@ test("browser Back out of a Lab scenario's form drops the link, so a reload does
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
+test("details close when their session is deleted elsewhere, and the phone dock comes back", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium", "The dock is a phone control.");
+  await prepareGuest(page);
+  await page.goto("/journal/");
+  await page.getByRole("list", { name: "Sessions" }).getByRole("button", { name: /Bellagio/ }).click();
+  await expect(page.getByRole("dialog", { name: /Session · / })).toBeVisible();
+  // What a sync pull does: rewrite storage, then tell the page.
+  await page.evaluate((key) => {
+    localStorage.setItem(key, JSON.stringify({ version: 1, items: [] }));
+    dispatchEvent(new Event("countlab-journal"));
+  }, SESSIONS_KEY);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "This session was deleted elsewhere" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Session journal actions" }).getByRole("button", { name: "Log session" })).toBeVisible();
+  await expect(page).toHaveURL(/\/journal\/$/);
+});
+
 test("deleting a session moves focus to the next one", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await seedJournal(page, { sessions: [
