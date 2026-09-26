@@ -26,10 +26,22 @@ A full pass over the live export at desktop (1440px) and phone (390px, 320px) wi
 | Phones | The action dock follows the theme and publishes its height so the footer is never trapped underneath it. |
 | Hygiene | Admin import panel lazy-loaded; decorative icons marked `aria-hidden`; shared `ACTION_STYLE` module; guard for browsers that resolve service-worker registration without a registration; removed tracked debug logs and bytecode and ignored them going forward. |
 
+## Pre-deploy review
+
+Before pushing to main, four independent reviewers examined the diff for logic, theme, routing, and accessibility/test defects. A separate skeptic tried to refute each finding: 5 of 10 were confirmed and fixed.
+
+- `/dashboard/index.html`-style URLs skipped the sign-in gate after the 404 change. Paths are now normalized in one helper (`normalizePath`) shared by the gate and the shell.
+- Unknown URLs under a real area (e.g. `/reference/typo/`) failed to hydrate because the breadcrumb derived an area from the path. Unknown paths now get no area.
+- The settings draft stopped following outside changes after a mid-edit theme change plus Save, so a later sync could show a false "unsaved changes" bar. Theme is now excluded from the draft comparison, and the draft realigns on save.
+- The count demo's eyebrow text and hidden-count placeholder were below WCAG contrast. The demo also announced the count twice. Colors and live regions are fixed.
+- Header pills are back to 44px touch targets.
+
+Each of the first three has an e2e regression test that failed on the pre-fix build.
+
 ## Validation
 
 - `npm test`: 59 files, 616 tests passed. `npm run lint` and `npm run build` passed.
-- Full Playwright suite against the static export: 116 passed, 0 failed, 43 intentional device-specific skips. New `e2e/site-revamp.spec.ts` covers the count demo, theme toggle persistence, 404 for visitors, guest access to the sign-in form, landing-page deep links, the settings save bar (including a header theme change mid-edit), description search, and 320px overflow plus footer-versus-dock overlap.
+- Full Playwright suite against the static export: 119 passed, 0 failed, 43 intentional device-specific skips. New `e2e/site-revamp.spec.ts` covers the count demo, theme toggle persistence, 404s for visitors (with no hydration errors), private-route gating at every URL spelling, guest access to the sign-in form, landing-page deep links, the settings save bar (including a header theme change mid-edit and a later outside change), description search, and 320px overflow plus footer-versus-dock overlap.
 - Screenshots of all routes in both themes at 1440px and 390px, plus 320px header, drawer, palette, and sign-in views, were reviewed after the changes.
 
 Not re-verified here: authenticated sign-in and sync against a real Supabase project (no credentials in this environment), physical iOS/Android devices, and the numerical models.

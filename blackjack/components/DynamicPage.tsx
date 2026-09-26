@@ -316,7 +316,8 @@ function SettingsPage() {
       storedRef.current = next;
       setStored(next);
       // Follow saved changes (a sync pull, the header theme toggle) unless the reader has edits in progress.
-      setS((draft) => (Object.keys(draft) as Array<keyof Settings>).every((key) => draft[key] === previous[key]) ? next : draft);
+      // Theme is never a draft edit (it saves on click), so it cannot make the draft look edited.
+      setS((draft) => (Object.keys(draft) as Array<keyof Settings>).every((key) => key === "theme" || draft[key] === previous[key]) ? next : draft);
     };
     load();
     setAnalyticsEnabled(analytics.isEnabled());
@@ -331,7 +332,9 @@ function SettingsPage() {
   const dirty = (Object.keys(s) as Array<keyof Settings>).some((key) => key !== "theme" && s[key] !== stored[key]);
   const save = () => {
     // Theme is saved the moment it changes, possibly from the header, so never let the draft overwrite it.
-    storage.saveSettings({ ...s, theme: storedRef.current.theme });
+    const next = { ...s, theme: storedRef.current.theme };
+    storage.saveSettings(next);
+    setS(next);
     setSaved(true);
   };
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { isKnownRoute, isPublicRoute } from "@/lib/routes";
+import { isKnownRoute, isPublicRoute, normalizePath } from "@/lib/routes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useState } from "react";
@@ -21,7 +21,7 @@ const lockDurationMs = (strikes: number) =>
   Math.min(30_000 * 2 ** Math.floor(strikes / LOCK_THRESHOLD - 1), 5 * 60_000);
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const path = usePathname().replace(/\/$/, "") || "/";
+  const path = normalizePath(usePathname());
   const router = useRouter();
   // /signin always offers the form, even to a guest who chose to add an account.
   const onSigninPage = path === "/signin";

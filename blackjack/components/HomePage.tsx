@@ -48,7 +48,7 @@ function CountDemo() {
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.02)_0_1px,transparent_1px_4px)]" />
       <div className="relative">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-data text-[.7rem] font-semibold uppercase tracking-[.2em] text-emerald-100/80">Count along · Hi-Lo</p>
+          <p className="font-data text-[.7rem] font-semibold uppercase tracking-[.2em] text-white">Count along · Hi-Lo</p>
           <span className="rounded-full border border-white/15 bg-black/20 px-2.5 py-1 font-data text-[.7rem] text-emerald-50/80">{dealt} / 52 cards</span>
         </div>
         <ol aria-label="Most recent cards" className="mt-6 flex min-h-[7.5rem] items-end gap-2 sm:gap-3">
@@ -67,7 +67,7 @@ function CountDemo() {
           <div>
             <p className="text-xs font-medium uppercase tracking-[.14em] text-emerald-100/70">Running count</p>
             <p className="mt-1 font-data text-5xl font-semibold tabular-nums tracking-tight" aria-live="polite" aria-atomic="true">
-              {hidden ? <span className="text-emerald-100/40" aria-label="Hidden">?</span> : signed(count)}
+              {hidden ? <span className="text-emerald-100/60" aria-label="Hidden">?</span> : signed(count)}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -77,7 +77,8 @@ function CountDemo() {
               : <button type="button" onClick={reset} className="pressable min-h-11 rounded-xl bg-white px-4 text-sm font-semibold text-emerald-950 hover:bg-emerald-50">Shuffle up</button>}
           </div>
         </div>
-        <p className="sr-only" aria-live="polite">{last ? `Dealt ${last.rank} of ${last.suit}.${hidden ? "" : ` Running count ${signed(count)}.`}` : ""}</p>
+        {/* The count above is its own live region; this one only names the card, so nothing is announced twice. */}
+        <p className="sr-only" aria-live="polite">{last ? `Dealt ${last.rank} of ${last.suit}.` : ""}</p>
         <p className="mt-4 text-xs leading-5 text-emerald-50/70">{hidden ? "Keep the count in your head, deal a few cards, then reveal it to check." : "Low cards (2–6) add one, high cards (10–A) subtract one, 7–9 are neutral. A full deck always counts back to zero."}</p>
       </div>
     </div>

@@ -36,11 +36,29 @@ test("the header theme toggle flips the theme and remembers it", async ({ page }
 
 test("unknown addresses show the missing-page screen instead of a sign-in form", async ({ page }) => {
   await prepare(page);
-  const response = await page.goto("/no-such-page/");
-  expect(response?.status()).toBe(404);
-  await expect(page.getByRole("heading", { name: "This page went over 21." })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Reference" }).last()).toHaveAttribute("href", "/reference/");
-  await expect(page.getByRole("button", { name: "Try CountLab as a guest" })).toHaveCount(0);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  // An unknown path inside a real area must not borrow that area's breadcrumb either.
+  for (const path of ["/no-such-page/", "/reference/no-such-chart/"]) {
+    const response = await page.goto(path);
+    expect(response?.status()).toBe(404);
+    await expect(page.getByRole("heading", { name: "This page went over 21." })).toBeVisible();
+    await expect(page.locator("main").getByRole("link", { name: "Reference" })).toHaveAttribute("href", "/reference/");
+    await expect(page.getByRole("button", { name: "Try CountLab as a guest" })).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
+});
+
+test("private pages stay gated at every URL spelling", async ({ page }) => {
+  await prepare(page);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  for (const path of ["/journal/", "/journal/index.html"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { name: "Sign in to CountLab" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Session Journal" })).toHaveCount(0);
+  }
+  expect(errors).toEqual([]);
 });
 
 test("a guest who chooses to sign in reaches the form", async ({ page }) => {
@@ -76,6 +94,15 @@ test("settings shows unsaved rule changes until they are saved", async ({ page }
   await bar.getByRole("button", { name: "Save settings" }).click();
   await expect(bar).toContainText("Settings saved.");
   await expect(page.getByRole("link", { name: /Training default rules: S17/ })).toBeAttached();
+  // A later change from elsewhere (a sync pull, a backup import) must update the form, not pose as unsaved edits.
+  await page.evaluate(() => {
+    const key = "countlab:account:guest:hilo:settings";
+    localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key)!), decks: 8 }));
+    dispatchEvent(new Event("hilo-storage"));
+  });
+  await expect(page.getByLabel("Default decks")).toHaveValue("8");
+  await expect(page.getByLabel("Dealer")).toHaveValue("s17");
+  await expect(bar).toHaveCount(0, { timeout: 5000 });
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", theme!);
   await expect(page.getByRole("radio", { name: theme === "dark" ? "Dark" : "Light" })).toHaveAttribute("aria-checked", "true");

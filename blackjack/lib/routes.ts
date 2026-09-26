@@ -101,6 +101,12 @@ export function routeInfo(path: string) {
   const title = TOOL_ROUTES.find((entry) => entry[1] === path)?.[0] ?? ({ "/": "Blackjack practice and analysis", "/signin": "Sign in", "/practice": "Practice", "/analyze": "Analyze", "/play": "Games", "/terms": "Terms of Service", "/privacy": "Privacy Policy", "/admin": "Product analytics", "/reference/deviations": "Index deviation chart", "/reference/h17-chart": "H17 deviation chart" } as Record<string, string>)[path] ?? path.split("/").filter(Boolean).join(" \u00b7 ");
   return { title, description: ROUTE_DESCRIPTIONS[path] ?? `${title}: interactive blackjack practice and analysis in CountLab.` };
 }
+/**
+ * The route a browser path names. GitHub Pages serves `/dashboard/`,
+ * `/dashboard`, and `/dashboard/index.html` from the same file, so all three
+ * must map to the same route, or a private page could skip its gate.
+ */
+export const normalizePath = (pathname: string) => pathname.replace(/\/(index\.html)?$/, "") || "/";
 /** True for any statically generated route, so unknown URLs can fall through to the 404 page. */
 export const isKnownRoute = (path: string) => ROUTES.some((segments) => `/${segments.join("/")}` === path);
 export const isPublicRoute = (path: string) => ["/", "/practice", "/analyze", "/directory", "/play", "/terms", "/privacy"].includes(path) || path === "/reference" || path.startsWith("/reference/");

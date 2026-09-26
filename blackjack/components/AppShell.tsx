@@ -9,7 +9,7 @@ import { registerServiceWorker } from "@/lib/pwa/registerServiceWorker";
 import { setStreakBadge } from "@/lib/pwa/appBadge";
 import { useModalFocus } from "@/lib/useModalFocus";
 import { useAuth } from "@/lib/supabase/AuthProvider";
-import { AREAS, headerTitle, isKnownRoute, routeArea, ROUTE_DESCRIPTIONS, searchTools, TOOL_ROUTES } from "@/lib/routes";
+import { AREAS, headerTitle, isKnownRoute, normalizePath, routeArea, ROUTE_DESCRIPTIONS, searchTools, TOOL_ROUTES } from "@/lib/routes";
 import { useIsAdmin } from "@/lib/supabase/admin";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { BrandLockup } from "./Brand";
@@ -25,7 +25,7 @@ const Onboarding = dynamic(() => import("@/components/Onboarding").then((m) => (
 const navItemClass = (active: boolean) =>
   `pressable group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[.86rem] font-medium ${active ? "bg-overlay/[.08] text-[var(--ink)]" : "text-[var(--ink-muted)] hover:bg-overlay/[.045] hover:text-[var(--ink)]"}`;
 const navIconClass = (active: boolean) => `w-4 text-center text-[.78rem] ${active ? "text-[var(--accent)]" : ""}`;
-const pillClass = "pressable inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[var(--rule)] bg-[var(--paper)] px-3 text-[.72rem] font-semibold tracking-[.02em] text-[var(--ink)] hover:border-[var(--ink-muted)]";
+const pillClass = "pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-[var(--rule)] bg-[var(--paper)] px-3 text-[.72rem] font-semibold tracking-[.02em] text-[var(--ink)] hover:border-[var(--ink-muted)]";
 
 /** Resolves "system" to what the reader is actually seeing, so the toggle always flips the visible theme. */
 function effectiveTheme(theme: Settings["theme"]): "light" | "dark" {
@@ -35,7 +35,7 @@ function effectiveTheme(theme: Settings["theme"]): "light" | "dark" {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter(),
-    path = usePathname().replace(/\/$/, "") || "/",
+    path = normalizePath(usePathname()),
     fullShoeActive = path === "/training/full-shoe",
     [shoeVisited, setShoeVisited] = useState(false),
     [desktop, setDesktop] = useState(false),
@@ -51,9 +51,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     navigation = useRef<HTMLElement>(null),
     isAdmin = useIsAdmin();
   const { user, guest, syncStatus } = useAuth();
-  const area = routeArea(path);
-  // The shared 404 page is prerendered under its own path, so unknown URLs get a fixed title that hydrates cleanly.
-  const title = isKnownRoute(path) ? headerTitle(path) : "Page not found";
+  // The shared 404 page is prerendered under its own path, so unknown URLs get
+  // no area and a fixed title; anything path-derived would fail to hydrate.
+  const known = isKnownRoute(path);
+  const area = known ? routeArea(path) : undefined;
+  const title = known ? headerTitle(path) : "Page not found";
   const floor = FLOOR_ROUTES.has(path);
   useModalFocus(open && !paletteOpen, navigation, () => setOpen(false));
   useModalFocus(paletteOpen, palette, () => setPaletteOpen(false));
@@ -202,7 +204,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </ol>
           </nav>
           {streakDays > 0 && (
-            <span aria-label={`${streakDays}-day practice streak`} className="inline-flex min-h-10 shrink-0 items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 text-[.72rem] font-semibold text-[var(--warning)]">
+            <span aria-label={`${streakDays}-day practice streak`} className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 text-[.72rem] font-semibold text-[var(--warning)]">
               <i className="fa-solid fa-fire mr-1.5" aria-hidden="true" />{streakDays}
             </span>
           )}
@@ -223,12 +225,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => storage.saveTheme(shownTheme === "dark" ? "light" : "dark")}
               aria-label={`Switch to ${shownTheme === "dark" ? "light" : "dark"} theme`}
               title={`Switch to ${shownTheme === "dark" ? "light" : "dark"} theme`}
-              className={`${pillClass} w-10 justify-center px-0`}
+              className={`${pillClass} w-11 justify-center px-0`}
             >
               <i className={`fa-solid ${shownTheme === "dark" ? "fa-sun" : "fa-moon"}`} aria-hidden="true" />
             </button>
           )}
-          <Link href={user || guest ? "/settings" : "/signin"} aria-label={user ? `Account: ${accountLabel}` : guest ? "Guest: progress saved on this device" : "Sign in"} className={user || guest ? pillClass : "pressable inline-flex min-h-10 shrink-0 items-center rounded-full bg-[var(--ink)] px-4 text-[.78rem] font-semibold text-[var(--paper)] hover:opacity-90"}>
+          <Link href={user || guest ? "/settings" : "/signin"} aria-label={user ? `Account: ${accountLabel}` : guest ? "Guest: progress saved on this device" : "Sign in"} className={user || guest ? pillClass : "pressable inline-flex min-h-11 shrink-0 items-center rounded-full bg-[var(--ink)] px-4 text-[.78rem] font-semibold text-[var(--paper)] hover:opacity-90"}>
             {user ? <><span aria-hidden="true" className={`h-2 w-2 rounded-full ${accountDot}`} /><span className="hidden sm:inline">{accountLabel}</span><i className="fa-solid fa-user sm:hidden" aria-hidden="true" /></>
               : guest ? <><i className="fa-solid fa-user-clock text-[var(--ink-muted)]" aria-hidden="true" /><span className="hidden sm:inline">Guest</span></>
               : "Sign in"}
