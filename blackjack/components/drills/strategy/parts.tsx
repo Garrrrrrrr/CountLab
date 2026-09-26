@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ReactNode, useEffect, useId, useState } from "react";
-import { ButtonLink, Callout, GhostButton, SegmentedControl } from "@/components/ui";
+import { ButtonLink, Callout, Disclosure, GhostButton, SegmentedControl } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { checklistProgress, relativeTime } from "@/lib/statistics/drillRound";
 import { storage, type DrillType, type Session, type Settings, type SurrenderRule } from "@/lib/statistics/storage";
@@ -82,6 +82,22 @@ export function SurrenderPicker({ value, disabled = false, note }: { value: Surr
       {note && <p className="text-xs leading-5 text-[var(--ink-muted)]">{note}</p>}
       <Link href="/settings" className="text-xs font-semibold text-[var(--accent)] underline-offset-2 hover:underline">Decks, soft 17, doubling and resplitting are set in Settings</Link>
     </div>
+  );
+}
+
+/**
+ * A collapsed group of the choices most readers leave alone, whose summary
+ * line still says what they are set to.
+ */
+export function MoreOptions({ values, analyticsSection, children }: { values: readonly string[]; analyticsSection: string; children: ReactNode }) {
+  return (
+    <Disclosure
+      analyticsSection={analyticsSection}
+      summaryClassName="flex-wrap gap-y-0"
+      summary={<>More options <span className="text-xs font-normal text-[var(--ink-muted)]">{values.join(" · ")}</span></>}
+    >
+      <div className="grid gap-5 pt-2">{children}</div>
+    </Disclosure>
   );
 }
 

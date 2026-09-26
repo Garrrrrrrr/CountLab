@@ -2,10 +2,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { KeyLegend, SetupCard } from "@/components/drill";
-import { Disclosure, SegmentedControl } from "@/components/ui";
+import { SegmentedControl } from "@/components/ui";
 import { ROUND_LENGTHS, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
 import type { Settings } from "@/lib/statistics/storage";
-import { RulesLine, SetupSentence, SurrenderPicker, rulesSummary } from "./parts";
+import { MoreOptions, RulesLine, SetupSentence, SurrenderPicker, rulesSummary } from "./parts";
 
 export const EXPLAIN_OPTIONS = [
   { value: "mistakes" as const, label: "Mistakes", ariaLabel: "Pause on mistakes" },
@@ -32,10 +32,15 @@ export interface ModeOption<T extends string> {
   help: ReactNode;
 }
 
+/** "No surrender", "Late surrender" or "Early surrender vs 10". */
+const surrenderShort = (settings: Settings) => (settings.surrender === "none" ? "No surrender" : settings.surrender === "late" ? "Late surrender" : "Early surrender vs 10");
+
 /**
- * The strategy drills' setup: what to practise, how long, when to pause, and
- * the table rules, above the one Start. Readers with history see the choices
- * as one line with Change, so the common case is a single Enter.
+ * The strategy drills' setup: what to practise and how long, above the one
+ * Start, so a first visit starts from the first screen. When to pause, the
+ * table rules and the keys sit under More options, whose summary shows the
+ * current choices. Readers with history see everything as one line with
+ * Change, so the common case is a single Enter.
  */
 export function StrategySetup<T extends string>({ settings, notices, compact, onExpand, modeLabel, modes, mode, onMode, modeNote, length, onLength, explain, onExplain, rulesNote, keys, onStart, footnote }: {
   settings: Settings;
@@ -78,23 +83,25 @@ export function StrategySetup<T extends string>({ settings, notices, compact, on
               fullWidth
               analyticsField="drill_length"
             />
-            <div className="grid gap-2">
-              <SegmentedControl label="Pause to explain" value={explain} onChange={onExplain} options={EXPLAIN_OPTIONS} fullWidth analyticsField="drill_explain" />
-              <p className="text-xs leading-5 text-[var(--ink-muted)]">{EXPLAIN_HELP[explain]}</p>
-            </div>
-            <RulesLine label="Table rules" summary={rulesSummary(settings)}>
-              <SurrenderPicker value={settings.surrender} />
-            </RulesLine>
-            {rulesNote && <p className="-mt-2 text-xs leading-5 text-[var(--ink-muted)]">{rulesNote}</p>}
-            <div className="hidden [@media(pointer:fine)]:block">
-              {settings.shortcuts ? (
-                <Disclosure summary="Keyboard shortcuts" analyticsSection="drill_shortcuts">
+            <MoreOptions values={[EXPLAIN_SHORT[explain], surrenderShort(settings)]} analyticsSection="drill_more_options">
+              <div className="grid gap-2">
+                <SegmentedControl label="Pause to explain" value={explain} onChange={onExplain} options={EXPLAIN_OPTIONS} fullWidth analyticsField="drill_explain" />
+                <p className="text-xs leading-5 text-[var(--ink-muted)]">{EXPLAIN_HELP[explain]}</p>
+              </div>
+              <div className="grid gap-2">
+                <RulesLine label="Table rules" summary={rulesSummary(settings)}>
+                  <SurrenderPicker value={settings.surrender} />
+                </RulesLine>
+                {rulesNote && <p className="text-xs leading-5 text-[var(--ink-muted)]">{rulesNote}</p>}
+              </div>
+              <div className="hidden [@media(pointer:fine)]:block">
+                {settings.shortcuts ? (
                   <KeyLegend label="Answer with one key" items={keys} />
-                </Disclosure>
-              ) : (
-                <p className="text-xs text-[var(--ink-muted)]">Keyboard shortcuts are off. <Link href="/settings" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">Turn them on in Settings.</Link></p>
-              )}
-            </div>
+                ) : (
+                  <p className="text-xs text-[var(--ink-muted)]">Keyboard shortcuts are off. <Link href="/settings" className="font-semibold text-[var(--accent)] underline-offset-2 hover:underline">Turn them on in Settings.</Link></p>
+                )}
+              </div>
+            </MoreOptions>
           </>
         )}
       </SetupCard>

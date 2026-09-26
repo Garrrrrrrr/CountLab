@@ -270,6 +270,7 @@ test.describe("basic strategy on a keyboard", () => {
   test("with shortcuts off, keys do nothing and the setup says so", async ({ page }) => {
     await prepare(page, { settings: { shortcuts: false } });
     await page.goto("/training/basic-strategy/");
+    await page.locator("summary", { hasText: "More options" }).click();
     await expect(page.getByText("Keyboard shortcuts are off.")).toBeVisible();
     await page.getByRole("button", { name: "Start 10 hands" }).click();
     await page.keyboard.press("h");
@@ -300,6 +301,31 @@ test.describe("deviations", () => {
     await page.goto("/training/deviations/");
     await expect(page.getByText("12 vs 9 isn't an index play under your table rules")).toBeVisible();
   });
+});
+
+test("Start is on the first screen of every setup at laptop sizes", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "Viewport is set explicitly.");
+  await prepare(page);
+  for (const [width, height] of [[1280, 800], [1024, 768]]) {
+    await page.setViewportSize({ width, height });
+    for (const [path, start] of [["/training/basic-strategy/", "Start 10 hands"], ["/training/deviations/", "Start 10 hands"], ["/training/h17-chart/", "Start filling in"]]) {
+      await page.goto(path);
+      await expect(page.getByRole("button", { name: start }), `${path} at ${width}x${height}`).toBeInViewport({ ratio: 1 });
+    }
+  }
+});
+
+test("on a phone, Start from a scrolled setup opens the round at its progress bar", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop-chromium", "The docked Start is a phone control.");
+  await prepare(page);
+  await page.goto("/training/basic-strategy/");
+  await page.getByRole("heading", { name: "Set up your round" }).waitFor();
+  await page.evaluate(() => scrollTo({ top: document.documentElement.scrollHeight }));
+  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(100);
+  await page.getByRole("button", { name: "Start 10 hands" }).click();
+  await expect(hud(page)).toBeInViewport({ ratio: 1 });
+  await expect(hud(page).getByText("Hand 1 of 10", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Hand 1 of 10" })).toBeFocused();
 });
 
 test("the strategy drills fit a 320px screen in setup and play", async ({ page }, testInfo) => {

@@ -57,6 +57,7 @@ test("the keypad enters every early-surrender index, including 8+ and 7+", async
     localStorage.setItem("countlab-install-dismissed", "1");
   });
   await page.goto("/training/h17-chart/");
+  await page.locator("summary", { hasText: "More options" }).click();
   await page.getByRole("button", { name: "Change", exact: true }).click();
   await page.getByRole("radio", { name: "Early surrender against a 10" }).check();
   await page.getByRole("group", { name: "What to fill in" }).getByRole("radio", { name: /^Early surrender vs 10/ }).check();

@@ -90,6 +90,7 @@ test.describe("H17 chart on a keyboard", () => {
   test("tapping the surrender option already chosen keeps a table without surrender", async ({ page }) => {
     await prepare(page, { surrender: "none" });
     await page.goto("/training/h17-chart/");
+    await page.locator("summary", { hasText: "More options" }).click();
     await page.getByRole("button", { name: "Change", exact: true }).click();
     await expect(page.getByRole("radio", { name: "None", exact: true })).toBeChecked();
     await page.getByRole("radio", { name: "None", exact: true }).click();
