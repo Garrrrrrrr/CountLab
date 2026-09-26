@@ -315,6 +315,13 @@ test("Enter opens the log form and never logs by itself", async ({ page }, testI
   await expect(sheet).toBeVisible();
   expect(await stored(page)).toEqual(before);
   expect((await stored(page, PRESETS_KEY)).map((preset: { name: string }) => preset.name)).toContain("Golden Nugget");
+  // Enter in a per-count bet only commits that bet.
+  await sheet.getByText("Customize bet per count").click();
+  const bet = sheet.getByLabel("Bet at true count +2").filter({ visible: true });
+  await bet.fill("150");
+  await bet.press("Enter");
+  await expect(sheet).toContainText("+2 and up $150");
+  expect(await stored(page)).toEqual(before);
 
   // Unsaved input asks before it goes, with focus on the safe choice.
   await sheet.getByLabel("Amount won or lost").fill("75");
