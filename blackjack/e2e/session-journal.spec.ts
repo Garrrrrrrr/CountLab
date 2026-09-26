@@ -681,6 +681,28 @@ test("import and export keep their file names and say what an import will do", a
   expect(await stored(page)).toHaveLength(2);
 });
 
+test("the signed-in storage note says offline when offline, not synced", async ({ page, context }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  const supabaseProject = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://placeholder.supabase.co").hostname.split(".")[0];
+  await page.addInitScript(({ supabaseProject }) => {
+    const expires = Math.floor(Date.now() / 1000) + 3600;
+    const user = { id: "55555555-5555-4555-8555-555555555555", aud: "authenticated", role: "authenticated", email: "player@example.com", app_metadata: {}, user_metadata: {}, created_at: "2026-09-01T00:00:00Z" };
+    const payload = btoa(JSON.stringify({ sub: user.id, aud: "authenticated", role: "authenticated", exp: expires })).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+    localStorage.setItem(`sb-${supabaseProject}-auth-token`, JSON.stringify({ access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.test`, token_type: "bearer", expires_in: 3600, expires_at: expires, refresh_token: "test", user }));
+    localStorage.setItem("countlab:analytics:consent_seen", "1");
+    localStorage.setItem("countlab:analytics:consent", "denied");
+  }, { supabaseProject });
+  // There is no account service here, so every sync request fails.
+  await page.route((url) => url.pathname.includes("/rest/v1/"), (route) => route.abort());
+  await page.goto("/journal/#data");
+  const panel = page.getByRole("tabpanel");
+  await expect(panel.getByText(/A JSON backup is still a good idea/)).toBeVisible();
+  await context.setOffline(true);
+  await expect(panel).toContainText("Saved on this device; it syncs when you reconnect.");
+  await expect(panel).not.toContainText("Synced to your account");
+  await context.setOffline(false);
+});
+
 test("a legacy session with an invalid date stays listed and can be repaired", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await prepareGuest(page, { date: "2026-9-8" });
