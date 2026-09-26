@@ -29,7 +29,8 @@ import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { AnswerPad } from "./AnswerPad";
 import { CountingSummary } from "./CountingSummary";
-import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useNow, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useHudClearance, useNow, useRevealStep, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { EndDrillButton } from "./PlayParts";
 import { AsideCard, FocusCallout, UnfinishedCallout, YourProgress } from "./SetupParts";
 import { TrueCountSetup, type TrueCountSetupState } from "./true-count/TrueCountSetup";
 
@@ -75,9 +76,9 @@ function grade(question: TrueCountScenario, mode: TrueCountMode, tcText: string,
   return { tcOk, deckOk, ok: tcOk && deckOk, tc: tc.ok ? tc.value : null, deck: deck.ok ? deck.value : null };
 }
 
-function Tile({ title, children, className = "" }: { title: string; children: ReactNode; className?: string }) {
+function Tile({ title, children, compact = false, className = "" }: { title: string; children: ReactNode; compact?: boolean; className?: string }) {
   return (
-    <div className={`grid min-w-0 content-start gap-2 rounded-2xl bg-well/20 p-3 sm:p-4 ${className}`}>
+    <div className={`grid min-w-0 content-start rounded-2xl bg-well/20 ${compact ? "gap-1 p-2" : "gap-2 p-2.5 sm:p-4"} ${className}`}>
       <p className="text-xs font-semibold uppercase tracking-[.08em] text-[var(--ink-muted)]">{title}</p>
       {children}
     </div>
@@ -89,6 +90,8 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
   const history = useStoredSessions(DRILL);
   const allSessions = useStoredSessions();
   const wide = useMediaQuery("(min-width: 768px)");
+  // A short phone (iPhone SE) needs the smallest tray to keep the tray, the fields and the keypad on one screen.
+  const short = useMediaQuery("(max-width: 767px) and (max-height: 620px)");
 
   const [initial] = useState(() => {
     const progress = storage.progress<TrueCountSaved>(DRILL);
@@ -141,6 +144,8 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
 
   const active = phase === "question" || phase === "feedback";
   useWakeLock(active);
+  useHudClearance(root, active);
+  useRevealStep(root, active ? `${phase}-${index}` : null);
   const progress = useDrillProgress(DRILL, active && Boolean(question) && !result, {
     decks, resolution, mode, focus, feedbackMode, phase: phase === "feedback" ? "feedback" : "question", question: question as TrueCountScenario,
     tcAnswer, deckAnswer, index, correct, streak, best, mistakes, categories, message, totalMs: totalMs.current, target,
@@ -316,7 +321,7 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
   const graded = phase === "feedback" ? grade(question, mode, tcAnswer, deckAnswer) : undefined;
   const raw = question.runningCount / question.estimatedDecksRemaining;
   const ownEstimate = graded && !graded.deckOk && graded.deck !== null && graded.tc !== null && rightForOwnEstimate({ runningCount: question.runningCount, decksAnswer: graded.deck, trueCountAnswer: graded.tc, rounding: settings.rounding });
-  const rcTile = <Tile title="Running count" className="grid-rows-[auto_1fr]"><p className="self-center font-data text-5xl font-semibold text-[var(--ink)] sm:text-6xl">{displaySigned(question.runningCount)}</p></Tile>;
+  const rcTile = <Tile title="Running count" compact={short} className="grid-rows-[auto_1fr]"><p className="self-center font-data text-5xl font-semibold text-[var(--ink)] sm:text-6xl">{displaySigned(question.runningCount)}</p></Tile>;
 
   return (
     <div ref={root} data-counting-drill="" data-counting-play="">
@@ -324,26 +329,27 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
         <DrillHud
           progress={{ done: index, total: target, label: `Question ${current} of ${target}` }}
           stats={[
-            endMode ? { id: "answered", label: "Answered", value: index, phone: true } : { id: "accuracy", label: "Accuracy", value: index ? `${Math.round(correct / index * 100)}%` : "—", phone: true },
+            endMode ? { id: "answered", label: "Answered", value: index } : { id: "accuracy", label: "Accuracy", value: index ? `${Math.round(correct / index * 100)}%` : "—" },
             ...(endMode ? [] : [{ id: "streak", label: "Streak", value: streak }]),
             { id: "time", label: "Time", value: formatClock(liveMs), phone: true },
           ]}
-          onEnd={endDrill}
-          endLabel="End drill"
+          chip={<EndDrillButton onEnd={endDrill} />}
         />
         <DrillStage
           label="Question"
           size="lg"
-          banner={resumed && initial.progress && <ResumeBanner detail={`Question ${current} of ${target}`} updatedAt={initial.progress.updatedAt} discardLabel="Discard and start over" onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }} />}
+          banner={resumed && initial.progress && <div data-reveal-top=""><ResumeBanner detail={`Question ${current} of ${target}`} updatedAt={initial.progress.updatedAt} discardLabel="Discard and start over" onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }} /></div>}
         >
-          <div className="grid gap-5">
-            <div className="grid grid-cols-[1.2fr_1fr] gap-3 sm:gap-4 md:grid-cols-2">
+          <div className={`grid sm:gap-5 ${short ? "gap-2" : "gap-3"}`}>
+            <div data-reveal-top="" className="grid grid-cols-[1.2fr_1fr] gap-3 sm:gap-4 md:grid-cols-2">
               {mode === "combined"
-                ? <Tile title="Discard tray"><TrayVisual totalDecks={question.totalDecks} remainingDecks={question.exactDecksRemaining} size={wide ? "md" : "sm"} caption={<><b className="font-data text-[var(--ink)]">{question.totalDecks}-deck shoe</b><span className="hidden sm:inline"> · the fill is cards already played</span></>} /></Tile>
+                ? short
+                  ? <Tile title={`${question.totalDecks}-deck shoe`} compact><TrayVisual totalDecks={question.totalDecks} remainingDecks={question.exactDecksRemaining} size="xs" caption={null} /></Tile>
+                  : <Tile title="Discard tray"><TrayVisual totalDecks={question.totalDecks} remainingDecks={question.exactDecksRemaining} size={wide ? "md" : "sm"} caption={<><b className="font-data text-[var(--ink)]">{question.totalDecks}-deck shoe</b><span className="hidden sm:inline"> · the fill is cards already played</span></>} /></Tile>
                 : rcTile}
               {mode === "combined"
                 ? rcTile
-                : <Tile title="Decks left"><p className="font-data text-5xl font-semibold text-[var(--ink)] sm:text-6xl">{question.estimatedDecksRemaining}</p><p className="text-xs">{question.totalDecks}-deck shoe</p></Tile>}
+                : <Tile title="Decks left" compact={short}><p className="font-data text-5xl font-semibold text-[var(--ink)] sm:text-6xl">{question.estimatedDecksRemaining}</p><p className="text-xs">{question.totalDecks}-deck shoe</p></Tile>}
             </div>
             {phase === "question" ? (
               <div className="grid gap-3">
@@ -368,7 +374,7 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
                   { label: "True count", yours: graded.tc === null ? "—" : displaySigned(graded.tc), correct: displaySigned(question.answer), ok: graded.tcOk },
                 ]}
                 cause={graded.ok || !category ? undefined : ERROR_CATEGORY_LABEL[category]}
-                action={<Button onClick={continueAfterFeedback} className="min-w-44">{isLast ? "See results" : "Next question"}</Button>}
+                action={<Button onClick={continueAfterFeedback} data-reveal-bottom="" className="min-w-44">{isLast ? "See results" : "Next question"}</Button>}
               >
                 <p className="font-data text-[var(--ink)]">{displaySigned(question.runningCount)} ÷ {question.estimatedDecksRemaining} = {raw.toFixed(2).replace("-", "\u2212")} → {ROUNDING_LABEL[settings.rounding]} → {displaySigned(question.answer)}</p>
                 {ownEstimate && <p className="mt-1">Your true count was right for your estimate of {graded.deck} decks. The miss was the tray reading.</p>}

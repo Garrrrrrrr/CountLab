@@ -16,7 +16,7 @@ export type AnswerField = {
   help?: ReactNode;
 };
 
-const KEY_CLASS = "pressable grid min-h-12 place-items-center rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] font-data text-xl font-semibold text-[var(--ink)] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:opacity-35";
+const KEY_CLASS = "pressable grid min-h-11 place-items-center sm:min-h-12 rounded-xl border border-[var(--rule)] bg-[var(--paper-raised)] font-data text-xl font-semibold text-[var(--ink)] shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus)] disabled:opacity-35";
 
 /**
  * The one answer entry for the counting drills: large fields, validated
@@ -27,13 +27,19 @@ const KEY_CLASS = "pressable grid min-h-12 place-items-center rounded-xl border 
  * With several fields, Enter (or the submit key) on a field whose next field
  * is still empty moves on to it; otherwise it submits. Remount the pad (key it
  * by question) so each question starts on its first field.
+ *
+ * On phones the pad is compact (44px keys) so the evidence, the fields and the
+ * submit key fit on one screen; the submit key is the step's
+ * `[data-reveal-bottom]` for useRevealStep. `aside` sits beside the fields
+ * (Deck Estimation puts the tray photo there on phones).
  */
-export function AnswerPad({ fields, submitLabel, onSubmit, secondary }: {
+export function AnswerPad({ fields, submitLabel, onSubmit, secondary, aside }: {
   fields: readonly AnswerField[];
   submitLabel: string;
   onSubmit: (values: number[], texts: string[]) => void;
   /** Quiet actions under the pad, such as "I lost the count". */
   secondary?: ReactNode;
+  aside?: ReactNode;
 }) {
   const { keypad, coarse } = useKeypad();
   const inputs = useRef<Array<HTMLInputElement | null>>([]);
@@ -103,7 +109,8 @@ export function AnswerPad({ fields, submitLabel, onSubmit, secondary }: {
   const keepFocus = (event: React.MouseEvent) => event.preventDefault();
 
   return (
-    <form onSubmit={submit} noValidate className="mx-auto w-full max-w-md">
+    <form onSubmit={submit} noValidate className={`mx-auto w-full max-w-md ${aside ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3" : ""}`}>
+      {aside}
       <div className={`grid gap-4 ${fields.length > 1 ? "grid-cols-2" : ""}`}>
         {fields.map((field, index) => {
           const helpId = `${baseId}-${field.id}-help`;
@@ -128,7 +135,7 @@ export function AnswerPad({ fields, submitLabel, onSubmit, secondary }: {
                   value={field.value}
                   onFocus={() => setActive(index)}
                   onChange={(event) => { field.onChange(event.target.value); clearError(field.id); }}
-                  className="h-16 w-full min-w-0 bg-transparent px-3 text-center font-data text-3xl font-semibold text-[var(--ink)] outline-none"
+                  className="h-14 w-full min-w-0 bg-transparent px-3 sm:h-16 text-center font-data text-3xl font-semibold text-[var(--ink)] outline-none"
                 />
                 {field.unit && <span aria-hidden="true" className="shrink-0 pr-3 text-sm text-[var(--ink-muted)]">{field.unit}</span>}
               </div>
@@ -139,7 +146,7 @@ export function AnswerPad({ fields, submitLabel, onSubmit, secondary }: {
         })}
       </div>
       {keypad ? (
-        <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Number pad">
+        <div className={`mt-3 grid grid-cols-4 gap-1.5 sm:mt-4 sm:gap-2 ${aside ? "col-span-2" : ""}`} role="group" aria-label="Number pad">
           {["1", "2", "3", "back", "4", "5", "6", "sign", "7", "8", "9", "."].map((key) => {
             if (key === "back") return <button key={key} type="button" onMouseDown={keepFocus} onClick={() => press("back")} aria-label="Delete last digit" className={KEY_CLASS}><i className="fa-solid fa-delete-left text-base" aria-hidden="true" /></button>;
             if (key === "sign") return kinds.has("signed-int") ? <button key={key} type="button" onMouseDown={keepFocus} onClick={() => press("sign")} disabled={activeKind !== "signed-int"} aria-label="Plus or minus" className={KEY_CLASS}>±</button> : <span key={key} aria-hidden="true" />;
@@ -147,15 +154,15 @@ export function AnswerPad({ fields, submitLabel, onSubmit, secondary }: {
             return <button key={key} type="button" onMouseDown={keepFocus} onClick={() => press(key)} className={KEY_CLASS}>{key}</button>;
           })}
           <button type="button" onMouseDown={keepFocus} onClick={() => press("0")} className={KEY_CLASS}>0</button>
-          <Button type="submit" onMouseDown={keepFocus} className="col-span-3 min-h-12 text-base">{actionLabel}</Button>
+          <Button type="submit" data-reveal-bottom="" onMouseDown={keepFocus} className="col-span-3 min-h-11 text-base sm:min-h-12">{actionLabel}</Button>
         </div>
       ) : (
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-          <Button type="submit" className="min-w-44">{actionLabel}</Button>
+        <div className={`mt-5 flex flex-wrap items-center justify-center gap-3 ${aside ? "col-span-2" : ""}`}>
+          <Button type="submit" data-reveal-bottom="" className="min-w-44">{actionLabel}</Button>
           <span className="hidden items-center gap-1.5 text-xs text-[var(--ink-muted)] [@media(pointer:fine)]:flex"><KeyHint>Enter</KeyHint> to {actionLabel === "Next" ? "move on" : "check"}</span>
         </div>
       )}
-      {secondary && <div className="mt-3 flex flex-wrap justify-center gap-2">{secondary}</div>}
+      {secondary && <div className={`mt-3 flex flex-wrap justify-center gap-2 ${aside ? "col-span-2" : ""}`}>{secondary}</div>}
     </form>
   );
 }

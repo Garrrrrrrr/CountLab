@@ -14,9 +14,11 @@ import { DECK_ESTIMATION_PHOTOS, drawDeckPhoto, DRILL_PHOTO_DECK_OPTIONS, PHOTO_
 import { parseAnswer } from "@/lib/blackjack/numericAnswer";
 import { makeSession, storage, type Mistake, type Session } from "@/lib/statistics/storage";
 import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 import { AnswerPad } from "./AnswerPad";
 import { CountingSummary } from "./CountingSummary";
-import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useNow, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useHudClearance, useNow, useRevealStep, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { EndDrillButton } from "./PlayParts";
 import { AsideCard, FocusCallout, UnfinishedCallout, YourProgress } from "./SetupParts";
 import { DeckEstimationSetup, type DeckEstimationSetupState } from "./deck-estimation/DeckEstimationSetup";
 
@@ -59,6 +61,8 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
   const settings = storage.settings();
   const history = useStoredSessions(DRILL);
   const allSessions = useStoredSessions();
+  // On phones the photo sits beside the answer field, so photo, field and keypad share one screen.
+  const phone = useMediaQuery("(max-width: 639px)");
 
   const [initial] = useState(() => {
     const progress = storage.progress<DeckEstimationSaved>(DRILL);
@@ -105,6 +109,8 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
 
   const active = phase === "question" || phase === "feedback";
   useWakeLock(active);
+  useHudClearance(root, active);
+  useRevealStep(root, active ? `${phase}-${question}-${phone ? "phone" : "wide"}` : null);
   const progress = useDrillProgress(DRILL, active && Boolean(photo) && !result, {
     decks, resolution, feedbackMode, phase: phase === "feedback" ? "feedback" : "question", question, remaining, photo, answer,
     correct, errors, mistakes, categories, message, totalMs: totalMs.current,
@@ -261,6 +267,22 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
   const expected = roundDeckEstimate(remaining, resolution);
   const given = phase === "feedback" ? parseAnswer(answer, "decimal") : undefined;
   const ok = Boolean(given?.ok && Math.abs(given.value - expected) < 0.001);
+  // Phones: the photo beside the field, with a short caption; wider screens: above it. A fixed
+  // size (every photo is 629 × 848) keeps the layout still while the photo loads.
+  const tray = (
+    <figure data-reveal-top="" className="m-0">
+      <Image
+        src={`/deck-estimation/${photo.file}`}
+        alt={`Discard tray photo from a ${decks}-deck shoe`}
+        width={629}
+        height={848}
+        unoptimized
+        onLoad={() => { if (phase === "question" && !answer) answerStarted.current = Date.now(); }}
+        className={`aspect-[629/848] w-auto border border-overlay/15 bg-well/40 object-contain shadow-inner ${phone ? "h-[26svh] rounded-xl min-[375px]:h-[30svh]" : "mx-auto h-80 rounded-2xl"}`}
+      />
+      <figcaption className="mt-1.5 text-center text-xs text-[var(--ink-muted)] sm:mt-2"><b className="font-data text-[var(--ink)]">{decks}-deck shoe</b>{!phone && " · the tray holds cards already played"}</figcaption>
+    </figure>
+  );
 
   return (
     <div ref={root} data-counting-drill="" data-counting-play="">
@@ -268,31 +290,19 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
         <DrillHud
           progress={{ done: question, total: target, label: `Tray ${current} of ${target}` }}
           stats={[
-            endMode ? { id: "answered", label: "Answered", value: question, phone: true } : { id: "accuracy", label: "Accuracy", value: question ? `${Math.round(correct / question * 100)}%` : "—", phone: true },
+            endMode ? { id: "answered", label: "Answered", value: question } : { id: "accuracy", label: "Accuracy", value: question ? `${Math.round(correct / question * 100)}%` : "—" },
             ...(endMode ? [] : [{ id: "error", label: "Avg error", value: mae === undefined ? "—" : `${mae.toFixed(2)} decks` }]),
             { id: "time", label: "Time", value: formatClock(liveMs), phone: true },
           ]}
-          onEnd={endDrill}
-          endLabel="End drill"
+          chip={<EndDrillButton onEnd={endDrill} />}
         />
         <DrillStage
           label="Question"
           size="lg"
-          banner={resumed && initial.progress && <ResumeBanner detail={`Tray ${current} of ${target}`} updatedAt={initial.progress.updatedAt} discardLabel="Discard and start over" onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }} />}
+          banner={resumed && initial.progress && <div data-reveal-top=""><ResumeBanner detail={`Tray ${current} of ${target}`} updatedAt={initial.progress.updatedAt} discardLabel="Discard and start over" onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }} /></div>}
         >
-          <div className="grid gap-5">
-            <figure className="m-0">
-              <Image
-                src={`/deck-estimation/${photo.file}`}
-                alt={`Discard tray photo from a ${decks}-deck shoe`}
-                width={640}
-                height={480}
-                unoptimized
-                onLoad={() => { if (phase === "question" && !answer) answerStarted.current = Date.now(); }}
-                className="mx-auto max-h-[34svh] w-auto rounded-2xl border border-overlay/15 bg-well/40 object-contain shadow-inner sm:max-h-80"
-              />
-              <figcaption className="mt-2 text-center text-xs text-[var(--ink-muted)]"><b className="font-data text-[var(--ink)]">{decks}-deck shoe</b> · the tray holds cards already played</figcaption>
-            </figure>
+          <div className="grid gap-3 sm:gap-5">
+            {!phone && tray}
             {phase === "question" ? (
               <AnswerPad
                 key={`tray-${question}`}
@@ -300,18 +310,29 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
                 submitLabel="Check estimate"
                 onSubmit={([value], [text]) => submit(value, text)}
                 secondary={<GhostButton size="compact" type="button" onClick={() => submit(null, "")}>Skip this tray</GhostButton>}
+                aside={phone ? tray : undefined}
               />
             ) : (
-              <FeedbackPanel
-                ok={ok}
-                title={ok ? "Correct" : "Not quite"}
-                detail={ok ? <><b className="font-data text-[var(--ink)]">{expected}</b> decks left.</> : undefined}
-                rows={ok ? undefined : [{ label: "Decks left", yours: answer || "—", correct: String(expected), ok: false }]}
-                action={<Button onClick={continueAfterFeedback} className="min-w-44">{isLast ? "See results" : "Next tray"}</Button>}
-              >
-                Actual: {remaining.toFixed(2)} decks left ({(decks - remaining).toFixed(2)} in the tray), which rounds to {expected} at {RESOLUTION_WORD[resolution]}-deck precision.
-                {given?.ok && ` Off by ${Math.abs(given.value - remaining).toFixed(2)} decks.`}
-              </FeedbackPanel>
+              <>
+                {phone && (
+                  // The photo stays where it was during the question, with the true figure beside it.
+                  <div className="mx-auto grid w-full max-w-md grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3">
+                    {tray}
+                    <p className="text-center text-sm text-[var(--ink-muted)]">Actually left<span className="mt-1 block"><b className="font-data text-2xl font-semibold text-[var(--ink)]">{remaining.toFixed(2)}</b> decks</span>{(decks - remaining).toFixed(2)} in the tray</p>
+                  </div>
+                )}
+                <FeedbackPanel
+                  ok={ok}
+                  title={ok ? "Correct" : "Not quite"}
+                  detail={ok ? <><b className="font-data text-[var(--ink)]">{expected}</b> decks left.</> : undefined}
+                  rows={ok ? undefined : [{ label: "Decks left", yours: answer || "—", correct: String(expected), ok: false }]}
+                  action={<Button onClick={continueAfterFeedback} data-reveal-bottom="" className="min-w-44">{isLast ? "See results" : "Next tray"}</Button>}
+                >
+                  {!phone && `Actual: ${remaining.toFixed(2)} decks left (${(decks - remaining).toFixed(2)} in the tray), which `}
+                  {phone ? "Rounds" : "rounds"} to {expected} at {RESOLUTION_WORD[resolution]}-deck precision.
+                  {given?.ok && ` Off by ${Math.abs(given.value - remaining).toFixed(2)} decks.`}
+                </FeedbackPanel>
+              </>
             )}
           </div>
         </DrillStage>

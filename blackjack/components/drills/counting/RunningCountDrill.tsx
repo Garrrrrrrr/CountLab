@@ -26,7 +26,8 @@ import { displaySigned } from "@/lib/blackjack/numericAnswer";
 import { addCategory } from "@/components/DrillKit";
 import { AnswerPad } from "./AnswerPad";
 import { CountingSummary } from "./CountingSummary";
-import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useReducedMotion, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useHudClearance, useReducedMotion, useRevealStep, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { EndDrillButton } from "./PlayParts";
 import { AsideCard, FocusCallout, HiLoValues, UnfinishedCallout, YourProgress } from "./SetupParts";
 import { CardGroup, CardRecap, cardName, InterruptionView, nextCheckText, PausedView, ReadyCountdown } from "./running/RunningStage";
 import { RunningSetup, type RunningSetupState } from "./running/RunningSetup";
@@ -165,6 +166,9 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
 
   const playing = phase !== "setup" && phase !== "done";
   useWakeLock(playing && phase !== "paused");
+  useHudClearance(root, playing);
+  // Entering a step (cards, a check, a verdict) fits it under the HUD on phones.
+  useRevealStep(root, phase === "show" || phase === "answer" || phase === "feedback" ? `${phase}-${checks}` : null);
   const progress = useDrillProgress(DRILL, playing && !result, {
     preset, decks: setup.decks, amount: setup.amount, speed: setup.speed, group: setup.group, checkpoint: setup.checkpoint, bias: setup.bias, feedbackMode: setup.feedbackMode,
     phase: phase === "answer" ? "answer" : "paused",
@@ -435,10 +439,11 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     );
   }
 
+  // Phones show only the time, so the HUD keeps to one line.
   const stats = [
     endMode
-      ? { id: "answered", label: "Answered", value: checks, phone: true }
-      : { id: "checks", label: "Checks right", value: `${correct}/${checks}`, phone: true },
+      ? { id: "answered", label: "Answered", value: checks }
+      : { id: "checks", label: "Checks right", value: `${correct}/${checks}` },
     ...(endMode ? [] : [{ id: "streak", label: "Streak", value: streak }]),
     { id: "time", label: "Time", value: formatClock(elapsed), phone: true },
   ];
@@ -451,30 +456,33 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
         <DrillHud
           progress={{ done: shownThrough, total: cards.length, label: `Card ${shownThrough} of ${cards.length}` }}
           stats={stats}
-          chip={canPause && (
-            <GhostButton size="compact" onClick={pause} aria-label="Pause" aria-keyshortcuts={settings.shortcuts ? "P" : undefined}>
-              <i className="fa-solid fa-pause text-xs sm:mr-1.5" aria-hidden="true" /><span className="hidden sm:inline">Pause</span>
-              {settings.shortcuts && <span className="ml-2 hidden [@media(pointer:fine)]:inline-flex"><KeyHint>P</KeyHint></span>}
-            </GhostButton>
-          )}
-          onEnd={endDrill}
-          endLabel="End drill"
+          chip={<>
+            {canPause && (
+              <GhostButton size="compact" onClick={pause} aria-label="Pause" aria-keyshortcuts={settings.shortcuts ? "P" : undefined} className="min-w-11">
+                <i className="fa-solid fa-pause text-xs sm:mr-1.5" aria-hidden="true" /><span className="hidden sm:inline">Pause</span>
+                {settings.shortcuts && <span className="ml-2 hidden [@media(pointer:fine)]:inline-flex"><KeyHint>P</KeyHint></span>}
+              </GhostButton>
+            )}
+            <EndDrillButton onEnd={endDrill} />
+          </>}
         />
         <DrillStage
           label="Cards"
           size="lg"
           banner={resumed && initial.progress && (
-            <ResumeBanner
-              detail={`Card ${cursor} of ${cards.length}`}
-              updatedAt={initial.progress.updatedAt}
-              discardLabel={arrivalLabel ? `Start ${arrivalLabel} instead` : "Discard and start over"}
-              onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }}
-            />
+            <div data-reveal-top="">
+              <ResumeBanner
+                detail={`Card ${cursor} of ${cards.length}`}
+                updatedAt={initial.progress.updatedAt}
+                discardLabel={arrivalLabel ? `Start ${arrivalLabel} instead` : "Discard and start over"}
+                onDiscard={() => { progress.cancel(); storage.clearProgress(DRILL); abandonActivePractice(); restart({ keepArrival: true }); }}
+              />
+            </div>
           )}
         >
           {phase === "ready" && <ReadyCountdown reducedMotion={reducedMotion} onDone={beginDealing} />}
           {phase === "show" && (
-            <div className="flex flex-col gap-4">
+            <div data-reveal-top="" className="flex flex-col gap-4">
               <CardGroup cards={visible} seed={cursor} animated={settings.animations} hints={setup.hints} />
               {selfPaced && (
                 <div className="flex flex-wrap items-center justify-center gap-3">
@@ -488,7 +496,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
           {phase === "interruption" && <InterruptionView onReturn={() => { setSize(pickSize()); setPhase("show"); focusStage(); }} />}
           {phase === "paused" && <PausedView cursor={cursor} total={cards.length} count={expected} onResume={resume} shortcuts={settings.shortcuts} />}
           {phase === "answer" && (
-            <div className="grid gap-5 py-2 text-center sm:py-6">
+            <div data-reveal-top="" className="grid gap-4 py-1 text-center sm:gap-5 sm:py-6">
               <div>
                 <h2 className="text-xl font-semibold sm:text-2xl">What&apos;s the running count?</h2>
                 <p className="mt-1 text-sm text-[var(--ink-muted)]">{ending ? `You ended after card ${cursor}. Give your count to save the session.` : `After card ${cursor} of ${cards.length}`}</p>
@@ -520,7 +528,7 @@ function RunningFeedback({ feedback, cards, onContinue }: { feedback: Feedback; 
   const diff = answer === null ? 0 : Number(answer) - expected;
   const recap = feedback.recapFrom === undefined ? null : <CardRecap before={cards.slice(0, feedback.recapFrom)} cards={cards.slice(feedback.recapFrom, feedback.to)} />;
   return (
-    <div className="mx-auto max-w-xl py-2 sm:py-6">
+    <div data-reveal-top="" className="mx-auto max-w-xl py-2 sm:py-6">
       <FeedbackPanel
         ok={ok}
         title={ok ? "Correct" : "Not quite"}
@@ -528,7 +536,7 @@ function RunningFeedback({ feedback, cards, onContinue }: { feedback: Feedback; 
         rows={ok ? undefined : [{ label: "Running count", yours: answer === null ? "—" : displaySigned(Number(answer)), correct: displaySigned(expected), ok: false }]}
         cause={ok ? undefined : runningCountCause(feedback.category, expected)}
         visual={recap}
-        action={<Button onClick={onContinue} className="min-w-44">{feedback.last ? "See results" : "Continue"}</Button>}
+        action={<Button onClick={onContinue} data-reveal-bottom="" className="min-w-44">{feedback.last ? "See results" : "Continue"}</Button>}
       >
         {feedback.explanation}
       </FeedbackPanel>

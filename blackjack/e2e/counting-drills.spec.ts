@@ -321,25 +321,63 @@ test.describe("counting benchmark", () => {
   });
 });
 
-test("the True Count question fits a 320 × 568 phone with the keypad clear of every bar", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "iphone-se", "Checks the smallest touch phone.");
-  await page.goto("/training/true-count/");
-  await main(page).getByRole("radio", { name: /^Tray \+ division/ }).check();
-  await clickVisible(page, /Start \d+ questions/);
-  await expect(main(page).getByLabel("True count", { exact: true })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
-  await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeHidden();
-  for (const name of ["Delete last digit", "Plus or minus", "Decimal point", "Next"]) {
-    const key = main(page).getByRole("button", { name, exact: true });
-    await key.scrollIntoViewIfNeeded();
-    const hit = await key.evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
-    });
-    expect(hit, name).toBe(true);
-    expect((await key.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+test("on small phones each question fits under the HUD: evidence, fields, keypad and submit, without scrolling", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "iphone-se", "Checks the small touch phones (iPhone SE 1st and 2nd generation).");
+  test.setTimeout(90_000);
+  const drills = [
+    { name: "Running Count", evidence: null, open: async () => {
+      await page.goto("/training/running-count/?session=starter");
+      await clickVisible(page, "Start counting");
+      await expect(main(page).getByLabel("Running count", { exact: true })).toBeVisible({ timeout: 20_000 });
+    } },
+    { name: "True Count", evidence: "[aria-label*='decks discarded']", open: async () => {
+      await page.goto("/training/true-count/");
+      await main(page).getByRole("radio", { name: /^Tray \+ division/ }).check();
+      await clickVisible(page, /Start \d+ questions/);
+      await expect(main(page).getByLabel("True count", { exact: true })).toBeVisible();
+    } },
+    { name: "Deck Estimation", evidence: "img[alt^='Discard tray photo']", open: async () => {
+      await page.goto("/training/deck-estimation/");
+      await clickVisible(page, /Start \d+ estimates/);
+      await expect(main(page).getByLabel("Decks remaining")).toBeVisible();
+    } },
+  ];
+  for (const [width, height] of [[320, 568], [375, 667]]) {
+    await page.setViewportSize({ width, height });
+    for (const drill of drills) {
+      // Leave the last drill first (it saves its progress as it goes), then start clean.
+      await page.goto("/training/");
+      await page.evaluate(() => { for (const key of Object.keys(localStorage)) if (key.includes("hilo:progress:")) localStorage.removeItem(key); });
+      await drill.open();
+      await page.waitForTimeout(400);
+      const label = `${drill.name} at ${width}×${height}`;
+      const layout = await page.evaluate((evidence) => {
+        const box = (selector: string) => { const element = document.querySelector(selector); if (!element) return null; const { top, bottom, height } = element.getBoundingClientRect(); return { top, bottom, height }; };
+        return {
+          hud: box("section[aria-label='Session progress']")!, field: box("[data-answer-field]")!, pad: box("[aria-label='Number pad']")!,
+          submit: box("main form button[type='submit']")!, evidence: evidence ? box(evidence) : null,
+          innerHeight, scrollWidth: document.documentElement.scrollWidth,
+        };
+      }, drill.evidence);
+      expect(layout.scrollWidth, label).toBeLessThanOrEqual(width);
+      expect(layout.hud.height, `${label}: one-line HUD`).toBeLessThanOrEqual(64);
+      for (const [part, rect] of [["field", layout.field], ["keypad", layout.pad], ["submit", layout.submit], ["evidence", layout.evidence]] as const) {
+        if (!rect) continue;
+        expect(rect.top, `${label}: ${part} clear of the HUD`).toBeGreaterThanOrEqual(layout.hud.bottom - 1);
+        expect(rect.bottom, `${label}: ${part} above the fold`).toBeLessThanOrEqual(layout.innerHeight + 1);
+      }
+      await expect(page.getByRole("navigation", { name: "Mobile navigation" })).toBeHidden();
+      for (const name of ["Delete last digit", "0", drill.name === "Deck Estimation" ? "Check estimate" : drill.name === "True Count" ? "Next" : "Check count"]) {
+        const key = main(page).getByRole("button", { name, exact: true });
+        const hit = await key.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+        });
+        expect(hit, `${label}: ${name} can be tapped`).toBe(true);
+        expect((await key.boundingBox())!.height, `${label}: ${name} height`).toBeGreaterThanOrEqual(44);
+      }
+    }
   }
-  await expect(page.getByRole("region", { name: "Session progress" })).toBeInViewport();
 });
 
 test("verdicts, selected sessions and tray labels keep AA contrast in both themes", async ({ page }) => {

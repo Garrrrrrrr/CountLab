@@ -131,3 +131,48 @@ export function useEntryFocus(root: RefObject<HTMLElement | null>, phase: "setup
     return () => cancelAnimationFrame(frame);
   }, [phase, root]);
 }
+
+/**
+ * Publishes the sticky HUD's height as `--counting-hud` on the page, so the
+ * scroll padding (globals.css) clears the app header and the HUD together.
+ */
+export function useHudClearance(root: RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    const hud = active ? root.current?.querySelector<HTMLElement>("section[aria-label='Session progress']") : null;
+    if (!hud) return;
+    const html = document.documentElement;
+    const update = () => html.style.setProperty("--counting-hud", `${hud.offsetHeight}px`);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(hud);
+    return () => { observer.disconnect(); html.style.removeProperty("--counting-hud"); };
+  }, [root, active]);
+}
+
+/**
+ * Fits each play step (a question, a verdict, a new group of cards) between
+ * the sticky HUD and the bottom of the screen, which matters on phones: the
+ * step's `[data-reveal-bottom]` (the submit key, Continue) is brought into
+ * view, and its `[data-reveal-top]` (the tray, the photo) is kept clear of the
+ * HUD whenever both fit. When they cannot both fit, the answer entry wins.
+ * Runs a frame late, after the answer field or verdict has taken focus.
+ */
+export function useRevealStep(root: RefObject<HTMLElement | null>, step: string | null) {
+  useEffect(() => {
+    if (!step) return;
+    const frame = requestAnimationFrame(() => {
+      const tops = root.current?.querySelectorAll("[data-reveal-top]");
+      const top = tops?.[0];
+      const bottom = root.current?.querySelector("[data-reveal-bottom]") ?? tops?.[tops.length - 1];
+      if (!top || !bottom) return;
+      const style = getComputedStyle(document.documentElement);
+      const minTop = parseFloat(style.scrollPaddingTop) || 0;
+      const maxBottom = innerHeight - (parseFloat(style.scrollPaddingBottom) || 0);
+      const topEdge = top.getBoundingClientRect().top, bottomEdge = bottom.getBoundingClientRect().bottom;
+      let delta = topEdge < minTop ? topEdge - minTop : 0;
+      if (bottomEdge - delta > maxBottom) delta = bottomEdge - maxBottom;
+      if (Math.abs(delta) >= 1) scrollBy({ top: delta, behavior: "instant" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [root, step]);
+}
