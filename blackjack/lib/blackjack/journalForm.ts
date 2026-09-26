@@ -20,6 +20,8 @@ const MAX_TC = TRUE_COUNTS[TRUE_COUNTS.length - 1];
 export const DEFAULT_HOURS = 4;
 
 export type ResultDirection = "won" | "lost";
+/** A typed amount: a number, null while blank, or "invalid" while the text isn't a number. */
+export type AmountEntry = number | null | "invalid";
 
 /** Everything about how a session was played except when, where and how long. */
 export interface GameDraft {
@@ -62,8 +64,12 @@ export interface SessionDraft {
   hours: number;
   /** Deliberately empty for a new session: a result's sign is a choice, never a default. */
   direction: ResultDirection | null;
-  /** Always a magnitude. Null until entered, so a blank is never saved as $0. */
-  amount: number | null;
+  /**
+   * Always a magnitude. Null until entered, so a blank is never saved as $0,
+   * and "invalid" while the text isn't a number, so a typo never saves as
+   * some other amount.
+   */
+  amount: AmountEntry;
   expenses: number;
   notes: string;
   game: GameDraft;
@@ -240,6 +246,26 @@ export function signedResult(direction: ResultDirection | null | undefined, amou
 
 export const directionOf = (netResult: number): ResultDirection | null => netResult > 0 ? "won" : netResult < 0 ? "lost" : null;
 
+/**
+ * Reads money the way people type it: "$1,250.50", "1 250" and "-75" all
+ * parse. Commas count only where they group thousands, so "12,50" is
+ * "invalid" rather than 1250, and text that isn't a number is never cut back
+ * to the digits before the first odd character. Blank is null.
+ */
+export function parseAmount(text: string): AmountEntry {
+  const compact = text.replace(/\s/g, "").replace(/\u2212/g, "-");
+  if (compact === "") return null;
+  const match = /^([+-]?)\$?([+-]?)(\d{1,3}(?:,\d{3})+|\d*)(\.\d*)?$/.exec(compact);
+  if (!match) return "invalid";
+  const [, signBefore, signAfter, whole, fraction = ""] = match;
+  // One sign at most, and at least one digit.
+  if ((signBefore && signAfter) || (!whole && fraction.length < 2)) return "invalid";
+  const magnitude = Number(`${whole.replace(/,/g, "") || "0"}${fraction}`);
+  if (!Number.isFinite(magnitude)) return "invalid";
+  if (magnitude === 0) return 0;
+  return signBefore === "-" || signAfter === "-" ? -magnitude : magnitude;
+}
+
 const shortNumber = (value: number) => Number(value.toFixed(1)).toString();
 
 /** "1–8": the largest bet over the smallest non-zero one, in units. */
@@ -340,13 +366,15 @@ export const SESSION_ERRORS = {
   amount: "Enter the table result. Use 0 if you broke even.",
   direction: "Choose Won or Lost.",
 } as const;
+/** Said in place of the amount error when the amount was typed but isn't a number. */
+export const AMOUNT_FORMAT_ERROR = "Enter a number, e.g. 1250.";
 export type SessionField = keyof typeof SESSION_ERRORS;
 
 /** Problems in the order they are fixed: date, then amount, then direction (not needed for a breakeven). */
 export function validateSessionDraft(draft: Pick<SessionDraft, "date" | "amount" | "direction">): SessionField[] {
   const errors: SessionField[] = [];
   if (!isJournalDate(draft.date)) errors.push("date");
-  if (draft.amount === null || !Number.isFinite(draft.amount)) errors.push("amount");
+  if (typeof draft.amount !== "number" || !Number.isFinite(draft.amount)) errors.push("amount");
   else if (draft.amount !== 0 && !draft.direction) errors.push("direction");
   return errors;
 }
@@ -358,7 +386,7 @@ export function sessionPayload(draft: SessionDraft) {
     location: draft.location.trim() || undefined,
     hours: draft.hours,
     ...gameFields(draft.game),
-    netResult: signedResult(draft.direction, draft.amount ?? 0),
+    netResult: signedResult(draft.direction, typeof draft.amount === "number" ? draft.amount : 0),
     expenses: draft.expenses,
     notes: draft.notes.trim() || undefined,
     bankrollId: draft.bankrollId,

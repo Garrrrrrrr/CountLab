@@ -294,6 +294,47 @@ test("the result is a direction and an amount, never a silent $0", async ({ page
   expect(await stored(page)).toHaveLength(3);
 });
 
+test("amounts typed with separators save in full, and typos are flagged instead of cut short", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepareGuest(page);
+  await page.goto("/journal/");
+
+  await page.getByRole("button", { name: "Log session" }).click();
+  const sheet = page.getByRole("dialog", { name: "Log session" });
+  const amount = sheet.getByLabel("Amount won or lost");
+  await sheet.getByRole("radio", { name: "Won" }).check();
+  await amount.pressSequentially("1,250");
+  await amount.blur();
+  await expect(amount).toHaveValue("1250");
+  await sheet.getByRole("button", { name: "Save session" }).click();
+  await expect(sheet).toHaveCount(0);
+  expect((await stored(page))[0].netResult).toBe(1250);
+
+  // Text that isn't a number stays on screen with an error, and saving stops on it.
+  await page.getByRole("button", { name: "Log session" }).click();
+  await sheet.getByRole("radio", { name: "Lost" }).check();
+  await amount.fill("12,50");
+  await amount.blur();
+  await expect(amount).toHaveValue("12,50");
+  await expect(sheet.getByText("Enter a number, e.g. 1250.")).toBeVisible();
+  await expect(amount).toHaveAttribute("aria-invalid", "true");
+  await sheet.getByRole("button", { name: "Save session" }).click();
+  await expect(amount).toBeFocused();
+  expect(await stored(page)).toHaveLength(2);
+  await amount.fill("12.50");
+  await expect(sheet.getByText("Enter a number, e.g. 1250.")).toHaveCount(0);
+  await sheet.getByRole("button", { name: "Save session" }).click();
+  await expect(sheet).toHaveCount(0);
+  expect((await stored(page))[0].netResult).toBe(-12.5);
+
+  await page.getByRole("button", { name: "Deposit / withdrawal" }).first().click();
+  const cash = page.getByRole("dialog", { name: "Deposit or withdrawal" });
+  await cash.getByLabel("Amount").pressSequentially("$20,000");
+  await cash.getByRole("button", { name: "Record deposit" }).click();
+  await expect(cash).toHaveCount(0);
+  expect(await stored(page, TRANSACTIONS_KEY)).toMatchObject([{ type: "deposit", amount: 20000 }]);
+});
+
 test("Enter opens the log form and never logs by itself", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await prepareGuest(page);

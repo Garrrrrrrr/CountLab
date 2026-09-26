@@ -2,13 +2,14 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useFormAnalytics } from "@/lib/analytics/react";
 import { isJournalDate, journalLibrary, type Bankroll, type BankrollTransaction } from "@/lib/blackjack/journal";
-import { localDateString } from "@/lib/blackjack/journalForm";
+import { AMOUNT_FORMAT_ERROR, localDateString, type AmountEntry } from "@/lib/blackjack/journalForm";
 import { money } from "@/lib/blackjack/journalFormat";
-import { Button, GhostButton, OptionalNumberField, SegmentedControl, Select, Sheet } from "../ui";
+import { Button, GhostButton, SegmentedControl, Select, Sheet } from "../ui";
+import { AmountField } from "./AmountField";
 import { DiscardBar } from "./DiscardBar";
 import { FieldError } from "./parts";
 
-type CashDraft = { type: "deposit" | "withdrawal"; amount: number | null; date: string; bankrollId: string; note: string };
+type CashDraft = { type: "deposit" | "withdrawal"; amount: AmountEntry; date: string; bankrollId: string; note: string };
 const same = (a: CashDraft, b: CashDraft) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Money moving into or out of a bankroll, kept apart from table results. */
@@ -26,10 +27,12 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   const [draft, setDraft] = useState(initial);
   const [snapshot, setSnapshot] = useState(initial);
   const [attempted, setAttempted] = useState(false);
+  const [amountLeft, setAmountLeft] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const formId = useId();
   const dateId = useId();
   const dateErrorId = useId();
+  const amountErrorId = useId();
   const form = useRef<HTMLFormElement>(null);
   const amountWrap = useRef<HTMLDivElement>(null);
   const dateInput = useRef<HTMLInputElement>(null);
@@ -45,16 +48,19 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
 
   const update = (patch: Partial<CashDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const dateValid = isJournalDate(draft.date);
-  const amountValid = draft.amount !== null && draft.amount > 0;
-  const signed = draft.type === "deposit" ? draft.amount ?? 0 : -(draft.amount ?? 0);
+  const amount = typeof draft.amount === "number" ? draft.amount : 0;
+  const amountValid = amount > 0;
+  // A typo is flagged as soon as the field is left; a blank only once recording is tried.
+  const amountError = draft.amount === "invalid" ? (attempted || amountLeft ? AMOUNT_FORMAT_ERROR : null) : attempted && !amountValid ? "Enter an amount greater than $0." : null;
+  const signed = draft.type === "deposit" ? amount : -amount;
   const after = (balances.get(draft.bankrollId) ?? 0) + signed;
 
   const record = (another: boolean) => {
     transactionForm.submitted();
     setAttempted(true);
     if (!dateValid) { transactionForm.validationFailed("date", "invalid_date"); dateInput.current?.focus(); return; }
-    if (!amountValid) { transactionForm.validationFailed("amount", "missing"); amountWrap.current?.querySelector("input")?.focus(); return; }
-    const saved = journalLibrary.addTransaction({ date: draft.date, type: draft.type, amount: Math.abs(draft.amount ?? 0), note: draft.note.trim() || undefined, bankrollId: draft.bankrollId });
+    if (!amountValid) { transactionForm.validationFailed("amount", draft.amount === "invalid" ? "not_a_number" : "missing"); amountWrap.current?.querySelector("input")?.focus(); return; }
+    const saved = journalLibrary.addTransaction({ date: draft.date, type: draft.type, amount: Math.abs(amount), note: draft.note.trim() || undefined, bankrollId: draft.bankrollId });
     transactionForm.succeeded();
     onSaved(saved, another);
     if (another) {
@@ -92,16 +98,21 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
           options={[{ value: "deposit", label: "Deposit", icon: "fa-arrow-down" }, { value: "withdrawal", label: "Withdrawal", icon: "fa-arrow-up" }]}
         />
         <div ref={amountWrap}>
-          <OptionalNumberField
+          <AmountField
             label="Amount"
-            prefix="$"
             analyticsField="amount"
-            invalid={attempted && !amountValid}
+            invalid={amountError !== null}
+            describedBy={amountError ? amountErrorId : undefined}
             value={draft.amount}
-            // A typed minus sign reads as money going out.
-            onValueChange={(amount) => amount !== null && amount < 0 ? update({ amount: -amount, type: "withdrawal" }) : update({ amount })}
+            onBlur={() => setAmountLeft(true)}
+            onValueChange={(next) => {
+              setAmountLeft(false);
+              // A typed minus sign reads as money going out.
+              if (typeof next === "number" && next < 0) update({ amount: -next, type: "withdrawal" });
+              else update({ amount: next });
+            }}
           />
-          {attempted && !amountValid && <FieldError>Enter an amount greater than $0.</FieldError>}
+          {amountError && <FieldError id={amountErrorId}>{amountError}</FieldError>}
         </div>
         <div className={`grid gap-4 ${bankrolls.length > 1 ? "min-[420px]:grid-cols-2" : ""}`}>
           <div className="grid min-w-0 content-start gap-2">

@@ -18,6 +18,7 @@ import {
   localDateString,
   newSessionDraft,
   nextEntryDraft,
+  parseAmount,
   normalizeHands,
   penetrationOptions,
   rampName,
@@ -188,6 +189,36 @@ describe("signedResult", () => {
   });
 });
 
+describe("parseAmount", () => {
+  it("reads money as it is usually typed", () => {
+    expect(parseAmount("1,250")).toBe(1250);
+    expect(parseAmount("20,000")).toBe(20000);
+    expect(parseAmount("1,000,000")).toBe(1000000);
+    expect(parseAmount("$1,250.50")).toBe(1250.5);
+    expect(parseAmount(" 1 250 ")).toBe(1250);
+    expect(parseAmount("1\u202f250")).toBe(1250);
+    expect(parseAmount(".5")).toBe(0.5);
+    expect(parseAmount("75.")).toBe(75);
+    expect(parseAmount("+20")).toBe(20);
+  });
+
+  it("keeps a minus sign wherever it is typed", () => {
+    expect(parseAmount("-75")).toBe(-75);
+    expect(parseAmount("\u221275")).toBe(-75);
+    expect(parseAmount("-$75")).toBe(-75);
+    expect(parseAmount("$-1,250")).toBe(-1250);
+    expect(Object.is(parseAmount("-0"), 0)).toBe(true);
+  });
+
+  it("is null when blank and invalid, never a partial number, otherwise", () => {
+    expect(parseAmount("")).toBeNull();
+    expect(parseAmount("   ")).toBeNull();
+    for (const text of ["12,50", "1,25", "1,2500", "1.2.3", "abc", "12abc", "1e3", "-", "$", ".", "--5", "-$-5", "0x10", "Infinity"]) {
+      expect(parseAmount(text), text).toBe("invalid");
+    }
+  });
+});
+
 describe("validateSessionDraft", () => {
   it("checks date, then amount, then direction", () => {
     expect(validateSessionDraft({ date: "", amount: null, direction: null })).toEqual(["date", "amount"]);
@@ -195,6 +226,7 @@ describe("validateSessionDraft", () => {
     expect(validateSessionDraft({ date: "2026-09-01", amount: 150, direction: null })).toEqual(["direction"]);
     expect(validateSessionDraft({ date: "2026-09-01", amount: 0, direction: null })).toEqual([]);
     expect(validateSessionDraft({ date: "2026-02-30", amount: 10, direction: "lost" })).toEqual(["date"]);
+    expect(validateSessionDraft({ date: "2026-09-01", amount: "invalid", direction: "won" })).toEqual(["amount"]);
   });
 });
 

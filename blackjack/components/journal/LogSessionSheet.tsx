@@ -5,13 +5,14 @@ import type { CvcxTemplate } from "@/lib/blackjack/cvcxLibrary";
 import { journalLibrary, type Bankroll, type JournalSession } from "@/lib/blackjack/journal";
 import { classifySessionAssessment, theoreticalSessionOutcome } from "@/lib/blackjack/journalAnalysis";
 import {
-  applyVenue, casinoNames, gameFields, gameForCasino, gameFromSession, nextEntryDraft, SESSION_ERRORS, sameGame, sessionPayload, signedResult, usesVenue, validateSessionDraft,
+  AMOUNT_FORMAT_ERROR, applyVenue, casinoNames, gameFields, gameForCasino, gameFromSession, nextEntryDraft, SESSION_ERRORS, sameGame, sessionPayload, signedResult, usesVenue, validateSessionDraft,
   type GameDraft, type GameSource, type SessionDraft, type SessionField,
 } from "@/lib/blackjack/journalForm";
 import { longDate, shortDate, signedMoney } from "@/lib/blackjack/journalFormat";
 import type { SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
-import { Button, Callout, GhostButton, HelpTip, NumberField, OptionalNumberField, SegmentedControl, Select, Sheet, toast } from "../ui";
+import { Button, Callout, GhostButton, HelpTip, NumberField, SegmentedControl, Select, Sheet, toast } from "../ui";
+import { AmountField } from "./AmountField";
 import { DiscardBar } from "./DiscardBar";
 import { GameEditor, ScenarioLinks } from "./GameEditor";
 import { FieldError, VerdictBadge } from "./parts";
@@ -46,6 +47,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const [draft, setDraft] = useState(initial);
   const [snapshot, setSnapshot] = useState(initial);
   const [attempted, setAttempted] = useState(false);
+  const [amountLeft, setAmountLeft] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const dateInput = useRef<HTMLInputElement>(null);
@@ -55,6 +57,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const formId = useId();
   const dateId = useId();
   const dateErrorId = useId();
+  const amountErrorId = useId();
   const casinoListId = useId();
   const sessionForm = useFormAnalytics("journal_session");
   const dirty = !same(draft, snapshot);
@@ -75,12 +78,16 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const setGame = (game: GameDraft, source: GameSource) => setDraft((current) => ({ ...current, game, source }));
   const errors = validateSessionDraft(draft);
   const shown = (field: SessionField) => errors.includes(field) && (field === "date" || attempted);
+  // A typo is flagged as soon as the field is left; a blank only once saving is tried.
+  const amountTypo = draft.amount === "invalid";
+  const amountError = amountTypo ? (attempted || amountLeft ? AMOUNT_FORMAT_ERROR : null) : shown("amount") ? SESSION_ERRORS.amount : null;
 
   const outcome = useMemo(() => theoreticalSessionOutcome({ ...gameFields(draft.game), hours: draft.hours }), [draft.game, draft.hours]);
   const low = outcome.tripEv - 1.96 * outcome.standardDeviation;
   const high = outcome.tripEv + 1.96 * outcome.standardDeviation;
-  const entered = draft.amount !== null && (draft.amount === 0 || draft.direction !== null);
-  const result = signedResult(draft.direction, draft.amount ?? 0);
+  const amount = typeof draft.amount === "number" ? draft.amount : null;
+  const entered = amount !== null && (amount === 0 || draft.direction !== null);
+  const result = signedResult(draft.direction, amount ?? 0);
   const verdict = classifySessionAssessment(outcome.standardDeviation > 0 ? (result - outcome.tripEv) / outcome.standardDeviation : null);
   const others = useMemo(() => sessions.filter((session) => session.id !== sessionId), [sessions, sessionId]);
   const casinos = useMemo(() => casinoNames(others, presets), [others, presets]);
@@ -101,7 +108,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
     sessionForm.submitted();
     setAttempted(true);
     if (errors.length) {
-      sessionForm.validationFailed(errors[0] === "date" ? "date" : "result", errors[0] === "date" ? "invalid_date" : "missing");
+      sessionForm.validationFailed(errors[0] === "date" ? "date" : "result", errors[0] === "date" ? "invalid_date" : errors[0] === "amount" && amountTypo ? "not_a_number" : "missing");
       focusField(errors[0]);
       return;
     }
@@ -256,18 +263,23 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
               />
             </div>
             <div data-field="amount">
-              <OptionalNumberField
+              <AmountField
                 label="Amount won or lost"
-                prefix="$"
                 analyticsField="actual_net_result"
-                invalid={shown("amount")}
+                invalid={amountError !== null}
+                describedBy={amountError ? amountErrorId : undefined}
                 value={draft.amount}
-                // A typed minus sign means a loss: keep the size, choose Lost.
-                onValueChange={(amount) => amount !== null && amount < 0 ? update({ amount: -amount, direction: "lost" }) : update({ amount })}
+                onBlur={() => setAmountLeft(true)}
+                onValueChange={(next) => {
+                  setAmountLeft(false);
+                  // A typed minus sign means a loss: keep the size, choose Lost.
+                  if (typeof next === "number" && next < 0) update({ amount: -next, direction: "lost" });
+                  else update({ amount: next });
+                }}
               />
             </div>
           </div>
-          {shown("amount") && <FieldError>{SESSION_ERRORS.amount}</FieldError>}
+          {amountError && <FieldError id={amountErrorId}>{amountError}</FieldError>}
           {shown("direction") && <FieldError>{SESSION_ERRORS.direction}</FieldError>}
           <p className="text-xs leading-5 text-[var(--ink-muted)]">What you left with minus what you bought in. Enter 0 if you broke even.</p>
           <div className="border-t border-[var(--rule)] pt-3 sm:hidden">{summary}</div>
