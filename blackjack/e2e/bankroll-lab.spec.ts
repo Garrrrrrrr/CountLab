@@ -169,6 +169,32 @@ test("the optimal ramp shows its trade-off before it's built", async ({ page }, 
   await expect(tradeOff).toHaveCount(0);
 });
 
+test("editing inputs is kept after Back from a scenario link, and a missing link keeps the draft", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await openLab(page);
+  await (await saveScenario(page, "Trip")).getByRole("button", { name: "Done" }).click();
+  const [saved] = await stored(page, TEMPLATES_KEY);
+  await openLab(page, `/cvcx/?scenario=${saved.id}`);
+  await expect(page.getByText("Loaded “Trip”.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cvcx\/(#results)?$/);
+  const bankroll = page.getByLabel("Available bankroll", { exact: true });
+  await bankroll.fill("33333");
+  await page.getByRole("navigation").getByRole("link", { name: "Dashboard", exact: true }).first().click();
+  await expect(page).toHaveURL(/\/dashboard\/?$/);
+  await page.goBack();
+  await expect(bankroll).toHaveValue("33333");
+  await expect(page.getByText("Scenario: Trip · edited")).toBeVisible();
+
+  await bankroll.fill("12345");
+  await openLab(page, "/cvcx/?scenario=missing");
+  await expect(page.getByText("That scenario isn't saved on this account or device.")).toBeVisible();
+  await expect(page).toHaveURL(/\/cvcx\/$/);
+  await expect(bankroll).toHaveValue("12345");
+  await openLab(page);
+  await expect(bankroll).toHaveValue("12345");
+});
+
 test("editing a step reprices the setup", async ({ page }) => {
   await prepare(page);
   await openLab(page);
@@ -448,10 +474,11 @@ test("hash links pick a step on phones and scroll to it on desktop, keeping the 
     await expect(page.getByRole("heading", { name: "Bet ramp", exact: true })).toBeInViewport();
     return;
   }
-  await openLab(page, "/cvcx/?scenario=missing#ramp");
+  // The handled scenario parameter is dropped once reported missing; any other query survives tab changes.
+  await openLab(page, "/cvcx/?scenario=missing&ref=trip#ramp");
   await expect(page.getByRole("tab", { name: "Bet ramp" })).toHaveAttribute("aria-selected", "true");
   await page.getByRole("tab", { name: "Results" }).click();
-  await expect(page).toHaveURL(/\/cvcx\/\?scenario=missing#results$/);
+  await expect(page).toHaveURL(/\/cvcx\/\?ref=trip#results$/);
 });
 
 test("inputs keep their analytics names and disclosures their section keys", async ({ page }, testInfo) => {

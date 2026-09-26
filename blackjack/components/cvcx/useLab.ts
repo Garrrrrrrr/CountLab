@@ -213,31 +213,34 @@ export function useLab() {
 
   /* ------------------------------ Arrivals ------------------------------- */
 
-  const hasArrivalParams = () => {
+  /** Whether the URL carries a saved scenario or a directory game that will replace the working inputs. */
+  const replacingArrival = () => {
     const params = new URLSearchParams(location.search);
-    return Boolean(params.get("scenario") || (params.get("directoryLocation") && params.get("directoryGame")));
+    const scenario = params.get("scenario");
+    return Boolean((scenario && cvcxLibrary.templates().some((template) => template.id === scenario)) || (params.get("directoryLocation") && params.get("directoryGame")));
   };
 
   // Working inputs survive leaving the page, for this tab and account only.
-  const draftReady = useRef(false);
+  const draftWritable = useRef(false);
   const latestDraft = useRef<LabDraft | null>(null);
   useClientLayoutEffect(() => {
-    if (!hasArrivalParams()) {
-      try {
-        const draft = parseLabDraft(sessionStorage.getItem(labDraftKey(accountScope())));
-        if (draft) {
-          setConfig(draft.config);
-          setActive(draft.active && cvcxLibrary.templates().some((template) => template.id === draft.active!.id) ? draft.active : null);
-          setDraftName(draft.draftName);
-        }
-      } catch {
-        // Storage can be unavailable (private windows, blocked site data); start from the example.
+    if (replacingArrival()) return;
+    try {
+      const draft = parseLabDraft(sessionStorage.getItem(labDraftKey(accountScope())));
+      if (draft) {
+        setConfig(draft.config);
+        setActive(draft.active && cvcxLibrary.templates().some((template) => template.id === draft.active!.id) ? draft.active : null);
+        setDraftName(draft.draftName);
       }
+    } catch {
+      // Storage can be unavailable (private windows, blocked site data); start from the example.
     }
-    draftReady.current = true;
+    draftWritable.current = true;
   }, []);
   useEffect(() => {
-    if (!draftReady.current) return;
+    // While an arrival is still resolving (or if it fails), the untouched example must not overwrite the stored draft.
+    if (!draftWritable.current && config === DEFAULT_LAB_CONFIG && active === null && !draftName) return;
+    draftWritable.current = true;
     const draft: LabDraft = { version: 1, config, active, draftName };
     latestDraft.current = draft;
     const timer = setTimeout(() => writeDraft(draft), 250);
@@ -263,6 +266,10 @@ export function useLab() {
     setStepBoundaries(null);
   };
   const arrival = useScenarioFromUrl((template) => loadTemplate(template, "url"));
+  // Once a linked scenario is applied or found missing, Back and reload return to the working draft instead of applying it again.
+  useEffect(() => {
+    if (arrival.status === "loaded" || arrival.status === "missing") dropSearchParams("scenario");
+  }, [arrival.status]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -273,6 +280,8 @@ export function useLab() {
     setDirectoryHandoff({ title: "Loading directory game", detail: "Checking the published rules before applying them.", error: false });
     getDirectoryLocation(locationId).then((data) => {
       if (!alive) return;
+      // Applied or definitely unavailable: Back and reload return to the working draft. A failed fetch keeps them, so reload retries.
+      dropSearchParams("directoryLocation", "directoryGame");
       const game = data?.games.find((item) => item.id === gameId);
       if (!data || !game) {
         setDirectoryHandoff({ title: "Directory game unavailable", detail: "This game is unpublished or no longer available. The lab is showing its own default scenario.", error: true });
@@ -462,6 +471,14 @@ export function useLab() {
 }
 
 export type Lab = ReturnType<typeof useLab>;
+
+/** Removes arrival parameters that have been handled, keeping any others and the hash. */
+function dropSearchParams(...names: string[]) {
+  const url = new URL(location.href);
+  if (!names.some((name) => url.searchParams.has(name))) return;
+  for (const name of names) url.searchParams.delete(name);
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 function writeDraft(draft: LabDraft) {
   try {
