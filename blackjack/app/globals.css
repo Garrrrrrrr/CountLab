@@ -622,3 +622,196 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .surface { break-inside: avoid; box-shadow: none; }
   .overflow-x-auto { overflow: visible; }
 }
+
+/* === reference-charts === */
+/* The strategy charts: /reference, /reference/deviations, /reference/h17-chart. */
+
+/* Two tables side by side only when the content area leaves room for the
+   index chips (the sidebar narrows it at 1024px); three on very wide screens. */
+.ref-charts { container-type: inline-size; }
+@container (min-width: 50rem) {
+  .ref-charts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (min-width: 84rem) {
+  .ref-charts-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Section anchors clear the header and the sticky rules bar. Below 640px the
+   page's scroll-padding already clears the header. */
+.ref-anchor { scroll-margin-top: calc(4rem + env(safe-area-inset-top) + var(--reference-toolbar-h, 3.5rem) + .75rem); }
+@media (max-width: 639px) {
+  .ref-anchor { scroll-margin-top: calc(var(--reference-toolbar-h, 3.5rem) + .75rem); }
+}
+
+/* Phones: the key follows the first table, so the whole table fits the first screen. */
+@media (max-width: 767px) {
+  .ref-charts-grid > .ref-key-slot { order: 1; }
+  .ref-charts-grid > section ~ section { order: 2; }
+}
+
+.ref-hand-col { width: 34px; }
+@media (min-width: 768px) { .ref-hand-col { width: 40px; } }
+@media (max-width: 359px) { .ref-hand-col { width: 28px; } }
+
+/* Cells: 32px rows for basic strategy; index rows are taller for the chip. */
+.ref-cell { font-size: 13px; outline: none; }
+.ref-cell-basic { height: 32px; }
+.ref-cell-index { height: 44px; }
+@media (min-width: 768px) {
+  .ref-cell { font-size: 14px; }
+  .ref-cell-index { height: 40px; }
+}
+@media (hover: hover) {
+  .ref-cell:hover { filter: brightness(1.12); }
+}
+
+/* Two-tone rings read against every fill and both themes; they paint over
+   the neighbouring cells rather than into the 2px gap. */
+.ref-cell:focus-visible {
+  outline: none;
+  z-index: 10;
+  box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 4px var(--ink);
+}
+.ref-cell[data-pinned] {
+  z-index: 11;
+  box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--paper-raised), 0 0 0 5px var(--ink);
+}
+.ref-cell[data-changed] { animation: ref-changed 1.6s ease-out; }
+@keyframes ref-changed {
+  0%, 55% { box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 4px var(--warning); }
+  100% { box-shadow: 0 0 0 2px transparent, 0 0 0 4px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ref-cell[data-changed] { animation: none; box-shadow: 0 0 0 2px var(--paper-raised), 0 0 0 4px var(--warning); }
+}
+
+/* The explained cell's row and column headers light up. */
+.ref-grid tr:has(> td > [data-active]) > th,
+.ref-grid:has(td:nth-child(2) > [data-active]) th[data-col="0"],
+.ref-grid:has(td:nth-child(3) > [data-active]) th[data-col="1"],
+.ref-grid:has(td:nth-child(4) > [data-active]) th[data-col="2"],
+.ref-grid:has(td:nth-child(5) > [data-active]) th[data-col="3"],
+.ref-grid:has(td:nth-child(6) > [data-active]) th[data-col="4"],
+.ref-grid:has(td:nth-child(7) > [data-active]) th[data-col="5"],
+.ref-grid:has(td:nth-child(8) > [data-active]) th[data-col="6"],
+.ref-grid:has(td:nth-child(9) > [data-active]) th[data-col="7"],
+.ref-grid:has(td:nth-child(10) > [data-active]) th[data-col="8"],
+.ref-grid:has(td:nth-child(11) > [data-active]) th[data-col="9"] {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+}
+
+/* Index chips: white with a dark edge on every fill; dashed when the table's
+   rules rule the play out. Below 360px a ringed dot marks the cell instead. */
+.ref-chip {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 0 1.5px;
+  border: 1px solid rgb(2 6 23 / .6);
+  border-radius: 3px;
+  background: #fff;
+  color: #020617;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 13px;
+  letter-spacing: -.06em;
+  white-space: nowrap;
+}
+@media (min-width: 768px) {
+  .ref-chip { font-size: 10.5px; letter-spacing: -.03em; }
+}
+.ref-chip-static { margin-top: 0; vertical-align: middle; }
+.ref-chip-off { border-style: dashed; border-color: #020617; }
+@media (max-width: 359px) {
+  .ref-cell .ref-chip {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #f59e0b;
+    font-size: 0;
+    box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px #020617;
+  }
+  .ref-cell .ref-chip-off { background: #fff; }
+}
+
+/* A rose corner marks a hand the surrender table takes first. */
+.ref-flag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-top-left-radius: 4px;
+  background: linear-gradient(135deg, #e11d48 0 36%, #fff 36% 50%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Printed H17 tokens are up to three characters wide. */
+.ref-h17-cell { letter-spacing: -.02em; }
+.ref-h17-index { border-width: 2px; }
+@media (max-width: 419px) { .ref-h17-cell { font-size: 12px; } }
+@media (max-width: 359px) {
+  .ref-h17-cell { font-size: 10px; letter-spacing: -.05em; }
+  .ref-h17-index { border-width: 1px; }
+}
+
+/* The phone section rail fades at an edge with more links beyond it. */
+.ref-jump-rail[data-fade-end] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.ref-jump-rail[data-fade-start] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+.ref-jump-rail[data-fade-start][data-fade-end] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+
+/* Paper: one light card whatever the screen theme, four tables in two
+   columns, colours kept, no app chrome. */
+@media print {
+  :root:has([data-reference-page]),
+  :root:has([data-reference-page])[data-theme="dark"] {
+    color-scheme: light;
+    --paper: #fff;
+    --paper-raised: #fff;
+    --ink: #16211c;
+    --ink-muted: #3d4a42;
+    --rule: #c9d2c6;
+    --accent: #176b46;
+    --negative: #b42318;
+    --warning: #805b08;
+    --info: #236787;
+    --overlay-rgb: 22 33 28;
+    --overlay-scale: 1.6;
+  }
+  :root:has([data-reference-page]) footer { display: none !important; }
+  [data-reference-page] .ref-charts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  [data-reference-page] .ref-charts-grid > * { order: 0 !important; }
+  [data-reference-page] .ref-panel { break-inside: avoid; }
+  [data-reference-page] .ref-cell,
+  [data-reference-page] .ref-chip,
+  [data-reference-page] .ref-flag,
+  [data-reference-page] [data-tone] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  [data-reference-page] .ref-cell { font-size: 10px; box-shadow: none !important; animation: none !important; filter: none !important; }
+  [data-reference-page] .ref-cell-basic { height: 20px; }
+  [data-reference-page] .ref-cell-index { height: 27px; }
+  [data-reference-page] .ref-h17-cell { font-size: 9px; }
+  [data-reference-page] .ref-chip { margin-top: 1px; font-size: 7.5px; line-height: 9px; letter-spacing: -.04em; }
+  [data-reference-page] .ref-flag { width: 8px; height: 8px; }
+  [data-reference-page] .ref-hand-col { width: 30px; }
+  [data-reference-page] .ref-grid { border-spacing: 1px; }
+  [data-reference-page] .ref-rail { overflow: visible; }
+}
