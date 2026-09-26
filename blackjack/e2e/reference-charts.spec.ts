@@ -31,6 +31,9 @@ async function countSettingsWrites(page: Page) {
 
 const savedSurrender = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "{}").surrender, SETTINGS_KEY);
 
+/** Controls and cells respond once the page's script has hydrated; until then the switch is disabled. */
+const hydrated = (page: Page) => expect(page.getByRole("radio", { name: /^(Basic strategy|Late surrender \(LS\))$/ }).first()).toBeEnabled();
+
 const desktopOnly = (name: string) => test.skip(name !== "desktop-chromium", "Viewport-independent behaviour, covered once on desktop.");
 
 test("a visitor without an account goes from a chart to its drill as a guest", async ({ page }) => {
@@ -101,6 +104,7 @@ test("the H17 chart never rewrites a saved 'no surrender'", async ({ page }, tes
   await prepare(page, { settings: { surrender: "none" } });
   const writes = await countSettingsWrites(page);
   await page.goto("/reference/h17-chart/");
+  await hydrated(page);
   await expect(page.getByText("Your saved table has no surrender; skip the surrender table.")).toBeVisible();
   await expect(page.getByRole("radio", { name: "Late surrender (LS)" })).not.toBeChecked();
   await expect(page.getByRole("radio", { name: "Early surrender vs 10 (ES10)" })).not.toBeChecked();
@@ -119,6 +123,7 @@ test("saved rules the reader has not touched follow changes made elsewhere", asy
   desktopOnly(testInfo.project.name);
   await prepare(page);
   await page.goto("/reference/");
+  await hydrated(page);
   await expect(page.getByRole("radio", { name: "Dealer hits soft 17 (H17)" })).toBeChecked();
   await expect(page.getByLabel("11 versus dealer A: Double")).toBeVisible();
   await page.evaluate((key) => {
@@ -184,6 +189,7 @@ test("N and Shift+N step through the index plays", async ({ page }, testInfo) =>
   desktopOnly(testInfo.project.name);
   await prepare(page);
   await page.goto("/reference/deviations/");
+  await hydrated(page);
   await page.locator("[data-cell='hard:17v2']").focus();
   await page.keyboard.press("n");
   await expect(page.locator("[data-cell='hard:16v9']")).toBeFocused();
@@ -199,6 +205,7 @@ test("the focus ring stands out against every cell fill", async ({ page }, testI
   for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.goto("/reference/");
+    await hydrated(page);
     await page.locator("[data-cell='hard:12v3']").focus();
     await page.keyboard.press("ArrowLeft");
     const worst = await page.evaluate(() => {

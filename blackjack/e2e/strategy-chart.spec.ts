@@ -80,6 +80,8 @@ test("tapping a cell explains the play", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop-chromium", "Touch coverage.");
   await prepareGuest(page);
   await page.goto("/reference/deviations/");
+  // Cells explain themselves once the page's script has taken over.
+  await expect(page.getByRole("radio", { name: "With index plays", exact: true })).toBeEnabled();
   const cell = page.getByLabel("16 versus dealer 10: Hit");
   await cell.scrollIntoViewIfNeeded();
   await cell.tap();
@@ -111,6 +113,7 @@ test("index plays are ranked by value and link to their cell", async ({ page }, 
   test.skip(testInfo.project.name !== "desktop-chromium", "Desktop ranking coverage.");
   await prepareGuest(page);
   await page.goto("/reference/deviations/");
+  await expect(page.getByRole("radio", { name: "With index plays", exact: true })).toBeEnabled();
   const ranking = page.getByRole("list", { name: "Index plays ranked by value" });
   await expect(ranking.getByRole("listitem").first()).toContainText("Insurance");
   // At a late-surrender table the two-card 16 v 10 is surrendered, so the

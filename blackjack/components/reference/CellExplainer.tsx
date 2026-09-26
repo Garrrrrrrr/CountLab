@@ -33,6 +33,8 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
   const current = useRef<Active>(null);
   /** Hover previews pause while "Show on chart" scrolls the page under a resting pointer. */
   const hoverPausedUntil = useRef(0);
+  /** When the reader last pressed a key or pointer, so a delayed pin never overrides a later choice. */
+  const lastInputAt = useRef(0);
   const id = useId();
   const update = useCallback((next: Active) => {
     current.current = next;
@@ -61,7 +63,7 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
     const onPointerMove = (event: PointerEvent) => {
       if (event.pointerType === "mouse" && (event.movementX || event.movementY)) keyboardFocus = false;
     };
-    const onAnyKey = () => { keyboardFocus = true; };
+    const onAnyKey = () => { keyboardFocus = true; lastInputAt.current = Date.now(); };
     const onPointerLeave = () => {
       clearHover();
       if (current.current?.source === "hover") update(null);
@@ -86,6 +88,7 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
       update(current.current?.source === "pin" && current.current.key === key ? null : { key, source: "pin" });
     };
     const onPointerDown = (event: PointerEvent) => {
+      lastInputAt.current = Date.now();
       if (!current.current || cellFrom(event.target)) return;
       update(null);
     };
@@ -141,17 +144,20 @@ export function CellExplainer({ containerRef, render, apiRef }: { containerRef: 
         const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
         hoverPausedUntil.current = Date.now() + 1500;
         // Focus and pin once the scroll settles, so the card lands beside the
-        // cell rather than where it was. Settling twice (the fallback timer and
-        // a late scrollend) only re-pins the same cell.
+        // cell rather than where it was. Settling again (a late scrollend or
+        // the fallback timers, for browsers without it) re-pins the same cell
+        // if the card closed because the cell was still off-screen.
+        const requestedAt = Date.now();
         const settle = () => {
-          removeEventListener("scrollend", settle);
+          if (lastInputAt.current > requestedAt) return;
           cell.focus({ preventScroll: true });
           update({ key, source: "pin" });
         };
         cell.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "auto" });
         if (!smooth) { settle(); return; }
-        addEventListener("scrollend", settle);
+        addEventListener("scrollend", settle, { once: true });
         setTimeout(settle, 700);
+        setTimeout(() => { removeEventListener("scrollend", settle); settle(); }, 1500);
       },
     };
     return () => { apiRef.current = null; };

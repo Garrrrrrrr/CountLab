@@ -25,7 +25,7 @@ function PlayRow({ play, rank, max, hidden, onShow, disabled }: { play: RankedPl
       <span className="pt-0.5 font-data text-sm font-semibold text-[var(--ink-muted)] lg:pt-0 print:text-[9px]">{rank ?? "–"}</span>
       <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <b className="font-data text-sm print:text-[9px]">{play.label}</b>
-        <span className="text-xs text-[var(--ink-muted)] print:text-[8px]">{play.kind}</span>
+        {play.kind !== play.label && <span className="text-xs text-[var(--ink-muted)] print:text-[8px]">{play.kind}</span>}
         {play.chip && <span className={`ref-chip ref-chip-static ${play.available ? "" : "ref-chip-off"}`}>{play.chip}</span>}
       </span>
       <span className="col-span-3 col-start-1 row-start-2 min-w-0 text-sm leading-5 text-[var(--ink)] sm:col-span-2 sm:col-start-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto print:col-span-1 print:col-start-auto print:row-start-auto print:text-[9px] print:leading-4">
