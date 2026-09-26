@@ -503,20 +503,30 @@ test("bankrolls are managed in a sheet without window.prompt", async ({ page }, 
   await sheet.getByLabel("New bankroll name").fill("Vegas");
   await sheet.getByRole("button", { name: "Create bankroll" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Bankroll “Vegas” created." })).toBeVisible();
+  // Each action leaves focus on something in the sheet, never on the page behind it.
+  await expect(sheet.getByLabel("New bankroll name")).toBeFocused();
   await sheet.getByRole("button", { name: "Rename Vegas" }).click();
   await sheet.getByLabel("Bankroll name", { exact: true }).fill("Vegas 2026");
-  await sheet.getByRole("button", { name: "Save" }).click();
+  await sheet.getByLabel("Bankroll name", { exact: true }).press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Bankroll renamed to “Vegas 2026”." })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Rename Vegas 2026" })).toBeFocused();
+  await sheet.getByRole("button", { name: "Rename Vegas 2026" }).click();
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet.getByRole("button", { name: "Rename Vegas 2026" })).toBeFocused();
   await sheet.getByRole("button", { name: "Close" }).click();
   // The new bankroll is the one in view, shown with its balance.
   await expect(page.getByRole("combobox", { name: /^Bankroll/ }).locator("option:checked")).toHaveText(/^Vegas 2026 — \$0$/);
 
   await page.getByRole("button", { name: "Manage bankrolls" }).click();
   await sheet.getByRole("button", { name: "Delete Vegas 2026" }).click();
+  await sheet.getByRole("button", { name: "Cancel" }).click();
+  await expect(sheet.getByRole("button", { name: "Delete Vegas 2026" })).toBeFocused();
+  await sheet.getByRole("button", { name: "Delete Vegas 2026" }).click();
   await expect(sheet).toContainText("move to “Main”");
   await sheet.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Bankroll “Vegas 2026” deleted." })).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Delete Main" })).toBeDisabled();
+  await expect(sheet.getByRole("button", { name: "Rename Main" })).toBeFocused();
 });
 
 test("records tabs follow the address and ignore unrelated hashes", async ({ page }, testInfo) => {
