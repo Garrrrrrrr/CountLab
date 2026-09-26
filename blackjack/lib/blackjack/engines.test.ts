@@ -69,6 +69,19 @@ describe("hands", () => {
     expect(isSoft(h)).toBe(true);
     expect(calculateHandValue([c("A"), c("A"), c("9")])).toBe(21);
   });
+  it("counts a hand with several aces as soft while one ace can still be 11", () => {
+    expect(isSoft([c("6"), c("A"), c("A")])).toBe(true); // soft 18
+    expect(isSoft([c("A"), c("A"), c("5")])).toBe(true); // soft 17: an H17 dealer hits
+    expect(isSoft([c("A"), c("A")])).toBe(true); // soft 12
+    expect(isSoft([c("A"), c("A"), c("9")])).toBe(true); // soft 21
+    expect(isSoft([c("6"), c("A"), c("A"), c("Q")])).toBe(false); // hard 18
+    expect(isSoft([c("K"), c("6")])).toBe(false);
+  });
+  it("plays 6,A,A as soft 18: hit against an ace under 6-deck H17", () => {
+    const decision = getBasicStrategyDecision({ playerCards: [c("6"), c("A"), c("A", "hearts")], dealerUpcard: c("A"), rules: DEFAULT_RULES });
+    expect(decision.action).toBe("H");
+    expect(decision.explanation).toContain("soft hand");
+  });
   it("detects blackjack and pairs", () => {
     expect(isBlackjack([c("A"), c("K")])).toBe(true);
     expect(isPair([c("8"), c("8", "hearts")])).toBe(true);
