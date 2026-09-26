@@ -431,5 +431,5 @@ test("a drill's chart link opens the cell it names", async ({ page }) => {
   await expect(cell).toHaveAttribute("data-pinned", "");
   await expect(cell).toBeInViewport();
   await page.goto("/reference/deviations/?section=surrender&hand=15&dealer=A");
-  await expect(page.locator("[data-cell='surrender:15vA']")).toBeFocused();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-cell"))).toBe("surrender:15vA");
 });

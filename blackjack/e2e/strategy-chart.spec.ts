@@ -145,6 +145,7 @@ test("H17 index cells keep AA contrast in both themes", async ({ page }) => {
   const cell = page.getByLabel("16 versus dealer 9: The chart prints 4+");
   for (const theme of ["light", "dark"]) {
     await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
-    expect(await contrast(cell), theme).toBeGreaterThanOrEqual(4.5);
+    // Polled: a read taken while the theme change is still applying can see both colours as one.
+    await expect.poll(() => contrast(cell), { message: theme }).toBeGreaterThanOrEqual(4.5);
   }
 });
