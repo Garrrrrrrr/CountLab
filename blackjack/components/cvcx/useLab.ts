@@ -133,6 +133,11 @@ export function useLab() {
   const bulk = (patch: Partial<LabConfig>, message: string, next?: { active: ActiveScenario | null }) => {
     const previous = changedFields(config, patch);
     const previousActive = active;
+    // Nothing to change (a reset of a ramp that is already the preset): say so, offer no Undo.
+    if (!Object.keys(previous).length && (!next || next.active?.id === active?.id)) {
+      announce(message);
+      return;
+    }
     retireUndo();
     setConfig((current) => ({ ...current, ...patch }));
     setStepBoundaries(null);
