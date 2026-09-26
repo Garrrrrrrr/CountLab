@@ -70,6 +70,9 @@ const session = (overrides: Record<string, unknown> = {}) => ({
 });
 const daysAgo = (days: number) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 const aria = { id: "aria", name: "Aria", createdAt: new Date().toISOString(), rules, ramp };
+/** A Game & Bankroll Lab scenario, as saved in the cvcx template library. */
+const scenarioConfig = { decks: 6, dealt: 5, bankroll: 20000, handsPerHour: 90, hours: 12, targetRisk: 0.05, maxSpread: 12, wongInAt: null, rampName: "1-12", ramp, chipIncrement: 5, baseBet: 40, dealerHitsSoft17: true, doubleAfterSplit: true, resplitAces: true, lateSurrender: true, europeanNoHoleCard: false, blackjackPayout: 1.5 };
+const weekend = { id: "weekend", name: "Weekend 6-deck game", createdAt: new Date().toISOString(), config: scenarioConfig };
 
 async function prepareGuest(page: Page, overrides: Record<string, unknown> = {}) {
   await seedJournal(page, { sessions: [session(overrides)], presets: [aria] });
@@ -439,20 +442,18 @@ test("a help tip inside a sheet closes on Escape without closing the sheet", asy
 
 test("a Lab scenario link opens the log form with the scenario loaded, once", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  const config = { decks: 6, dealt: 5, bankroll: 20000, handsPerHour: 90, hours: 12, targetRisk: 0.05, maxSpread: 12, wongInAt: null, rampName: "1-12", ramp, chipIncrement: 5, baseBet: 40, dealerHitsSoft17: true, doubleAfterSplit: true, resplitAces: true, lateSurrender: true, europeanNoHoleCard: false, blackjackPayout: 1.5 };
   await seedJournal(page, {
     sessions: [session()],
-    templates: [
-      { id: "weekend", name: "Weekend 6-deck game", createdAt: new Date().toISOString(), config },
-      { id: "enhc", name: "European game", createdAt: new Date().toISOString(), config: { ...config, europeanNoHoleCard: true } },
-    ],
+    templates: [weekend, { id: "enhc", name: "European game", createdAt: new Date().toISOString(), config: { ...scenarioConfig, europeanNoHoleCard: true } }],
   });
   await page.goto("/journal/?scenario=weekend");
 
   const sheet = page.getByRole("dialog", { name: "Log session" });
   await expect(sheet).toContainText("Loaded “Weekend 6-deck game” from the Lab");
   await expect(sheet).toContainText("$40 unit");
-  await expect(sheet.getByRole("link", { name: "Plan trip" }).first()).toHaveAttribute("href", /\/trip-planner\/?\?scenario=weekend/);
+  // The onward links appear once, in the callout, not again under the game.
+  await expect(sheet.getByRole("link", { name: "Plan trip" })).toHaveCount(1);
+  await expect(sheet.getByRole("link", { name: "Plan trip" })).toHaveAttribute("href", /\/trip-planner\/?\?scenario=weekend/);
   await sheet.getByRole("radio", { name: "Won" }).check();
   await sheet.getByLabel("Amount won or lost").fill("300");
   await sheet.getByRole("button", { name: "Save session" }).click();

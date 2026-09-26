@@ -22,13 +22,13 @@ import { FieldGroupTitle } from "./parts";
 
 const MAX_VENUES = 20;
 
-/** Links that carry a Lab scenario on to the other tools that read `?scenario=`. */
+/** Links that carry a Lab scenario on to the other tools that read `?scenario=`. Full-size touch targets on phones. */
 export function ScenarioLinks({ id }: { id: string }) {
   return (
-    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span>Open in:</span>
+    <span className="inline-flex flex-wrap items-center gap-x-1">
+      <span className="mr-1">Open in:</span>
       {SCENARIO_DESTINATIONS.filter(([, href]) => href !== "/journal").map(([label, href]) => (
-        <Link key={href} href={scenarioHref(href, id)} className="inline-flex min-h-9 items-center font-semibold text-[var(--accent)] underline underline-offset-2 hover:no-underline">{label}</Link>
+        <Link key={href} href={scenarioHref(href, id)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 font-semibold text-[var(--accent)] underline underline-offset-2 hover:no-underline [@media(pointer:fine)]:min-h-9 [@media(pointer:fine)]:min-w-0 [@media(pointer:fine)]:px-1">{label}</Link>
       ))}
     </span>
   );
@@ -39,7 +39,7 @@ export function ScenarioLinks({ id }: { id: string }) {
  * on demand. It starts from the latest session (or a saved venue, Lab
  * scenario or Simulator setup), so a typical log never opens it.
  */
-export function GameEditor({ game, source, onGame, location, onLocation, hours, presets, scenarios, setups, defaultOpen }: {
+export function GameEditor({ game, source, onGame, location, onLocation, hours, presets, scenarios, setups, defaultOpen, linkedScenarioId }: {
   game: GameDraft;
   source: GameSource;
   onGame: (game: GameDraft, source: GameSource) => void;
@@ -51,6 +51,8 @@ export function GameEditor({ game, source, onGame, location, onLocation, hours, 
   scenarios: CvcxTemplate[];
   setups: SimulationTemplate[];
   defaultOpen: boolean;
+  /** A scenario whose onward links are already on screen, so the source line doesn't repeat them. */
+  linkedScenarioId?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [venueName, setVenueName] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export function GameEditor({ game, source, onGame, location, onLocation, hours, 
             <p><i className="fa-solid fa-clock-rotate-left mr-1.5" aria-hidden="true" />{sourceLabel(source)}</p>
             {venueStatus && <p className="mt-0.5 font-medium text-[var(--accent)]"><i className="fa-solid fa-check mr-1.5" aria-hidden="true" />{venueStatus}</p>}
           </div>
-          {source.kind === "scenario" && <div className="mt-1 text-xs text-[var(--ink-muted)]"><ScenarioLinks id={source.id} /></div>}
+          {source.kind === "scenario" && source.id !== linkedScenarioId && <div className="mt-1 text-xs text-[var(--ink-muted)]"><ScenarioLinks id={source.id} /></div>}
         </div>
         <GhostButton
           type="button"

@@ -305,6 +305,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
           scenarios={scenarios}
           setups={setups}
           defaultOpen={sessions.length === 0}
+          linkedScenarioId={scenarioLoaded?.id}
         />
         {mode === "new" && <GhostButton type="button" className="w-full sm:hidden" onClick={() => save(true)}>Save and log another</GhostButton>}
       </form>
