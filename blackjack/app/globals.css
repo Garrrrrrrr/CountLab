@@ -622,3 +622,19 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .surface { break-inside: avoid; box-shadow: none; }
   .overflow-x-auto { overflow: visible; }
 }
+
+/* === counting-drills === */
+/* While a counting drill is being played on a phone or tablet, the drill owns
+   the screen: the tab bar steps aside (End drill is the way out), so the
+   keypad and its submit key are never under it. Scrolling keeps a focused
+   answer clear of the sticky header and progress bar. */
+@media (max-width: 1023px) {
+  body:has([data-counting-play]) nav[aria-label="Mobile navigation"] { display: none; }
+}
+html:has([data-counting-play]) { scroll-padding-top: calc(8.5rem + env(safe-area-inset-top)); }
+@media (max-width: 639px) {
+  /* The shared phone rule sizes every h1 for page titles; the play title is a compact label. */
+  [data-counting-play] [data-drill-phase="play"] h1 { font-size: 1.125rem !important; }
+  /* Answers stay large (and above 16px, so iOS never zooms into the field). */
+  [data-counting-drill] input[data-answer-field] { font-size: 1.75rem !important; }
+}

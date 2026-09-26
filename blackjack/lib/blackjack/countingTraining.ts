@@ -333,9 +333,10 @@ function runningLatest(session: Session | undefined) {
  */
 export function countingBenchmarkDetails(sessions: Session[]): BenchmarkDetail[] {
   const { checks } = countingMastery(sessions);
+  /** Only when a counted session exists and a newer one was left out. */
   const noteFor = (drill: BenchmarkDrill, counted: Session | undefined, why: string) => {
     const newest = sessions.find((session) => session.drill === drill);
-    return newest && newest !== counted ? why : undefined;
+    return counted && newest && newest !== counted ? why : undefined;
   };
   const running = latestQualifying(sessions, "Running Count");
   const tc = latestQualifying(sessions, "True Count");

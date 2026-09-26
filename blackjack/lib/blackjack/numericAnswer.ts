@@ -47,3 +47,6 @@ export function applyKey(value: string, key: string, kind: AnswerKind) {
   // Six characters is more than any count or deck estimate needs.
   return value.length >= 6 ? value : `${value}${key}`;
 }
+
+/** A signed count for display, with a typographic minus: "+3", "0", "−2". */
+export const displaySigned = (value: number) => (value > 0 ? `+${value}` : value < 0 ? `\u2212${Math.abs(value)}` : "0");
