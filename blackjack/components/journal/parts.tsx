@@ -44,14 +44,14 @@ export const toneOf = (value: number) => value > 0 ? "good" as const : value < 0
 
 export type KeyValue = { label: string; value: ReactNode; sub?: ReactNode; help?: ReactNode };
 
-/** Dense label-and-value pairs in a definition list; one column on phones. */
+/** Dense label-and-value pairs in a definition list. */
 export function KeyValueList({ items, title, columns = 2, className = "" }: { items: readonly KeyValue[]; title?: string; columns?: 1 | 2 | 3; className?: string }) {
   const titleId = useId();
-  const grid = columns === 3 ? "sm:grid-cols-2 xl:grid-cols-3" : columns === 2 ? "sm:grid-cols-2" : "";
+  const grid = columns === 3 ? "grid-cols-2 xl:grid-cols-3" : columns === 2 ? "grid-cols-2" : "";
   return (
     <div className={`min-w-0 ${className}`}>
       {title && <h3 id={titleId} className="mb-2 text-xs font-semibold uppercase tracking-[.1em] text-[var(--ink-muted)]">{title}</h3>}
-      <dl aria-labelledby={title ? titleId : undefined} className={`grid gap-x-6 gap-y-3 ${grid}`}>
+      <dl aria-labelledby={title ? titleId : undefined} className={`grid gap-x-4 gap-y-3 sm:gap-x-6 ${grid}`}>
         {items.map((item) => (
           <div key={item.label} className="min-w-0 border-b border-[var(--rule)] pb-2">
             <dt className="flex items-center gap-1 text-xs text-[var(--ink-muted)]">{item.label}{item.help && <HelpTip label={item.label.toLowerCase()}>{item.help}</HelpTip>}</dt>

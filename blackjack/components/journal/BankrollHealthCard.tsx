@@ -44,7 +44,7 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
         title="Provisional: no starting bankroll recorded"
         action={<GhostButton size="compact" onClick={onStartingBankroll}><i className="fa-solid fa-plus mr-2 text-xs" aria-hidden="true" />Record starting bankroll</GhostButton>}
       >
-        Your bankroll is only your session results ({signedMoney(results)}). {verdict ? `At that size: ${verdict}` : ""} Record what you set aside for play to get a real risk of ruin.
+        Your bankroll is only your session results ({signedMoney(results)}).{verdict ? ` ${verdict}` : ""} Record what you set aside for play to get a real risk of ruin.
       </Callout>
     );
   } else if (!health) {
@@ -71,7 +71,7 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
         sub={<>{breakdown || "Nothing recorded yet"}{unit ? <><br />{Math.max(0, Math.floor(bankroll / Math.max(0.01, unit))).toLocaleString("en-US")} units of {money(unit, unit % 1 ? 2 : 0)}</> : null}</>}
       />
       {health && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-2">
           <StatTile
             size="sm"
             label="Risk of ruin"
@@ -89,7 +89,7 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
           />
           <StatTile
             size="sm"
-            className="col-span-2"
+            className="min-[360px]:col-span-2 sm:col-span-1 xl:col-span-2"
             label="Expected per hour"
             value={signedMoney(health.hourlyEv)}
             tone={health.hourlyEv > 0 ? "good" : health.hourlyEv < 0 ? "bad" : "neutral"}

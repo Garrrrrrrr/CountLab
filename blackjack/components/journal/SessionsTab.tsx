@@ -20,7 +20,7 @@ function DateCell({ date }: { date: string }) {
 }
 
 /** Past sessions, searchable and filterable, each opening its details. */
-export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, showBankroll, period, onShowAllTime, onOpen, onEdit, onLog }: {
+export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, showBankroll, period, onShowAllTime, onOpen, onEdit }: {
   /** Sessions in the current bankroll and period. */
   sessions: JournalSession[];
   /** Sessions in the current bankroll over all time. */
@@ -32,7 +32,6 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
   onShowAllTime: () => void;
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
-  onLog: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ResultFilter>("all");
@@ -50,7 +49,8 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
   }, [status, filtering]);
 
   if (lifetimeCount === 0) {
-    return <EmptyState icon="fa-book-open" title="No sessions yet" description="Log your first session after you play." action={<GhostButton onClick={onLog}>Log your first session</GhostButton>} />;
+    // The overview above already offers the first steps, so this stays a plain note.
+    return <EmptyState icon="fa-book-open" title="No sessions yet" description="Log your first session after you play." />;
   }
   if (sorted.length === 0) {
     return <EmptyState icon="fa-calendar-xmark" title={`No sessions in ${periodPhrase(period)}.`} description={`You have ${plural(lifetimeCount, "session")} in all.`} action={<GhostButton onClick={onShowAllTime}>Show all time</GhostButton>} />;

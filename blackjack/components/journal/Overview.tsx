@@ -36,10 +36,10 @@ export function GetStarted({ bankrollName, onCash, onLog, onImport }: { bankroll
 export function OverviewSkeleton({ message }: { message?: string }) {
   const block = "animate-pulse rounded-xl bg-overlay/[.07] motion-reduce:animate-none";
   return (
-    <div aria-busy="true" className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+    <div aria-busy="true" className="grid gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <Panel className="grid gap-3"><div className={`${block} h-6 w-40`} /><div className={`${block} h-24`} /><div className="grid grid-cols-2 gap-3"><div className={`${block} h-20`} /><div className={`${block} h-20`} /></div></Panel>
       <Panel className="grid gap-3"><div className={`${block} h-6 w-48`} /><div className={`${block} h-64`} /></Panel>
-      <p role="status" className="text-sm text-[var(--ink-muted)] lg:col-span-2">{message ?? "Loading your journal…"}</p>
+      <p role="status" className="text-sm text-[var(--ink-muted)] xl:col-span-2">{message ?? "Loading your journal…"}</p>
     </div>
   );
 }

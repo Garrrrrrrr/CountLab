@@ -80,24 +80,23 @@ export function SessionDetailsSheet({ session, outcome, bankrollName, onEdit, on
 
   const running = simulation.status === "running";
   const simulateButton = (className = "") => (
-    <GhostButton type="button" className={className} disabled={running} aria-busy={running || undefined} onClick={() => simulation.status === "done" ? setView("shoes") : void simulate()}>
+    <GhostButton type="button" size="compact" className={`whitespace-nowrap ${className}`} disabled={running} aria-busy={running || undefined} onClick={() => simulation.status === "done" ? setView("shoes") : void simulate()}>
       <i className={`fa-solid ${running ? "fa-spinner motion-safe:animate-spin" : "fa-shuffle"} mr-2 text-xs`} aria-hidden="true" />{running ? "Simulating…" : "Simulate shoes"}
     </GhostButton>
   );
-  const shareButton = (className = "") => <GhostButton type="button" className={className} onClick={onShare}><i className="fa-solid fa-share-nodes mr-2 text-xs" aria-hidden="true" />Share image</GhostButton>;
-  const deleteButton = (className = "") => <GhostButton type="button" className={`text-[var(--negative)] ${className}`} onClick={onDelete}><i className="fa-solid fa-trash mr-2 text-xs" aria-hidden="true" />Delete</GhostButton>;
-  const editButton = (className = "") => <Button type="button" enterAction={false} className={className} onClick={onEdit}><i className="fa-solid fa-pen mr-2 text-xs" aria-hidden="true" />Edit session</Button>;
+  const shareButton = (className = "") => <GhostButton type="button" size="compact" className={`whitespace-nowrap ${className}`} onClick={onShare}><i className="fa-solid fa-share-nodes mr-2 text-xs" aria-hidden="true" />Share image</GhostButton>;
+  const deleteButton = (className = "") => <GhostButton type="button" size="compact" className={`shrink-0 whitespace-nowrap text-[var(--negative)] ${className}`} onClick={onDelete}><i className="fa-solid fa-trash mr-2 text-xs" aria-hidden="true" />Delete</GhostButton>;
+  const editButton = (className = "") => <Button type="button" enterAction={false} className={`whitespace-nowrap ${className}`} onClick={onEdit}><i className="fa-solid fa-pen mr-2 text-xs" aria-hidden="true" />Edit session</Button>;
 
   const footer = view === "summary" ? (
     <>
       <div className="hidden items-center justify-between gap-2 sm:flex">
         {deleteButton()}
-        <div className="flex flex-wrap justify-end gap-2">{shareButton()}{simulateButton()}{editButton()}</div>
+        <div className="flex items-center justify-end gap-2">{shareButton()}{simulateButton()}{editButton()}</div>
       </div>
       <div className="grid gap-2 sm:hidden">
-        {editButton("w-full")}
+        <div className="flex gap-2">{editButton("flex-1")}{deleteButton()}</div>
         <div className="grid grid-cols-2 gap-2">{shareButton("px-2")}{simulateButton("px-2")}</div>
-        {deleteButton("w-full")}
       </div>
     </>
   ) : undefined;

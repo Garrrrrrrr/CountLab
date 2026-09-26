@@ -329,6 +329,44 @@ test("Enter opens the log form and never logs by itself", async ({ page }, testI
   expect(await stored(page)).toEqual(before);
 });
 
+test("each bankroll remembers its own game and new sessions land in the chosen bankroll", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await seedJournal(page, {
+    bankrolls: [
+      { id: "main", createdAt: new Date(0).toISOString(), name: "Main" },
+      { id: "trip", createdAt: new Date(1000).toISOString(), name: "Trip" },
+    ],
+    sessions: [
+      session({ id: "home", bankrollId: "main", bettingUnit: 25, date: daysAgo(1), notes: undefined }),
+      session({ id: "away", bankrollId: "trip", bettingUnit: 100, date: daysAgo(3), location: "Wynn", notes: undefined }),
+    ],
+  });
+  await page.goto("/journal/");
+  await page.getByRole("combobox", { name: /^Bankroll/ }).selectOption("trip");
+  await page.getByRole("button", { name: "Log session" }).click();
+  const sheet = page.getByRole("dialog", { name: "Log session" });
+  await expect(sheet).toContainText("$100 unit");
+  await expect(sheet.getByRole("combobox", { name: /^Bankroll/ })).toHaveValue("trip");
+  await sheet.getByRole("radio", { name: "Won" }).check();
+  await sheet.getByLabel("Amount won or lost").fill("500");
+  await sheet.getByRole("button", { name: "Save session" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Session logged." })).toBeVisible();
+  expect((await stored(page))[0]).toMatchObject({ bankrollId: "trip", bettingUnit: 100, netResult: 500 });
+
+  // Editing can move a session to another bankroll; the toast says it left the view.
+  await page.getByRole("row").filter({ hasText: "Wynn" }).getByRole("button", { name: /Details for/ }).click();
+  await page.getByRole("dialog", { name: /Session · / }).getByRole("button", { name: "Edit session" }).click();
+  const edit = page.getByRole("dialog", { name: "Edit session" });
+  await edit.getByRole("combobox", { name: /^Bankroll/ }).selectOption("main");
+  await edit.getByRole("button", { name: "Save changes" }).click();
+  const toastMessage = page.getByRole("status").filter({ hasText: "which isn't the bankroll you're viewing" });
+  await expect(toastMessage).toBeVisible();
+  expect((await stored(page)).find((item: { id: string }) => item.id === "away").bankrollId).toBe("main");
+  await toastMessage.getByRole("button", { name: "Show" }).click();
+  await expect(page.getByRole("combobox", { name: /^Bankroll/ })).toHaveValue("main");
+  await expect(page.getByRole("row").filter({ hasText: "Wynn" }).getByRole("button", { name: /Details for/ })).toBeFocused();
+});
+
 test("a help tip inside a sheet closes on Escape without closing the sheet", async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
   await prepareGuest(page);

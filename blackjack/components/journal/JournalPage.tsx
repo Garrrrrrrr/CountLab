@@ -166,7 +166,7 @@ export function SessionJournal() {
   /** Confirms a save, and says so when the record lands outside what is on screen, with a way to show it. */
   const confirmSaved = (noun: string, record: { bankrollId: string; date: string }, show: () => void, inPeriod: boolean) => {
     if (bankrollId !== "all" && record.bankrollId !== bankrollId) {
-      toast({ message: `${noun} to “${scope.bankrollNames.get(record.bankrollId) ?? "another bankroll"}”, not the bankroll you're viewing.`, action: { label: "Show", onClick: () => { setSelectedBankroll(record.bankrollId); show(); } } });
+      toast({ message: `${noun} in “${scope.bankrollNames.get(record.bankrollId) ?? "another bankroll"}”, which isn't the bankroll you're viewing.`, action: { label: "Show", onClick: () => { setSelectedBankroll(record.bankrollId); show(); } } });
     } else if (!inPeriod) {
       toast({ message: `${noun}. It's outside ${periodPhrase(period)}, so it isn't shown.`, action: { label: "Show all time", onClick: () => { setPeriod("all"); show(); } } });
     } else toast({ message: `${noun}.` });
@@ -207,7 +207,11 @@ export function SessionJournal() {
 
   const detailsSession = overlay?.kind === "details" ? data.sessions.find((session) => session.id === overlay.sessionId) : undefined;
   const detailsOutcome = detailsSession && (scope.outcomes.get(detailsSession.id) ?? theoreticalSessionOutcome(detailsSession));
-  const openDetails = (id: string) => openSheet({ kind: "details", sessionId: id });
+  const openDetails = (id: string) => {
+    openSheet({ kind: "details", sessionId: id });
+    // Session notes and actions used to expand in place; opening them is still a result being expanded.
+    analytics.track("result_expanded", { feature: "session_journal", section: "session_details" });
+  };
   const openEdit = (id: string) => {
     const session = data.sessions.find((item) => item.id === id);
     if (session) openSheet({ kind: "log", mode: "edit", sessionId: id, draft: draftFromSession(session) });
@@ -259,7 +263,7 @@ export function SessionJournal() {
   if (!data.ready || syncingFirstPull) overview = <OverviewSkeleton message={syncingFirstPull ? "Loading your journal from your account…" : undefined} />;
   else if (emptyScope) overview = <GetStarted bankrollName={bankrollId !== "all" && hasAnyData ? scopeName : undefined} onCash={() => openCash("Starting bankroll")} onLog={() => openLog()} onImport={hasAnyData ? undefined : () => selectTab("data", true)} />;
   else overview = (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:items-start">
       <BankrollHealthCard
         scopeName={scopeName}
         bankroll={scope.bankroll}
@@ -344,7 +348,6 @@ export function SessionJournal() {
               onShowAllTime={() => setPeriod("all")}
               onOpen={openDetails}
               onEdit={openEdit}
-              onLog={() => openLog()}
             />
           ) : tab === "venues" ? (
             <VenuesTab
