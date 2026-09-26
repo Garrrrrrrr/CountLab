@@ -9,12 +9,23 @@ import { useStoredSessions } from "./hooks";
 
 const verdict = (accuracy: number) => accuracy >= 95 ? "Excellent. Try more speed or a harder session." : accuracy >= 85 ? "Solid. A little more practice will make it automatic." : accuracy >= 70 ? "Getting there. Look at the misses below, then go again." : "Worth another round. Slow down and focus on the misses below.";
 
+/**
+ * The cause to show for a stored miss. "Adding negatives" is the classifier's
+ * fallback guess, so it only shows when the count really was negative.
+ */
+function causeOf(mistake: Mistake) {
+  if (!mistake.category) return undefined;
+  if (mistake.category === "negative arithmetic" && !(Number(mistake.correctAnswer) < 0)) return undefined;
+  return ERROR_CATEGORY_LABEL[mistake.category] ?? mistake.category;
+}
+
 function MistakeItem({ mistake }: { mistake: Mistake }) {
+  const cause = causeOf(mistake);
   return (
     <li className="rounded-xl border border-[var(--rule)] bg-[var(--paper)] p-3.5 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <b className="text-[var(--ink)]">{mistake.question}</b>
-        {mistake.category && <span className="rounded-full border border-[var(--rule)] px-2 py-px text-[.7rem] font-semibold text-[var(--ink-muted)]">{ERROR_CATEGORY_LABEL[mistake.category] ?? mistake.category}</span>}
+        {cause && <span className="rounded-full border border-[var(--rule)] px-2 py-px text-[.7rem] font-semibold text-[var(--ink-muted)]">{cause}</span>}
       </div>
       <p className="mt-1 font-data text-[.8rem]">
         <span className="text-[var(--negative)]"><i className="fa-solid fa-xmark mr-1" aria-hidden="true" />You: {mistake.userAnswer}</span>
@@ -29,11 +40,11 @@ function MistakeItem({ mistake }: { mistake: Mistake }) {
 /** The misses, most common slip first; the first five show and the rest fold away. */
 function Mistakes({ mistakes }: { mistakes: readonly Mistake[] }) {
   const tally = new Map<string, number>();
-  for (const mistake of mistakes) if (mistake.category) tally.set(mistake.category, (tally.get(mistake.category) ?? 0) + 1);
+  for (const mistake of mistakes) { const cause = causeOf(mistake); if (cause) tally.set(cause, (tally.get(cause) ?? 0) + 1); }
   const [common, count] = [...tally].sort((a, b) => b[1] - a[1])[0] ?? [];
   return (
     <Panel>
-      <PanelHeader title={`Mistakes (${mistakes.length})`} description={common && count && count > 1 ? <>Most common slip: <b className="text-[var(--ink)]">{ERROR_CATEGORY_LABEL[common as keyof typeof ERROR_CATEGORY_LABEL] ?? common}</b> ({count})</> : undefined} />
+      <PanelHeader title={`Mistakes (${mistakes.length})`} description={common && count && count > 1 ? <>Most common slip: <b className="text-[var(--ink)]">{common}</b> ({count})</> : undefined} />
       <ol className="space-y-2.5">{mistakes.slice(0, 5).map((mistake, index) => <MistakeItem key={index} mistake={mistake} />)}</ol>
       {mistakes.length > 5 && (
         <Disclosure className="mt-3" summary={`Show all ${mistakes.length} mistakes`}>

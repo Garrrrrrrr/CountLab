@@ -381,7 +381,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
         title={DRILL}
         tiles={[
           { label: "Accuracy", value: `${result.accuracy}%`, tone: result.accuracy >= 85 ? "good" : result.accuracy >= 70 ? "neutral" : "bad" },
-          { label: "Avg answer time", value: `${(Number(metrics.averageAnswerLatency ?? 0) / 1000).toFixed(1)} s`, help: "How long you took to give your count at each check." },
+          { label: "Answer time", value: `${(Number(metrics.averageAnswerLatency ?? 0) / 1000).toFixed(1)} s`, help: "Your average time to give the count at each check." },
           { label: "Best streak", value: result.bestStreak, sub: "checks right in a row" },
           { label: "Time", value: formatClock(Number(metrics.elapsedSeconds ?? 0) * 1000), sub: "includes answering" },
           { label: "Cards", value: `${metrics.cardsSeen ?? cursor} of ${cards.length}` },

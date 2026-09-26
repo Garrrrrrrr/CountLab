@@ -87,16 +87,23 @@ export function CountingBenchmark() {
           action={<ButtonLink href="/training/running-count?session=starter">Start the starter drill</ButtonLink>}
         />
       )}
-      <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
-        <div className="grid content-start gap-5">
-          <Panel>
-            <p className="text-[.7rem] font-semibold uppercase tracking-[.08em] text-[var(--ink-muted)]">Targets met</p>
-            <p className="mt-1 font-data text-4xl font-semibold text-[var(--ink)]">{met} <span className="text-lg text-[var(--ink-muted)]">of {details.length}</span></p>
-            <ol className="mt-3 grid grid-cols-4 gap-1.5" aria-label={`${met} of ${details.length} targets met`}>
-              {details.map((detail) => <li key={detail.label} title={detail.label} className={`h-2 rounded-full ${detail.met ? "bg-[var(--accent)]" : "bg-overlay/[.1]"}`}><span className="sr-only">{detail.label}: {detail.met ? "met" : "not yet"}</span></li>)}
-            </ol>
-            <p className="mt-3 text-xs leading-5 text-[var(--ink-muted)]">A warm-up never removes a target: runs shorter than a full deck, or under 10 questions, do not count.</p>
-          </Panel>
+      {/* Phones read the tally, then the targets, then Test Out; wide screens put the targets on the right. */}
+      <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+        <Panel className="lg:col-start-1 lg:row-start-1">
+          <p className="text-[.7rem] font-semibold uppercase tracking-[.08em] text-[var(--ink-muted)]">Targets met</p>
+          <p className="mt-1 font-data text-4xl font-semibold text-[var(--ink)]">{met} <span className="text-lg text-[var(--ink-muted)]">of {details.length}</span></p>
+          <ol className="mt-3 grid grid-cols-4 gap-1.5" aria-label={`${met} of ${details.length} targets met`}>
+            {details.map((detail) => <li key={detail.label} title={detail.label} className={`h-2 rounded-full ${detail.met ? "bg-[var(--accent)]" : "bg-overlay/[.1]"}`}><span className="sr-only">{detail.label}: {detail.met ? "met" : "not yet"}</span></li>)}
+          </ol>
+          <p className="mt-3 text-xs leading-5 text-[var(--ink-muted)]">A warm-up never removes a target: runs shorter than a full deck, or under 10 questions, do not count.</p>
+        </Panel>
+        <Panel className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <PanelHeader title="Targets" description="Practise opens the drill already set up for that target." />
+          <ol className="grid gap-3">
+            {details.map((detail, index) => <TargetRow key={detail.label} detail={detail} next={index === nextIndex} />)}
+          </ol>
+        </Panel>
+        <div className="lg:col-start-1 lg:row-start-2">
           {met === details.length ? (
             <Callout tone="good" title="All four targets met." action={<ButtonLink href="/training/test-out">Take the Test Out exam</ButtonLink>}>
               Confirm it under exam conditions.
@@ -108,12 +115,6 @@ export function CountingBenchmark() {
             </Panel>
           )}
         </div>
-        <Panel>
-          <PanelHeader title="Targets" description="Practise opens the drill already set up for that target." />
-          <ol className="grid gap-3">
-            {details.map((detail, index) => <TargetRow key={detail.label} detail={detail} next={index === nextIndex} />)}
-          </ol>
-        </Panel>
       </div>
       <Panel className="mt-5">
         <PanelHeader title="Weak spots" description="Your lowest-scoring categories across saved sessions (3 or more answers each). Pick one to drill it next." />

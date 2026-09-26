@@ -258,7 +258,7 @@ function TrueCountSession({ arrival, forceResume, remounted, pref, remember, res
         title={DRILL}
         tiles={[
           { label: "Accuracy", value: `${result.accuracy}%`, tone: result.accuracy >= 85 ? "good" : result.accuracy >= 70 ? "neutral" : "bad" },
-          { label: "Avg answer time", value: `${(result.averageResponseTime / 1000).toFixed(1)} s` },
+          { label: "Answer time", value: `${(result.averageResponseTime / 1000).toFixed(1)} s` },
           { label: "Best streak", value: result.bestStreak, sub: "right in a row" },
         ]}
         onNew={start}

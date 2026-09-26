@@ -213,7 +213,7 @@ function DeckEstimationSession({ arrival, forceResume, remounted, pref, remember
           { label: "Accuracy", value: `${result.accuracy}%`, tone: result.accuracy >= 85 ? "good" : result.accuracy >= 70 ? "neutral" : "bad" },
           { label: "Average error", value: `${Number(metrics.meanAbsoluteDeckError ?? 0).toFixed(2)} decks`, tone: Number(metrics.meanAbsoluteDeckError) <= 0.25 ? "good" : "neutral", help: "How far your estimates were from the real decks left, on average. Benchmark: 0.25 or less." },
           { label: "Best streak", value: result.bestStreak, sub: "right in a row" },
-          { label: "Avg answer time", value: `${(result.averageResponseTime / 1000).toFixed(1)} s` },
+          { label: "Answer time", value: `${(result.averageResponseTime / 1000).toFixed(1)} s` },
           ...(lastDeckSeen ? [{ label: "Last-deck accuracy", value: `${metrics.lastDeckAccuracy ?? 0}%`, help: "Trays with a deck or less left, where a small misread moves the true count most." }] : []),
         ]}
         onNew={start}
