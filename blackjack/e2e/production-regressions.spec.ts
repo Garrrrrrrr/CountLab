@@ -113,7 +113,10 @@ test("Chase river analyzer completes", async ({ page }) => {
 test("starter drill and experience preference survive navigation", async ({ page }) => {
   await guest(page);
   await page.goto("/training/running-count/?session=starter");
-  await expect(page.getByRole("spinbutton", { name: "Cards" })).toHaveValue("20");
+  // The starter values are the Starter session card; the card count lives under Customize.
+  await expect(page.getByRole("radio", { name: /^Starter/ })).toBeChecked();
+  await page.getByRole("button", { name: "Customize" }).click();
+  await expect(page.getByRole("spinbutton", { name: "Cards in session" })).toHaveValue("20");
   await page.goto("/practice/");
   await page.getByRole("button", { name: "experienced", exact: true }).click();
   await page.reload();

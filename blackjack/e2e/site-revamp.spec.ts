@@ -122,7 +122,7 @@ test("tool search finds tools by what they do", async ({ page }, testInfo) => {
 test("public pages and the footer fit a 320px screen", async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 700 });
   await prepare(page, { guest: true });
-  for (const path of ["/", "/analyze/", "/play/", "/dashboard/", "/settings/", "/training/basic-strategy/"]) {
+  for (const path of ["/", "/analyze/", "/play/", "/dashboard/", "/settings/", "/training/basic-strategy/", "/training/running-count/", "/training/true-count/", "/training/deck-estimation/", "/training/benchmark/"]) {
     await page.goto(path);
     await page.getByRole("heading", { level: 1 }).first().waitFor();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
