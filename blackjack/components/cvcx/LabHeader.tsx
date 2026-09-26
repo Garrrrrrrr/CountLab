@@ -20,8 +20,8 @@ export function LabHeader({ lab, onOpenLibrary, onOpenSave }: { lab: Lab; onOpen
             <i className="fa-regular fa-folder-open mr-2" aria-hidden="true" />Scenarios
             {templates.length > 0 && <span className="ml-2 rounded-full border border-[var(--rule)] px-1.5 font-data text-xs text-[var(--ink-muted)]"><span aria-hidden="true">{templates.length}</span><span className="sr-only">, {templates.length} saved</span></span>}
           </GhostButton>
-          <GhostButton onClick={onOpenSave} aria-haspopup="dialog">
-            <i className="fa-regular fa-floppy-disk mr-2" aria-hidden="true" />Save scenario
+          <GhostButton onClick={onOpenSave} aria-haspopup="dialog" aria-label="Save scenario">
+            <i className="fa-regular fa-floppy-disk mr-2" aria-hidden="true" />Save<span className="hidden min-[360px]:inline"> scenario</span>
           </GhostButton>
         </div>
       }
