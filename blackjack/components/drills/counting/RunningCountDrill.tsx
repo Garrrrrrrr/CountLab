@@ -37,7 +37,7 @@ const DRILL = "Running Count" as const;
 /**
  * Saved progress ("hilo:progress:Running Count"). The phase stays
  * "answer" | "paused" so older app versions can still resume it; every other
- * play phase is saved as "paused". The last three fields are optional
+ * play phase is saved as "paused". The last four fields are optional
  * additions read with fallbacks.
  */
 type RunningSaved = {
@@ -49,6 +49,8 @@ type RunningSaved = {
   mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
   elapsed: number; interruptionUsed: boolean;
   interruption?: boolean; hints?: boolean; lastCheckCursor?: number;
+  /** Paused on a group that led to a check or the interruption: it comes on resume. */
+  pending?: Pending;
 };
 
 /** The last setup started on this device, so an experienced counter's custom session comes back. */
@@ -61,6 +63,9 @@ type RunningPref = {
 const PREF_KEY = "countlab:drill-setup:running-count";
 
 type Phase = "setup" | "ready" | "show" | "interruption" | "paused" | "answer" | "feedback" | "done";
+/** What a dealt group leads to. */
+type AfterGroup = "check" | "interruption" | "deal";
+type Pending = Exclude<AfterGroup, "deal">;
 type Feedback = { ok: boolean; expected: number; answer: string | null; category?: CountingErrorCategory; explanation?: string; recapFrom?: number; to: number; last: boolean };
 type Arrival = ReturnType<typeof readArrival>;
 
@@ -149,6 +154,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
   const [ending, setEnding] = useState(false);
   const [quitting, setQuitting] = useState(false);
   const [resumed, setResumed] = useState(() => Boolean(saved));
+  const [pending, setPending] = useState<Pending | null>(saved?.phase === "paused" ? saved.pending ?? null : null);
 
   const startRef = useRef(Date.now() - (saved?.elapsed ?? 0));
   const answerStart = useRef(Date.now());
@@ -177,7 +183,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     cards, cursor, size, answer: phase === "answer" ? answer : "",
     checks, correct, streak, best, mistakes, categories, elapsed,
     interruptionUsed: interruptionUsed.current,
-    interruption: setup.interruption, hints: setup.hints, lastCheckCursor,
+    interruption: setup.interruption, hints: setup.hints, lastCheckCursor, pending: pending ?? undefined,
   } satisfies RunningSaved, { throttleMs: 10_000 });
   // Save at once at the moments worth resuming from, not only on the 10 s throttle.
   useEffect(() => { if (phase === "answer" || phase === "paused" || phase === "feedback" || phase === "interruption") progress.flush(); }, [phase, progress]);
@@ -197,11 +203,8 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     remember(card ? { last: card, basis, values: undefined } : { last: "custom", basis, values: { decks: setup.decks, amount: setup.amount, speed: setup.speed, group: setup.group, checkpoint: setup.checkpoint, interruption: setup.interruption, bias: setup.bias, hints: setup.hints } });
   };
 
-  const finish = (nextChecks = checks, nextCorrect = correct, nextMistakes = mistakes, nextCategories = categories, nextBest = best) => {
-    // Ending while paused: the current pause is not session time either.
-    const pausedNow = phase === "paused" ? Date.now() - pausedAt.current : 0;
-    const total = Date.now() - startRef.current - pausedTotal.current - pausedNow;
-    const seen = cursor;
+  const finish = (nextChecks = checks, nextCorrect = correct, nextMistakes = mistakes, nextCategories = categories, nextBest = best, seen = cursor) => {
+    const total = Date.now() - startRef.current - pausedTotal.current;
     const session = makeSession(DRILL, nextChecks, nextCorrect, total, nextBest, nextMistakes, nextCategories, {
       cardsPerSecond: seen / Math.max(0.001, total / 1000), elapsedSeconds: total / 1000,
       perfectDeck: isPerfectDeck({ cardsLength: cards.length, seen, correct: nextCorrect, checks: nextChecks }), cardsSeen: seen,
@@ -221,11 +224,12 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     storage.clearProgress(DRILL);
     abandonActivePractice();
     setCards([]); setCursor(0); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setElapsed(0);
-    setFeedback(undefined); setEnding(false); setResumed(false); setAnswer("");
+    setFeedback(undefined); setEnding(false); setResumed(false); setAnswer(""); setPending(null);
     setPhase("setup");
   };
 
-  const advance = () => {
+  /** Move past the group on the table and work out what it leads to. */
+  const dealGroup = (): { next: number; outcome: AfterGroup } => {
     const next = Math.min(cards.length, cursor + size);
     const before = runningCount(cards.slice(0, cursor)), after = runningCount(cards.slice(0, next));
     handsSinceCheckpoint.current += 1;
@@ -233,17 +237,27 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     const due = next === cards.length || checkpoint === "5" && Math.floor(next / 5) > Math.floor(cursor / 5) || checkpoint === "10" && Math.floor(next / 10) > Math.floor(cursor / 10) || checkpoint === "random" && handsSinceCheckpoint.current >= nextRandomCheckpoint.current || checkpoint === "sign" && before !== 0 && Math.sign(before) !== Math.sign(after);
     setCursor(next);
     setResumed(false);
-    if (setup.interruption && !interruptionUsed.current && next >= cards.length / 2) {
+    const interruption = setup.interruption && !interruptionUsed.current && next >= cards.length / 2;
+    return { next, outcome: interruption ? "interruption" : due ? "check" : "deal" };
+  };
+  /** Show what a dealt group leads to: the interruption, a count check, or the next group. */
+  const follow = (outcome: AfterGroup, at: number) => {
+    if (outcome === "interruption") {
       interruptionUsed.current = true; interrupted.current = true; setPhase("interruption");
       announce("Interruption. Hold your count, then return to the table.");
-      return;
-    }
-    if (due) {
-      if (checkpoint === "random") { handsSinceCheckpoint.current = 0; nextRandomCheckpoint.current = randomCheckpointGap(); }
+    } else if (outcome === "check") {
+      if (setup.checkpoint === "random") { handsSinceCheckpoint.current = 0; nextRandomCheckpoint.current = randomCheckpointGap(); }
       answerStart.current = Date.now(); setAnswer(""); setPhase("answer");
-      announce(`What's the running count after card ${next} of ${cards.length}?`);
-      track("question_presented", { drill: DRILL, category: "running_count", scenario: `checkpoint_${checkpoint}`, attempt: checks + 1 });
-    } else setSize(pickSize());
+      announce(`What's the running count after card ${at} of ${cards.length}?`);
+      track("question_presented", { drill: DRILL, category: "running_count", scenario: `checkpoint_${setup.checkpoint}`, attempt: checks + 1 });
+    } else {
+      setSize(pickSize());
+      setPhase("show");
+    }
+  };
+  const advance = () => {
+    const { next, outcome } = dealGroup();
+    follow(outcome, next);
   };
   // The timer is intentionally recreated only when the displayed group changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,7 +279,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
     setPreset(tag);
     setCards(makeCountSequence(setup.decks, setup.amount, setup.bias));
     setCursor(0); setSize(pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setElapsed(0);
-    setLastCheckCursor(0); setFeedback(undefined); setResult(undefined); setEnding(false); setResumed(false); setAnswer("");
+    setLastCheckCursor(0); setFeedback(undefined); setResult(undefined); setEnding(false); setResumed(false); setAnswer(""); setPending(null);
     pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false;
     handsSinceCheckpoint.current = 0; nextRandomCheckpoint.current = randomCheckpointGap();
     setPhase("ready");
@@ -275,15 +289,30 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
 
   const pause = () => {
     if (phase === "ready") { startRef.current = Date.now(); pausedTotal.current = 0; }
+    // The group on the table counts as dealt: the reader has already added it.
+    // A check or the interruption it leads to comes on resume.
+    let at = cursor;
+    if (phase === "show") {
+      const { next, outcome } = dealGroup();
+      at = next;
+      setPending(outcome === "deal" ? null : outcome);
+    }
     pausedAt.current = Date.now();
     setPhase("paused");
-    announce("Paused. Your place is saved.");
+    // The Pause button goes away; keep keyboard focus in the stage.
+    focusStage();
+    announce(at ? `Paused after card ${at}. Your place is saved.` : "Paused. Your place is saved.");
   };
   const resume = () => {
     pausedTotal.current += Date.now() - pausedAt.current;
-    setSize((current) => current || pickSize());
-    setPhase("show");
     focusStage();
+    if (pending) {
+      setPending(null);
+      follow(pending, cursor);
+      return;
+    }
+    setSize(pickSize());
+    setPhase("show");
     announce("Resumed.");
   };
   // Switching tabs pauses the deal, so no cards pass unseen.
@@ -361,8 +390,12 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
    */
   const endDrill = () => {
     if (result) { setPhase("done"); return; }
-    if (checks > 0) { finish(); setPhase("done"); return; }
-    if (cursor > 0) {
+    // As with pausing, the group on the table counts as seen; a pause is not session time.
+    const seen = phase === "show" ? dealGroup().next : cursor;
+    if (phase === "paused") { pausedTotal.current += Date.now() - pausedAt.current; pausedAt.current = Date.now(); }
+    setPending(null);
+    if (checks > 0) { finish(checks, correct, mistakes, categories, best, seen); setPhase("done"); return; }
+    if (seen > 0) {
       setEnding(true);
       if (phase !== "answer") { answerStart.current = Date.now(); setAnswer(""); setPhase("answer"); }
       announce("Give your running count to save this session.");
@@ -500,7 +533,7 @@ function RunningCountSession({ arrival, forceResume, remounted, pref, remember, 
             </div>
           )}
           {phase === "interruption" && <InterruptionView onReturn={() => { setSize(pickSize()); setPhase("show"); focusStage(); }} />}
-          {phase === "paused" && <PausedView cursor={cursor} total={cards.length} count={expected} onResume={resume} shortcuts={settings.shortcuts} />}
+          {phase === "paused" && <PausedView cursor={cursor} total={cards.length} count={expected} last={cards.slice(Math.max(0, cursor - size), cursor)} hints={setup.hints} onResume={resume} shortcuts={settings.shortcuts} />}
           {phase === "answer" && (
             <div data-reveal-top="" className="grid gap-4 py-1 text-center sm:gap-5 sm:py-6">
               <div>

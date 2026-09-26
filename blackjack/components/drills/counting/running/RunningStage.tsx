@@ -72,17 +72,28 @@ function CenteredPanel({ icon, title, children }: { icon: string; title: string;
   );
 }
 
-/** Paused: the count stays hidden unless asked for, so pausing never spoils the next check. */
-export function PausedView({ cursor, total, count, onResume, shortcuts }: { cursor: number; total: number; count: number; onResume: () => void; shortcuts: boolean }) {
+/**
+ * Paused: the cards on the table when the reader paused count as dealt, so
+ * the place, the last cards and the count all agree, and resuming deals the
+ * next card. The count stays hidden unless asked for, so pausing never
+ * spoils the next check.
+ */
+export function PausedView({ cursor, total, count, last, hints, onResume, shortcuts }: { cursor: number; total: number; count: number; last: Card[]; hints: boolean; onResume: () => void; shortcuts: boolean }) {
   const [reveal, setReveal] = useState(false);
   return (
     <CenteredPanel icon="fa-pause" title="Paused">
-      <p className="mt-2 text-[var(--ink-muted)]">Your place is saved at card {cursor} of {total}.</p>
+      <p className="mt-2 text-[var(--ink-muted)]">{cursor ? `Paused after card ${cursor} of ${total}.` : "Paused before the first card."} Your place is saved.</p>
+      {cursor > 0 && last.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm text-[var(--ink-muted)]">
+          <span>{last.length === 1 ? "Last card dealt" : "Last cards dealt"}</span>
+          <CardChips cards={last} values={hints} />
+        </div>
+      )}
       <div className="mt-4">
         <GhostButton size="compact" aria-pressed={reveal} onClick={() => setReveal((shown) => !shown)}>
           <i className={`fa-solid ${reveal ? "fa-eye-slash" : "fa-eye"} mr-1.5 text-xs`} aria-hidden="true" />{reveal ? "Hide my count" : "Show my count"}
         </GhostButton>
-        {reveal && <p className="mt-3 text-sm text-[var(--ink-muted)]">Running count so far <span className="mt-1 block font-data text-5xl font-semibold text-[var(--ink)]">{signed(count)}</span></p>}
+        {reveal && <p className="mt-3 text-sm text-[var(--ink-muted)]">Running count so far{cursor > 0 && `, through card ${cursor}`} <span className="mt-1 block font-data text-5xl font-semibold text-[var(--ink)]">{signed(count)}</span></p>}
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
         <Button onClick={onResume} className="min-w-44">Resume session</Button>
@@ -102,13 +113,13 @@ export function InterruptionView({ onReturn }: { onReturn: () => void }) {
 }
 
 const chip = "inline-flex items-center gap-1 rounded-md border border-[var(--rule)] bg-[var(--paper-raised)] px-1.5 py-0.5 font-data text-xs text-[var(--ink)]";
-function CardChips({ cards }: { cards: Card[] }) {
+function CardChips({ cards, values = true }: { cards: Card[]; values?: boolean }) {
   return (
     <ul className="flex flex-wrap gap-1.5">
       {cards.map((card, index) => (
-        <li key={index} className={chip} aria-label={`${cardName(card)}, ${valueText(card)}`}>
+        <li key={index} className={chip} aria-label={values ? `${cardName(card)}, ${valueText(card)}` : cardName(card)}>
           <span aria-hidden="true">{card.rank}{SUIT[card.suit]}</span>
-          <span aria-hidden="true" className="text-[var(--ink-muted)]">{valueText(card)}</span>
+          {values && <span aria-hidden="true" className="text-[var(--ink-muted)]">{valueText(card)}</span>}
         </li>
       ))}
     </ul>

@@ -45,7 +45,7 @@ async function pressEnterOnPage(page: Page) {
 }
 
 const clickVisible = (page: Page, name: string | RegExp) => main(page).getByRole("button", { name }).locator("visible=true").first().click();
-const sessions = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]") as Array<{ drill: string; questions: number }>, `${PREFIX}hilo:sessions`);
+const sessions = (page: Page) => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "[]") as Array<{ drill: string; questions: number; metrics?: Record<string, number> }>, `${PREFIX}hilo:sessions`);
 const progress = (page: Page, drill: string) => page.evaluate((key) => localStorage.getItem(key), progressKey(drill));
 
 /** Feedback ignores presses in its first 250 ms, so a double Enter cannot skip it. */
@@ -126,12 +126,75 @@ test.describe("running count", () => {
     await expect(main(page).getByRole("heading", { name: "Paused" })).toBeVisible();
     const card = async () => (await hud.innerText()).match(/Card \d+ of 20/)![0];
     const pausedAt = await card();
+    // The card on the table when the tab was hidden counts as dealt, in the HUD and the panel alike.
+    await expect(main(page).getByText(`Paused after ${pausedAt.toLowerCase()}.`)).toBeVisible();
     await page.waitForTimeout(1500);
     expect(await card()).toBe(pausedAt);
     await expectOneEnterAction(page, "Resume session");
     await expect(main(page).getByText("Running count so far")).toHaveCount(0);
     await main(page).getByRole("button", { name: "Show my count" }).click();
     await expect(main(page).getByText("Running count so far")).toBeVisible();
+  });
+
+  test("a group paused mid-deal counts as dealt: the count includes it and resuming deals the next card", async ({ page }) => {
+    await page.goto("/training/running-count/?session=starter");
+    await main(page).getByRole("button", { name: "Customize" }).click();
+    await main(page).getByRole("combobox", { name: "Time on screen" }).selectOption("0");
+    await clickVisible(page, "Start counting");
+    const hud = page.getByRole("region", { name: "Session progress" });
+    await expect(main(page).getByRole("button", { name: "Deal next" })).toBeVisible({ timeout: 10_000 });
+    await page.keyboard.press("Space");
+    await expect(hud).toContainText("Card 2 of 20");
+
+    await hud.getByRole("button", { name: "Pause" }).click();
+    await expect(main(page).getByRole("heading", { name: "Paused" })).toBeVisible();
+    await expect(hud).toContainText("Card 2 of 20");
+    await expect(main(page).getByText("Paused after card 2 of 20.")).toBeVisible();
+    await expect(main(page).getByText("Last card dealt")).toBeVisible();
+    // Keyboard focus stays in the stage when the Pause button goes away, so Tab continues from there.
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest("[data-drill-focus]")))).toBe(true);
+    await page.keyboard.press("Tab");
+    await expect(main(page).getByRole("button", { name: "Show my count" })).toBeFocused();
+
+    const saved = JSON.parse((await progress(page, "Running Count"))!).state as { cards: Array<{ rank: string }>; cursor: number };
+    expect(saved.cursor).toBe(2);
+    const hiLo = saved.cards.slice(0, 2).reduce((sum, { rank }) => sum + (["2", "3", "4", "5", "6"].includes(rank) ? 1 : ["10", "J", "Q", "K", "A"].includes(rank) ? -1 : 0), 0);
+    await page.keyboard.press("Enter");
+    await expect(main(page).getByText("Running count so far, through card 2")).toContainText(hiLo > 0 ? `+${hiLo}` : hiLo < 0 ? `\u2212${-hiLo}` : "0");
+
+    await main(page).getByRole("button", { name: "Resume session" }).click();
+    await expect(hud).toContainText("Card 3 of 20");
+    await expect(main(page).getByRole("button", { name: "Deal next" })).toBeVisible();
+
+    // Pausing on the group that completes a check: the check comes on resume.
+    await page.keyboard.press("Space");
+    await page.keyboard.press("Space");
+    await expect(hud).toContainText("Card 5 of 20");
+    await page.keyboard.press("p");
+    await expect(main(page).getByText("Paused after card 5 of 20.")).toBeVisible();
+    await page.keyboard.press("p");
+    await expect(main(page).getByText("After card 5 of 20")).toBeVisible();
+    await expect(main(page).getByLabel("Running count", { exact: true })).toBeFocused();
+  });
+
+  test("ending from the Paused screen leaves the pause out of the session time", async ({ page }) => {
+    await page.goto("/training/running-count/?session=starter");
+    await clickVisible(page, "Start counting");
+    const hud = page.getByRole("region", { name: "Session progress" });
+    await expect(hud).toContainText("Card 1 of 20", { timeout: 15_000 });
+    await hud.getByRole("button", { name: "Pause" }).click();
+    await expect(main(page).getByRole("heading", { name: "Paused" })).toBeVisible();
+    const waitMs = 4000;
+    await page.waitForTimeout(waitMs);
+    await hud.getByRole("button", { name: "End drill" }).click();
+    const field = main(page).getByLabel("Running count", { exact: true });
+    await expect(field).toBeFocused();
+    await field.fill("0");
+    await field.press("Enter");
+    await expect.poll(async () => (await sessions(page)).length).toBe(1);
+    const [session] = await sessions(page);
+    expect(session.metrics!.cardsSeen).toBeGreaterThanOrEqual(1);
+    expect(session.metrics!.elapsedSeconds).toBeLessThan(waitMs / 1000);
   });
 
   test("self-paced dealing waits for Space, and P pauses but Ctrl+P does not", async ({ page }) => {
