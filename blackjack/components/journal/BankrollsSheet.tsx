@@ -53,7 +53,7 @@ export function BankrollsSheet({ bankrolls, sessions, transactions, balances, on
 
   return (
     <Sheet open title="Bankrolls" description="Keep separate rolls, for example home play and a trip. Each bankroll is its session results plus deposits minus withdrawals." onClose={onClose}>
-      <ul className="grid gap-3">
+      <ul className="grid grid-cols-1 gap-3">
         {ordered.map((bankroll) => {
           const sessionCount = sessions.filter((session) => session.bankrollId === bankroll.id).length;
           const cashCount = transactions.filter((transaction) => transaction.bankrollId === bankroll.id).length;

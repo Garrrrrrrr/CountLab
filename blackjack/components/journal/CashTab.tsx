@@ -35,7 +35,7 @@ export function CashTab({ transactions, totals, bankrollNames, showBankroll, onR
   );
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-[var(--ink-muted)]">
           Deposits <b className="font-data text-[var(--ink)]">{money(totals.deposits)}</b> · Withdrawals <b className="font-data text-[var(--ink)]">{money(totals.withdrawals)}</b> · Net <b className="font-data text-[var(--ink)]">{signedMoney(totals.net)}</b>
@@ -47,10 +47,10 @@ export function CashTab({ transactions, totals, bankrollNames, showBankroll, onR
         <EmptyState icon="fa-piggy-bank" title="No deposits or withdrawals yet" description="Record your starting bankroll so risk of ruin is priced on real money." />
       ) : (
         <>
-          <ul aria-label="Cash movements" className="grid gap-2 md:hidden">
+          <ul aria-label="Cash movements" className="grid grid-cols-1 gap-2 md:hidden">
             {shown.map((transaction) => (
               <li key={transaction.id} className="flex items-center justify-between gap-3 rounded-xl border border-[var(--rule)] py-2 pl-3.5 pr-1.5">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="flex flex-wrap items-baseline gap-x-2"><Amount transaction={transaction} /><span className="text-sm">{shortDate(transaction.date)}</span><span className="text-xs capitalize text-[var(--ink-muted)]">{kind(transaction)}</span></p>
                   {(transaction.note || showBankroll) && <p title={transaction.note} className="truncate text-xs text-[var(--ink-muted)]">{[showBankroll ? bankrollNames.get(transaction.bankrollId) : null, transaction.note].filter(Boolean).join(" · ")}</p>}
                 </div>

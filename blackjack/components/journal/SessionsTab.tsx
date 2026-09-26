@@ -64,7 +64,7 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
   const casinoId = (session: JournalSession) => `journal-casino-${session.id}`;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       {period !== "all" && (
         <p className="flex flex-wrap items-center gap-x-2 text-sm text-[var(--ink-muted)]">
           Showing {periodPhrase(period)}.
@@ -91,13 +91,13 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
         <EmptyState icon="fa-magnifying-glass" title="No sessions match your search." action={<GhostButton onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</GhostButton>} />
       ) : (
         <>
-          <ul aria-label="Sessions" className="grid gap-2 md:hidden">
+          <ul aria-label="Sessions" className="grid grid-cols-1 gap-2 md:hidden">
             {shown.map((session) => {
               const outcome = outcomeOf(session);
               return (
                 <li key={session.id}>
                   <button type="button" data-session-row={session.id} onClick={() => onOpen(session.id)} className="pressable flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border border-[var(--rule)] bg-[var(--paper)] px-3.5 py-3 text-left hover:border-[var(--ink-muted)]">
-                    <span className="min-w-0">
+                    <span className="min-w-0 flex-1">
                       <span className="block font-semibold"><DateCell date={session.date} /></span>
                       <span className="block truncate text-sm text-[var(--ink-muted)]">
                         {casinoText(session) || "Not recorded"}

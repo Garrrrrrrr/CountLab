@@ -19,8 +19,8 @@ export function VenuesTab({ venues, presets, period, onShowAllTime, onUse, onDel
   onDelete: (preset: VenuePreset) => void;
 }) {
   return (
-    <div className="grid gap-8">
-      <section aria-labelledby="journal-venue-results" className="grid gap-3">
+    <div className="grid grid-cols-1 gap-8">
+      <section aria-labelledby="journal-venue-results" className="grid grid-cols-1 gap-3">
         <div>
           <h3 id="journal-venue-results" className="text-base font-semibold">Results by venue</h3>
           <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">Each casino compared with the EV of the games you logged there. Over a few hours, differences are just swings.</p>
@@ -35,11 +35,11 @@ export function VenuesTab({ venues, presets, period, onShowAllTime, onUse, onDel
           <p className="rounded-xl border border-dashed border-[var(--rule)] px-4 py-6 text-center text-sm text-[var(--ink-muted)]">Add a casino name when you log sessions to compare venues.</p>
         ) : (
           <>
-            <ul aria-label="Results by venue" className="grid gap-2 md:hidden">
+            <ul aria-label="Results by venue" className="grid grid-cols-1 gap-2 md:hidden">
               {venues.map((venue) => (
                 <li key={venue.location || "unspecified"} className="rounded-xl border border-[var(--rule)] p-3.5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className={`truncate font-semibold ${venue.location ? "" : "text-[var(--ink-muted)]"}`}>{venueName(venue)}</p>
                       <p className="text-xs text-[var(--ink-muted)]">{plural(venue.sessionCount, "session")} · {hoursLabel(venue.totalHours)}</p>
                     </div>
@@ -86,7 +86,7 @@ export function VenuesTab({ venues, presets, period, onShowAllTime, onUse, onDel
         )}
       </section>
 
-      <section aria-labelledby="journal-saved-venues" className="grid gap-3">
+      <section aria-labelledby="journal-saved-venues" className="grid grid-cols-1 gap-3">
         <div>
           <h3 id="journal-saved-venues" className="text-base font-semibold">Saved venues</h3>
           <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">Rules and spreads you saved for reuse, shared with the Lab, Simulator, Compare and Trip Planner. Stored on this device only. Up to 20; saving more removes the oldest.</p>
@@ -94,7 +94,7 @@ export function VenuesTab({ venues, presets, period, onShowAllTime, onUse, onDel
         {presets.length === 0 ? (
           <p className="rounded-xl border border-dashed border-[var(--rule)] px-4 py-6 text-center text-sm text-[var(--ink-muted)]">Save a venue from Log session → Change game to reuse its rules.</p>
         ) : (
-          <ul aria-label="Saved venues" className="grid gap-2 lg:grid-cols-2">
+          <ul aria-label="Saved venues" className="grid grid-cols-1 gap-2 lg:grid-cols-2">
             {presets.map((preset) => (
               <li key={preset.id} className="flex flex-col justify-between gap-3 rounded-xl border border-[var(--rule)] p-3.5">
                 <div className="min-w-0">

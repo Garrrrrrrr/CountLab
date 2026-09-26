@@ -638,12 +638,26 @@ test("a short period with nothing in it offers all time back", async ({ page }, 
 
 test("the journal fits a 320px phone, empty and with data", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "iphone-se", "Narrow-phone layout coverage.");
-  await page.setViewportSize({ width: 320, height: 640 });
-  await prepareGuest(page);
-  for (const path of ["/journal/", "/journal/#cash", "/journal/#venues"]) {
-    await page.goto(path);
-    await page.getByRole("heading", { name: "Session Journal" }).waitFor();
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  // Long names and notes are what push a record list past the screen edge.
+  await seedJournal(page, {
+    sessions: [session({ location: "Resorts World Las Vegas Casino & Hotel Tower" }), session({ id: "aria-session", location: "Aria", date: daysAgo(2), notes: undefined })],
+    transactions: [{ id: "reload", createdAt: new Date().toISOString(), date: daysAgo(1), type: "deposit", amount: 10000, note: "Reload from savings account for the summer trip to Atlantic City" }],
+    presets: [{ ...aria, id: "hammond", name: "Horseshoe Hammond Casino & Hotel" }],
+  });
+  // The shell clips sideways overflow, so the page never scrolls; check that each record control is on screen.
+  const offscreen = () => page.locator("#journal-records-panel").locator(":is(button, input, li, table, .overflow-x-auto):visible").evaluateAll((nodes) => nodes.filter((node) => {
+    const box = node.getBoundingClientRect();
+    return !node.parentElement?.closest(".overflow-x-auto") && (box.left < -1 || box.right > innerWidth + 1);
+  }).map((node) => `${node.tagName} ${node.textContent?.trim().slice(0, 30)}`));
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 640 });
+    for (const path of ["/journal/", "/journal/#cash", "/journal/#venues"]) {
+      await page.goto(path);
+      await page.getByRole("heading", { name: "Session Journal" }).waitFor();
+      await expect(page.locator("#journal-records-panel li").first()).toBeVisible();
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+      expect(await offscreen(), `${path} at ${width}px`).toEqual([]);
+    }
   }
   await page.getByRole("group", { name: "Session journal actions" }).getByRole("button", { name: "Log session" }).click();
   await expect(page.getByRole("dialog", { name: "Log session" })).toBeVisible();
