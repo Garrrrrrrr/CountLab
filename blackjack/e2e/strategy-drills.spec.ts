@@ -335,13 +335,15 @@ test("the strategy drills fit a 320px screen in setup and play", async ({ page }
 
 test("on a phone the reason for a wrong answer clears the answer dock", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop-chromium", "The dock is a phone control.");
+  // A fixed random stream deals A,5 against a 6 (double), so Hit is a miss with a typical explanation.
+  await page.addInitScript(() => { Math.random = () => 0.42; });
   await prepare(page, { pref: { explain: "every" } });
   await page.goto("/training/basic-strategy/");
   await page.getByRole("button", { name: "Start 10 hands" }).click();
   const dock = page.getByRole("group", { name: "Basic strategy actions" });
   await dock.getByRole("button").and(page.locator(":not([aria-disabled='true'])")).first().click();
   const feedback = page.getByTestId("drill-feedback");
-  await expect(feedback).toBeVisible();
+  await expect(feedback).toContainText("Not quite: the play is Double");
   await expect(dock.getByRole("button", { name: "Next hand" })).toBeVisible();
   await expect.poll(async () => {
     const [panel, bar] = await Promise.all([feedback.boundingBox(), dock.boundingBox()]);

@@ -108,7 +108,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
     surrender: settings.surrender,
     due: dueItemKeys(DRILL, focusCandidates(settings.surrender)),
     seen: new Set(Object.keys(leitnerStates(DRILL))),
-    history: historyTotals(storage.sessions(), DRILL),
+    history: historyTotals(sessions, DRILL),
   });
 
   const adapter: RoundAdapter<StrategyHand, StrategyQuestion> = {
@@ -309,8 +309,8 @@ function pausedView({ hand, chosen, ok }: RoundAnswer<StrategyHand>): PausedView
   return {
     ok,
     title: ok ? `Correct: ${correct}` : `Not quite: the play is ${correct}`,
-    detail: <>{!ok && <b className="font-semibold text-[var(--ink)]">You chose {STRATEGY_ANSWER_NAMES[chosen as StrategyAnswer]}. </b>}{handLabel(hand.player)} against {withArticle(hand.dealer.rank)} · Hand type: {hand.category}</>,
-    explanation: hand.explanation,
+    detail: <span className="block leading-5 sm:leading-6">{!ok && <b className="font-semibold text-[var(--ink)]">You chose {STRATEGY_ANSWER_NAMES[chosen as StrategyAnswer]}. </b>}{handLabel(hand.player)} against {withArticle(hand.dealer.rank)}<span className="hidden sm:inline"> · Hand type: {hand.category}</span></span>,
+    explanation: <span className="block leading-5 sm:leading-6">{hand.explanation}</span>,
     visual: chartVisual(hand),
     link: { href: referenceHref("strategy", cell), label: cell ? `See ${cell.hand} vs ${cell.dealer} on the chart` : "Open the strategy chart" },
   };

@@ -22,8 +22,9 @@ export function IndexLine({ hand }: { hand: IndexHand }) {
   const boundary = hand.always ? undefined : hand.atOrBelow ? hand.index + 0.5 : hand.index - 0.5;
   return (
     <div role="img" aria-label={indexLineLabel(hand)} className="min-w-0">
-      <p className="text-sm font-medium text-[var(--ink)]">{indexRuleText(hand)}</p>
-      <div className="relative mt-6 pb-5">
+      {/* Phones read the rule off the bar's own labels; the whole line stays in the accessible name. */}
+      <p className="mb-6 hidden text-sm font-medium text-[var(--ink)] sm:block">{indexRuleText(hand)}</p>
+      <div className="relative mt-5 pb-5 sm:mt-0">
         <span className="absolute -top-5 -translate-x-1/2 whitespace-nowrap font-data text-[.7rem] font-semibold text-[var(--ink)]" style={{ left: `${at(hand.tc)}%` }}>
           {countText(hand.tc)} ▼
         </span>

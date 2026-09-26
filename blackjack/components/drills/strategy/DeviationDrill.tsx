@@ -119,7 +119,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
       const queued = plan.retry ? plan.queue?.[index] : index % 2 === 0 ? plan.queue?.[index / 2] : undefined;
       const seeded = queued && findIndexRow(rows, queued);
       if (queued && seeded) return resolveIndexHand(seeded, queued.tc);
-      const entry = pickIndexRow(rows, mode, historyTotals(storage.sessions(), DRILL));
+      const entry = pickIndexRow(rows, mode, history);
       return resolveIndexHand(entry, drawTrueCount(entry.row));
     },
     grade: (hand, chosen) => ({ ok: chosen === hand.correct, category: indexCategory(hand), mistake: indexMistake(hand, chosen as DeviationAction) }),
@@ -291,7 +291,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
 
 function IndexFacts({ hand }: { hand: IndexHand }) {
   return (
-    <span className="mt-1 flex flex-wrap gap-x-4 font-data text-xs text-[var(--ink)]">
+    <span className="mt-1 flex flex-wrap gap-x-4 text-xs text-[var(--ink)] sm:font-data">
       <span>Basic strategy: {indexAnswerName(hand.baseline, hand.kind)}</span>
       <span>Index: {hand.always ? "Always" : countText(hand.index)}{!hand.always && <HelpTip label="Index">The true count at which the play changes. It applies at that count or beyond, in the direction shown on the line below.</HelpTip>}</span>
     </span>
@@ -306,10 +306,10 @@ function pausedView({ hand, chosen, ok }: RoundAnswer<IndexHand>): PausedView {
     ok,
     title: ok ? `Correct: ${correct}` : `Not quite: the play is ${correct}`,
     detail: <>{!ok && <b className="font-semibold text-[var(--ink)]">You chose {indexAnswerName(chosen as DeviationAction, hand.kind)}.</b>}<IndexFacts hand={hand} /></>,
-    explanation: <>{indexReasoning(hand)}{caveat}</>,
+    explanation: <span className="block leading-5 sm:leading-6">{indexReasoning(hand)}{caveat && <span className="mt-1 block text-xs leading-4 sm:mt-0 sm:inline sm:text-sm sm:leading-6">{caveat}</span>}</span>,
     visual: <IndexLine hand={hand} />,
     link: cell
-      ? { href: referenceHref("deviations", cell), label: `See ${hand.hand} vs ${hand.dealer} on the deviation chart` }
+      ? { href: referenceHref("deviations", cell), label: `See ${hand.hand} vs ${hand.dealer} on the chart` }
       : { href: referenceHref("deviations"), label: "Open the deviation chart" },
   };
 }

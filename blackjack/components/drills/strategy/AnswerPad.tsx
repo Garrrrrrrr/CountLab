@@ -70,11 +70,12 @@ export function AnswerPad({ dockLabel, options, onAnswer, result, shortcuts, nex
           {correct && <Mark kind="correct" />}
           {chosenWrong && <Mark kind="chosen" />}
         </span>
-        {shortcuts && !docked && !paused && <span aria-hidden="true" className="hidden sm:inline"><KeyHint>{option.letter}</KeyHint></span>}
+        {shortcuts && !docked && !paused && <span aria-hidden="true" className="hidden xl:inline"><KeyHint>{option.letter}</KeyHint></span>}
       </button>
     );
   };
-  const columns = options.length > 2 ? "grid-cols-4" : "grid-cols-2";
+  // Four across once the table column is wide enough for "Double" beside its swatch.
+  const columns = options.length > 2 ? "grid-cols-2 xl:grid-cols-4" : "grid-cols-2";
   return (
     <>
       <div role="group" aria-label="Your play" className={`hidden gap-2 lg:grid ${columns}`}>

@@ -10,7 +10,7 @@ import type { Action } from "@/lib/blackjack/types";
 export function MiniChartRow({ row }: { row: Row }) {
   return (
     <table className="w-full table-fixed border-separate border-spacing-[3px] text-center">
-      <caption className="mb-1 text-left text-xs font-medium text-[var(--ink-muted)] [font-family:var(--font-ui)]">{row.caption}</caption>
+      <caption className="mb-1 text-left text-xs font-medium text-[var(--ink-muted)] [font-family:var(--font-ui)] max-sm:sr-only">{row.caption}</caption>
       <thead>
         <tr>
           <th scope="col" className="w-9 text-left text-[.65rem] font-semibold uppercase tracking-[.08em] text-[var(--ink-muted)]"><span className="sr-only">Hand</span></th>
