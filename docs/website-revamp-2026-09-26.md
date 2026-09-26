@@ -95,4 +95,4 @@ Each keyboard and chart-link fix has an end-to-end regression test (`e2e/keyboar
 - Full Playwright suite against the static export: 341 passed, 0 failed, 220 intentional device-specific skips (561 total across desktop, iPhone SE and iPhone 13 projects). The five feature specs (`bankroll-lab`, `session-journal`, `reference-charts`, `counting-drills`, `strategy-drills`) plus `keyboard-focus` cover the redesigned tools end to end.
 - Screenshots of the redesigned routes at 1440px (light), 390px (dark) and 320px (light), plus drill play phases on phones, were reviewed after the merge; no route overflows horizontally at 320px and none logs a console error.
 
-Not re-verified here, as in part 1: real Supabase sign-in and sync, physical devices, and the numerical models (the redesigns reuse the existing engines unchanged).
+Not re-verified here, as in part 1: real Supabase sign-in and sync, physical devices, and the numerical models. The EV, risk, simulation and strategy engines were not modified; the redesigns changed only drill and training helpers around them.
