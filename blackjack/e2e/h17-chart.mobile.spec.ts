@@ -78,3 +78,30 @@ test("the keypad enters every early-surrender index, including 8+ and 7+", async
   await keypad.getByRole("button", { name: "Plus", exact: true }).click();
   await expect(eight).toHaveValue("7+");
 });
+
+test("on a phone the graded chart opens at its score, and a tapped cell's reading shows beside it", async ({ page }) => {
+  test.skip(test.info().project.name === "desktop-chromium", "The chart keypad is a mobile-only control.");
+  await prepareChart(page);
+  // One line of HUD above the chart: no Jump row, and a Grade button big enough to tap.
+  await expect(page.getByRole("navigation", { name: "Jump to a table" })).toBeHidden();
+  const grade = page.getByRole("button", { name: /^Grade/ });
+  expect((await grade.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+  const keypad = page.getByRole("group", { name: "Chart entry keys" });
+  for (const key of ["Y", "N", "Y"]) await keypad.getByRole("button", { name: key, exact: true }).click();
+  await grade.click();
+  await page.getByRole("button", { name: "Grade anyway" }).click();
+  const score = page.getByRole("heading", { level: 1, name: /H17 Chart: \d+ of 100/ });
+  await expect(score).toBeInViewport();
+  await expect(score).toBeFocused();
+  await expect(page.locator("[data-cell-reading]")).toHaveCount(0);
+
+  const cell = page.getByLabel(`${section} ${hand} versus 5`);
+  await cell.scrollIntoViewIfNeeded();
+  await cell.click();
+  const reading = page.locator("[data-cell-reading]");
+  await expect(reading).toContainText(`${hand} vs 5`);
+  await expect(reading).toBeInViewport({ ratio: 1 });
+  await expect(cell).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

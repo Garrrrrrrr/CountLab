@@ -464,8 +464,8 @@ export function H17ChartDrill() {
                       onKeyDown={handleKey}
                       onSelect={onSelect}
                       register={register}
-                      footer={selected?.section === section.id && selectedGrade && (
-                        <p className="mt-3 rounded-lg bg-overlay/[.05] px-3 py-2 text-sm leading-6 text-[var(--ink)]" aria-live="off">
+                      reading={selected?.section === section.id && selectedGrade && (
+                        <p className="mb-1 rounded-lg border border-[var(--rule)] bg-[var(--paper)] px-3 py-2 text-sm leading-6 text-[var(--ink)]">
                           <b>{selected.row} vs {selected.dealer}:</b>{" "}
                           {selectedGrade.correct ? "right." : selectedGrade.answered ? <>you wrote <span className="font-data">{selectedGrade.typed}</span>; the chart prints <span className="font-data">{selectedGrade.expected}</span>.</> : <>left blank; the chart prints <span className="font-data">{selectedGrade.expected}</span>.</>}{" "}
                           <span className="text-[var(--ink-muted)]">{explainToken(section.id, chartToken(section, selected.row, selected.dealer))}</span>
@@ -511,7 +511,7 @@ export function H17ChartDrill() {
             <>
               <GhostButton size="compact" className="hidden md:inline-flex" onClick={() => setConfirmClear(true)} disabled={filled === 0}>Clear chart</GhostButton>
               <GhostButton size="compact" className="hidden md:inline-flex" onClick={() => setPhase("setup")}>Change setup</GhostButton>
-              <Button data-grade-chart="" size="compact" onClick={askGrade} disabled={grade.answered === 0} aria-describedby={hintId} className="inline-flex items-center gap-2">
+              <Button data-grade-chart="" size="compact" onClick={askGrade} disabled={grade.answered === 0} aria-describedby={hintId} className="inline-flex items-center gap-2 [@media(pointer:coarse)]:min-h-11">
                 <span>Grade<span className="hidden sm:inline"> chart</span></span>
                 <span aria-hidden="true" className="hidden lg:[@media(pointer:fine)]:inline"><KeyHint>{mac ? "⌘ ↵" : "Ctrl ↵"}</KeyHint></span>
               </Button>
@@ -520,7 +520,8 @@ export function H17ChartDrill() {
           )}
         />
         {choice === "all" && (
-          <nav aria-label="Jump to a table" className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+          // Phones keep only the one-line HUD above the chart; the keypad's Next and scrolling move between tables.
+          <nav aria-label="Jump to a table" className="mb-4 hidden flex-wrap items-center gap-2 text-sm sm:flex">
             <span className="text-xs font-medium text-[var(--ink-muted)]">Jump to</span>
             {sections.map((section) => (
               <GhostButton key={section.id} size="compact" onMouseDown={(event) => event.preventDefault()} onClick={() => jump(section.id)}>
