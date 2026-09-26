@@ -402,12 +402,13 @@ export function buildRulesChart(rules: StrategyChartRules, view: ChartView): Rul
   return { rules, view, sections, cells, indexCount };
 }
 
-/** Cells whose printed answer differs between two charts, in page order. */
+/** Cells that look different between two charts (chips count only where they are shown), in page order. */
 export function changedCells(before: RulesChart, after: RulesChart): RulesCell[] {
   const changed: RulesCell[] = [];
   for (const cell of after.cells.values()) {
     const previous = before.cells.get(cell.key);
-    if (!previous || previous.text !== cell.text || previous.play?.chip !== cell.play?.chip || previous.play?.available !== cell.play?.available) changed.push(cell);
+    const chipChanged = after.view === "index" && (previous?.play?.chip !== cell.play?.chip || previous?.play?.available !== cell.play?.available);
+    if (!previous || previous.text !== cell.text || previous.surrenderFirst !== cell.surrenderFirst || chipChanged) changed.push(cell);
   }
   return changed;
 }

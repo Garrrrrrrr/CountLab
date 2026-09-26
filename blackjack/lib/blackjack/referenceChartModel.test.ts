@@ -112,6 +112,10 @@ describe("rules chart cells", () => {
     const keys = changedCells(before, after).map((cell) => cell.key);
     expect(keys).toContain("hard:11vA");
     expect(keys).not.toContain("hard:8v2");
+    // Index chips are not drawn in the basic view, so their changes do not count there.
+    expect(keys).not.toContain("hard:16v9");
+    const indexKeys = changedCells(buildRulesChart(DEFAULT_CHART_RULES, "index"), buildRulesChart(rules({ dealerHitsSoft17: false }), "index")).map((cell) => cell.key);
+    expect(indexKeys).toContain("hard:16v9");
   });
 });
 
