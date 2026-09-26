@@ -31,16 +31,18 @@ const FLASH_MS = 1600;
 const ANNOUNCE_DELAY_MS = 500;
 const NO_CELLS: ReadonlySet<string> = new Set();
 
+// Phones drop the icons, and below 400px the short labels keep both options
+// inside the switch; the accessible names stay whole.
 const VIEW_OPTIONS: ReadonlyArray<SegmentOption<ChartView>> = [
   {
     value: "basic",
     ariaLabel: "Basic strategy",
-    label: <span className="inline-flex items-center gap-2"><i className="fa-solid fa-table-cells text-xs max-[359px]:hidden" aria-hidden="true" /><span className="max-[359px]:hidden">Basic strategy</span><span className="hidden max-[359px]:inline">Basic</span></span>,
+    label: <span className="inline-flex items-center gap-2"><i className="fa-solid fa-table-cells text-xs max-sm:!hidden" aria-hidden="true" /><span className="max-[399px]:hidden">Basic strategy</span><span className="hidden max-[399px]:inline">Basic</span></span>,
   },
   {
     value: "index",
     ariaLabel: "With index plays",
-    label: <span className="inline-flex items-center gap-2"><i className="fa-solid fa-hashtag text-xs max-[359px]:hidden" aria-hidden="true" /><span className="max-[359px]:hidden">With index plays</span><span className="hidden max-[359px]:inline">Index plays</span></span>,
+    label: <span className="inline-flex items-center gap-2"><i className="fa-solid fa-hashtag text-xs max-sm:!hidden" aria-hidden="true" /><span className="max-[399px]:hidden">With index plays</span><span className="hidden max-[399px]:inline">Index plays</span></span>,
   },
 ];
 

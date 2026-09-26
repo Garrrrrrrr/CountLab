@@ -284,9 +284,12 @@ test("narrow screens keep tokens, chips and the view switch inside their boxes",
   await page.getByRole("heading", { level: 1 }).waitFor();
   const clipped = await page.locator("[data-testid^='h17-reference-rail'] tbody button").evaluateAll((cells) => cells.filter((cell) => cell.scrollWidth > cell.clientWidth).map((cell) => cell.getAttribute("data-cell")));
   expect(clipped).toEqual([]);
-  await page.goto("/reference/");
-  const views = page.locator("fieldset").filter({ has: page.getByRole("radio", { name: "Basic strategy", exact: true }) });
-  expect(await views.evaluate((group) => { const options = group.querySelector("div:last-child")!; return options.scrollWidth <= options.clientWidth; })).toBe(true);
+  for (const width of [320, 360, 375, 390, 400]) {
+    await page.setViewportSize({ width, height: 700 });
+    await page.goto("/reference/");
+    const views = page.locator("fieldset").filter({ has: page.getByRole("radio", { name: "Basic strategy", exact: true }) });
+    expect(await views.evaluate((group) => { const options = group.querySelector(":scope > div:last-child")!; return options.scrollWidth <= options.clientWidth; }), `view switch at ${width}px`).toBe(true);
+  }
 
   for (const [width, height] of [[1024, 768], [800, 1024]] as const) {
     await page.setViewportSize({ width, height });
