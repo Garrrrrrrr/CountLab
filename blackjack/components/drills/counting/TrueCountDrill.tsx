@@ -1,5 +1,6 @@
 "use client";
-import { ReactNode, useCallback, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ReactNode, Suspense, useCallback, useRef, useState } from "react";
 import { DrillFrame, DrillHud, DrillStage, FeedbackPanel, formatClock, ResumeBanner, useDrillSetupPref } from "@/components/drill";
 import { announce, Button, GhostButton, HelpTip } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -28,7 +29,7 @@ import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { AnswerPad } from "./AnswerPad";
 import { CountingSummary } from "./CountingSummary";
-import { isRecent, readArrival, useEntryFocus, useNow, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useNow, useStoredSessions, useUnfinishedProgress } from "./hooks";
 import { AsideCard, FocusCallout, UnfinishedCallout, YourProgress } from "./SetupParts";
 import { TrueCountSetup, type TrueCountSetupState } from "./true-count/TrueCountSetup";
 
@@ -52,8 +53,14 @@ type Phase = "setup" | "question" | "feedback" | "done";
 type Arrival = ReturnType<typeof readArrival>;
 
 export function TrueCountDrill() {
+  return <Suspense fallback={null}><TrueCountLoader /></Suspense>;
+}
+
+function TrueCountLoader() {
+  const params = useSearchParams();
+  useConsumeArrival(DRILL);
   const [pref, remember, restored] = useDrillSetupPref<TrueCountPref>(PREF_KEY, {});
-  const [boot, setBoot] = useState(() => ({ key: 0, arrival: readArrival(DRILL), resume: false }));
+  const [boot, setBoot] = useState(() => ({ key: 0, arrival: readArrival(DRILL, params), resume: false }));
   const restart = useCallback((options: { resume?: boolean; keepArrival?: boolean }) => setBoot((current) => ({ key: current.key + 1, arrival: options.keepArrival ? current.arrival : { starter: false }, resume: Boolean(options.resume) })), []);
   if (!restored) return null;
   return <TrueCountSession key={boot.key} arrival={boot.arrival} forceResume={boot.resume} remounted={boot.key > 0} pref={pref} remember={remember} restart={restart} />;

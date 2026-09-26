@@ -1,6 +1,6 @@
 "use client";
 import { RefObject, useEffect, useRef, useState } from "react";
-import { consumePracticeFocus } from "@/lib/statistics/spacedRepetition";
+import { consumePracticeFocus, peekPracticeFocus } from "@/lib/statistics/spacedRepetition";
 import { storage, type DrillProgress, type DrillType, type Session } from "@/lib/statistics/storage";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
@@ -50,14 +50,19 @@ export const useReducedMotion = () => useMediaQuery("(prefers-reduced-motion: re
 /**
  * Why the reader arrived: a `?focus=` link (a Benchmark target, which also
  * works in a new tab), the one-shot practice focus a weak spot or the Test
- * Out report leaves in sessionStorage, or `?session=starter`. The stored
- * focus is always consumed so it cannot fire on a later, unrelated visit.
+ * Out report leaves in sessionStorage, or `?session=starter`. Pass the params
+ * from useSearchParams(): after a client-side navigation `location.search`
+ * still shows the previous page during the first render. This only reads;
+ * `useConsumeArrival` clears the stored focus once the drill has mounted.
  */
-export function readArrival(drill: DrillType): { focus?: string; starter: boolean } {
+export function readArrival(drill: DrillType, params: { get(name: string): string | null }): { focus?: string; starter: boolean } {
   if (typeof window === "undefined") return { starter: false };
-  const params = new URLSearchParams(location.search);
-  const stored = consumePracticeFocus(drill);
-  return { focus: params.get("focus") ?? stored, starter: params.get("session") === "starter" };
+  return { focus: params.get("focus") ?? peekPracticeFocus(drill), starter: params.get("session") === "starter" };
+}
+
+/** Clears the one-shot practice focus after mount, so it cannot fire on a later, unrelated visit. */
+export function useConsumeArrival(drill: DrillType) {
+  useEffect(() => { consumePracticeFocus(drill); }, [drill]);
 }
 
 /** Progress older than this opens the setup with a Resume offer instead of dropping the reader mid-question. */

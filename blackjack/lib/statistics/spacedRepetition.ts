@@ -111,3 +111,18 @@ export function consumePracticeFocus(drill: DrillType): string | undefined {
     return undefined;
   }
 }
+
+/**
+ * The pending practice focus for `drill`, without clearing it. Safe to call
+ * while rendering (a render can be discarded); clear it after mount with
+ * `consumePracticeFocus`.
+ */
+export function peekPracticeFocus(drill: DrillType): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(PRACTICE_FOCUS_KEY) || "null") as { drill?: string; category?: string } | null;
+    return parsed?.drill === drill && typeof parsed.category === "string" ? parsed.category : undefined;
+  } catch {
+    return undefined;
+  }
+}

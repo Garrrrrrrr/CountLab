@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { DrillFrame, DrillHud, DrillStage, FeedbackPanel, formatClock, ResumeBanner, useDrillKeys, useDrillSetupPref } from "@/components/drill";
 import { announce, Button, GhostButton, KeyHint } from "@/components/ui";
 import { ConfirmModal } from "@/components/ConfirmModal";
@@ -25,7 +26,7 @@ import { displaySigned } from "@/lib/blackjack/numericAnswer";
 import { addCategory } from "@/components/DrillKit";
 import { AnswerPad } from "./AnswerPad";
 import { CountingSummary } from "./CountingSummary";
-import { isRecent, readArrival, useEntryFocus, useReducedMotion, useStoredSessions, useUnfinishedProgress } from "./hooks";
+import { isRecent, readArrival, useConsumeArrival, useEntryFocus, useReducedMotion, useStoredSessions, useUnfinishedProgress } from "./hooks";
 import { AsideCard, FocusCallout, HiLoValues, UnfinishedCallout, YourProgress } from "./SetupParts";
 import { CardGroup, CardRecap, cardName, InterruptionView, nextCheckText, PausedView, ReadyCountdown } from "./running/RunningStage";
 import { RunningSetup, type RunningSetupState } from "./running/RunningSetup";
@@ -72,8 +73,14 @@ const valuesOf = (setup: RunningSetupState): RunningValues => ({ decks: setup.de
 const isUsable = (saved: RunningSaved | undefined): saved is RunningSaved => Boolean(saved && Array.isArray(saved.cards) && saved.cards.length > 0 && Number.isFinite(saved.cursor));
 
 export function RunningCountDrill() {
+  return <Suspense fallback={null}><RunningCountLoader /></Suspense>;
+}
+
+function RunningCountLoader() {
+  const params = useSearchParams();
+  useConsumeArrival(DRILL);
   const [pref, remember, restored] = useDrillSetupPref<RunningPref>(PREF_KEY, {});
-  const [boot, setBoot] = useState(() => ({ key: 0, arrival: readArrival(DRILL), resume: false }));
+  const [boot, setBoot] = useState(() => ({ key: 0, arrival: readArrival(DRILL, params), resume: false }));
   const restart = useCallback((options: { resume?: boolean; keepArrival?: boolean }) => setBoot((current) => ({ key: current.key + 1, arrival: options.keepArrival ? current.arrival : { starter: false }, resume: Boolean(options.resume) })), []);
   // The remembered setup is read after mount; render nothing for that one frame.
   if (!restored) return null;
