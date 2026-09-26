@@ -622,3 +622,13 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .surface { break-inside: avoid; box-shadow: none; }
   .overflow-x-auto { overflow: visible; }
 }
+
+/* === strategy-drills === */
+/* The H17 chart keypad also serves touch screens 1024px and wider (a tablet in
+   landscape), where the dock's own lg:hidden would otherwise leave no way to type. */
+@media (min-width: 1024px) and (pointer: coarse) {
+  .h17-keypad-dock {
+    display: block !important;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+}
