@@ -271,3 +271,60 @@ export function sectionLegend(section: ChartSectionId): LegendEntry[] {
   });
   return [...base, ...compounds];
 }
+
+/**
+ * Like `feedKey`, but typing over a finished answer replaces it. Without this
+ * a cell holding `H` ignored `s` entirely, while the selected text suggested
+ * it would be overwritten; a phone needed Backspace first. Partial entries
+ * (a lone `4` or `-`) still continue as before.
+ */
+export function feedCell(section: ChartSectionId, buffer: string, key: string, shiftKey = false): FeedResult {
+  if (key !== "Backspace" && key.length === 1 && parseEntry(section, buffer) !== null) {
+    const fresh = feedKey(section, "", key, shiftKey);
+    return fresh.disposition === "ignore" ? { buffer, disposition: "ignore" } : fresh;
+  }
+  return feedKey(section, buffer, key, shiftKey);
+}
+
+export interface KeypadKey {
+  id: string;
+  kind: "letter" | "digit" | "sign" | "delete" | "next" | "spacer";
+  /** What the key shows: the token the cell will read (`Y/N`, `SUR`), a digit or a sign. */
+  face: string;
+  /** What `feedKey` receives, with `shift` for the two-part answers. */
+  key: string;
+  shift?: boolean;
+  /** Accessible name when the face alone would be unclear (`Minus`, `Delete`, `Next cell`). */
+  label?: string;
+  /** A tiny caption under a letter key: `split`, `dbl/stand`. */
+  meaning?: string;
+}
+
+const KEY_MEANING: Record<string, string> = {
+  "pairs:Y": "split", "pairs:N": "no split", "pairs:Y/N": "if DAS",
+  "soft:H": "hit", "soft:S": "stand", "soft:D": "double", "soft:Ds": "dbl/stand",
+  "hard:H": "hit", "hard:S": "stand", "hard:D": "double",
+  "surrender:SUR": "surrender", "surrender:N": "no",
+};
+
+/**
+ * The touch keypad: six columns by three rows, the same positions for every
+ * section so the digits never move. Row one holds the section's answers
+ * (padded to four slots), Delete and Next; rows two and three are the minus
+ * sign with 0 to 4, and the plus sign with 5 to 9, so every index the charts
+ * print (including the early-surrender 7+ and 8+) can be entered.
+ */
+export function KEYPAD_ROWS(section: ChartSectionId): KeypadKey[][] {
+  const letter = (face: string, key: string, shift = false): KeypadKey => ({ id: `letter-${face}`, kind: "letter", face, key, shift, meaning: KEY_MEANING[`${section}:${face}`] });
+  const letters = [
+    ...BASE_LETTERS[section].map((key) => letter(displayBuffer(section, key), key)),
+    ...Object.entries(SHIFT_COMPOUNDS[section] ?? {}).map(([trigger, buffer]) => letter(displayBuffer(section, buffer), trigger, true)),
+  ];
+  const spacers = Array.from({ length: Math.max(0, 4 - letters.length) }, (_, index): KeypadKey => ({ id: `spacer-${index}`, kind: "spacer", face: "", key: "" }));
+  const digit = (value: number): KeypadKey => ({ id: `digit-${value}`, kind: "digit", face: String(value), key: String(value) });
+  return [
+    [...letters, ...spacers, { id: "delete", kind: "delete", face: "⌫", key: "Backspace", label: "Delete" }, { id: "next", kind: "next", face: "Next", key: "", label: "Next cell" }],
+    [{ id: "minus", kind: "sign", face: "−", key: "-", label: "Minus" }, ...[0, 1, 2, 3, 4].map(digit)],
+    [{ id: "plus", kind: "sign", face: "+", key: "+", label: "Plus" }, ...[5, 6, 7, 8, 9].map(digit)],
+  ];
+}
