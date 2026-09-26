@@ -892,4 +892,29 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   [data-reference-page] .ref-hand-col { width: 30px; }
   [data-reference-page] .ref-grid { border-spacing: 1px; }
   [data-reference-page] .ref-rail { overflow: visible; }
+
+/* === counting-drills === */
+/* While a counting drill is being played on a phone or tablet, the drill owns
+   the screen: the tab bar steps aside (End drill is the way out), so the
+   keypad and its submit key are never under it. The scroll padding clears the
+   app header plus the sticky HUD (its height is published as --counting-hud),
+   so nothing scrolled into view hides under them. */
+@media (max-width: 1023px) {
+  body:has([data-counting-play]) nav[aria-label="Mobile navigation"] { display: none; }
+}
+html:has([data-counting-play]) {
+  scroll-padding-top: calc(4rem + env(safe-area-inset-top) + var(--counting-hud, 4.25rem) + .5rem);
+  scroll-padding-bottom: .5rem;
+}
+@media (max-width: 639px) {
+  /* The play title is a compact label on phones (the app header already names
+     the drill), and the HUD keeps to one line: progress, time, Pause and End. */
+  [data-counting-play] [data-drill-phase="play"] > div:first-child { margin-bottom: .75rem; }
+  [data-counting-play] [data-drill-phase="play"] > div:first-child p { display: none; }
+  [data-counting-play] [data-drill-phase="play"] h1 { margin-top: 0; font-size: 1.125rem !important; line-height: 1.5rem; }
+  [data-counting-play] section[aria-label="Session progress"] { padding-block: .375rem; }
+  [data-counting-play] section[aria-label="Session progress"] > div { flex-wrap: nowrap; column-gap: .75rem; }
+  [data-counting-play] section[aria-label="Session progress"] > div > :first-child { min-width: 0; }
+  /* Answers stay large (and above 16px, so iOS never zooms into the field). */
+  [data-counting-drill] input[data-answer-field] { font-size: 1.75rem !important; }
 }
