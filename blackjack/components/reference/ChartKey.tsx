@@ -41,6 +41,20 @@ function Swatch({ tone, text, style }: { tone: string; text: string; style: stri
 
 const TRUE_COUNT_HELP = "Your running count divided by the decks still to be dealt. Index plays are the hands where the true count makes a different play better than basic strategy.";
 
+/**
+ * What a true count is. Phones move the key below the first table, so it
+ * holds nothing focusable there (focus would jump back up the page): the
+ * definition is written out instead of behind a tip, and paper gets it too.
+ */
+function TrueCountHelp() {
+  return (
+    <>
+      <span className="md:hidden print:!inline"> The true count is your running count divided by the decks still to be dealt.</span>{" "}
+      <HelpTip label="True count" className="max-md:hidden print:hidden">{TRUE_COUNT_HELP}</HelpTip>
+    </>
+  );
+}
+
 /** "36 index plays for these rules, insurance included (5 apply only after hitting or splitting)." */
 function countLine({ total, afterHitting, unmeasured }: IndexPlayCounts) {
   const parts = [
@@ -50,7 +64,7 @@ function countLine({ total, afterHitting, unmeasured }: IndexPlayCounts) {
   return `${total} index plays for these rules, insurance included${parts.length ? ` (${parts.join("; ")})` : ""}. `;
 }
 
-/** Every code on the rules chart in plain words, right above the tables. */
+/** Every code on the rules chart in plain words, right above the tables (below the first one on phones). */
 export function RulesChartKey({ view, rules, counts }: { view: ChartView; rules: StrategyChartRules; counts: IndexPlayCounts | null }) {
   const restricted = rules.doubleRule !== "any" || rules.europeanNoHoleCard;
   return (
@@ -70,8 +84,8 @@ export function RulesChartKey({ view, rules, counts }: { view: ChartView; rules:
       </ul>
       {view === "index" && (
         <p className={NOTE}>
-          Every cell keeps its basic-strategy action. A chip shows the index play: <span className="ref-chip ref-chip-static">S+2&#8593;</span> stand when the true count is +2 or higher; <span className="ref-chip ref-chip-static">H&#8722;1&#8595;</span> hit when it is &#8722;1 or lower.{" "}
-          <HelpTip label="True count">{TRUE_COUNT_HELP}</HelpTip>
+          Every cell keeps its basic-strategy action. A chip shows the index play: <span className="ref-chip ref-chip-static">S+2&#8593;</span> stand when the true count is +2 or higher; <span className="ref-chip ref-chip-static">H&#8722;1&#8595;</span> hit when it is &#8722;1 or lower.
+          <TrueCountHelp />
         </p>
       )}
       <p className={NOTE}>
@@ -100,8 +114,8 @@ export function H17ChartKey() {
         ))}
       </ul>
       <p className={NOTE}>
-        T = any 10-value card. The rules chart writes 4+ as S+4&#8593; (stand at +4 and up).{" "}
-        <HelpTip label="True count">{TRUE_COUNT_HELP}</HelpTip>
+        T = any 10-value card. The rules chart writes 4+ as S+4&#8593; (stand at +4 and up).
+        <TrueCountHelp />
         <span className="hidden [@media(hover:hover)]:inline print:!hidden"> Tip: arrow keys move between cells.</span>
       </p>
     </div>

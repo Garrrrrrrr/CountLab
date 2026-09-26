@@ -62,7 +62,9 @@ export function H17ChartView() {
     (row: string, dealer: string, position: CellPosition) => <H17Cell cell={cells.get(`${section.id}:${row}v${dealer}`)!} position={position} />,
   ])) as Record<H17Section["id"], (row: string, dealer: string, position: CellPosition) => ReactNode>, [sections, cells]);
 
-  const noSurrenderNote = hydrated && surrender === "none"
+  // Paper gets its own wording of this note in the rules line, since the toolbar doesn't print.
+  const savedNone = hydrated && surrender === "none";
+  const noSurrenderNote = savedNone
     ? <p className="text-xs text-[var(--ink-muted)]">Your saved table has no surrender; skip the surrender table.</p>
     : null;
 
@@ -72,7 +74,7 @@ export function H17ChartView() {
         title="H17 deviation chart"
         description="The answer key for the H17 chart recall drill: 6 decks, dealer hits soft 17, double after split. White cells with an amber edge are Hi-Lo index plays; select any cell to see what it means."
         shortDescription="The printed chart the H17 drill grades. Tap any cell to see what it means."
-        printLine={`Rules: ${FIXED_RULES.toLowerCase()} · ${rule === "early10" ? "early surrender vs 10" : "late surrender"}`}
+        printLine={`Rules: ${FIXED_RULES.toLowerCase()} · ${rule === "early10" ? "early surrender vs 10" : "late surrender"}${savedNone ? " (your table offers no surrender: skip the surrender table)" : ""}`}
         actions={(
           <>
             <ButtonLink href="/reference/deviations" variant="quiet" className="min-w-0 flex-1 gap-2 text-sm sm:flex-none">
