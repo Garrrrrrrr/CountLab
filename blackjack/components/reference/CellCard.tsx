@@ -1,19 +1,18 @@
 "use client";
 
 import { ACTION_LABEL } from "@/lib/blackjack/actionStyles";
+import { formatRate, formatValue } from "@/lib/blackjack/referenceChartModel";
 import type { ChartView, H17Cell, PlayValue, RulesCell } from "@/lib/blackjack/referenceChartModel";
 import type { ExplainSource } from "./CellExplainer";
 import { H17_TONE_STYLE, SWATCH, TONE_STYLE } from "./cellStyles";
-
-const signed = (value: number) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(3)}`;
 
 function ValueLines({ value }: { value: PlayValue | null | undefined }) {
   if (value === undefined) return null;
   if (value === null) return <p className="mt-1 text-xs text-[var(--ink-muted)]">Value not measured yet.</p>;
   return (
     <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">
-      <span className={`block font-semibold ${value.ev < 0 ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>Worth {signed(value.ev)} units per 100 rounds</span>
-      <span className="block">Changes the play {value.fires.toFixed(2)} times per 100 rounds</span>
+      <span className={`block font-semibold ${value.ev < 0 ? "text-[var(--negative)]" : "text-[var(--ink)]"}`}>Worth {formatValue(value.ev)} units per 100 rounds</span>
+      <span className="block">Changes the play {formatRate(value.fires)} times per 100 rounds</span>
     </p>
   );
 }

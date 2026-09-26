@@ -71,6 +71,23 @@ const MINUS = "−";
 export const signedCount = (value: number) => (value > 0 ? `+${value}` : value < 0 ? `${MINUS}${Math.abs(value)}` : "0");
 
 /**
+ * A measured amount to `decimals` places, or to two significant figures when
+ * it would round to zero there, so a tiny value never reads as none.
+ */
+export function formatAmount(value: number, decimals: number): string {
+  const size = Math.abs(value);
+  if (size === 0 || size >= 0.5 * 10 ** -decimals) return size.toFixed(decimals);
+  const places = Math.min(20, 1 - Math.floor(Math.log10(size)));
+  return String(Number(size.toFixed(places)));
+}
+
+/** A play's value in units per 100 rounds, always signed: +0.052, −0.004, +0.00038. */
+export const formatValue = (value: number) => `${value < 0 ? MINUS : "+"}${formatAmount(value, 3)}`;
+
+/** How often a play changes the decision, per 100 rounds: 1.24, 0.0038. */
+export const formatRate = (value: number) => formatAmount(value, 2);
+
+/**
  * The chip an index play wears in its cell: the play, the count, and an arrow
  * for the direction. "S+4↑" is stand at +4 and higher; "H−1↓" is hit at −1 and
  * lower. Arrows rather than ≥/≤ because they read the same way the printed

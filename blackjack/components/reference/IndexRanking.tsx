@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Button, HelpTip } from "@/components/ui";
+import { formatRate, formatValue } from "@/lib/blackjack/referenceChartModel";
 import type { IndexRanking as Ranking, RankedPlay } from "@/lib/blackjack/referenceChartModel";
 import type { StrategyChartRules } from "@/lib/blackjack/strategyChart";
 
 const TOP = 10;
-const signed = (value: number) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(3)}`;
 
 /** A small bar beside a value in a ranked list, scaled to the largest value shown. */
 function ValueBar({ value, max }: { value: number; max: number }) {
@@ -36,15 +36,15 @@ function PlayRow({ play, rank, max, hidden, onShow, disabled }: { play: RankedPl
       <span className="col-span-3 col-start-1 row-start-3 flex min-w-0 items-center gap-2 text-sm sm:col-span-2 sm:col-start-2 lg:col-span-1 lg:col-start-auto lg:row-start-auto lg:block print:col-span-1 print:col-start-auto print:row-start-auto print:block">
         {value ? (
           <>
-            <span className={`shrink-0 font-data font-semibold print:text-[9px] ${value.ev < 0 ? "text-[var(--negative)]" : ""}`}>{signed(value.ev)}</span>
+            <span className={`shrink-0 font-data font-semibold print:text-[9px] ${value.ev < 0 ? "text-[var(--negative)]" : ""}`}>{formatValue(value.ev)}</span>
             <span className="w-20 shrink-0 lg:mt-1 lg:block lg:w-full print:hidden"><ValueBar value={value.ev} max={max} /></span>
             {value.ev < 0 && <span className="text-xs text-[var(--negative)] lg:block">Costs value at this spread</span>}
-            <span className="text-xs text-[var(--ink-muted)] lg:hidden print:hidden">&middot; Changes the play {value.fires.toFixed(2)} times per 100 rounds</span>
+            <span className="text-xs text-[var(--ink-muted)] lg:hidden print:hidden">&middot; Changes the play {formatRate(value.fires)} times per 100 rounds</span>
           </>
         ) : <span className="text-xs text-[var(--ink-muted)]">Not measured yet</span>}
       </span>
       <span className="hidden text-xs leading-4 text-[var(--ink-muted)] lg:block print:hidden">
-        {value && <>Changes the play {value.fires.toFixed(2)} times per 100 rounds</>}
+        {value && <>Changes the play {formatRate(value.fires)} times per 100 rounds</>}
       </span>
       <span className="col-start-3 row-start-1 justify-self-end lg:col-start-auto lg:row-start-auto print:hidden">
         {play.showLabel && (
@@ -79,7 +79,7 @@ export function IndexRanking({ ranking, rules, onShow, disabled }: { ranking: Ra
         ))}
       </ol>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--ink-muted)] print:text-[9px] print:leading-4">
-        Together, these plays add about <b className="font-data text-[var(--ink)]">{signed(total)}</b> units per 100 rounds.
+        Together, these plays add about <b className="font-data text-[var(--ink)]">{formatValue(total)}</b> units per 100 rounds.
         {topShare && <> The top {topShare.count} give {Math.round(topShare.share * 100)}% of that.</>}
         {" "}Each is measured on its own, so the total is close but not exact.
       </p>

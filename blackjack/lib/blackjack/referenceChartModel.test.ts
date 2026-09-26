@@ -9,6 +9,8 @@ import {
   chipText,
   decksForChoice,
   deckChoice,
+  formatRate,
+  formatValue,
   h17PlainSentence,
   handName,
   rankIndexPlays,
@@ -47,6 +49,25 @@ describe("notation", () => {
     expect(decksForChoice("4-8", 8)).toBe(8);
     expect(decksForChoice("4-8", 1)).toBe(6);
     expect(decksForChoice("2", 8)).toBe(2);
+  });
+});
+
+describe("measured values", () => {
+  it("shows values to three places and rates to two", () => {
+    expect(formatValue(0.0523)).toBe("+0.052");
+    expect(formatValue(-0.0042)).toBe("\u22120.004");
+    expect(formatValue(0)).toBe("+0.000");
+    expect(formatRate(1.236)).toBe("1.24");
+  });
+
+  it("never rounds a tiny value to zero", () => {
+    expect(formatValue(0.000381)).toBe("+0.00038");
+    expect(formatValue(-0.0002)).toBe("\u22120.0002");
+    expect(formatRate(0.0038)).toBe("0.0038");
+    expect(formatRate(0.004999)).toBe("0.005");
+    // Values that already show at the usual precision keep it.
+    expect(formatValue(0.0005)).toBe("+0.001");
+    expect(formatRate(0.005)).toBe("0.01");
   });
 });
 
