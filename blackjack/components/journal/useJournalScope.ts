@@ -31,4 +31,3 @@ export function useJournalScope(data: JournalData, bankrollId: string | "all", p
   return { defaultBankrollId, scopedSessions, scopedTransactions, inRange, aggregate, lifetime, venues, cumulative, bankroll, cash, health, balances, outcomes, bankrollNames };
 }
 
-export type JournalScope = ReturnType<typeof useJournalScope>;

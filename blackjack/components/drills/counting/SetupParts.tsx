@@ -110,7 +110,7 @@ export function YourProgress({ drill, sessions, allSessions, best }: { drill: "R
       <dl className="divide-y divide-[var(--rule)]">
         <div className="flex items-baseline justify-between gap-3 py-2">
           <dt>Last session</dt>
-          <dd className="text-right font-data text-[var(--ink)]">{last ? `${last.accuracy}% · ${relativeTime(last.date)}` : "No sessions yet"}</dd>
+          <dd className={`text-right ${last ? "font-data text-[var(--ink)]" : "text-[var(--ink-muted)]"}`}>{last ? `${last.accuracy}% · ${relativeTime(last.date)}` : "No sessions yet"}</dd>
         </div>
         <div className="flex items-baseline justify-between gap-3 py-2">
           <dt>{best.label}</dt>

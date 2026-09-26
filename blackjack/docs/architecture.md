@@ -12,8 +12,18 @@ static-export deployment.
 ```text
 app/                         Next.js static-export routing, layout, metadata
 components/                  route-level client components and UI primitives
-  ui.tsx                     panels, controls, CountRule, responsive tables
+  ui.tsx                     the shared kit: panels, fields, segmented controls,
+                             help tips, sheets, toasts, live announcements
+  AppShell.tsx               grouped sidebar, phone bottom bar, search, breadcrumbs
+  drill/                     the drill kit: setup, play frame, feedback, summary
+  drills/counting/           running count, true count, deck estimation, benchmark
+  drills/strategy/           basic strategy, deviations, H17 chart drills
+  cvcx/                      Game & Bankroll Lab (game, bankroll, ramp, results)
+  journal/                   Session Journal (log sheet, sessions, cash, venues)
+  reference/                 strategy and index reference charts
 lib/
+  routes.ts                  NAV_GROUPS: the one list behind the sidebar, search,
+                             breadcrumbs and page titles
   blackjack/                 blackjack rules, deviations, EV, simulation
   ddm/                       Double Down Madness engine and exact EV
   uth/                       Ultimate Texas Hold'em evaluator

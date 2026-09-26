@@ -44,16 +44,6 @@ export function LabSelect({ label, help, helpLabel, hint, value, onChange, analy
   );
 }
 
-/** A heading-less group label with an optional explanation, for rows of read-only facts. */
-export function FieldCaption({ children, help, helpLabel }: { children: ReactNode; help?: ReactNode; helpLabel?: string }) {
-  return (
-    <div className="flex min-h-6 items-center gap-1 text-[.8rem] font-medium tracking-[.01em] text-[var(--ink-muted)]">
-      <span>{children}</span>
-      {help && helpLabel && <HelpTip label={helpLabel}>{help}</HelpTip>}
-    </div>
-  );
-}
-
 /** A small status mark: Audited, Estimated, Custom. */
 export function StatusMark({ tone, icon, children }: { tone: "good" | "warn" | "neutral"; icon?: string; children: ReactNode }) {
   const color = tone === "good" ? "var(--accent)" : tone === "warn" ? "var(--warning)" : "var(--ink-muted)";

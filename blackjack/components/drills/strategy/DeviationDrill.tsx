@@ -263,7 +263,7 @@ function DeviationSession({ pref, remember }: { pref: Pref; remember: (next: Par
             )}
           </div>
         )}
-        modeLabel="Hands to practise"
+        modeLabel="Hands to practice"
         modes={modes}
         mode={mode}
         onMode={(next) => { track("practice_mode_changed", { drill: DRILL, from: mode, to: next }); setMode(next); remember({ mode: next }); }}

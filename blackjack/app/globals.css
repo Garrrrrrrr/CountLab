@@ -147,7 +147,7 @@ button {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
 }
 .font-display { font-family: var(--font-display); }
-.font-data, .font-mono, table, [data-count], .count-rule { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+.font-data, .font-mono, table, [data-count] { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .floor {
   background: var(--paper);
 }

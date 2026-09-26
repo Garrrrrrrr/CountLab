@@ -103,7 +103,7 @@ export function ExamReport({ result, onRetake }: { result: ExamResult; onRetake:
         </Panel>
 
         {result.failedSections.length > 0 && <Panel>
-          <h2 className="font-display text-lg font-semibold">What to practise</h2>
+          <h2 className="font-display text-lg font-semibold">What to practice</h2>
           <p className="mt-1 text-xs text-[var(--ink-muted)]">Each link opens the drill for that skill, focused on the category you scored worst in.</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             {result.sections.filter((section) => !section.passed).map((section) => <button

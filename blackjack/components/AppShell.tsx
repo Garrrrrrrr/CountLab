@@ -171,7 +171,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         ref={navigation}
         aria-label="Primary navigation"
         data-analytics-nav="sidebar"
-        className={`${open ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 z-40 flex w-[min(17rem,86vw)] flex-col overflow-y-auto border-r border-[var(--rule)] bg-[var(--paper-raised)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] shadow-[20px_0_70px_rgba(0,0,0,.18)] transition-transform duration-300 ease-out lg:w-[17rem] lg:translate-x-0 lg:shadow-none`}
+        className={`${open ? "translate-x-0 shadow-[20px_0_70px_rgba(0,0,0,.18)]" : "-translate-x-full"} fixed inset-y-0 z-40 flex w-[min(17rem,86vw)] flex-col overflow-y-auto border-r border-[var(--rule)] bg-[var(--paper-raised)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1.25rem+env(safe-area-inset-top))] transition-[transform,box-shadow] duration-300 ease-out lg:w-[17rem] lg:translate-x-0 lg:shadow-none`}
       >
         <div className="mb-5 flex items-center justify-between gap-2">
           <Link href="/" onClick={closeDrawer} aria-label="CountLab home" className="ml-1 rounded-xl">

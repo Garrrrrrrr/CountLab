@@ -268,7 +268,7 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
               </Callout>
             ) : (
               <Callout tone="warn" title="Surrender isn't dealt at your table" onDismiss={() => setFocus(undefined)}>
-                Your table rules have no surrender, so surrender hands never come up. Turn it on under Table rules to practise them.
+                Your table rules have no surrender, so surrender hands never come up. Turn it on under Table rules to practice them.
               </Callout>
             ))}
             {unfinished && unfinishedProgress && (
@@ -282,11 +282,11 @@ function StrategySession({ pref, remember }: { pref: Pref; remember: (next: Part
             )}
           </div>
         )}
-        modeLabel="Hands to practise"
+        modeLabel="Hands to practice"
         modes={modes}
         mode={mode}
         onMode={chooseMode}
-        modeNote={pick && <>Next focus: {pick.category} <span className="font-normal text-[var(--ink-muted)]">({pick.reason === "due" ? "due for review" : pick.reason === "new" ? "not practised yet" : `${Math.round((pick.correct! / pick.total!) * 100)}% of ${pick.total} hands`})</span></>}
+        modeNote={pick && <>Next focus: {pick.category} <span className="font-normal text-[var(--ink-muted)]">({pick.reason === "due" ? "due for review" : pick.reason === "new" ? "not practiced yet" : `${Math.round((pick.correct! / pick.total!) * 100)}% of ${pick.total} hands`})</span></>}
         length={length}
         onLength={(next) => { setLength(next); remember({ length: next }); }}
         explain={explain}

@@ -65,7 +65,7 @@ export function PracticeChecklist() {
         <h1 className="mt-2 text-3xl font-semibold">Today&rsquo;s checklist</h1>
         <p className="mt-2 max-w-2xl text-[var(--ink-muted)]">
           A day&rsquo;s work, in order. Items that measure a drill fill in by themselves as you
-          practise &mdash; the rest happen away from the screen, so tick those yourself. Everything
+          practice &mdash; the rest happen away from the screen, so tick those yourself. Everything
           resets at midnight UTC.
         </p>
       </div>
