@@ -13,6 +13,15 @@ import { useSyncState } from "./SyncBadge";
 /** Supabase accepts about 30 journal writes a minute, so the library spaces imported uploads 2.1s apart. */
 const UPLOAD_SECONDS_PER_RECORD = 2.1;
 
+/** Where a signed-in journal stands, in the same terms as the header's sync badge. */
+const STORAGE_NOTE: Record<"offline" | "syncing" | "error" | "synced" | "waiting", { tone: "info" | "good" | "warn"; text: string }> = {
+  offline: { tone: "info", text: "Saved on this device; it syncs when you reconnect." },
+  syncing: { tone: "info", text: "Syncing to your account…" },
+  waiting: { tone: "info", text: "Syncing to your account…" },
+  error: { tone: "warn", text: "Your last sync failed, but everything is saved on this device." },
+  synced: { tone: "good", text: "Synced to your account." },
+};
+
 type Pending = { kind: "json"; raw: string; preview: ImportPreview } | { kind: "csv"; raw: string; rows: number };
 
 function download(contents: string, type: string, name: string) {
@@ -80,9 +89,9 @@ export function DataTab({ signedIn, sessions, transactions }: { signedIn: boolea
   const today = localDateString();
   return (
     <div className="grid gap-4">
-      {signedIn ? (
-        <Callout tone={sync.retry ? "warn" : "good"} icon="fa-cloud-arrow-up">
-          {sync.retry ? "Your last sync failed, but everything is saved on this device. " : "Synced to your account. "}A JSON backup is still a good idea before big imports.
+      {signedIn && sync.status !== "guest" ? (
+        <Callout tone={STORAGE_NOTE[sync.status].tone} icon="fa-cloud-arrow-up">
+          {STORAGE_NOTE[sync.status].text} A JSON backup is still a good idea before big imports.
         </Callout>
       ) : (
         <Callout tone="info" icon="fa-mobile-screen">

@@ -10,18 +10,18 @@ const subscribeOnline = (onChange: () => void) => {
 /** Online unless the browser says otherwise; prerendered HTML assumes online. */
 export const useOnline = () => useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 
-type SyncState = { value: string; sub: string; icon: string; tone: string; retry?: boolean };
+type SyncState = { status: "guest" | "offline" | "syncing" | "error" | "synced" | "waiting"; value: string; sub: string; icon: string; tone: string; retry?: boolean };
 
 /** The existing five sync statements, plus offline, which is not a failure: the save worked on this device. */
 export function useSyncState(): SyncState {
   const { user, syncStatus } = useAuth();
   const online = useOnline();
-  if (!user) return { value: "Guest mode", sub: "Saved on this device only", icon: "fa-mobile-screen", tone: "text-[var(--ink-muted)]" };
-  if (!online) return { value: "Offline", sub: "Saved on this device; syncs when you reconnect", icon: "fa-plug-circle-xmark", tone: "text-[var(--warning)]" };
-  if (syncStatus === "syncing") return { value: "Syncing…", sub: "Pushing to your account", icon: "fa-arrows-rotate motion-safe:animate-spin", tone: "text-[var(--info)]" };
-  if (syncStatus === "error") return { value: "Sync failed", sub: "Check your connection", icon: "fa-triangle-exclamation", tone: "text-[var(--negative)]", retry: true };
-  if (syncStatus === "synced") return { value: "Synced", sub: "Up to date on your account", icon: "fa-circle-check", tone: "text-[var(--accent)]" };
-  return { value: "Not synced", sub: "Waiting to sync", icon: "fa-clock", tone: "text-[var(--ink-muted)]" };
+  if (!user) return { status: "guest", value: "Guest mode", sub: "Saved on this device only", icon: "fa-mobile-screen", tone: "text-[var(--ink-muted)]" };
+  if (!online) return { status: "offline", value: "Offline", sub: "Saved on this device; syncs when you reconnect", icon: "fa-plug-circle-xmark", tone: "text-[var(--warning)]" };
+  if (syncStatus === "syncing") return { status: "syncing", value: "Syncing…", sub: "Pushing to your account", icon: "fa-arrows-rotate motion-safe:animate-spin", tone: "text-[var(--info)]" };
+  if (syncStatus === "error") return { status: "error", value: "Sync failed", sub: "Check your connection", icon: "fa-triangle-exclamation", tone: "text-[var(--negative)]", retry: true };
+  if (syncStatus === "synced") return { status: "synced", value: "Synced", sub: "Up to date on your account", icon: "fa-circle-check", tone: "text-[var(--accent)]" };
+  return { status: "waiting", value: "Not synced", sub: "Waiting to sync", icon: "fa-clock", tone: "text-[var(--ink-muted)]" };
 }
 
 /** Where the journal lives and whether it is backed up, with a retry when a sync failed. */
