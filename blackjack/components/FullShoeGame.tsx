@@ -1374,8 +1374,9 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
       </MobileActionDock>}
       {phase === "play" && current && <MobileActionDock label={`Actions for player ${current.player + 1}, spot ${current.spot + 1}`}>
         <div className="mb-2 flex items-center justify-between gap-2 px-1 text-xs"><span className="text-[var(--ink-muted)]">P{current.player + 1} · Spot {current.spot + 1}</span><b>{handLabel(current.cards)} · ${money(current.bet)}</b></div>
-        <div className="grid grid-cols-2 gap-2">
-          {legalActions(current).map((action) => <Button disabled={dealing} className="w-full" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}
+        {/* Five actions in two columns need a third row, which buries the hand. */}
+        <div className={`grid gap-2 ${legalActions(current).length > 4 ? "grid-cols-3" : "grid-cols-2"}`}>
+          {legalActions(current).map((action) => <Button disabled={dealing} className="w-full px-1 text-sm" key={action} onClick={() => act(action)}>{ACTION_NAMES[action]}</Button>)}
         </div>
       </MobileActionDock>}
       {(phase === "dealing" || phase === "dealer") && <MobileActionDock label="Table status" className="text-center text-sm text-[var(--accent)]/75"><i className="fa-solid fa-circle-notch mr-2 animate-spin" aria-hidden="true" />{phase === "dealer" ? "Dealer playing…" : "Cards in motion…"}</MobileActionDock>}
