@@ -1192,7 +1192,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
     { label: "Cards discarded", value: discarded, intel: "discard" },
   ];
   return (
-    <div className="pb-24 lg:pb-0 xl:-mx-8 2xl:-mx-8">
+    <div className="pb-48 lg:pb-0 xl:-mx-8 2xl:-mx-8">
       <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:mb-5 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-bold uppercase tracking-[.2em] text-[var(--accent)]">{mode === "checkout" ? "Checkout" : "Coached"} · Round {round} · {rules.decks}D {rules.dealerHitsSoft17 ? "H17" : "S17"} · {spread === "custom" ? "custom ramp" : spread}</p>
@@ -1215,14 +1215,14 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         <div ref={tableRef} className="min-w-0 scroll-mt-[calc(4.5rem+env(safe-area-inset-top))]">
         <Panel className="casino-table-frame overflow-hidden p-0">
           <div className="casino-table-rail">
-          <div className="casino-felt relative min-h-[370px] sm:min-h-[590px] xl:min-h-[620px] 2xl:min-h-[660px]">
+          <div className="casino-felt relative min-h-[264px] sm:min-h-[590px] xl:min-h-[620px] 2xl:min-h-[660px]">
             <div className="casino-table-print pointer-events-none absolute inset-0 hidden sm:block" aria-hidden="true">
               <p className="casino-table-title">BLACKJACK PAYS {blackjackPayout === 1.5 ? "3 TO 2" : "6 TO 5"}</p>
               <p className="casino-table-rules">Dealer must {rules.dealerHitsSoft17 ? "hit" : "stand"} soft 17 · Insurance pays 2 to 1</p>
               <div className="casino-insurance-line"><span>INSURANCE PAYS 2 TO 1</span></div>
             </div>
 
-            <div className="casino-table-hardware pointer-events-none absolute inset-x-10 top-4 z-[1] hidden items-start justify-between xl:inset-x-12 sm:flex" aria-hidden="true">
+            <div className="casino-table-hardware pointer-events-none absolute inset-x-4 top-3 z-[1] flex items-start justify-between sm:inset-x-10 sm:top-4 xl:inset-x-12" aria-hidden="true">
               <div className="casino-hardware-unit casino-discard-tray-mini casino-real-discard-tray">
                 <span className="casino-hardware-label">Discard</span>
                 {trayPhoto ? <Image
@@ -1245,7 +1245,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
 
             <div className="relative z-[2] pt-4 text-center sm:pt-16">
               <p className="mb-2 text-[.65rem] font-bold uppercase tracking-[.28em] text-emerald-50/55">Dealer {dealer.length && !holeHidden ? `· ${calculateHandValue(dealer)}` : ""}</p>
-              <div className="flex min-h-24 justify-center -space-x-5 sm:min-h-32">
+              <div className="flex min-h-20 justify-center -space-x-5 sm:min-h-32">
                 {dealer.map((card, index) => <div key={`${card.rank}-${card.suit}-${index}`} style={cardCascade(index)}>
                   <PlayingCard card={card} hidden={index === 1 && holeHidden} size="table" animated={animations} fast={fastMode} dealIndex={phase === "dealing" ? index === 0 ? occupiedSpots : index === 1 ? occupiedSpots * 2 + 1 : 0 : 0} flip={index === 1 && !holeHidden} />
                 </div>)}
@@ -1254,7 +1254,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
             {/* Below sm this stays a horizontally-scrolling row (5 spots don't fit a small screen);
                 at sm+ it becomes a semicircle around the dealer via the --spot-left/--spot-top
                 custom properties computed in tableArc. */}
-            <div ref={spotsRailRef} className="casino-spots relative -mx-3 mt-6 flex min-h-48 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-3 sm:absolute sm:inset-0 sm:mx-0 sm:mt-0 sm:block sm:min-h-0 sm:overflow-visible sm:px-0 sm:pb-0">
+            <div ref={spotsRailRef} className="casino-spots relative -mx-3 mt-3 flex min-h-32 snap-x snap-mandatory items-start gap-3 overflow-x-auto px-3 pb-1 sm:absolute sm:inset-0 sm:mx-0 sm:mt-0 sm:block sm:min-h-0 sm:overflow-visible sm:px-0 sm:pb-0">
               {Array.from({ length: 5 }, (_, spot) => {
                 const spotHands = hands.filter((hand) => hand.spot === spot);
                 const activeHere = phase === "play" && current?.spot === spot;
@@ -1269,7 +1269,7 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
                   disabled={phase !== "bet"}
                   onClick={() => setSelectedSpot(spot)}
                   style={{ "--spot-left": `${arc.left}%`, "--spot-top": `${arc.top}%` } as CSSProperties}
-                  className={`casino-seat relative min-h-44 w-40 min-w-40 snap-center rounded-[2rem] px-1 py-3 text-center transition duration-200 disabled:cursor-default sm:absolute sm:left-[var(--spot-left)] sm:top-[var(--spot-top)] sm:min-h-56 sm:w-40 sm:min-w-0 sm:-translate-x-1/2 sm:-translate-y-1/2 xl:min-h-72 xl:w-44 xl:px-2 xl:py-4 2xl:w-48 ${activeHere ? "casino-seat-active" : selected ? "casino-seat-selected" : ""}`}
+                  className={`casino-seat relative min-h-32 w-40 min-w-40 snap-center rounded-[2rem] px-1 py-1.5 text-center transition duration-200 disabled:cursor-default sm:absolute sm:left-[var(--spot-left)] sm:top-[var(--spot-top)] sm:min-h-56 sm:w-40 sm:min-w-0 sm:py-3 sm:-translate-x-1/2 sm:-translate-y-1/2 xl:min-h-72 xl:w-44 xl:px-2 xl:py-4 2xl:w-48 ${activeHere ? "casino-seat-active" : selected ? "casino-seat-selected" : ""}`}
                 >
                   <p className="mb-2 text-[.58rem] font-bold uppercase tracking-[.18em] text-emerald-50/55">P{spotOwners[spot] + 1} · Seat {spot + 1}</p>
                   {spotHands.length > 0 ? <div data-testid="full-shoe-spot-hands" className={spotHands.length > 1 ? "grid w-full grid-cols-2 items-start gap-x-1 gap-y-2" : "flex justify-center"}>{spotHands.map((hand) => {
@@ -1294,10 +1294,10 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
           <div className="casino-control-rail relative p-3 sm:p-4">
             <p aria-live="polite" className="mb-4 text-center text-sm text-[var(--ink)]">{roundMessage}</p>
             {phase === "bet" && <div>
-              <div className="mb-4 flex flex-wrap items-center justify-center gap-3"><span className="text-sm text-[var(--ink-muted)]">Selected: spot {selectedSpot + 1}</span><strong className="text-3xl">${money(wagers[selectedSpot])}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-[var(--accent)]">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${money(totalWager)} total</span></div>
+              <div className="mb-4 hidden flex-wrap items-center justify-center gap-3 lg:flex"><span className="text-sm text-[var(--ink-muted)]">Selected: spot {selectedSpot + 1}</span><strong className="text-3xl">${money(wagers[selectedSpot])}</strong><span className="rounded-full bg-emerald-300/15 px-3 py-1 text-xs text-[var(--accent)]">{occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"} · ${money(totalWager)} total</span></div>
               {players > 1 && <div className="mb-4 flex flex-wrap items-center justify-center gap-2"><span className="mr-1 text-xs font-semibold uppercase tracking-wider text-[var(--ink-muted)]">Spot owner</span>{Array.from({ length: players }, (_, player) => <button key={player} type="button" aria-pressed={spotOwners[selectedSpot] === player} onClick={() => setSpotOwners((owners) => owners.map((owner, spot) => spot === selectedSpot ? player : owner))} className={`pressable min-h-10 rounded-full px-3 text-sm font-semibold ${spotOwners[selectedSpot] === player ? "bg-emerald-300 text-emerald-950" : "border border-overlay/10 bg-overlay/[.05] text-[var(--ink)]"}`}>Player {player + 1}</button>)}</div>}
-              <div className="casino-chip-rail mx-auto flex max-w-2xl flex-wrap items-end justify-center gap-2 rounded-[1.4rem] p-2 sm:gap-3 sm:p-3">{chipValues.map((value) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs xl:h-[4.5rem] xl:w-[4.5rem] xl:text-sm ${chipColorClasses(value)}`}>{chipLabel(value)}</button>)}</div>
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(5).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button className="hidden lg:inline-flex" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
+              <div className="casino-chip-rail mx-auto hidden max-w-2xl flex-wrap items-end justify-center gap-2 rounded-[1.4rem] p-2 sm:gap-3 sm:p-3 lg:flex">{chipValues.map((value) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-14 w-14 place-items-center rounded-full border-4 border-dashed text-[.65rem] font-black shadow-xl disabled:opacity-30 sm:h-16 sm:w-16 sm:text-xs xl:h-[4.5rem] xl:w-[4.5rem] xl:text-sm ${chipColorClasses(value)}`}>{chipLabel(value)}</button>)}</div>
+              <div className="mt-4 hidden flex-wrap justify-center gap-2 lg:flex"><GhostButton className="px-2 text-sm" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing} onClick={() => { setWagers(Array(5).fill(0)); setChipHistory([]); }}>Clear</GhostButton><GhostButton className="px-2 text-sm" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton><Button disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal {occupiedSpots} spot{occupiedSpots === 1 ? "" : "s"}</Button></div>
             </div>}
             {phase === "insurance" && <div className="hidden text-center lg:block">
               {hasBlackjack && <p className="mb-3 text-sm text-[var(--warning)]">Blackjack! Take even money for a guaranteed win, or decline and play it out for 3:2.</p>}
@@ -1355,9 +1355,13 @@ export function FullShoeGame({ active = true }: { active?: boolean }) {
         </div>
       </div>
       {phase === "bet" && <MobileActionDock label="Betting actions">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-          <div className="min-w-0 px-2"><p className="text-[.65rem] uppercase tracking-wider text-[var(--ink-muted)]">Spot {selectedSpot + 1} · {occupiedSpots} active</p><p className="truncate text-sm font-semibold">${money(wagers[selectedSpot])} selected · ${money(totalWager)} total</p></div>
-          <Button disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal</Button>
+        <div className="flex items-baseline justify-between gap-2 px-1"><p className="text-[.65rem] uppercase tracking-wider text-[var(--ink-muted)]">Spot {selectedSpot + 1} · {occupiedSpots} active</p><p className="truncate text-sm font-semibold">${money(wagers[selectedSpot])} · ${money(totalWager)} total</p></div>
+        <div className="mobile-scroll-rail -mx-1 my-1.5 flex items-center gap-2 overflow-x-auto px-1 py-1">{chipValues.map((value) => <button key={value} type="button" disabled={totalWager + value > bankroll} onClick={() => placeChip(value)} className={`casino-chip grid h-11 w-11 shrink-0 place-items-center rounded-full border-4 border-dashed text-[.6rem] font-black shadow-lg disabled:opacity-30 ${chipColorClasses(value)}`}>{chipLabel(value)}</button>)}</div>
+        <div className="grid grid-cols-4 gap-2">
+          <GhostButton className="px-1 text-xs" disabled={dealing || !chipHistory.length} onClick={undoChip}>Undo</GhostButton>
+          <GhostButton className="px-1 text-xs" disabled={dealing} onClick={() => { setWagers(Array(5).fill(0)); setChipHistory([]); }}>Clear</GhostButton>
+          <GhostButton className="px-1 text-xs" disabled={dealing || !lastWagers.some(Boolean) || lastWagers.reduce((sum, bet) => sum + bet, 0) > bankroll} onClick={repeatLastBet}>Repeat</GhostButton>
+          <Button className="px-1 text-xs" disabled={dealing || !totalWager || totalWager > bankroll} onClick={beginRound}>Deal</Button>
         </div>
       </MobileActionDock>}
       {phase === "insurance" && <MobileActionDock label="Insurance decision">

@@ -592,6 +592,17 @@ kbd {
     font-size: 0.9rem;
     line-height: 1.45;
   }
+  /* Phones only have room for the one piece of table hardware a counter reads. */
+  .floor .casino-chip-rack-mini,
+  .floor .casino-table-limits,
+  .floor .casino-card-shoe-mini {
+    display: none;
+  }
+  .floor .casino-real-discard-tray {
+    width: 3.4rem;
+    height: 4.6rem;
+    margin-top: 1rem;
+  }
 }
 @media (prefers-contrast: more) {
   .surface,
