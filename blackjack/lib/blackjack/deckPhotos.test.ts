@@ -98,4 +98,18 @@ describe("tray photos by discard depth", () => {
     for (let index = 0; index < pool.length; index++) seen.push(drawTrayPhoto(2, seen).file);
     expect(new Set(seen).size).toBe(pool.length);
   });
+
+  it("draws from a filtered set without repeats, and falls back when nothing passes", async () => {
+    const { drawTrayPhotoWhere, trayPhotosForShoe, decksLeftFor } = await import("./deckPhotos");
+    const lastDeck = (photo: { discarded: number }) => decksLeftFor(photo as never, 6) <= 1;
+    const pool = trayPhotosForShoe(6).filter(lastDeck);
+    expect(pool.length).toBeGreaterThan(2);
+    const seen: string[] = [];
+    for (let index = 0; index < pool.length; index++) seen.push(drawTrayPhotoWhere(6, seen, lastDeck).file);
+    expect(new Set(seen).size).toBe(pool.length);
+    expect(pool.map((photo) => photo.file).sort()).toEqual([...seen].sort());
+    const fallback = drawTrayPhotoWhere(2, [], () => false);
+    expect(trayPhotosForShoe(2).map((photo) => photo.file)).toContain(fallback.file);
+    expect(decksLeftFor({ file: "x", discarded: 3.65 }, 6)).toBe(2.35);
+  });
 });
