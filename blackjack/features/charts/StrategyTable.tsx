@@ -21,7 +21,26 @@ interface CellView {
   label: string;
 }
 
-function Cell({ view, onSelect, selected }: { view: CellView; onSelect: () => void; selected: boolean }) {
+/**
+ * Arrow keys move between cells, Home/End jump along a row. Each table is one
+ * tab stop: only the cell that last had focus is in the tab order.
+ */
+function onGridKey(event: React.KeyboardEvent<HTMLTableElement>) {
+  const target = event.target as HTMLElement;
+  const row = Number(target.dataset.row), column = Number(target.dataset.col);
+  if (Number.isNaN(row) || Number.isNaN(column)) return;
+  const moves: Record<string, [number, number]> = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], Home: [0, -column], End: [0, 9 - column] };
+  const move = moves[event.key];
+  if (!move) return;
+  const next = event.currentTarget.querySelector<HTMLButtonElement>(`[data-row="${row + move[0]}"][data-col="${column + move[1]}"]`);
+  if (!next) return;
+  event.preventDefault();
+  target.tabIndex = -1;
+  next.tabIndex = 0;
+  next.focus();
+}
+
+function Cell({ view, onSelect, selected, row, col }: { view: CellView; onSelect: () => void; selected: boolean; row: number; col: number }) {
   const fill = view.action ? ACTION_FILL[view.action] : "bg-surface-2 text-ink-3";
   return (
     <button
@@ -29,6 +48,9 @@ function Cell({ view, onSelect, selected }: { view: CellView; onSelect: () => vo
       onClick={onSelect}
       aria-label={view.label}
       aria-pressed={selected}
+      data-row={row}
+      data-col={col}
+      tabIndex={row === 0 && col === 0 ? 0 : -1}
       className={cx(
         "relative flex h-11 w-full items-center justify-center overflow-hidden rounded-[0.4rem] font-semibold leading-none transition sm:h-12 lg:h-11 print:h-8",
         fill,
@@ -144,19 +166,19 @@ export function PlayTableView({ rules, table, mode, tc, selected, onSelect }: {
   rules: TableRules; table: PlayTable; mode: ChartMode; tc: number; selected?: string; onSelect: (ref: CellRef) => void;
 }) {
   return (
-    <table className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]">
-      <caption className="sr-only">{table.title} for {DEALERS.length} dealer upcards</caption>
+    <table onKeyDown={onGridKey} className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]">
+      <caption className="sr-only">{table.title} for {DEALERS.length} dealer upcards. Use the arrow keys to move between cells.</caption>
       <DealerHeader />
       <tbody>
-        {table.rows.map((row) => (
+        {table.rows.map((row, rowIndex) => (
           <tr key={row}>
             <th scope="row" className="pr-0.5 text-right font-mono text-[0.75rem] font-semibold text-ink-2 sm:pr-1.5 sm:text-sm">{row}</th>
-            {DEALERS.map((dealer) => {
+            {DEALERS.map((dealer, column) => {
               const ref = { section: table.id, row, dealer };
               const cell = table.cells.get(cellKey(ref))!;
               return (
                 <td key={dealer} className="p-0">
-                  <Cell view={playCellView(rules, cell, mode, tc)} selected={selected === cellKey(ref)} onSelect={() => onSelect(ref)} />
+                  <Cell row={rowIndex} col={column} view={playCellView(rules, cell, mode, tc)} selected={selected === cellKey(ref)} onSelect={() => onSelect(ref)} />
                 </td>
               );
             })}
@@ -171,18 +193,18 @@ export function SurrenderTableView({ rules, table, mode, tc, selected, onSelect 
   rules: TableRules; table: SurrenderTable; mode: ChartMode; tc: number; selected?: string; onSelect: (ref: CellRef) => void;
 }) {
   return (
-    <table className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]">
-      <caption className="sr-only">Surrender decisions</caption>
+    <table onKeyDown={onGridKey} className="w-full table-fixed border-separate border-spacing-[2px] sm:border-spacing-[3px]">
+      <caption className="sr-only">Surrender decisions. Use the arrow keys to move between cells.</caption>
       <DealerHeader />
       <tbody>
-        {table.rows.map(({ row, section }) => (
+        {table.rows.map(({ row, section }, rowIndex) => (
           <tr key={`${section}:${row}`}>
             <th scope="row" className="pr-0.5 text-right font-mono text-[0.75rem] font-semibold text-ink-2 sm:pr-1.5 sm:text-sm">{row}</th>
-            {DEALERS.map((dealer) => {
+            {DEALERS.map((dealer, column) => {
               const ref = { section, row, dealer };
               return (
                 <td key={dealer} className="p-0">
-                  <Cell view={surrenderCellView(rules, table, ref, mode, tc)} selected={selected === `R:${cellKey(ref)}`} onSelect={() => onSelect(ref)} />
+                  <Cell row={rowIndex} col={column} view={surrenderCellView(rules, table, ref, mode, tc)} selected={selected === `R:${cellKey(ref)}`} onSelect={() => onSelect(ref)} />
                 </td>
               );
             })}

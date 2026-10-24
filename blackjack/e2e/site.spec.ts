@@ -87,6 +87,17 @@ test.describe("strategy charts", () => {
     await expect(sheet).toHaveCount(0);
   });
 
+  test("move between cells with the arrow keys", async ({ page }) => {
+    await page.goto("/charts/");
+    await cell(page, "Hard 17 versus dealer 2").focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(cell(page, "Hard 16 versus dealer 2")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(cell(page, "Hard 16 versus dealer ace")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog").getByRole("heading", { name: "Hard 16 vs an ace" })).toBeVisible();
+  });
+
   test("rank the Illustrious 18 and Fab 4 first in the index list", async ({ page }) => {
     await page.goto("/charts/indices/");
     const first = page.locator("ol").first().locator("li");
