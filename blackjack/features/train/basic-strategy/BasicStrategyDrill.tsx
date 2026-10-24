@@ -10,12 +10,12 @@ import { useSettings } from "@/lib/hooks/useSettings";
 import { explainModeOf, relativeTime, roundLengthOf, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
 import { consumePracticeFocus, leitnerStates, peekPracticeFocus, recordAnswer } from "@/lib/statistics/spacedRepetition";
 import { storage } from "@/lib/statistics/storage";
-import { rulesFromSettings, surrenderOffered, type TableRules } from "@/lib/strategy";
+import { rulesFromSettings, rulesSummary, surrenderOffered, type TableRules } from "@/lib/strategy";
 import { BASIC_CATEGORIES, basicFocusOf, basicMistake, basicScenario, explainBasic, FOCUS_FOR_CATEGORY, isBasicQuestion, questionFromMistake, recentMisses, resolveBasic, spokenHand, drawBasic, weakPool, type BasicCategory, type BasicFocus, type BasicHand, type BasicQuestion } from "@/lib/strategy-drills/basic";
 import { ranksText, totalLabel } from "@/lib/strategy-drills/cards";
 import { ChartRow } from "../strategy-shared/ChartRow";
 import { HandStage } from "../strategy-shared/HandStage";
-import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, startedRules } from "../strategy-shared/parts";
+import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
 import { RoundSummary, slowAnswers } from "../strategy-shared/RoundSummary";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
@@ -84,7 +84,9 @@ export function BasicStrategyDrill() {
   const focus: BasicFocus = pref.focus === "surrender" && !surrender ? "mixed" : pref.focus;
   const plan = (patch: Partial<RoundPlan<BasicQuestion, Options>> = {}): RoundPlan<BasicQuestion, Options> =>
     ({ length: pref.length, explain: pref.explain, retry: false, rules, options: { focus }, ...patch });
-  const startFresh = () => { setSaved(null); round.start(plan()); };
+  const [replacing, setReplacing] = useState(false);
+  const begin = () => { setReplacing(false); setSaved(null); round.start(plan()); };
+  const startFresh = () => (restored ? setReplacing(true) : begin());
 
   if (round.phase === "play" && round.plan && round.hand) return <BasicPlay round={round} hand={round.hand} rules={round.plan.rules} />;
 
@@ -115,13 +117,14 @@ export function BasicStrategyDrill() {
       startLabel={`Start ${pref.length} hands`}
       resume={restored && saved && (
         <ResumeBanner
-          detail={`${restored.plan.retry ? "Retry" : "Hand"} ${restored.tally.answered + 1} of ${restored.plan.length}, saved ${relativeTime(saved.updatedAt)}.`}
+          detail={`${restored.plan.retry ? "Retry" : "Hand"} ${restored.tally.answered + 1} of ${restored.plan.length} at ${rulesSummary(restored.plan.rules)}, saved ${relativeTime(saved.updatedAt)}.`}
           onResume={() => { setSaved(null); round.resume(restored); }}
           onDiscard={() => { storage.clearProgress(DRILL); setSaved(null); }}
         />
       )}
       aside={<RecentRounds sessions={sessions} />}
     >
+      <ReplaceRoundSheet open={replacing} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={begin} onClose={() => setReplacing(false)} />
       <RulesBar settings={settings} update={update} />
       <SetupGroup title="Hands to practise" hint={!surrender ? "Surrender hands are off: your table rules have no surrender." : undefined}>
         <PresetPicker label="Hands to practise" value={focus} onChange={(value) => remember({ focus: value })}
@@ -188,7 +191,7 @@ function BasicPlay({ round, hand, rules }: { round: StrategyRound<BasicQuestion,
               </div>
             </Feedback>
           ) : (
-            <ActionPad onAnswer={round.answer} available={hand.available} />
+            <ActionPad onAnswer={round.answer} available={hand.available} disabled={round.confirmingEnd} />
           )}
         </div>
       </PlayDock>

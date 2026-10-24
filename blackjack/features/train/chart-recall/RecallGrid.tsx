@@ -44,7 +44,10 @@ export const RecallGrid = memo(function RecallGrid({ table, entries, selected, o
   dockSpace?: number;
 }) {
   const surrender = table.id === "surrender";
+  // A retry chart asks only the cells that were wrong; the rest are printed in, faded, for context.
+  const asked = new Set(table.cells.map((cell) => cell.key));
   const label = (cell: RecallCell) => {
+    if (!asked.has(cell.key)) return `${cell.name}: given, ${spokenEntry(cell.expected, cell.dir)}`;
     const entry = entries[cell.key];
     const grade = grades?.get(cell.key);
     if (!grade) return `${cell.name}: ${spokenEntry(entry)}`;
@@ -71,7 +74,8 @@ export const RecallGrid = memo(function RecallGrid({ table, entries, selected, o
             {row.cells.map((cell) => {
               const entry = entries[cell.key];
               const grade = grades?.get(cell.key);
-              const shown = grade && view === "chart" ? cell.expected : entry;
+              const given = !asked.has(cell.key);
+              const shown = given || (grade && view === "chart") ? cell.expected : entry;
               const isSelected = cell.key === selected;
               const wrong = grade && !grade.ok;
               return (
@@ -82,11 +86,13 @@ export const RecallGrid = memo(function RecallGrid({ table, entries, selected, o
                     aria-label={label(cell)}
                     aria-current={isSelected ? "true" : undefined}
                     onClick={() => onSelect?.(cell.key)}
+                    disabled={given}
                     style={{ scrollMarginTop: "4.5rem", scrollMarginBottom: dockSpace + 12 }}
                     className={cx(
                       "tnum relative flex h-7 w-full items-center justify-center rounded-[5px] text-[0.6875rem] font-bold outline-none min-[360px]:h-8 sm:h-10 sm:rounded-md sm:text-sm",
                       fillOf(shown),
                       grade && grade.ok && view === "mine" && "opacity-90",
+                      given && "opacity-30",
                       isSelected ? "z-10 ring-2 ring-brand ring-offset-2 ring-offset-bg" : "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:ring-offset-bg",
                     )}
                   >

@@ -11,13 +11,13 @@ import { useSettings } from "@/lib/hooks/useSettings";
 import { explainModeOf, historyTotals, relativeTime, roundLengthOf, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
 import { consumePracticeFocus, peekPracticeFocus } from "@/lib/statistics/spacedRepetition";
 import { storage } from "@/lib/statistics/storage";
-import { indexList, rulesFromSettings, signedCount, SOURCE_NAME, type TableRules } from "@/lib/strategy";
+import { indexList, rulesFromSettings, rulesSummary, signedCount, SOURCE_NAME, type TableRules } from "@/lib/strategy";
 import { totalLabel } from "@/lib/strategy-drills/cards";
 import { answerName, dealIndex, entryLabel, explainIndex, focusQuestions, indexMistake, indexPool, indexRule, indexSetOf, isIndexQuestion, permissionsFor, questionFromMistake, resolveIndex, spokenIndexHand, surrenderNote, type IndexAnswer, type IndexHand, type IndexQuestion, type IndexSet, type IndexSide } from "@/lib/strategy-drills/indexPlays";
 import { handLadder, insuranceLadder, ladderDomain } from "@/lib/strategy-drills/ladder";
 import { CountLadder, type LadderBand } from "../strategy-shared/CountLadder";
 import { HandStage } from "../strategy-shared/HandStage";
-import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, startedRules } from "../strategy-shared/parts";
+import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
 import { RoundSummary, slowAnswers } from "../strategy-shared/RoundSummary";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
@@ -70,7 +70,9 @@ export function IndexPlaysDrill() {
   // A "practise this" hand-off names one play; the round opens with it on both sides of its index.
   const [focusLabel, setFocusLabel] = useState(() => peekPracticeFocus(DRILL));
   useEffect(() => { consumePracticeFocus(DRILL); }, []);
-  const focusEntry = focusLabel ? indexList(rules).find((entry) => entryLabel(entry).toLowerCase() === focusLabel.toLowerCase().replace(/ vs a$/, "")) : undefined;
+  // Older reports name insurance "Insurance vs A"; every other play is named as entryLabel names it.
+  const wanted = focusLabel && (/^insurance( vs a)?$/i.test(focusLabel.trim()) ? "insurance" : focusLabel.trim().toLowerCase());
+  const focusEntry = wanted ? indexList(rules).find((entry) => entryLabel(entry).toLowerCase() === wanted) : undefined;
 
   const rulesKey = JSON.stringify(rules);
   const { pool, core } = useMemo(() => {
@@ -80,7 +82,10 @@ export function IndexPlaysDrill() {
   const surrenders = pool.filter((entry) => entry.kind === "surrender").length;
   const plan = (patch: Partial<RoundPlan<IndexQuestion, Options>> = {}): RoundPlan<IndexQuestion, Options> =>
     ({ length: pref.length, explain: pref.explain, retry: false, rules, options: cleanOptions(pref), ...patch });
-  const startFresh = () => {
+  const [replacing, setReplacing] = useState(false);
+  const startFresh = () => (restored ? setReplacing(true) : begin());
+  const begin = () => {
+    setReplacing(false);
     setSaved(null);
     const queue = focusEntry ? focusQuestions(focusEntry, rules) : undefined;
     setFocusLabel(undefined);
@@ -115,7 +120,7 @@ export function IndexPlaysDrill() {
       startLabel={`Start ${pref.length} hands`}
       resume={restored && saved && (
         <ResumeBanner
-          detail={`${restored.plan.retry ? "Retry" : "Hand"} ${restored.tally.answered + 1} of ${restored.plan.length}, saved ${relativeTime(saved.updatedAt)}.`}
+          detail={`${restored.plan.retry ? "Retry" : "Hand"} ${restored.tally.answered + 1} of ${restored.plan.length} at ${rulesSummary(restored.plan.rules)}, saved ${relativeTime(saved.updatedAt)}.`}
           onResume={() => { setSaved(null); round.resume(restored); }}
           onDiscard={() => { storage.clearProgress(DRILL); setSaved(null); }}
         />
@@ -123,6 +128,7 @@ export function IndexPlaysDrill() {
       aside={<RecentRounds sessions={sessions} chartHref="/charts/indices" chartLabel="Open the index list" />}
     >
       {focusEntry && <Callout tone="info" title={`Focusing on ${entryLabel(focusEntry)}`}>The round opens with this play just either side of its index, then mixes in the rest.</Callout>}
+      <ReplaceRoundSheet open={replacing} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={begin} onClose={() => setReplacing(false)} />
       <RulesBar settings={settings} update={update} note={`${pool.length} index plays for these rules${surrenders ? `, ${surrenders} of them surrender decisions` : ""}.`} />
       <SetupGroup title="Which indices">
         <PresetPicker label="Which indices" value={pref.set} onChange={(set) => remember({ set })} options={[
@@ -151,9 +157,10 @@ export function IndexPlaysDrill() {
 
 function TrueCountBadge({ tc }: { tc: number }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl bg-brand px-2.5 py-1.5 text-brand-ink shadow-1">
-      <span className="text-[0.625rem] font-bold uppercase tracking-[0.12em] opacity-80">True count</span>
-      <span className="tnum text-2xl font-bold leading-none">{signedCount(tc)}</span>
+    <div className="flex flex-col items-center rounded-xl bg-brand px-2 py-1 text-brand-ink shadow-1 xs:rounded-2xl xs:px-2.5 xs:py-1.5">
+      {/* Phones under 400px keep the badge clear of the dealer's cards. */}
+      <span className="text-[0.625rem] font-bold uppercase tracking-[0.12em] opacity-80"><span className="xs:hidden">TC</span><span className="hidden xs:inline">True count</span></span>
+      <span className="tnum text-xl font-bold leading-none xs:text-2xl">{signedCount(tc)}</span>
     </div>
   );
 }
@@ -251,9 +258,9 @@ function IndexPlay({ round, hand, rules }: { round: StrategyRound<IndexQuestion,
               )}
             </Feedback>
           ) : insurance ? (
-            <InsurancePad onAnswer={round.answer} />
+            <InsurancePad onAnswer={round.answer} disabled={round.confirmingEnd} />
           ) : (
-            <ActionPad onAnswer={round.answer} available={hand.available as Action[]} />
+            <ActionPad onAnswer={round.answer} available={hand.available as Action[]} disabled={round.confirmingEnd} />
           )}
         </div>
       </PlayDock>

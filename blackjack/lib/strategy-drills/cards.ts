@@ -117,11 +117,12 @@ export function totalLabel(cards: readonly Card[]): string {
   return `${isSoft(list) ? "Soft" : "Hard"} ${calculateHandValue(list)}`;
 }
 
-/** A two-card player hand that is not a blackjack, for the insurance question. */
+/** A two-card player hand of 12 to 20, for the insurance question: the kind of hand that is usually on the table. */
 export function insuranceHand(rng: Rng): Card[] {
   for (;;) {
     const cards = [cardOfValue(2 + Math.floor(rng() * 9), rng), cardOfValue(2 + Math.floor(rng() * 9), rng)];
-    if (calculateHandValue(cards) < 21) return cards;
+    const total = calculateHandValue(cards);
+    if (total >= 12 && total <= 20) return cards;
   }
 }
 

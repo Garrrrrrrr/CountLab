@@ -37,7 +37,7 @@ export function CountLadder({ bands, min, max, tc, className }: { bands: readonl
       <div className="relative h-5">
         <span className="tnum absolute bottom-0 flex -translate-x-1/2 flex-col items-center whitespace-nowrap text-[0.6875rem] font-bold leading-none text-brand-text" style={{ left: `${marker}%` }}>
           TC {signedCount(tc)}
-          <span className="mt-0.5 h-0 w-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-brand" />
+          <span className="mt-0.5 h-0 w-0 border-x-[5px] border-t-[6px] border-x-transparent border-t-ink" />
         </span>
       </div>
       <div className="relative flex h-8 overflow-hidden rounded-lg">
@@ -50,14 +50,15 @@ export function CountLadder({ bands, min, max, tc, className }: { bands: readonl
             </span>
           );
         })}
-        <span aria-hidden className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand shadow-[0_0_0_1px_rgb(var(--surface))]" style={{ left: `${marker}%` }} />
+        <span aria-hidden className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ink shadow-[0_0_0_1.5px_rgb(var(--surface))]" style={{ left: `${marker}%` }} />
       </div>
       <div className="tnum relative mt-1 h-4 text-[0.625rem] font-medium text-ink-3">
-        <span className="absolute left-0">{signedCount(min)}</span>
+        {/* The open ends are labelled only where a switch point is not right next to them. */}
+        {(bands[1]?.from ?? Infinity) - min >= 2 && <span className="absolute left-0">{signedCount(min)}</span>}
         {bands.slice(1).map((band) => (
           <span key={band.from} className="absolute -translate-x-1/2 font-semibold text-ink-2" style={{ left: `${left(band.from)}%` }}>{signedCount(band.from)}</span>
         ))}
-        <span className="absolute right-0">{signedCount(max)}</span>
+        {max - (bands.length > 1 ? bands[bands.length - 1].from : -Infinity) >= 2 && <span className="absolute right-0">{signedCount(max)}</span>}
       </div>
     </div>
   );

@@ -57,6 +57,15 @@ export function EndRoundSheet({ open, answered, length, onConfirm, onClose }: { 
   );
 }
 
+/** Start was pressed while a saved round waits: starting over discards it, so ask first. */
+export function ReplaceRoundSheet({ open, detail, onConfirm, onClose }: { open: boolean; detail: string; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <ConfirmSheet open={open} onClose={onClose} onConfirm={onConfirm} title="Start over?" confirmLabel="Discard and start">
+      {detail} Starting a new one discards it.
+    </ConfirmSheet>
+  );
+}
+
 /** The setup screen's side column: the last few rounds, and a way to the chart. */
 export function RecentRounds({ sessions, unit = "hands", chartHref = "/charts", chartLabel = "Open the strategy chart" }: { sessions: readonly Session[]; unit?: string; chartHref?: string; chartLabel?: string }) {
   const recent = sessions.slice(0, 5);

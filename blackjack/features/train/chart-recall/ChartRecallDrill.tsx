@@ -14,7 +14,7 @@ import {
   availableTables, BASE_NAME, bestRunAcross, cellMistake, cleanEntries, explainCell, filledIn, formatEntry, gradeTable, recallLevelOf, recallTables,
   RECALL_TABLE_IDS, TABLE_TITLE, type CellEntry, type CellGrade, type Deviation, type RecallLevel, type RecallTable, type RecallTableId, type TableGrade,
 } from "@/lib/strategy-drills/chartRecall";
-import { startedRules, RecentRounds } from "../strategy-shared/parts";
+import { RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
 import { RecallGrid, type GridView } from "./RecallGrid";
@@ -199,7 +199,10 @@ export function ChartRecallDrill() {
     select(firstBlank.key);
     track("drill_started", { drill: DRILL, mode: next.level, questionTarget: list.reduce((sum, item) => sum + item.cells.length, 0), ...startedRules(next.rules) });
   };
-  const startFresh = () => {
+  const [replacing, setReplacing] = useState(false);
+  const startFresh = () => (saved ? setReplacing(true) : beginFresh());
+  const beginFresh = () => {
+    setReplacing(false);
     const rules = rulesFromSettings(settings);
     const allowed = availableTables(rules);
     const ids = pref.scope === "all" || !allowed.includes(pref.scope) ? allowed : [pref.scope];
@@ -380,13 +383,14 @@ export function ChartRecallDrill() {
       startLabel={`Start (${count} cells)`}
       resume={saved && (
         <ResumeBanner
-          detail={`${saved.state.level === "indices" ? "With indices" : "Basic plays"}, ${TABLE_TITLE[saved.state.ids[saved.state.index]].toLowerCase()}: ${Object.keys(saved.state.entries).length} cells filled, saved ${relativeTime(saved.updatedAt)}.`}
+          detail={`${saved.state.level === "indices" ? "With indices" : "Basic plays"}, ${TABLE_TITLE[saved.state.ids[saved.state.index]].toLowerCase()}: ${Object.values(saved.state.entries).filter((entry) => entry.base).length} cells filled, saved ${relativeTime(saved.updatedAt)}.`}
           onResume={() => { const state = saved.state; setSaved(undefined); begin(state, state); }}
           onDiscard={() => { storage.clearProgress(DRILL); setSaved(undefined); }}
         />
       )}
       aside={<RecentRounds sessions={sessions} unit="cells" />}
     >
+      <ReplaceRoundSheet open={replacing} detail={`Your unfinished chart has ${saved ? Object.values(saved.state.entries).filter((entry) => entry.base).length : 0} cells filled.`} onConfirm={beginFresh} onClose={() => setReplacing(false)} />
       <RulesBar settings={settings} update={update} note={rules.surrender === "none" ? "No surrender table: your rules have no surrender." : undefined} />
       <SetupGroup title="Difficulty">
         <PresetPicker label="Difficulty" value={pref.level} onChange={(value) => remember({ level: value })} options={LEVELS} />
@@ -411,9 +415,9 @@ function ReviewDock({ grade, cell, rules, last, nextTitle, onNext }: { grade: Ta
   return (
     <div className="space-y-2.5">
       <div role="status" className={cx("rounded-2xl border p-3", perfect ? "border-pos/30 bg-pos/10" : "border-line bg-surface")}>
-        <p className="flex items-baseline justify-between gap-3">
-          <span className="font-semibold">{grade.title}: <span className="tnum">{grade.correct} of {grade.total}</span></span>
-          <span className="tnum text-sm text-ink-2">{grade.wrong} wrong · {grade.blank} blank</span>
+        <p className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <span className="whitespace-nowrap font-semibold">{grade.title}: <span className="tnum">{grade.correct} of {grade.total}</span></span>
+          <span className="tnum whitespace-nowrap text-sm text-ink-2">{grade.wrong} wrong · {grade.blank} blank</span>
         </p>
         <p className="mt-1 text-sm leading-5 text-ink-2">
           {cell ? <CellVerdict grade={cell} rules={rules} /> : perfect ? "Every cell right." : "Tap a cell marked ✕ to see the answer and why."}

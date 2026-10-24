@@ -64,6 +64,6 @@ describe("hands for chart cells", () => {
     expect(totalLabel([{ rank: "8", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Pair of 8s");
     expect(totalLabel([{ rank: "K", suit: "spades" }, { rank: "Q", suit: "hearts" }])).toBe("Pair of tens");
     const rng = seeded(6);
-    for (let draw = 0; draw < 200; draw += 1) expect(calculateHandValue(insuranceHand(rng))).toBeLessThan(21);
+    for (let draw = 0; draw < 200; draw += 1) { const total = calculateHandValue(insuranceHand(rng)); expect(total).toBeGreaterThanOrEqual(12); expect(total).toBeLessThan(21); }
   });
 });
