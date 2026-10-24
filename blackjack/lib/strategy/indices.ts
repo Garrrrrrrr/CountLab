@@ -1,5 +1,7 @@
 /**
- * Hi-Lo index plays for shoe games (4–8 decks), as plain data.
+ * Hi-Lo index plays for shoe games (4–8 decks), as plain data, plus the
+ * single- and double-deck surrender thresholds where those games' basic
+ * strategy differs from the shoe's.
  *
  * Every row says exactly one thing: "play X when the true count is at or above
  * N" (`up`) or "at or below N" (`down`). There is no baseline field and no
@@ -57,6 +59,10 @@ export interface SurrenderIndex {
   at: number;
   source: IndexSource;
   only?: GameFamily;
+  /** Absent: every deck count. A row with deck counts sits above the shoe row it overrides. */
+  decks?: readonly number[];
+  /** Absent: with or without double after split. */
+  das?: boolean;
 }
 
 const up = (hand: string, dealer: Dealer, play: PlayIndex["play"], at: number, source: IndexSource, only?: GameFamily): PlayIndex => ({ hand, dealer, play, dir: "up", at, source, only });
@@ -111,13 +117,33 @@ export const PLAY_INDICES: readonly PlayIndex[] = [
   up("9,9", "7", "P", 3, "S17P"),
 ];
 
-/** Late surrender, and the non-ten columns of early surrender. */
+/**
+ * Late surrender, and the non-ten columns of early surrender.
+ *
+ * The shoe figures assume shoe basic strategy. Where single- or double-deck
+ * basic strategy differs (it hits 16 v 9 and, at one deck, 15 v 10, and gives
+ * up 7,7 v 10 off the top), the deck-specific row above the shoe row takes
+ * over. Priced with `priceCell` (1 deck 65% dealt, 2 decks 70%, 60M rounds):
+ * 16 v 9 crosses between +1 and +2 at one deck and between 0 and +1 at two;
+ * single-deck 15 v 10 crosses just below 0, where the exact calculation calls
+ * the full-deck decision a tie, so it is listed at +1 to agree with
+ * single-deck basic strategy, which hits; single-deck 7,7 v 10 crosses between
+ * -3 and -2 (240M rounds). 16 v 10 is surrendered off the top everywhere, but
+ * not at any count: hitting takes over below -3 (shoe and two decks, 30M
+ * rounds) and below -2 at one deck, never above early surrender's -5.
+ */
 export const LATE_SURRENDER_INDICES: readonly SurrenderIndex[] = [
   { hand: "16", dealer: "8", at: 4, source: "BJA" },
+  { hand: "16", dealer: "9", at: 2, source: "CL", decks: [1] },
+  { hand: "16", dealer: "9", at: 1, source: "CL", decks: [2] },
   { hand: "16", dealer: "9", at: 0, source: "BJA" },
   { hand: "15", dealer: "9", at: 2, source: "BJA" },
+  { hand: "15", dealer: "10", at: 1, source: "CL", decks: [1] },
   { hand: "15", dealer: "10", at: 0, source: "BJA" },
+  { hand: "16", dealer: "10", at: -2, source: "CL", decks: [1] },
+  { hand: "16", dealer: "10", at: -3, source: "CL" },
   { hand: "14", dealer: "10", at: 3, source: "Fab4" },
+  { hand: "7,7", dealer: "10", at: -2, source: "CL", decks: [1] },
   // Wong: "a 7,7 you would consider surrendering is just a hard fourteen".
   { hand: "7,7", dealer: "10", at: 3, source: "Fab4" },
   { hand: "15", dealer: "A", at: -1, source: "BJA", only: "h17" },
@@ -129,15 +155,24 @@ export const LATE_SURRENDER_INDICES: readonly SurrenderIndex[] = [
  * column. The soft-17 rule cannot reach this column. 8,8 at -2 is Wong's
  * no-double-after-split figure; with DAS the split is worth a little more, so
  * the true break-even sits slightly higher.
+ *
+ * Single deck: basic strategy hits 14 and (with DAS) splits 8,8 against a ten,
+ * so Wong's shoe figures cannot apply. Priced with `priceCell` (1 deck, 65%
+ * dealt, ES10, ~20M and ~260M rounds): both cross between 0 and +1, so
+ * "surrender at +1" agrees with basic strategy at 0. Single-deck 7,7 is given
+ * up down to -6 (120M rounds), below its late-surrender -2.
  */
 export const EARLY_SURRENDER_TEN_INDICES: readonly SurrenderIndex[] = [
   { hand: "17", dealer: "10", at: 5, source: "Wong" },
   { hand: "16", dealer: "10", at: -5, source: "Wong" },
   { hand: "15", dealer: "10", at: -2, source: "Wong" },
+  { hand: "14", dealer: "10", at: 1, source: "CL", decks: [1] },
   { hand: "14", dealer: "10", at: 0, source: "Wong" },
   { hand: "13", dealer: "10", at: 3, source: "Wong" },
   { hand: "12", dealer: "10", at: 8, source: "Wong" },
+  { hand: "8,8", dealer: "10", at: 1, source: "CL", decks: [1], das: true },
   { hand: "8,8", dealer: "10", at: -2, source: "Wong" },
+  { hand: "7,7", dealer: "10", at: -6, source: "CL", decks: [1] },
   { hand: "7,7", dealer: "10", at: 0, source: "Wong" },
   { hand: "6,6", dealer: "10", at: 8, source: "Wong" },
 ];

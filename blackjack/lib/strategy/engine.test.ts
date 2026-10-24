@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank } from "@/lib/blackjack/types";
 import { cellDecision, decideHand, playIndex, surrenderRule, takeInsurance, type CellRef } from "./engine";
-import { DEALERS, type Dealer } from "./indices";
+import { DEALERS, EARLY_SURRENDER_TEN_INDICES, LATE_SURRENDER_INDICES, type Dealer } from "./indices";
 import { DEFAULT_TABLE_RULES, type TableRules } from "./rules";
 import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
 
@@ -112,7 +112,8 @@ describe("Blackjack Apprenticeship H17 chart", () => {
     switchesAt(H17, hard("16", "8"), 4, "up", "H", "R");
     switchesAt(H17_NS, hard("16", "A"), 3, "up", "H", "S");
     switchesAt(H17_NS, hard("15", "A"), 5, "up", "H", "S");
-    expect(at(H17, hard("16", "10"), -10)).toBe("R");
+    // The chart prints no index for 16 v 10 (surrender is basic); hitting does take over below -3.
+    switchesAt(H17, hard("16", "10"), -3, "up", "H", "R");
     expect(at(H17, hard("17", "A"), -10)).toBe("R");
   });
 });
@@ -143,6 +144,16 @@ describe("early surrender against a ten (Wong table 32)", () => {
     expect(surrenderRule(H17_ES, hard("15", "A")).at).toBe(-1);
     expect(at(H17_ES, hard("17", "A"), -10)).toBe("R");
   });
+
+  it("gives single deck its own 14 and 8,8 thresholds, where basic strategy plays them on", () => {
+    const single = rules({ decks: 1, surrender: "early" });
+    switchesAt(single, hard("14", "10"), 1, "up", "H", "R");
+    switchesAt(single, pair("8,8", "10"), 1, "up", "P", "R");
+    // Without DAS single deck surrenders 8,8 off the top, so Wong's figure stands.
+    switchesAt(rules({ decks: 1, surrender: "early", das: false }), pair("8,8", "10"), -2, "up", "P", "R");
+    switchesAt(rules({ decks: 2, surrender: "early" }), hard("14", "10"), 0, "up", "H", "R");
+    switchesAt(rules({ decks: 2, surrender: "early" }), pair("8,8", "10"), -2, "up", "P", "R");
+  });
 });
 
 describe("whole-chart invariants", () => {
@@ -160,12 +171,37 @@ describe("whole-chart invariants", () => {
     }
   });
 
-  it("changes each shoe-game decision at most once across the count range", () => {
-    for (const table of [H17, S17, H17_NS, S17_NS, H17_ES, rules({ hitSoft17: false, surrender: "early" })]) {
+  it("changes each decision at most once across the count range, at any deck count", () => {
+    const smallDecks = [1, 2].flatMap((decks) => (["late", "early"] as const).flatMap((surrender) => [true, false].map((das) => rules({ decks, surrender, das }))));
+    for (const table of [H17, S17, H17_NS, S17_NS, H17_ES, rules({ hitSoft17: false, surrender: "early" }), ...smallDecks]) {
       for (const cell of cells) {
         const plays = counts.map((tc) => at(table, cell, tc));
         const flips = plays.filter((play, index) => index > 0 && play !== plays[index - 1]).length;
         expect(flips, `${cell.section} ${cell.row} v ${cell.dealer}: ${plays.join("")}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("keeps a count threshold on every surrender row, whatever the decks and rules", () => {
+    for (const decks of [1, 2, 4, 6, 8]) for (const hitSoft17 of [true, false]) for (const das of [true, false]) for (const surrender of ["late", "early"] as const) {
+      const table = rules({ decks, hitSoft17, das, surrender });
+      const rows = [...(surrender === "early" ? EARLY_SURRENDER_TEN_INDICES : []), ...LATE_SURRENDER_INDICES.filter((row) => surrender === "late" || row.dealer !== "10")];
+      for (const row of rows) {
+        if (row.only && row.only !== (hitSoft17 ? "h17" : "s17")) continue;
+        const cell = row.hand.includes(",") ? pair(row.hand, row.dealer) : hard(row.hand, row.dealer);
+        // Infinity would mean "never" (or -Infinity "always") at any count: a published threshold lost to a basic-strategy mismatch.
+        expect(Number.isFinite(surrenderRule(table, cell).at), `${decks}D ${hitSoft17 ? "H17" : "S17"} ${das ? "DAS" : "no DAS"} ${surrender} ${row.hand} v ${row.dealer}`).toBe(true);
+      }
+    }
+  });
+
+  it("never surrenders a hand later under early surrender than under late", () => {
+    // Surrendering before the peek also saves half the bet against a dealer blackjack, so it is always at least as attractive.
+    for (const decks of [1, 2, 4, 6, 8]) for (const hitSoft17 of [true, false]) for (const das of [true, false]) {
+      for (const cell of cells.filter((entry) => entry.section !== "soft" && entry.dealer === "10")) {
+        const early = surrenderRule(rules({ decks, hitSoft17, das, surrender: "early" }), cell).at;
+        const late = surrenderRule(rules({ decks, hitSoft17, das, surrender: "late" }), cell).at;
+        expect(early, `${decks}D ${hitSoft17 ? "H17" : "S17"} ${das ? "DAS" : "no DAS"} ${cell.section} ${cell.row} v 10`).toBeLessThanOrEqual(late);
       }
     }
   });

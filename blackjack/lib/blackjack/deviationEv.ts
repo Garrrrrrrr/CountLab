@@ -284,6 +284,13 @@ export interface CellPriceOptions {
   rounds: number;
   replications: number;
   seed: number;
+  /**
+   * Early surrender (ES10): the choice comes before the dealer checks for
+   * blackjack, so rounds where the dealer has one count too. There every
+   * action but surrender loses the original bet, and surrender loses half.
+   * Off (late surrender), rounds with a dealer blackjack are left out.
+   */
+  earlySurrender?: boolean;
 }
 
 export interface CellPriceBucket {
@@ -339,6 +346,9 @@ export function priceCell(options: CellPriceOptions): CellPriceBucket[] {
   };
   reshuffle();
   const deal = () => {
+    // A long round (several splits off a short single-deck cut) can outlast the cards; reshuffling
+    // then only moves the shoe on, the priced cell has already been measured.
+    if (cursor >= totalCards) reshuffle();
     const code = shoe[cursor++];
     runningCount += HI_LO[code];
     return code;
@@ -357,7 +367,7 @@ export function priceCell(options: CellPriceOptions): CellPriceBucket[] {
     const pair = VALUE[player0] === VALUE[player1];
     const basicAction = basic.action(player.total, player.soft, pair ? player0 : -1, up, true, pair);
 
-    const matches = !dealerBlackjack
+    const matches = (!dealerBlackjack || options.earlySurrender === true)
       && player.total !== 21
       && chartLabel(player0, player1) === options.hand
       && CODE_RANK[up] === options.dealer
@@ -370,7 +380,9 @@ export function priceCell(options: CellPriceOptions): CellPriceBucket[] {
       counts.fill(0);
       for (let index = cursor; index < totalCards; index++) counts[shoe[index]] += 1;
       remainder.load(counts);
-      for (let replication = 0; replication < replications; replication++) {
+      if (dealerBlackjack) {
+        for (let a = 0; a < actions.length; a++) totals[bucket * actions.length + a] += (actions[a] === "R" ? -0.5 : -1) * replications;
+      } else for (let replication = 0; replication < replications; replication++) {
         const start = remainder.mark();
         const dealerTotal = playDealer(up, hole, rules, remainder.drawBack);
         const afterDealer = remainder.mark();

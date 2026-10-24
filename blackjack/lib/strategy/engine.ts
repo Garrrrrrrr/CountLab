@@ -101,6 +101,9 @@ export function basicSurrenders(rules: TableRules, cell: CellRef): boolean {
 
 const family = (rules: TableRules) => (rules.hitSoft17 ? "h17" : "s17");
 const inFamily = (row: { only?: "h17" | "s17" }, rules: TableRules) => !row.only || row.only === family(rules);
+/** A surrender row fits the game when its soft-17 family, deck counts and DAS filter all match. */
+const surrenderRowFits = (row: SurrenderIndex, rules: TableRules) =>
+  inFamily(row, rules) && (!row.decks || row.decks.includes(rules.decks)) && (row.das === undefined || row.das === rules.das);
 
 export interface ActiveIndex extends PlayIndex {
   /** The play on the other side of the index: basic strategy for these rules. */
@@ -170,7 +173,8 @@ export function surrenderRule(rules: TableRules, cell: CellRef): SurrenderThresh
   if (rule === "none" || cell.section === "soft") return { at: Infinity, basic: false };
   const basic = basicSurrenders(rules, cell);
   const lists = rule === "early" && cell.dealer === "10" ? [EARLY_SURRENDER_TEN_INDICES] : [LATE_SURRENDER_INDICES];
-  const row = lists.flat().find((entry) => entry.hand === surrenderHand(cell) && entry.dealer === cell.dealer && inFamily(entry, rules));
+  // The first row that fits wins, so a single- or double-deck row listed above the shoe row overrides it.
+  const row = lists.flat().find((entry) => entry.hand === surrenderHand(cell) && entry.dealer === cell.dealer && surrenderRowFits(entry, rules));
   if (row && (row.at <= 0) === basic) return { at: row.at, basic, source: row.source };
   return { at: basic ? -Infinity : Infinity, basic };
 }
