@@ -32,10 +32,9 @@ export function ResultsBar({ calc, trip, onOpenResults, className }: { calc: Cal
       aria-label="Live results"
       className={cx(
         "no-print z-30 border-line bg-surface/95 backdrop-blur-xl",
-        "fixed inset-x-0 border-t shadow-2 lg:sticky lg:inset-x-auto lg:mt-4 lg:rounded-2xl lg:border",
+        "fixed inset-x-0 bottom-[calc(var(--tabbar-h)+var(--safe-b))] border-t shadow-2 lg:sticky lg:inset-x-auto lg:bottom-4 lg:mt-4 lg:rounded-2xl lg:border",
         className,
       )}
-      style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b))" }}
     >
       {expanded && (
         <div id="results-bar-more" className="max-h-[50dvh] overflow-y-auto border-b border-line px-4 pb-3 pt-3">
@@ -70,7 +69,7 @@ export function ResultsBar({ calc, trip, onOpenResults, className }: { calc: Cal
         <button type="button" aria-expanded={expanded} aria-controls="results-bar-more" onClick={() => setExpanded((open) => !open)}
           className="grid min-h-11 min-w-0 flex-1 grid-cols-3 items-center gap-3 rounded-xl text-left"
           aria-label={noBets ? "Not betting at any count. Show more results" : `Win ${money(result.hourlyEv, 2)} an hour, swing ±${money(result.sdPerHour)} an hour, risk of ruin ${percent(result.riskOfRuin)}. ${expanded ? "Show fewer" : "Show more"} results`}>
-          <Cell label={pricing.estimated ? "Win / hour · est." : "Win / hour"} value={noBets ? DASH : money(result.hourlyEv, 2)} tone={!noBets && result.hourlyEv < 0 ? "neg" : undefined} />
+          <Cell label={pricing.estimated ? "Est. win / hr" : "Win / hour"} value={noBets ? DASH : money(result.hourlyEv, 2)} tone={!noBets && result.hourlyEv < 0 ? "neg" : undefined} />
           <Cell label="SD / hour" value={noBets ? DASH : `±${money(result.sdPerHour)}`} />
           <Cell label="Risk of ruin" value={noBets ? DASH : percent(result.riskOfRuin)} tone={noBets ? undefined : ruinTone} />
         </button>

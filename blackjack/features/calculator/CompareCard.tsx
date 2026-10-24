@@ -96,7 +96,8 @@ function SavedScenarios({ calc, trip, onSave }: { calc: Calc; trip: TripOutlook;
   const { templates, config, pricing, active } = calc;
   const [picked, setPicked] = useState<string[]>([]);
   const chosen = picked.filter((id) => templates.some((template) => template.id === id));
-  const selected = chosen.length ? chosen : templates.filter((template) => template.id !== active?.id).slice(0, 2).map((template) => template.id);
+  // By default: the two newest saves, leaving out the open scenario unless it has been edited (then its saved copy is worth comparing).
+  const selected = chosen.length ? chosen : templates.filter((template) => template.id !== active?.id || calc.edited).slice(0, 2).map((template) => template.id);
   const columns: Column[] = (() => {
     const current: Column = { id: "current", name: active ? `${active.name}${calc.edited ? " (edited)" : ""}` : "This setup", current: true, pricing, trip, ...describe(pricing, config.decks, config.dealt, config.baseBet) };
     const saved = selected.map((id) => templates.find((template) => template.id === id)).filter((template) => template !== undefined).map((template) => {

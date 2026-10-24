@@ -62,7 +62,7 @@ export function MethodNotes({ useIndices, className }: { useIndices: boolean; cl
             <li>Win per round: the sum over true counts of how often it comes up × edge × total bet. Sitting out a count bets nothing but still takes table time.</li>
             <li>Standard deviation: from each count&apos;s per-hand variance plus the spread of the bets themselves. Two or three hands at once are correlated at ρ = {SIMULTANEOUS_HAND_CORRELATION}, measured on the same simulator, because they all face one dealer hand.</li>
             <li>Risk of ruin (lifetime): e^(−2 × bankroll × win ÷ variance), playing on forever at fixed stakes. Bankroll needed inverts it for your target risk.</li>
-            <li>Trip figures: a normal approximation over the trip&apos;s rounds; the trip risk of ruin and the chance of being up uses the reflection formula for touching a level at any time.</li>
+            <li>Trip figures: a normal approximation over the trip&apos;s rounds; the trip risk of ruin and the chance of being up use the reflection formula for touching a level at any time.</li>
             <li>N₀ = variance ÷ win², the rounds before your expected win equals one standard deviation. SCORE = win per 100 rounds with a $10,000 bankroll at 13.5% risk of ruin, your ramp resized to fit. DI = 1,000 × win ÷ standard deviation per round, the square root of SCORE.</li>
             <li>Suggested spreads use whole-dollar units, rounded down so risk never ends up above your target. The Kelly-weighted ramp bets in proportion to edge ÷ variance at each count.</li>
           </ul>

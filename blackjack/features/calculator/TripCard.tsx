@@ -58,13 +58,13 @@ export function TripCard({ calc, trip, className }: { calc: Calc; trip: TripOutl
   const betting = !pricing.noBets;
   return (
     <Panel id="trip" eyebrow="Trip outlook" title="What happens on your trip" sub="One trip of this length with this game, bankroll and ramp. Ranges, not limits: luck dominates short trips." className={className}>
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] sm:items-start">
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,16.5rem)_minmax(0,1fr)] sm:items-start">
         <div>
           <NumberField label="Trip length" value={config.hours} min={0.25} max={100000} suffix="hours" field="hours_played" hint={`${count(trip.rounds)} rounds at ${count(config.handsPerHour)} an hour.`} onChange={(hours) => edit({ hours })} />
           <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Common trip lengths">
             {HOUR_PRESETS.map((hours) => (
               <button key={hours} type="button" aria-pressed={config.hours === hours} onClick={() => edit({ hours })}
-                className={cx("tnum h-11 min-w-11 rounded-lg border px-2.5 text-sm font-semibold sm:h-9", config.hours === hours ? "border-brand bg-brand/15 text-ink" : "border-line bg-surface-2 text-ink-2 hover:text-ink")}>
+                className={cx("tnum h-11 min-w-11 rounded-lg border px-2 text-sm font-semibold sm:h-9", config.hours === hours ? "border-brand bg-brand/15 text-ink" : "border-line bg-surface-2 text-ink-2 hover:text-ink")}>
                 {hours}h
               </button>
             ))}

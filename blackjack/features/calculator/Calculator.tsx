@@ -33,21 +33,29 @@ const ANCHORS: Record<string, Tab> = { game: "game", bankroll: "bankroll", ramp:
 const COMPACT_QUERY = "(max-width: 1279.98px)";
 const compact = () => matchMedia(COMPACT_QUERY).matches;
 
-/** Lets keyboard users scroll the sticky results column when it is taller than the window. */
+/**
+ * Lets keyboard users scroll the sticky results column when it is taller than
+ * the window, and says whether more of it sits below the fold.
+ */
 function useScrollableRegion<T extends HTMLElement>() {
   const ref = useRef<T>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
   useEffect(() => {
     const element = ref.current;
     if (!element || typeof ResizeObserver === "undefined") return;
     const update = () => {
-      if (element.scrollHeight > element.clientHeight + 1 && !compact()) element.tabIndex = 0;
+      const scrollable = element.scrollHeight > element.clientHeight + 1 && !compact();
+      if (scrollable) element.tabIndex = 0;
       else element.removeAttribute("tabindex");
+      setMoreBelow(scrollable && element.scrollTop + element.clientHeight < element.scrollHeight - 8);
     };
     const observer = new ResizeObserver(update);
     observer.observe(element);
-    return () => observer.disconnect();
+    if (element.firstElementChild) observer.observe(element.firstElementChild);
+    element.addEventListener("scroll", update, { passive: true });
+    return () => { observer.disconnect(); element.removeEventListener("scroll", update); };
   }, []);
-  return ref;
+  return [ref, moreBelow] as const;
 }
 
 /** Which setup is open, whether it changed, and the way back to the example. */
@@ -92,7 +100,7 @@ export function Calculator() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
-  const resultsColumn = useScrollableRegion<HTMLDivElement>();
+  const [resultsColumn, moreResults] = useScrollableRegion<HTMLDivElement>();
 
   const selectTab = (next: Tab, moveFocus = false) => {
     if (next !== tab) {
@@ -223,9 +231,11 @@ export function Calculator() {
           <CompareCard calc={calc} trip={trip} onSave={() => setSaveOpen(true)} className={on("results")} />
           <MethodNotes useIndices={config.useIndices} className={on("results")} />
         </div>
-        <div ref={resultsColumn} aria-label="Results column"
+        <div ref={resultsColumn} role="group" aria-label="Results column"
           className={cx("order-first min-w-0 xl:sticky xl:top-6 xl:order-none xl:max-h-[calc(100dvh-3rem)] xl:w-[23rem] xl:shrink-0 xl:overflow-y-auto xl:rounded-[var(--radius)]", on("results"))}>
           <ResultsPanel calc={calc} trip={trip} onShowRules={showRules} onSuggest={() => setSuggestOpen(true)} />
+          {/* A fade at the foot of the scrolling column says there is more below. */}
+          {moreResults && <div aria-hidden className="pointer-events-none sticky bottom-0 -mt-12 hidden h-12 rounded-b-[var(--radius)] bg-gradient-to-t from-surface to-transparent xl:block print:hidden" />}
         </div>
       </div>
 
