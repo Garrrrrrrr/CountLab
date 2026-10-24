@@ -1,14 +1,17 @@
-import type { SimulatedDecision, SimulatedHand, SimulatedPlayerHand, SimulatedShoe } from "./shoeSimulation";
-import type { Action, Card } from "./types";
+import type { Card } from "./types";
 
 export type FullShoeMode = "coached" | "checkout";
-export type FullShoeGradingCategory = SimulatedDecision["category"];
-export type FullShoeDecision = SimulatedDecision;
+/** The three categories every saved shoe has had since the first version. */
+export type PlayGradingCategory = "Betting" | "Basic Strategy" | "Deviations";
+/** Count checks, added with the remake. Shoes saved before it have none. */
+export type CountGradingCategory = "Running count" | "True count";
+export type FullShoeGradingCategory = PlayGradingCategory | CountGradingCategory;
 export type BetSpreadPreset = "flat" | "1-8" | "1-12" | "custom";
 export type PositiveTrueCount = 1 | 2 | 3 | 4 | 5 | 6;
 export type BetRamp = Record<PositiveTrueCount, number>;
 
 export const POSITIVE_TRUE_COUNTS = [1, 2, 3, 4, 5, 6] as const;
+export const GRADING_CATEGORIES: readonly FullShoeGradingCategory[] = ["Betting", "Basic Strategy", "Deviations", "Running count", "True count"];
 
 export const BET_SPREAD_PRESETS: Record<Exclude<BetSpreadPreset, "custom">, BetRamp> = {
   flat: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 },
@@ -22,11 +25,34 @@ export function betUnitsAt(ramp: BetRamp, trueCount: number): number {
   return ramp[bucket];
 }
 
+/** One graded answer. The optional fields arrived with the remake and are absent on older saved shoes. */
+export interface FullShoeDecision {
+  category: FullShoeGradingCategory;
+  chosen: string;
+  correct: string;
+  ok: boolean;
+  explanation: string;
+  trueCount: number;
+  /** "Hard 16 vs a 10", "Bet before round 4", "Running count after round 7". */
+  question?: string;
+  cards?: Card[];
+  upcard?: Card;
+  runningCount?: number;
+  /** Wrong at the real count, right at the count the player last reported. */
+  credited?: boolean;
+  seat?: number;
+}
+
 export interface FullShoeLivePlayerHand {
   cards: Card[];
   bet: number;
   net: number;
   surrendered: boolean;
+  seat?: number;
+  owner?: number;
+  doubled?: boolean;
+  fromSplit?: boolean;
+  outcome?: string;
 }
 
 export interface FullShoeLiveRound {
@@ -38,15 +64,24 @@ export interface FullShoeLiveRound {
   trueCountBefore: number;
   netResult: number;
   decisions: FullShoeDecision[];
+  insurance?: number;
+  /** Cash after the round settled. */
+  bankrollAfter?: number;
+  /** Decks left in the shoe when the round was dealt. */
+  decksBefore?: number;
 }
+
+export type CategoryTally = { correct: number; total: number };
 
 export interface FullShoeScore {
   correct: number;
   total: number;
   streak: number;
   bestStreak: number;
-  categories: Record<FullShoeGradingCategory, { correct: number; total: number }>;
+  categories: Record<FullShoeGradingCategory, CategoryTally>;
 }
+
+export type CategoryReport = CategoryTally & { accuracy: number };
 
 export interface FullShoeReport {
   accuracy: number;
@@ -54,7 +89,7 @@ export interface FullShoeReport {
   handsPlayed: number;
   durationMs: number;
   netResult: number;
-  categories: Record<FullShoeGradingCategory, { correct: number; total: number; accuracy: number }>;
+  categories: Record<PlayGradingCategory, CategoryReport> & Partial<Record<CountGradingCategory, CategoryReport>>;
 }
 
 const accuracy = (correct: number, total: number) => total ? Math.round((correct / total) * 100) : 0;
@@ -64,11 +99,7 @@ export const emptyFullShoeScore = (): FullShoeScore => ({
   total: 0,
   streak: 0,
   bestStreak: 0,
-  categories: {
-    Betting: { correct: 0, total: 0 },
-    "Basic Strategy": { correct: 0, total: 0 },
-    Deviations: { correct: 0, total: 0 },
-  },
+  categories: Object.fromEntries(GRADING_CATEGORIES.map((category) => [category, { correct: 0, total: 0 }])) as FullShoeScore["categories"],
 });
 
 export function gradeFullShoeDecision(score: FullShoeScore, category: FullShoeGradingCategory, ok: boolean): FullShoeScore {
@@ -87,9 +118,6 @@ export function gradeFullShoeDecision(score: FullShoeScore, category: FullShoeGr
     },
   };
 }
-
-export const playingDecisionCategory = (basicAction: Action, correctAction: Action): FullShoeGradingCategory =>
-  basicAction === correctAction ? "Basic Strategy" : "Deviations";
 
 export function summarizeFullShoeSession(
   score: FullShoeScore,
@@ -111,58 +139,29 @@ export function summarizeFullShoeSession(
 }
 
 export interface HandGrade {
-  /** Index into shoe.hands — what HandReplayer's selected index uses. */
+  /** Index into the rounds list. */
   index: number;
   roundInShoe: number;
-  /** Decisions graded for this hand. 0 means the hand was never graded. */
+  /** Decisions graded for this round. 0 means the round was never graded. */
   graded: number;
   /** How many of those decisions were wrong. */
   errors: number;
 }
 
-export function summarizeHandGrades(hands: readonly SimulatedHand[]): HandGrade[] {
-  return hands.map((hand, index) => {
-    const decisions = hand.decisions ?? [];
+export function summarizeHandGrades(rounds: readonly Pick<FullShoeLiveRound, "round" | "decisions">[]): HandGrade[] {
+  return rounds.map((round, index) => {
+    const decisions = round.decisions ?? [];
     return {
       index,
-      roundInShoe: hand.roundInShoe,
+      roundInShoe: round.round,
       graded: decisions.length,
       errors: decisions.filter((decision) => decision.ok === false).length,
     };
   });
 }
 
-export function adaptLiveRoundsToSimulatedShoe(rounds: readonly FullShoeLiveRound[]): SimulatedShoe {
-  const hands: SimulatedHand[] = rounds.map((round, index) => {
-    const counts = [round.trueCountBefore, ...round.decisions.map((decision) => decision.trueCount)];
-    const playerHands: SimulatedPlayerHand[] = round.playerHands.map((hand) => ({
-      cards: [...hand.cards],
-      net: hand.net,
-      surrendered: hand.surrendered,
-      bet: hand.bet,
-    }));
-    return {
-      shoeNumber: 1,
-      handNumber: index + 1,
-      roundInShoe: round.round,
-      dealerCards: [...round.dealerCards],
-      playerHands,
-      bet: round.bet,
-      runningCountBefore: round.runningCountBefore,
-      trueCountBefore: round.trueCountBefore,
-      tcMin: Math.min(...counts),
-      tcMax: Math.max(...counts),
-      netResult: round.netResult,
-      decisions: round.decisions.map((decision) => ({ ...decision })),
-    };
-  });
-  const allCounts = hands.flatMap((hand) => [hand.tcMin, hand.tcMax]);
-  return {
-    shoeNumber: 1,
-    hands,
-    totalHands: hands.length,
-    totalProfit: hands.reduce((sum, hand) => sum + hand.netResult, 0),
-    tcMin: allCounts.length ? Math.min(...allCounts) : 0,
-    tcMax: allCounts.length ? Math.max(...allCounts) : 0,
-  };
+/** Lowest and highest true count a round saw, from its own records. */
+export function roundCountRange(round: Pick<FullShoeLiveRound, "trueCountBefore" | "decisions">): { min: number; max: number } {
+  const counts = [round.trueCountBefore, ...(round.decisions ?? []).map((decision) => decision.trueCount)];
+  return { min: Math.min(...counts), max: Math.max(...counts) };
 }

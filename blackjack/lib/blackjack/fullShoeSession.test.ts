@@ -2,17 +2,16 @@ import { describe, expect, it } from "vitest";
 import { roundDeckEstimate } from "./countingTraining";
 import { trueCount } from "./hiLo";
 import {
-  adaptLiveRoundsToSimulatedShoe,
   BET_SPREAD_PRESETS,
   betUnitsAt,
   emptyFullShoeScore,
   gradeFullShoeDecision,
-  playingDecisionCategory,
+  roundCountRange,
   summarizeFullShoeSession,
   summarizeHandGrades,
   type BetRamp,
+  type FullShoeLiveRound,
 } from "./fullShoeSession";
-import type { SimulatedHand } from "./shoeSimulation";
 
 describe("full shoe session", () => {
   it("never divides the true count by less than the selected deck precision", () => {
@@ -38,81 +37,42 @@ describe("full shoe session", () => {
     expect(summarizeFullShoeSession(emptyFullShoeScore(), [], 500, 0)).toMatchObject({ accuracy: 0, decisions: 0 });
   });
 
-  it("separates betting, basic strategy, and deviation grades", () => {
+  it("grades betting, basic strategy, deviations and both count checks separately", () => {
     let score = emptyFullShoeScore();
     score = gradeFullShoeDecision(score, "Betting", true);
-    score = gradeFullShoeDecision(score, playingDecisionCategory("H", "H"), false);
-    score = gradeFullShoeDecision(score, playingDecisionCategory("H", "S"), true);
+    score = gradeFullShoeDecision(score, "Basic Strategy", false);
+    score = gradeFullShoeDecision(score, "Deviations", true);
+    score = gradeFullShoeDecision(score, "Running count", true);
+    score = gradeFullShoeDecision(score, "True count", false);
     expect(score.categories).toEqual({
       Betting: { correct: 1, total: 1 },
       "Basic Strategy": { correct: 0, total: 1 },
       Deviations: { correct: 1, total: 1 },
+      "Running count": { correct: 1, total: 1 },
+      "True count": { correct: 0, total: 1 },
     });
-    expect(score).toMatchObject({ correct: 2, total: 3, bestStreak: 1 });
+    expect(score).toMatchObject({ correct: 3, total: 5, bestStreak: 2, streak: 0 });
     expect(summarizeFullShoeSession(score, [], 12_000, -25)).toMatchObject({
-      accuracy: 67,
-      decisions: 3,
+      accuracy: 60,
+      decisions: 5,
       handsPlayed: 0,
       durationMs: 12_000,
       netResult: -25,
-      categories: { Betting: { accuracy: 100 }, "Basic Strategy": { accuracy: 0 }, Deviations: { accuracy: 100 } },
+      categories: { Betting: { accuracy: 100 }, "Basic Strategy": { accuracy: 0 }, Deviations: { accuracy: 100 }, "Running count": { accuracy: 100 }, "True count": { accuracy: 0 } },
     });
   });
 
-  it("adapts live rounds into the existing hand replayer shape with corrections", () => {
-    const shoe = adaptLiveRoundsToSimulatedShoe([{
-      round: 3,
-      dealerCards: [{ rank: "10", suit: "spades" }, { rank: "7", suit: "hearts" }],
-      playerHands: [{ cards: [{ rank: "A", suit: "clubs" }, { rank: "9", suit: "diamonds" }], bet: 20, net: 20, surrendered: false }],
-      bet: 20,
-      runningCountBefore: 4,
-      trueCountBefore: 1,
-      netResult: 20,
-      decisions: [{ category: "Basic Strategy", chosen: "Hit", correct: "Stand", ok: false, explanation: "Stand on soft 20.", trueCount: 2 }],
-    }]);
-    expect(shoe).toMatchObject({ totalHands: 1, totalProfit: 20, tcMin: 1, tcMax: 2 });
-    expect(shoe.hands[0]).toMatchObject({ roundInShoe: 3, runningCountBefore: 4, netResult: 20 });
-    expect(shoe.hands[0].decisions?.[0]).toMatchObject({ chosen: "Hit", correct: "Stand", ok: false });
-  });
-
-  it("summarizes hand grades", () => {
-    const decision = (ok: boolean) => ({ category: "Basic Strategy" as const, chosen: "H", correct: "H", ok, explanation: "", trueCount: 0 });
-    const hand = (overrides: Partial<SimulatedHand>): SimulatedHand => ({
-      shoeNumber: 1,
-      handNumber: 1,
-      roundInShoe: 1,
-      dealerCards: [],
-      playerHands: [],
-      bet: 10,
-      runningCountBefore: 0,
-      trueCountBefore: 0,
-      tcMin: 0,
-      tcMax: 0,
-      netResult: 0,
-      ...overrides,
+  it("summarizes hand grades and count ranges from round records", () => {
+    const decision = (ok: boolean, trueCount = 0) => ({ category: "Basic Strategy" as const, chosen: "H", correct: "H", ok, explanation: "", trueCount });
+    const round = (overrides: Partial<FullShoeLiveRound>): FullShoeLiveRound => ({
+      round: 1, dealerCards: [], playerHands: [], bet: 10, runningCountBefore: 0, trueCountBefore: 0, netResult: 0, decisions: [], ...overrides,
     });
-
-    expect(summarizeHandGrades([hand({ decisions: [decision(true), decision(true)] })])).toEqual([
-      { index: 0, roundInShoe: 1, graded: 2, errors: 0 },
-    ]);
-
-    expect(summarizeHandGrades([hand({ decisions: [decision(true), decision(false), decision(false)] })])).toEqual([
-      { index: 0, roundInShoe: 1, graded: 3, errors: 2 },
-    ]);
-
-    expect(summarizeHandGrades([hand({ decisions: undefined }), hand({ decisions: [] })])).toEqual([
-      { index: 0, roundInShoe: 1, graded: 0, errors: 0 },
-      { index: 1, roundInShoe: 1, graded: 0, errors: 0 },
-    ]);
-
-    expect(summarizeHandGrades([])).toEqual([]);
-
-    expect(summarizeHandGrades([
-      hand({ roundInShoe: 5, decisions: [] }),
-      hand({ roundInShoe: 12, decisions: [decision(true)] }),
-    ])).toEqual([
+    expect(summarizeHandGrades([round({ decisions: [decision(true), decision(false), decision(false)] })])).toEqual([{ index: 0, roundInShoe: 1, graded: 3, errors: 2 }]);
+    expect(summarizeHandGrades([round({ round: 5 }), round({ round: 12, decisions: [decision(true)] })])).toEqual([
       { index: 0, roundInShoe: 5, graded: 0, errors: 0 },
       { index: 1, roundInShoe: 12, graded: 1, errors: 0 },
     ]);
+    expect(summarizeHandGrades([])).toEqual([]);
+    expect(roundCountRange(round({ trueCountBefore: 1, decisions: [decision(true, 3), decision(true, -1)] }))).toEqual({ min: -1, max: 3 });
   });
 });

@@ -17,6 +17,15 @@ export interface SavedShoeHeader {
     surrenderRule: SurrenderRule;
     stacked: boolean;
     penetration: number;
+    /** Added with the remake; absent on shoes saved before it. */
+    doubleAfterSplit?: boolean;
+    resplitAces?: boolean;
+    doubling?: "any" | "9-11" | "10-11";
+    blackjackPayout?: number;
+    deckResolution?: number;
+    rounding?: "floor" | "truncate" | "nearest";
+    unit?: number;
+    startingBankroll?: number;
   };
   report: FullShoeReport;
 }
