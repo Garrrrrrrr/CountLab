@@ -119,7 +119,13 @@ export function PocketChartSvg({ rules, svgRef }: { rules: TableRules; svgRef?: 
   );
 }
 
-async function savePng(svg: SVGSVGElement, name: string) {
+export const pocketFileName = (rules: TableRules) => `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}.png`;
+
+/**
+ * Saves the card as a PNG. On a phone the share sheet offers "Save Image" to the photo library,
+ * which a plain download does not; elsewhere it downloads.
+ */
+export async function savePng(svg: SVGSVGElement, name: string) {
   const scale = 4;
   const source = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
   const url = URL.createObjectURL(source);
@@ -133,6 +139,16 @@ async function savePng(svg: SVGSVGElement, name: string) {
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
     if (!png) throw new Error("png");
+    const file = new File([png], name, { type: "image/png" });
+    if (window.matchMedia("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: "CountLab strategy chart" });
+        return;
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        // Sharing refused (e.g. no user gesture left): fall back to a download.
+      }
+    }
     const link = document.createElement("a");
     link.href = URL.createObjectURL(png);
     link.download = name;
@@ -146,8 +162,7 @@ async function savePng(svg: SVGSVGElement, name: string) {
 export function PocketChartPage() {
   const { rules, setRules, differsFromSaved, saveAsMine, resetToSaved } = useChartRules();
   const svg = useRef<SVGSVGElement>(null);
-  const fileName = `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}.png`;
-  const save = () => svg.current && savePng(svg.current, fileName).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
+  const save = () => svg.current && savePng(svg.current, pocketFileName(rules)).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
   return (
     <div>
       <PageHeader

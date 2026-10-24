@@ -110,13 +110,32 @@ test.describe("strategy charts", () => {
     await expect(page.getByRole("dialog").getByRole("heading", { name: "Hard 16 vs an ace" })).toBeVisible();
   });
 
-  test("pocket chart follows the rules and saves as an image", async ({ page }) => {
+  test("pocket chart follows the rules", async ({ page }) => {
     await page.goto("/charts/pocket/?decks=1&soft17=s17&das=0&surrender=none");
     const card = page.getByRole("img", { name: /Pocket strategy chart for 1D · S17/ });
     await expect(card).toBeVisible();
     await expect(card).not.toContainText("Surrender first");
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save image" }).click()]);
-    expect(download.suggestedFilename()).toMatch(/^countlab-chart-1d-s17.*\.png$/);
+    await expect(page.getByRole("button", { name: "Save image" })).toBeVisible();
+  });
+
+  test("download the chart from the charts page on any screen size", async ({ page, hasTouch }) => {
+    // Phones get the share sheet (its "Save Image" reaches the photo library); stand in for it.
+    await page.addInitScript(() => {
+      const shared: string[] = [];
+      Object.assign(window, { shared });
+      Object.assign(navigator, { canShare: () => true, share: async ({ files }: { files: File[] }) => { shared.push(...files.map((file) => `${file.name} ${file.type}`)); } });
+    });
+    await page.goto("/charts/?decks=6&soft17=h17&das=1&surrender=early");
+    const button = page.getByRole("button", { name: "Download chart" }).filter({ visible: true });
+    await expect(button).toHaveCount(1);
+    const name = "countlab-chart-6d-h17-das-es10.png";
+    if (hasTouch) {
+      await button.click();
+      await expect.poll(() => page.evaluate(() => (window as unknown as { shared: string[] }).shared)).toEqual([`${name} image/png`]);
+    } else {
+      const [download] = await Promise.all([page.waitForEvent("download"), button.click()]);
+      expect(download.suggestedFilename()).toBe(name);
+    }
   });
 
   test("rank the Illustrious 18 and Fab 4 first in the index list", async ({ page }) => {

@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
-import { ListOrdered, Printer, WalletCards } from "lucide-react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { Download, ListOrdered, Printer, WalletCards } from "lucide-react";
 import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
-import { Button, ButtonLink, Card, PageHeader, Segmented, Stepper } from "@/components/ui";
+import { Button, ButtonLink, Card, PageHeader, Segmented, Stepper, toast } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { buildChart, cellKey, effectiveSurrender, rulesSummary, signedCount, type CellRef } from "@/lib/strategy";
 import { RulesControl } from "./RulesControl";
 import { CellSheet } from "./CellSheet";
+import { PocketChartSvg, pocketFileName, savePng } from "./PocketChart";
 import { PlayTableView, SurrenderTableView, TableFrame, type ChartMode } from "./StrategyTable";
 import { useChartRules } from "./useChartRules";
 
@@ -36,6 +37,9 @@ export function ChartsPage() {
     { id: "insurance", label: "Insurance" },
   ];
   const tableProps = { rules, mode, tc, selected: selected?.key };
+  const pocket = useRef<SVGSVGElement>(null);
+  const download = () => pocket.current && savePng(pocket.current, pocketFileName(rules)).catch(() => toast("Couldn’t make the image. Try Print instead."));
+  const downloadButton = (className?: string) => <Button size="sm" className={className} icon={<Download size={16} aria-hidden />} onClick={download}>Download chart</Button>;
 
   return (
     <div className="print:text-[11px]">
@@ -48,6 +52,7 @@ export function ChartsPage() {
             <ButtonLink href="/charts/indices" variant="secondary" size="sm" icon={<ListOrdered size={16} aria-hidden />}>Index list</ButtonLink>
             <ButtonLink href="/charts/pocket" variant="secondary" size="sm" icon={<WalletCards size={16} aria-hidden />}>Pocket chart</ButtonLink>
             <Button variant="secondary" size="sm" icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
+            {downloadButton()}
           </div>
         }
       />
@@ -55,6 +60,10 @@ export function ChartsPage() {
 
       <div className="no-print space-y-3">
         <RulesControl rules={rules} onChange={setRules} differsFromSaved={differsFromSaved} onSave={saveAsMine} onReset={resetToSaved} />
+        <div className="flex gap-2 sm:hidden">
+          {downloadButton("flex-1")}
+          <ButtonLink href="/charts/pocket" variant="secondary" size="sm" icon={<WalletCards size={16} aria-hidden />}>Preview</ButtonLink>
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <Segmented label="Show" hideLabel value={mode} onChange={setMode} options={MODES} className="sm:w-96" />
           {mode === "count" && (
@@ -126,6 +135,8 @@ export function ChartsPage() {
         <Button variant="secondary" icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
       </div>
 
+      {/* The one-card chart the download button saves. */}
+      <div hidden><PocketChartSvg rules={rules} svgRef={pocket} /></div>
       <CellSheet rules={rules} cell={selected?.ref ?? null} open={Boolean(selected)} onClose={() => setSelected(null)} tc={mode === "count" ? tc : undefined} />
     </div>
   );
