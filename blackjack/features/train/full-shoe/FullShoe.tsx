@@ -23,7 +23,7 @@ import { makeSession, storage } from "@/lib/statistics/storage";
 import { rulesSummary } from "@/lib/strategy";
 import { SavedShoeReport, ShoeReport, type ReportData } from "./Report";
 import { savedRules, Setup } from "./Setup";
-import { setupFromSettings, setupSummary } from "./setup";
+import { setupFromSettings, setupSummary } from "./tableSetup";
 import { Table } from "./Table";
 
 type Screen =

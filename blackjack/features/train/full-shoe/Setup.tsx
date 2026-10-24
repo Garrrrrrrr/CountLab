@@ -10,7 +10,7 @@ import { RESOLUTION_PHRASE, ROUNDING_PHRASE, type CountCheckFrequency } from "@/
 import type { FullShoeSetup, Speed } from "@/lib/full-shoe/session";
 import { DECK_OPTIONS, SURRENDER_SHORT, type TableRules } from "@/lib/strategy";
 import { track } from "@/lib/analytics/track";
-import { COUNT_CHECK_OPTIONS, PENETRATIONS, penetrationLabel, rampDollars, SPREAD_LABEL } from "./setup";
+import { COUNT_CHECK_OPTIONS, PENETRATIONS, penetrationLabel, rampDollars, SPREAD_LABEL } from "./tableSetup";
 import { money } from "./format";
 
 const SURRENDER_OPTIONS = [

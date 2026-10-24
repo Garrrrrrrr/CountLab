@@ -16,7 +16,7 @@ import { CheckoutPanel, CoachPanel, TableOptions } from "./Coach";
 import { BetDock, CountCheckDock, CountResult, CountTray, InsuranceDock, NoteBand, PlayActions } from "./Docks";
 import { Felt } from "./Felt";
 import { money, typing } from "./format";
-import { SPEED_MS } from "./setup";
+import { SPEED_MS } from "./tableSetup";
 import { blip, type Blip } from "./sound";
 
 class Cancelled extends Error {}
