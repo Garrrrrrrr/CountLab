@@ -80,6 +80,7 @@ describe("deck-class differences", () => {
 
   it("lists the double-deck H17 departures from the 4-8 deck chart", () => {
     expect(differences(2)).toEqual([
+      "pairs:8,8vA Rp->P",
       "pairs:7,7v8 H->Ph",
       "pairs:6,6v2 Ph->P",
       "pairs:6,6v7 H->Ph",

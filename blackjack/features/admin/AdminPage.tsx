@@ -1,9 +1,7 @@
 "use client";
-import { EmptyState, PageHeader } from "@/components/ui";
-import { pageInfo } from "@/lib/routes";
+import { AdminDashboard } from "./AdminDashboard";
 
-/** Placeholder until this feature is built. */
+/** Product analytics for accounts on the admin allowlist. The dashboard itself checks access. */
 export function AdminPage() {
-  const info = pageInfo("/admin");
-  return <><PageHeader title={info.title} sub={info.description} /><EmptyState title="Coming soon" /></>;
+  return <AdminDashboard />;
 }

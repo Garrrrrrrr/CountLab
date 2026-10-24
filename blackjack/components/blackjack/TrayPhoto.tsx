@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Expand } from "lucide-react";
 import { trayPhotoSrc, type TrayPhoto as TrayPhotoData } from "@/lib/blackjack/deckPhotos";
 import { Sheet } from "@/components/ui/Sheet";
@@ -28,11 +28,17 @@ export function TrayPhoto({ photo, label = "Discard tray", width, className, zoo
 }) {
   const [zoom, setZoom] = useState(false);
   const [loaded, setLoaded] = useState<string | null>(null);
+  const image = useRef<HTMLImageElement>(null);
+  // A cached or prerendered image can finish before React attaches onLoad, so check on mount too.
+  useEffect(() => {
+    if (photo && image.current?.complete && image.current.naturalWidth > 0) setLoaded(photo.file);
+  }, [photo]);
   const style = width ? { width, height: Math.round(width * RATIO) } : { aspectRatio: `629 / 848` };
   const body = photo ? (
     // A plain <img>: the export has no image optimizer, and these files are already sized for the web.
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={image}
       src={trayPhotoSrc(photo)}
       alt={`${label}: photo of the discard tray`}
       width={629}

@@ -14,6 +14,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ConsentBar } from "./ConsentBar";
 import { PasswordRecoverySheet } from "./PasswordRecoverySheet";
 import { UpdateBar } from "./UpdateBar";
+import { SettingsEffects } from "./SettingsEffects";
 
 const ICONS: Record<NavItem["icon"], typeof Target> = {
   train: Target,
@@ -53,6 +54,7 @@ function Shell({ children }: { children: ReactNode }) {
       <ConsentBar />
       <PasswordRecoverySheet />
       <UpdateBar />
+      <SettingsEffects />
     </div>
   );
 }

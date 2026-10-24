@@ -122,6 +122,10 @@ export function chartCode(rules: StrategyChartRules, section: StrategySectionId,
   const cellKey = `${section}:${row}v${dealer}`;
   const code = table.get(cellKey);
   if (!code) throw new Error(`No chart cell for ${section} ${row} vs ${dealer}`);
+  // Double deck H17 with double after split: splitting 8,8 against an ace
+  // edges out late surrender (-0.4965 against -0.5000 by exact calculation,
+  // resplitting to four hands). Without DAS the surrender stays ahead.
+  if (key === "2/h17" && cellKey === "pairs:8,8vA" && rules.doubleAfterSplit && code === "Rp") return "P";
   if (rules.surrender === "early" && earlySurrendersVsTen(cellKey, rules)) {
     // The surrender code has to keep the cell's own fallback, so that a table
     // refusing the surrender still splits 8,8 rather than hitting it.

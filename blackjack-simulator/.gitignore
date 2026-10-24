@@ -12,3 +12,6 @@ results/*
 !results/h17-pro-coefficients.json
 !results/ramp-variance-h17-pro.json
 !results/ramp-variance-countlab.json
+basic_strategy/ev/
+basic_strategy/app_actions.json
+basic_strategy/*.csv
