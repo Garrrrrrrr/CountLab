@@ -16,3 +16,6 @@ es10_surrender_chart.png
 /.playwright-mcp/
 __pycache__/
 *.pyc
+
+# Agent worktrees created during local sessions.
+/.claude/worktrees/

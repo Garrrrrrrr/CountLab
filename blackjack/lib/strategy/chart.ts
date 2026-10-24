@@ -134,6 +134,9 @@ const LEARNING_ORDER = [
   "R:hard:14v10", "R:hard:15v10", "R:hard:15v9", "R:hard:15vA",
 ];
 
+/** Entries with a priority below this are the Illustrious 18 (insurance included) and the Fab 4. */
+export const CORE_INDEX_COUNT = LEARNING_ORDER.length;
+
 /** Every index that changes a two-card play under these rules, in learning order. */
 export function indexList(rules: TableRules): IndexEntry[] {
   const chart = buildChart(rules);

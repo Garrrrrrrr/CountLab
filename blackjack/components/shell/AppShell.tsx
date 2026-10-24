@@ -127,7 +127,7 @@ function TabBar({ pathname }: { pathname: string }) {
           return (
             <li key={item.href}>
               <Link href={item.href} aria-current={current ? "page" : undefined}
-                className={cx("flex h-full flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold transition", current ? "text-ink" : "text-ink-3 hover:text-ink-2")}>
+                className={cx("flex h-full flex-col items-center justify-center gap-1 text-[0.625rem] font-semibold transition xs:text-[0.6875rem]", current ? "text-ink" : "text-ink-3 hover:text-ink-2")}>
                 <span className={cx("grid h-7 w-12 place-items-center rounded-full transition", current && "bg-brand/20 text-brand-text")}>
                   <Icon size={20} strokeWidth={current ? 2.4 : 2} aria-hidden />
                 </span>
