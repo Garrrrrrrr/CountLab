@@ -1,4 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Picks a segmented-control option by clicking its visible label, as a person would. The radio
+ * itself is visually hidden, and forcing a click onto it skips the check that nothing (the fixed
+ * tab bar, a dock) covers it.
+ */
+async function choose(radio: Locator) {
+  await radio.locator("xpath=ancestor::label[1]").click();
+  await expect(radio).toBeChecked();
+}
 
 /** Skip the analytics question so it never covers what a test taps. */
 test.beforeEach(async ({ page }) => {
@@ -74,7 +84,7 @@ test.describe("strategy charts", () => {
 
   test("show every play at a chosen count and explain a cell", async ({ page }) => {
     await page.goto("/charts/");
-    await page.getByRole("radio", { name: "At a count" }).check({ force: true });
+    await choose(page.getByRole("radio", { name: "At a count" }));
     await page.getByRole("button", { name: "Increase True count" }).click();
     await page.getByRole("button", { name: "Increase True count" }).click();
     await expect(cell(page, "Hard 10 versus dealer 10")).toHaveAccessibleName(/at a true count of \+4, double \(basic strategy says hit\)/);
@@ -109,10 +119,10 @@ test.describe("strategy charts", () => {
 test.describe("settings", () => {
   test("table rules flow into the charts", async ({ page }) => {
     await page.goto("/settings/");
-    // The controls stay disabled until saved settings load; `force` would click straight through that.
+    // The controls stay disabled until saved settings and the account check have loaded.
     await expect(page.getByRole("radio", { name: "Stands (S17)" }).first()).toBeEnabled();
-    await page.getByRole("radio", { name: "Stands (S17)" }).first().check({ force: true });
-    await page.getByRole("radio", { name: "None" }).first().check({ force: true });
+    await choose(page.getByRole("radio", { name: "Stands (S17)" }).first());
+    await choose(page.getByRole("radio", { name: "None" }).first());
     await page.goto("/charts/");
     await expect(page.getByRole("button", { name: /Table rules/ })).toContainText("S17");
     await expect(page.getByRole("button", { name: /Table rules/ })).toContainText("NS");
@@ -121,7 +131,7 @@ test.describe("settings", () => {
   test("the theme applies immediately", async ({ page }) => {
     await page.goto("/settings/");
     await expect(page.getByRole("radio", { name: "Dark" })).toBeEnabled();
-    await page.getByRole("radio", { name: "Dark" }).check({ force: true });
+    await choose(page.getByRole("radio", { name: "Dark" }));
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

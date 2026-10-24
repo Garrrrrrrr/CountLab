@@ -1,4 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
+
+/**
+ * Picks a segmented-control option by clicking its visible label, as a person would. The radio
+ * itself is visually hidden, and forcing a click onto it skips the check that nothing (the fixed
+ * tab bar, a dock) covers it.
+ */
+async function choose(radio: Locator) {
+  await radio.locator("xpath=ancestor::label[1]").click();
+  await expect(radio).toBeChecked();
+}
 
 /** The analytics consent bar sits over the pinned Start button on phones until answered. */
 async function open(page: Page, path: string, heading: string) {
@@ -31,7 +41,7 @@ async function expectFits(page: Page, enterName: string) {
 test.describe("counting drills", () => {
   test("deck estimation: photos, verdicts, summary", async ({ page }) => {
     await open(page, "/train/deck-estimation/", "Deck Estimation");
-    await page.getByRole("radio", { name: "5" }).first().check({ force: true });
+    await choose(page.getByRole("radio", { name: "5" }).first());
     await start(page, "Start 5 photos");
     for (let index = 0; index < 5; index++) {
       await expect(page.locator("img[alt*='photo of the discard tray']").first()).toBeVisible();

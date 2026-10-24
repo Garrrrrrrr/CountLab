@@ -40,6 +40,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function SettingsPage() {
   const { settings, update, ready } = useSettings();
+  const { loading: checkingAccount } = useAuth();
   const isAdmin = useIsAdmin();
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => update({ [key]: value } as Partial<Settings>);
 
@@ -49,9 +50,9 @@ export function SettingsPage() {
       <div className="space-y-7">
         <AccountGroup />
 
-        {/* Disabled until the saved settings load (in the prerendered HTML too), so a tap that lands
-            before then is not undone when they arrive. */}
-        <fieldset disabled={!ready} aria-busy={!ready} className="m-0 min-w-0 space-y-7 border-0 p-0">
+        {/* Disabled until the saved settings load and we know whose they are (in the prerendered HTML
+            too): a tap before then would be undone when they arrive, or saved to the guest's copy. */}
+        <fieldset disabled={!ready || checkingAccount} aria-busy={!ready || checkingAccount} className="m-0 min-w-0 space-y-7 border-0 p-0">
         <Group title="Table rules" sub="Drills, the full shoe and the charts start from these.">
           <Row>
             <Segmented label="Decks" value={settings.decks} onChange={(decks) => set("decks", decks)}
@@ -151,7 +152,8 @@ function AccountGroup() {
   return (
     <Group id="account" title="Account">
       <Row>
-        {loading ? <p className="text-sm text-ink-3">Checking your account…</p> : user ? (
+        {/* Roughly the guest card's height, so the settings below do not jump when the check ends. */}
+        {loading ? <p className="min-h-[9rem] text-sm text-ink-3 min-[375px]:min-h-[7.5rem] sm:min-h-[3rem]">Checking your account…</p> : user ? (
           <div className="flex flex-wrap items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand/20 text-base font-bold uppercase text-brand-text">{(user.email ?? "?").slice(0, 1)}</span>
             <div className="min-w-0 flex-1">
