@@ -125,6 +125,12 @@ describe("count checks", () => {
     expect(grade).toMatchObject({ rcOk: false, tcOk: true });
   });
 
+  it("needs an accepted deck estimate: a running count of 0 cannot pass with any divisor", () => {
+    const grade = gradeCountCheck({ rc: 6, cardsRemaining: 156, totalDecks: 6, count, answer: { rc: 0, decks: 0.5, tc: 0 } });
+    expect(grade).toMatchObject({ rcOk: false, decksOk: false, tcOk: false });
+    expect(grade.tcExplanation).toContain("about 3 decks left, not 0.5");
+  });
+
   it("says when the division was right but the deck estimate was not", () => {
     const grade = gradeCountCheck({ rc: 6, cardsRemaining: 156, totalDecks: 6, count, answer: { rc: 6, decks: 1.5, tc: 4 } });
     expect(grade).toMatchObject({ decksOk: false, tcOk: false });

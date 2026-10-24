@@ -146,6 +146,8 @@ export function CountCheckDock({ game, onSubmit }: { game: FullShoeGame; onSubmi
       : `${signed(check.rc ?? 0)} ÷ ${check.decks} decks, ${ROUNDING_PHRASE[game.setup.rounding]}.`;
   const submit = () => {
     if (value === "" || value === "-" || value === ".") return;
+    // Decks left is always more than zero; keep the entry so it can be corrected.
+    if (step === "decks" && !(Number(value) > 0)) return;
     onSubmit(Number(value));
     setValue("");
   };

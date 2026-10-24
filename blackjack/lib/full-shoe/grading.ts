@@ -234,11 +234,12 @@ export interface CountCheckGrade {
  * Running count: exact. Deck estimate: right when it is the decks left to the
  * table's precision, or what the tray photo on screen shows to that precision
  * (the photo is the nearest real picture, which can sit a few cards away).
- * True count: right when it is the correct division of the real running count
- * or of the player's own running count (that slip is graded once, above) by
- * an accepted deck estimate. A true count that is the right division of a
- * deck estimate we did not accept is wrong, and the explanation says the
- * estimate was the problem.
+ * True count: right when the deck estimate was accepted and the true count is
+ * the correct division of the real running count or of the player's own
+ * running count (that slip is graded once, above) by an accepted estimate.
+ * So the category measures the tray reading and the division together, and a
+ * reported running count of 0 cannot pass it with any deck estimate at all.
+ * When the estimate was the problem, the explanation says so.
  */
 export function gradeCountCheck({ rc, cardsRemaining, totalDecks, photoDiscarded, count, answer }: {
   rc: number; cardsRemaining: number; totalDecks: number; photoDiscarded?: number; count: CountSettings; answer: CountCheckAnswer;
@@ -256,11 +257,12 @@ export function gradeCountCheck({ rc, cardsRemaining, totalDecks, photoDiscarded
   if (answer.tc === undefined) return { rcOk, expected, acceptedDecks, rcExplanation };
   const decksOk = answer.decks !== undefined && acceptedDecks.some((value) => near(value, answer.decks!));
   const counts = new Set([rc, answer.rc]);
-  const tcOk = [...counts].some((running) => acceptedDecks.some((divisor) => trueCount(running, divisor, count.rounding) === answer.tc));
+  const divides = [...counts].some((running) => acceptedDecks.some((divisor) => trueCount(running, divisor, count.rounding) === answer.tc));
+  const tcOk = divides && (answer.decks === undefined || decksOk);
   const how = `${signedRc} ÷ ${decks} decks = ${(rc / decks).toFixed(2).replace("-", "−")}, ${ROUNDING_PHRASE[count.rounding]}: ${signedCount(expected.tc)}`;
   let tcExplanation: string;
   if (tcOk) tcExplanation = !rcOk ? `Your division was right for your running count. ${how}.` : `${how}.`;
-  else if (answer.decks !== undefined && !decksOk && trueCount(answer.rc, answer.decks, count.rounding) === answer.tc) tcExplanation = `Your division was right, but the tray shows about ${decks} decks left, not ${answer.decks}. ${how}.`;
+  else if (answer.decks !== undefined && !decksOk) tcExplanation = `${trueCount(answer.rc, answer.decks, count.rounding) === answer.tc ? "Your division was right, but the" : "The"} tray shows about ${decks} decks left, not ${answer.decks}. ${how}.`;
   else tcExplanation = `${how}.`;
   return { rcOk, decksOk, tcOk, expected, acceptedDecks, rcExplanation, tcExplanation };
 }

@@ -68,6 +68,17 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
 
   useEffect(() => () => { generation.current += 1; }, []);
 
+  // A shoe lives only in memory: ask before a reload or a closed tab throws it away.
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (finished.current || (!game.history.length && !game.round)) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [game]);
+
   const finish = useCallback(() => {
     if (finished.current) return;
     finished.current = true;
