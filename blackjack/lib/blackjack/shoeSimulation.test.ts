@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS, unitsAt } from "./advantage";
 import { calculateHandValue, isBlackjack, isSoft } from "./hand";
-import { ShoeSimulationConfig, deviationHandLabel, simulateShoeSession } from "./shoeSimulation";
+import { ShoeSimulationConfig, simulateShoeSession } from "./shoeSimulation";
 
 const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulationConfig => ({
   bankroll: 10_000,
@@ -18,10 +18,6 @@ const baseConfig = (overrides: Partial<ShoeSimulationConfig> = {}): ShoeSimulati
 });
 
 describe("simulateShoeSession", () => {
-  it("labels Pro-chart soft and pair departures without collapsing them to hard totals", () => {
-    expect(deviationHandLabel([{ rank: "A", suit: "spades" }, { rank: "8", suit: "hearts" }])).toBe("Soft 19");
-    expect(deviationHandLabel([{ rank: "10", suit: "spades" }, { rank: "K", suit: "hearts" }])).toBe("10,10");
-  });
   it("never reads a surrender index as a stand on an in-progress hand", async () => {
     // The catalog is keyed on hand labels, so a drawn-to 14 matched "14 v 10"
     // and its surrender index came back as "not a hit" — the simulator stood on

@@ -1,4 +1,3 @@
-import { DAILY_CHECKLIST, evaluateChecklist } from "../blackjack/practiceChecklist";
 import type { DrillType, Mistake, Session } from "./storage";
 
 /**
@@ -120,13 +119,6 @@ export function relativeTime(iso: string | undefined, now = Date.now()): string 
   return days === 1 ? "yesterday" : days < 7 ? `${days} days ago` : new Date(iso).toLocaleDateString();
 }
 
-/** Today's progress on the daily checklist item a drill feeds, if it feeds one. */
-export function checklistProgress(sessions: readonly Session[], drill: DrillType, now = new Date()) {
-  const item = DAILY_CHECKLIST.find((entry) => entry.kind === "auto" && entry.drill === drill);
-  if (!item) return undefined;
-  const entry = evaluateChecklist(sessions, [], now).items.find((candidate) => candidate.item.id === item.id)!;
-  return { current: entry.current, target: entry.target, done: entry.done, unit: item.unit };
-}
 
 /** "3 min 5 s", "42 s", "1 h 2 min": a duration read aloud, for timers that are not live regions. */
 export function spokenDuration(ms: number): string {

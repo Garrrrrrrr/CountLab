@@ -1,7 +1,7 @@
 "use client";
-
 import { useEffect } from "react";
-import { Button, ButtonLink, Panel } from "@/components/ui";
+import { RotateCcw } from "lucide-react";
+import { Button, ButtonLink, EmptyState } from "@/components/ui";
 import { reportHandledError } from "@/lib/analytics";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -9,15 +9,10 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     console.error("[countlab] unhandled error", error);
     reportHandledError("ReactErrorBoundary", error, "app/error");
   }, [error]);
-
   return (
-    <Panel className="py-20 text-center">
-      <h1 className="text-3xl font-semibold">Something went wrong</h1>
-      <p className="mt-2 text-[var(--ink-muted)]">An unexpected error occurred. You can try again, or head back home.</p>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-        <Button onClick={reset}>Try again</Button>
-        <ButtonLink href="/" variant="quiet">Go home</ButtonLink>
-      </div>
-    </Panel>
+    <EmptyState className="mt-10" icon={<RotateCcw size={22} aria-hidden />} title="Something went wrong"
+      action={<div className="flex gap-2"><Button onClick={reset}>Try again</Button><ButtonLink href="/" variant="secondary">Go home</ButtonLink></div>}>
+      This page hit an unexpected error. Your saved training and journal are not affected.
+    </EmptyState>
   );
 }

@@ -139,8 +139,8 @@ describe("normalizeHands", () => {
 });
 
 describe("gameFromScenario", () => {
-  it("matches the ScenarioPicker mapping", async () => {
-    const { scenarioRamp } = await import("@/components/ScenarioPicker");
+  it("matches the saved-scenario mapping", async () => {
+    const { scenarioRamp } = await import("./scenarios");
     const ramp = scenarioRamp(scenario);
     const game = gameFromScenario(scenario, ramp);
     expect(game).toMatchObject({ decks: 8, dealt: 6.5, bettingUnit: 15, handsPerHour: 90, dealerHitsSoft17: false, resplitAces: false, useIndices: true, playerHands: 2, handsByCount: {} });

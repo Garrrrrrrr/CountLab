@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { unsupportedScenario } from "@/components/ScenarioPicker";
+import { unsupportedScenario } from "./scenarios";
 import { analyzeCvcx, createOptimalRamp, riskSizedUnit } from "./cvcx";
 import { DEFAULT_LAB_CONFIG, toTemplateConfig, type LabConfig } from "./labConfig";
 import { chance, count, money, percent, riskLabel, signedMoney } from "./labFormat";

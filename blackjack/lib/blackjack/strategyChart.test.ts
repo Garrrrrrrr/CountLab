@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHART_CODES, chartCell, resolveCode } from "./strategyChart";
-import { getBasicStrategyDecision } from "./basicStrategy";
+import { decideHand, explainDecision, fromBlackjackRules } from "@/lib/strategy";
 import { BlackjackRules, Card, Rank } from "./types";
 
 const all = { canDouble: true, canSplit: true, doubleAfterSplit: true, canSurrender: true };
@@ -99,7 +99,7 @@ const card = (rank: string, suit: Card["suit"] = "spades"): Card => ({ rank: (ra
 const RULES: BlackjackRules = { decks: 6, dealerHitsSoft17: true, doubleAfterSplit: true, resplitAces: true, lateSurrender: true, doubleRule: "any" };
 
 const decide = (cards: Card[], up: string, over: Partial<typeof RULES> = {}, canSplit?: boolean) =>
-  getBasicStrategyDecision({ playerCards: cards, dealerUpcard: card(up, "diamonds"), rules: { ...RULES, ...over }, canSplit });
+  decideHand({ cards, upcard: card(up, "diamonds"), rules: fromBlackjackRules({ ...RULES, ...over }), canSplit });
 
 const pairOf = (rank: string): Card[] => [card(rank), card(rank, "hearts")];
 const hard16 = (): Card[] => [card("10"), card("6", "hearts")];
@@ -172,9 +172,9 @@ describe("getBasicStrategyDecision on the tables", () => {
     // double hard 8 against a 5 and a 6, so a clamp would tell a two-card hard
     // 5, 6 or 7 to double the moment those grids land.
     for (const dealer of ["5", "6"]) {
-      expect(decide([card("2"), card("3", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
-      expect(decide([card("2"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
-      expect(decide([card("3"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", fallback: undefined });
+      expect(decide([card("2"), card("3", "hearts")], dealer)).toMatchObject({ action: "H", via: "basic" });
+      expect(decide([card("2"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", via: "basic" });
+      expect(decide([card("3"), card("4", "hearts")], dealer)).toMatchObject({ action: "H", via: "basic" });
       // The same totals reached as an unsplittable pair take the same route.
       expect(decide(pairOf("2"), dealer, {}, false).action).toBe("H");
       expect(decide(pairOf("3"), dealer, {}, false).action).toBe("H");
@@ -194,13 +194,11 @@ describe("getBasicStrategyDecision on the tables", () => {
 
   it("answers every supported deck count from its own grid", () => {
     // FullShoeGame and CountingDrills offer every one of these deck counts.
-    // Each reads its own grid, and the explanation says which one answered.
+    // Each reads its own grid.
     for (const decks of [1, 2, 4, 6, 8]) {
       expect(() => decide(pairOf("8"), "10", { decks })).not.toThrow();
       expect(decide(hard16(), "10", { decks }).action).toBe("R");
     }
-    expect(decide(hard16(), "10", { decks: 1 }).explanation).toContain("under 1-deck H17");
-    expect(decide(hard16(), "10", { decks: 8 }).explanation).toContain("under 8-deck H17");
     expect(decide([card("5"), card("3", "hearts")], "5", { decks: 1 }).action).toBe("D");
   });
 
@@ -213,8 +211,8 @@ describe("getBasicStrategyDecision on the tables", () => {
   });
 
   it("explains the play it chose", () => {
-    expect(decide([card("A"), card("7", "hearts")], "4").explanation)
-      .toBe("18 (soft hand) vs dealer 4 is Double if allowed, otherwise Stand under 6-deck H17 basic strategy.");
+    const decision = decide([card("A"), card("7", "hearts")], "4");
+    expect(explainDecision(decision.cell!, decision)).toBe("Soft 18 (A,7) vs a 4: double, or stand if you can't double.");
   });
 });
 

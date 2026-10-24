@@ -76,3 +76,59 @@ export function drawDeckPhoto(numDecks: number, seen: readonly string[], rng: ()
   const candidates = fresh.length ? fresh : pool.length > 1 ? pool.filter((photo) => photo.file !== seen[seen.length - 1]) : pool;
   return candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
 }
+
+/** One discard-tray photo and the decks it shows in the tray. */
+export interface TrayPhoto {
+  file: string;
+  /** Decks sitting in the discard tray in this picture. */
+  discarded: number;
+}
+
+/**
+ * Every photo once, by how many decks it shows discarded.
+ *
+ * The manifest labels each recorded round with decks *remaining* for the shoe
+ * it was dealt from, so one picture appears under several shoe sizes (tray-0001
+ * is 0.5 remaining of one deck, 1.5 of two, 5.5 of six). What the picture
+ * actually shows is the shoe size minus that label, and those agree to within
+ * 0.08 decks for every photo — so the discard depth is the photo's real
+ * property, and one set serves every shoe size.
+ */
+export const TRAY_PHOTOS: readonly TrayPhoto[] = (() => {
+  const depths = new Map<string, number[]>();
+  for (const photo of DECK_ESTIMATION_PHOTOS) depths.set(photo.file, [...(depths.get(photo.file) ?? []), photo.numDecks - photo.decks]);
+  return [...depths]
+    .map(([file, values]) => ({ file, discarded: Number(median(values).toFixed(2)) }))
+    .sort((a, b) => a.discarded - b.discarded);
+})();
+
+/** Public URL of a photo, from its manifest path. */
+export const trayPhotoSrc = (photo: { file: string }) => `/deck-estimation/${photo.file}`;
+
+/**
+ * The photo closest to a live discard depth, or undefined while the tray is
+ * still emptier than the shallowest photo (half a deck), when the honest
+ * picture is an empty tray.
+ */
+export function trayPhotoFor(discarded: number): TrayPhoto | undefined {
+  if (discarded < TRAY_PHOTOS[0].discarded - 0.25) return undefined;
+  return TRAY_PHOTOS.reduce((nearest, photo) => (Math.abs(photo.discarded - discarded) < Math.abs(nearest.discarded - discarded) ? photo : nearest));
+}
+
+/**
+ * Photos that make sense for a shoe of `numDecks`: at least a quarter deck
+ * must still be in the shoe, or there is nothing left to deal.
+ */
+export const trayPhotosForShoe = (numDecks: number): TrayPhoto[] => TRAY_PHOTOS.filter((photo) => photo.discarded <= numDecks - 0.25);
+
+/**
+ * The next photo for a drill session: one not yet shown this session, so a
+ * set never repeats until it runs out, and never the one just shown.
+ */
+export function drawTrayPhoto(numDecks: number, seen: readonly string[], rng: () => number = Math.random): TrayPhoto {
+  const pool = trayPhotosForShoe(numDecks);
+  const usable = pool.length ? pool : [...TRAY_PHOTOS];
+  const fresh = usable.filter((photo) => !seen.includes(photo.file));
+  const candidates = fresh.length ? fresh : usable.length > 1 ? usable.filter((photo) => photo.file !== seen[seen.length - 1]) : usable;
+  return candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
+}

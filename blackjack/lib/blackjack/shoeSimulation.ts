@@ -1,10 +1,9 @@
 import { AdvantageRules, RampPoint, unitsAt } from "./advantage";
-import { Deviation, DeviationAction, getDeviationCatalog, resolveDeviation } from "./deviations";
+import { decideHand, takeInsurance, type TableRules } from "@/lib/strategy";
 import { calculateHandValue, canSplit, isBlackjack, isSoft } from "./hand";
 import { hiLoValue, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
-import { getBasicStrategyDecision } from "./basicStrategy";
-import { Card, Rank } from "./types";
+import { Card } from "./types";
 export type DeviationGroup = "h17-pro";
 
 export interface SimulatedPlayerHand {
@@ -65,8 +64,6 @@ export interface ShoeSimulationConfig {
   ramp: RampPoint[];
   deviationGroups: DeviationGroup[];
   rounding?: TrueCountRounding;
-  /** Bypasses `deviationGroups` with an explicit catalog, e.g. to isolate one play for ranking. */
-  catalogOverride?: Deviation[];
 }
 
 export interface ShoeSimulationResult {
@@ -106,61 +103,29 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Matches the hand/dealer labels used by the H17 Pro chart. */
-const rankLabel = (rank: Rank) => (rank === "A" ? "A" : ["J", "Q", "K"].includes(rank) ? "10" : rank);
-export const deviationHandLabel = (cards: Card[]) =>
-  cards.length === 2 && rankLabel(cards[0].rank) === rankLabel(cards[1].rank)
-    ? `${rankLabel(cards[0].rank)},${rankLabel(cards[1].rank)}`
-    : isSoft(cards)
-      ? `Soft ${calculateHandValue(cards)}`
-    : String(calculateHandValue(cards));
+/** The strategy engine's view of the simulator's rules. */
+const tableRules = (rules: AdvantageRules): TableRules => ({
+  decks: rules.decks,
+  hitSoft17: rules.dealerHitsSoft17,
+  das: rules.doubleAfterSplit,
+  surrender: rules.lateSurrender ? "late" : "none",
+  doubling: "any",
+  noHoleCard: false,
+});
 
-/** The group id predates the S17 chart; it now selects whichever chart matches the dealer rule. */
-function activeDeviations(groups: DeviationGroup[], rules: AdvantageRules): Deviation[] {
-  return groups.includes("h17-pro") ? getDeviationCatalog(rules) : [];
-}
-
-function applyIndexDeviation(
-  action: DeviationAction,
-  playerCards: Card[],
-  dealerUpcard: Card,
-  tc: number,
-  deviations: Deviation[],
-  rules: AdvantageRules,
-  /** False once the box has passed its surrender decision, or on a split hand. */
-  canSurrender: boolean,
-): DeviationAction {
-  if (!deviations.length) return action;
-  const hand = deviationHandLabel(playerCards);
-  const dealer = rankLabel(dealerUpcard.rank);
-  const deviationRules = { dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.lateSurrender && canSurrender };
-  return resolveDeviation(action, hand, dealer, tc, deviationRules, deviations).action;
-}
-
-function insuranceDecision(tc: number, deviations: Deviation[]): boolean {
-  const match = deviations.find((deviation) => deviation.hand === "Insurance");
-  if (!match) return false;
-  return (match.direction === "atOrBelow" ? tc <= match.index : tc >= match.index) === (match.deviationAction === "I");
-}
+/** The count the strategy uses: the live true count with indices on, none for basic strategy. */
+type CountSource = () => number | undefined;
 
 /**
  * Plays a single box from its post-decision state, hitting per basic strategy +
- * deviations until stand/bust.
- *
- * Only hitting and standing are still on the table here: doubling, splitting
- * and surrendering all need a decision this box has already passed. A departure
- * that resolves to one of those is therefore discarded rather than treated as
- * "not a hit" — reading a surrender index as a stand made the simulator stand
- * on every drawn-to 14, 15 and 16 against a ten.
+ * indices until stand/bust. Only hitting and standing are still on the table:
+ * doubling, splitting and surrendering all need a decision this box has passed.
  */
-function autoPlay(cards: Card[], dealerUpcard: Card, currentTrueCount: () => number, active: Deviation[], shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
+function autoPlay(cards: Card[], dealerUpcard: Card, count: CountSource, shoe: BlackjackShoe, rules: AdvantageRules, track: (card?: Card) => void): Card[] {
   const hand = [...cards];
   while (calculateHandValue(hand) < 21) {
-    const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules, canSplit: false });
-    const base = decision.action === "S" ? "S" : decision.action === "D" ? decision.fallback ?? "H" : "H";
-    const resolved = applyIndexDeviation(base, hand, dealerUpcard, currentTrueCount(), active, rules, false);
-    const action = resolved === "S" || resolved === "H" ? resolved : base;
-    if (action !== "H") break;
+    const decision = decideHand({ cards: hand, upcard: dealerUpcard, rules: tableRules(rules), tc: count(), canDouble: false, canSplit: false, canSurrender: false });
+    if (decision.action !== "H") break;
     const card = shoe.deal();
     if (!card) break;
     hand.push(card);
@@ -193,8 +158,7 @@ interface PendingSplitHand {
 function playBox(
   initialCards: Card[],
   dealerUpcard: Card,
-  currentTrueCount: () => number,
-  active: Deviation[],
+  count: CountSource,
   shoe: BlackjackShoe,
   rules: AdvantageRules,
   bet: number,
@@ -216,20 +180,9 @@ function playBox(
       continue;
     }
 
-    const basic = getBasicStrategyDecision({
-      playerCards: pending.cards,
-      dealerUpcard,
-      rules,
-      canSplit: splitAllowed,
-    });
+    const canDoubleNow = pending.cards.length === 2 && (!pending.fromSplit || rules.doubleAfterSplit);
     const canSurrender = !pending.fromSplit && pending.cards.length === 2 && rules.lateSurrender;
-    let action = applyIndexDeviation(basic.action, pending.cards, dealerUpcard, currentTrueCount(), active, rules, canSurrender);
-
-    // A split-only departure cannot be taken when the table's hand limit has
-    // been reached, so fall back to the non-pair basic-strategy action.
-    if (action === "P" && !splitAllowed) {
-      action = getBasicStrategyDecision({ playerCards: pending.cards, dealerUpcard, rules, canSplit: false }).action;
-    }
+    const action = decideHand({ cards: pending.cards, upcard: dealerUpcard, rules: tableRules(rules), tc: count(), canDouble: canDoubleNow, canSplit: splitAllowed, canSurrender }).action;
 
     if (action === "P" && splitAllowed) {
       handsInBox += 1;
@@ -248,7 +201,6 @@ function playBox(
       continue;
     }
 
-    const canDoubleNow = pending.cards.length === 2 && (!pending.fromSplit || rules.doubleAfterSplit);
     if (action === "D" && canDoubleNow) {
       const card = shoe.deal();
       track(card);
@@ -256,7 +208,7 @@ function playBox(
       continue;
     }
 
-    const cards = autoPlay(pending.cards, dealerUpcard, currentTrueCount, active, shoe, rules, track);
+    const cards = autoPlay(pending.cards, dealerUpcard, count, shoe, rules, track);
     played.push({ cards, net: 0, surrendered: false });
   }
   return played;
@@ -267,7 +219,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
   const random = mulberry32(config.seed);
   const shoe = new BlackjackShoe(rules.decks, random);
   const cutCardAt = rules.decks * 52 * (1 - rules.penetration);
-  const active = config.catalogOverride ?? activeDeviations(deviationGroups, rules);
+  const indexed = deviationGroups.includes("h17-pro");
 
   let bankroll = config.bankroll;
   let peak = bankroll;
@@ -337,7 +289,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
     let dealerCards = [dealerUpcard, dealerHoleCard];
     const dealerBlackjack = isBlackjack(dealerCards);
 
-    const wantsInsurance = dealerUpcard.rank === "A" && insuranceDecision(currentTrueCount(), active);
+    const wantsInsurance = indexed && dealerUpcard.rank === "A" && takeInsurance(currentTrueCount());
     const insuranceNet = wantsInsurance ? (dealerBlackjack ? bet : -bet / 2) : 0;
 
     const playedHands: SimulatedPlayerHand[] = [];
@@ -362,8 +314,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
         playedHands.push(...playBox(
           initialCards,
           dealerUpcard,
-          currentTrueCount,
-          active,
+          () => (indexed ? currentTrueCount() : undefined),
           shoe,
           rules,
           bet,

@@ -1,45 +1,19 @@
 /**
- * Standalone marginal value of a single index departure.
+ * Prices every legal action for one chart cell from real shoe states, bucketed
+ * by true count, so an index can be checked against the count where two
+ * actions actually cross instead of taken on trust (scripts/priceDeviationCell.ts).
  *
- * The measurement is a *conditional* EV difference taken at the decision point,
- * not the profit difference between two whole simulated sessions. Playing two
- * long sessions and subtracting their bankrolls buries a ~0.05 unit signal
- * under the ~10 unit per-shoe swing of ordinary blackjack variance: at 50,000
- * paired 60-hand sessions the 95% interval on such an estimate is ±0.05 to
- * ±0.17 units per 100 rounds, wider than the entire spread of values being
- * ranked, so the resulting order is noise.
+ * It walks basic-strategy shoes and, at each occurrence of the cell, evaluates
+ * every action by paired replications from the exact remaining composition:
+ * the dealer's cards come from the same shuffled remainder for every action,
+ * so the dealer's variance cancels between them, and every action draws its
+ * player cards from the same head of that remainder.
  *
- * Instead this walks a basic-strategy (no-index) shoe and, every time the
- * departure would actually change the play, measures only what that one
- * decision is worth:
- *
- *   value per 100 rounds = 100 · E[ bet(TC) · (EV(departure) − EV(basic)) ]
- *
- * The inner expectation is evaluated by paired replications from the exact
- * remaining-shoe composition, with three variance reductions:
- *
- *  - the dealer's cards are drawn from the tail of the same shuffled remainder
- *    for both branches, so the dealer's final total is *identical* and all of
- *    its variance cancels;
- *  - both branches draw player cards from the head of that same remainder, so
- *    hit and double share their first card;
- *  - rounds where the departure does not change the play contribute an exact
- *    zero instead of a noisy near-zero.
- *
- * Insurance needs no sampling at all: with the unseen-card multiset known the
- * probability the hole card is a ten is exact, so its value is closed form.
- *
- * Known limits, both second order and stated in the published metadata:
- *  - the departure changes how many cards the round consumes, which shifts
- *    later rounds in the shoe. That effect is zero to first order and is not
- *    modelled.
- *  - departures are evaluated on the round's original two cards, so value
- *    picked up on a post-split hand (splitting 8,8 into a 16, say) is not
- *    credited to the 16 entry.
+ * Known limit, second order: an action changes how many cards the round uses,
+ * which shifts later rounds in the shoe. That effect is not modelled.
  */
-import { AdvantageRules, RampPoint, unitsAt } from "./advantage";
-import { getBasicStrategyDecision } from "./basicStrategy";
-import { Deviation, resolveDeviation } from "./deviations";
+import { AdvantageRules } from "./advantage";
+import { decideHand, fromBlackjackRules } from "@/lib/strategy";
 import { Action, BlackjackRules, Card, Rank } from "./types";
 
 /** Ranks collapsed to the ten distinct values: 0 = ace, 1-8 = 2-9, 9 = any ten-value card. */
@@ -47,7 +21,6 @@ const VALUE = [11, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const HI_LO = [-1, 1, 1, 1, 1, 1, 0, 0, 0, -1];
 const PER_DECK = [4, 4, 4, 4, 4, 4, 4, 4, 4, 16];
 const CODE_RANK: Rank[] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-const TEN = 9;
 const ACE = 0;
 
 const card = (code: number): Card => ({ rank: CODE_RANK[code], suit: "spades" });
@@ -129,10 +102,10 @@ class BasicStrategyTable {
     const key = ((((total * 2 + (soft ? 1 : 0)) * 11 + pairCode + 1) * 10 + up) * 2 + (twoCards ? 1 : 0)) * 2 + (splitAllowed ? 1 : 0);
     const cached = this.cache.get(key);
     if (cached) return cached;
-    const action = getBasicStrategyDecision({
-      playerCards: this.shape(total, soft, splitAllowed ? pairCode : -1, twoCards),
-      dealerUpcard: card(up),
-      rules: this.rules,
+    const action = decideHand({
+      cards: this.shape(total, soft, splitAllowed ? pairCode : -1, twoCards),
+      upcard: card(up),
+      rules: fromBlackjackRules(this.rules),
       canSplit: splitAllowed,
     }).action;
     this.cache.set(key, action);
@@ -293,29 +266,7 @@ function settle(hands: SettledHand[], surrender: number, dealerTotal: number) {
   return net;
 }
 
-export interface DeviationEvOptions {
-  rules: AdvantageRules;
-  ramp: RampPoint[];
-  /** Baseline rounds dealt. Every departure in the catalog is measured on this one stream. */
-  rounds: number;
-  /** Paired replications used per triggered decision. */
-  replications: number;
-  seed: number;
-  catalog: readonly Deviation[];
-  onProgress?: (roundsDone: number) => void;
-}
 
-export interface DeviationEvRow {
-  id: string;
-  hand: string;
-  dealer: string;
-  /** Units gained per 100 rounds by adding this one departure to basic strategy. */
-  evPer100: number;
-  /** Standard error of `evPer100`. */
-  standardError: number;
-  /** Rounds per 100 in which the departure actually changes the play. */
-  triggersPer100: number;
-}
 
 /** Labels a two-card hand using the deviation catalog's chart notation. */
 function chartLabel(a: number, b: number) {
@@ -460,164 +411,3 @@ export function priceCell(options: CellPriceOptions): CellPriceBucket[] {
   }));
 }
 
-export function measureDeviationEv(options: DeviationEvOptions): DeviationEvRow[] {
-  const { rules, ramp, rounds, replications, catalog } = options;
-  const random = mulberry32(options.seed);
-  const basic = new BasicStrategyTable({
-    decks: rules.decks,
-    dealerHitsSoft17: rules.dealerHitsSoft17,
-    doubleAfterSplit: rules.doubleAfterSplit,
-    resplitAces: rules.resplitAces,
-    lateSurrender: rules.lateSurrender,
-    doubleRule: "any",
-  });
-  const deviationRules = { dealerHitsSoft17: rules.dealerHitsSoft17, lateSurrender: rules.lateSurrender };
-
-  const totalCards = rules.decks * 52;
-  const shoe = new Int8Array(totalCards);
-  const counts = new Int32Array(10);
-  const remainder = new Remainder(totalCards, random);
-  const branch: SettledHand[] = [];
-
-  const entries = catalog.map((row, position) => ({ row, position }));
-  const sum = new Float64Array(catalog.length);
-  const sumSquares = new Float64Array(catalog.length);
-  const triggers = new Int32Array(catalog.length);
-
-  const insuranceRows = entries.filter(({ row }) => row.hand === "Insurance");
-  const byCell = new Map<string, typeof entries>();
-  for (const entry of entries) {
-    if (entry.row.hand === "Insurance") continue;
-    const key = `${entry.row.hand}|${entry.row.dealer}`;
-    const bucket = byCell.get(key);
-    if (bucket) bucket.push(entry);
-    else byCell.set(key, [entry]);
-  }
-
-  const cutCard = totalCards * (1 - rules.penetration);
-  let cursor = totalCards;
-  let runningCount = 0;
-
-  const reshuffle = () => {
-    let index = 0;
-    for (let code = 0; code < 10; code++) for (let n = 0; n < PER_DECK[code] * rules.decks; n++) shoe[index++] = code;
-    for (let i = totalCards - 1; i > 0; i--) {
-      const j = Math.floor(random() * (i + 1));
-      const value = shoe[i];
-      shoe[i] = shoe[j];
-      shoe[j] = value;
-    }
-    cursor = 0;
-    runningCount = 0;
-  };
-  reshuffle();
-
-  const deal = () => {
-    const code = shoe[cursor++];
-    runningCount += HI_LO[code];
-    return code;
-  };
-
-  for (let round = 0; round < rounds; round++) {
-    if (totalCards - cursor < cutCard) reshuffle();
-    // The wager is placed on the count before the round is dealt.
-    const preDealDecks = (totalCards - cursor) / 52;
-    const bet = unitsAt(preDealDecks > 0 ? Math.floor(runningCount / preDealDecks) : runningCount, ramp);
-
-    const player0 = deal();
-    const up = deal();
-    const player1 = deal();
-    // The hole card leaves the shoe but stays out of the running count until shown.
-    const hole = shoe[cursor++];
-
-    // Indices are compared against the count at the moment of the decision, so
-    // the three face-up cards are already in it and the hole card is not.
-    const decksRemaining = (totalCards - cursor + 1) / 52;
-    const trueCount = decksRemaining > 0 ? Math.floor(runningCount / decksRemaining) : runningCount;
-
-    // Insurance is closed form: the unseen multiset is known, so P(ten) is exact.
-    if (up === ACE && insuranceRows.length) {
-      const unseen = totalCards - cursor + 1;
-      let tens = hole === TEN ? 1 : 0;
-      for (let index = cursor; index < totalCards; index++) if (shoe[index] === TEN) tens += 1;
-      const value = bet * ((1.5 * tens) / unseen - 0.5);
-      for (const { row, position } of insuranceRows) {
-        const takes = row.direction === "atOrBelow" ? trueCount <= row.index : trueCount >= row.index;
-        if (!takes) continue;
-        triggers[position] += 1;
-        sum[position] += value;
-        sumSquares[position] += value * value;
-      }
-    }
-
-    const player = handTotal([player0, player1]);
-    const playerBlackjack = player.total === 21;
-    const dealerBlackjack = handTotal([up, hole]).total === 21;
-    const pair = VALUE[player0] === VALUE[player1];
-    const basicAction = basic.action(player.total, player.soft, pair ? player0 : -1, up, true, pair);
-
-    if (!dealerBlackjack && !playerBlackjack) {
-      const label = chartLabel(player0, player1);
-      const bucket = byCell.get(`${label}|${CODE_RANK[up]}`);
-      if (bucket) {
-        let loaded = false;
-        for (const { row, position } of bucket) {
-          const departure = resolveDeviation(basicAction, label, CODE_RANK[up], trueCount, deviationRules, [row as Deviation]).action;
-          if (departure === basicAction || departure === "I" || departure === "N") continue;
-          triggers[position] += 1;
-          if (!loaded) {
-            counts.fill(0);
-            for (let index = cursor; index < totalCards; index++) counts[shoe[index]] += 1;
-            loaded = true;
-          }
-          remainder.load(counts);
-
-          let difference = 0;
-          for (let replication = 0; replication < replications; replication++) {
-            const start = remainder.mark();
-            const dealerTotal = playDealer(up, hole, rules, remainder.drawBack);
-            const afterDealer = remainder.mark();
-
-            const netDeparture = settle(branch, playBox(player0, player1, departure as Action, up, rules, basic, remainder.drawFront, branch), dealerTotal);
-            remainder.rewind(afterDealer);
-            const netBasic = settle(branch, playBox(player0, player1, basicAction, up, rules, basic, remainder.drawFront, branch), dealerTotal);
-            remainder.rewind(start);
-
-            difference += netDeparture - netBasic;
-          }
-          const contribution = (bet * difference) / replications;
-          sum[position] += contribution;
-          sumSquares[position] += contribution * contribution;
-        }
-      }
-    }
-
-    // Advance the shoe by playing the round out under plain basic strategy.
-    runningCount += HI_LO[hole];
-    if (!dealerBlackjack && !playerBlackjack) {
-      if (playBox(player0, player1, basicAction, up, rules, basic, deal, branch) === 0) {
-        const dealerCards = [up, hole];
-        for (;;) {
-          const value = handTotal(dealerCards);
-          if (value.total > 17) break;
-          if (value.total === 17 && !(rules.dealerHitsSoft17 && value.soft)) break;
-          dealerCards.push(deal());
-        }
-      }
-    }
-    if (options.onProgress && round > 0 && round % 250_000 === 0) options.onProgress(round);
-  }
-
-  return entries.map(({ row, position }) => {
-    const mean = sum[position] / rounds;
-    const variance = Math.max(0, sumSquares[position] / rounds - mean * mean);
-    return {
-      id: (row as { id?: string }).id ?? `${row.hand}-${row.dealer}-${row.index}`,
-      hand: row.hand,
-      dealer: row.dealer,
-      evPer100: mean * 100,
-      standardError: (100 * Math.sqrt(variance)) / Math.sqrt(rounds),
-      triggersPer100: (triggers[position] / rounds) * 100,
-    };
-  });
-}

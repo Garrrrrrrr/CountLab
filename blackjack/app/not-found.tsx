@@ -1,5 +1,5 @@
-import { NotFoundView } from "@/components/NotFoundView";
+import { NotFound } from "@/features/misc/NotFound";
 
-export default function NotFound() {
-  return <NotFoundView source="app/not-found" />;
+export default function NotFoundPage() {
+  return <NotFound />;
 }

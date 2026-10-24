@@ -54,10 +54,11 @@ describe("agreement with the audited BJA H17 transcription", () => {
         }
       }
     }
-    // 8,8 v A: the printed chart splits, this table surrenders. Correct for a
-    // 4-8 deck H17 game that offers late surrender; the printed chart's own
-    // surrender table simply has no pairs row to carry it.
-    expect(mismatches).toEqual(["pairs 8,8 v A: chart says split, table says R"]);
+    // Both are surrenders the printed chart carries in its separate surrender
+    // table (17 v A) or not at all (8,8 v A), while its hand tables print the
+    // play you make when you do not surrender. With late surrender offered,
+    // basic strategy gives both hands up in a 4-8 deck H17 game.
+    expect(mismatches).toEqual(["pairs 8,8 v A: chart says split, table says R", "hard 17 v A: chart says S, table says R"]);
   });
 });
 
@@ -82,8 +83,6 @@ describe("deck-class differences", () => {
       "pairs:7,7v8 H->Ph",
       "pairs:6,6v2 Ph->P",
       "pairs:6,6v7 H->Ph",
-      "soft:A,7v2 Ds->S",
-      "hard:17vA S->Rs",
       "hard:16v9 Rh->H",
       "hard:9v2 H->D",
     ]);

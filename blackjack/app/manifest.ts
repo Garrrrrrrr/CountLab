@@ -4,13 +4,13 @@ export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CountLab · Blackjack Training",
+    name: "CountLab · Card counting trainer",
     short_name: "CountLab",
-    description: "Hi-Lo card counting and blackjack decision training.",
-    start_url: "/",
+    description: "Hi-Lo card counting, strategy and index charts, bankroll calculator and session journal.",
+    start_url: "/train/",
     display: "standalone",
-    background_color: "#101411",
-    theme_color: "#101411",
+    background_color: "#0B0D11",
+    theme_color: "#0B0D11",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

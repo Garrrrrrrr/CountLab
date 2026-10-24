@@ -1,4 +1,4 @@
-import { getBasicStrategyDecision } from "./basicStrategy";
+import { decideHand, fromBlackjackRules } from "@/lib/strategy";
 import { calculateHandValue, isSoft } from "./hand";
 import { Action, BlackjackRules, Card, Rank, RANKS } from "./types";
 
@@ -73,9 +73,8 @@ function resolveDealer(upcard: Card, holeCard: Card | undefined, pool: Rank[], r
 function autoPlayPlayerHand(cards: Card[], dealerUpcard: Card, rules: BlackjackRules, pool: Rank[], random: () => number, drawn: Rank[]): Card[] {
   const hand = [...cards];
   while (calculateHandValue(hand) < 21) {
-    const decision = getBasicStrategyDecision({ playerCards: hand, dealerUpcard, rules });
-    const action = decision.action === "H" ? "H" : decision.action === "S" ? "S" : decision.fallback ?? "S";
-    if (action !== "H") break;
+    const decision = decideHand({ cards: hand, upcard: dealerUpcard, rules: fromBlackjackRules(rules), canDouble: false, canSplit: false, canSurrender: false });
+    if (decision.action !== "H") break;
     hand.push(fakeCard(drawTracked(pool, random, drawn)));
   }
   return hand;

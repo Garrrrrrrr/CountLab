@@ -1,17 +1,13 @@
 import type { MetadataRoute } from "next";
-import { LEGACY_REDIRECTS, ROUTES, isPublicRoute } from "@/lib/routes";
+import { PAGES } from "@/lib/routes";
 
 const SITE_URL = "https://countlab.ca";
 
 export const dynamic = "force-static";
 
+/** Public pages only: the workspace is per-reader and the old URLs only redirect. */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return ROUTES
-    // The admin dashboard is access-controlled and not meant to be indexed or
-    // linked publicly, and the legacy aliases only redirect to a canonical page.
-    .filter((segments) => isPublicRoute(`/${segments.join("/")}`) && !(segments.join("/") in LEGACY_REDIRECTS))
-    .map((segments) => ({
-      url: `${SITE_URL}/${segments.join("/")}${segments.length ? "/" : ""}`,
-      lastModified: new Date(),
-    }));
+  return Object.entries(PAGES)
+    .filter(([path, info]) => info.public && path !== "/signin")
+    .map(([path]) => ({ url: `${SITE_URL}${path === "/" ? "/" : `${path}/`}`, lastModified: new Date() }));
 }

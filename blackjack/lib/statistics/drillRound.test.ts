@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   answeredInProgress,
   applyAnswer,
-  checklistProgress,
   clockText,
   EMPTY_TALLY,
   explainModeOf,
@@ -77,18 +76,6 @@ describe("history", () => {
       session("Basic Strategy", { Pairs: { correct: 2, total: 2 }, "Soft totals": { correct: 1, total: 1 } }),
     ], "Basic Strategy");
     expect(totals).toEqual({ Pairs: { correct: 3, total: 6 }, "Soft totals": { correct: 1, total: 1 } });
-  });
-
-  it("reports today's checklist progress for the drill's item", () => {
-    const now = new Date("2026-09-26T12:00:00Z");
-    const sessions = [
-      session("Basic Strategy", { Pairs: { correct: 5, total: 60 } }, { date: "2026-09-26T09:00:00Z" }),
-      session("Basic Strategy", { Pairs: { correct: 5, total: 50 } }, { date: "2026-09-25T09:00:00Z" }),
-      session("H17 Chart", {}, { date: "2026-09-26T10:00:00Z", questions: 320 }),
-    ];
-    expect(checklistProgress(sessions, "Basic Strategy", now)).toEqual({ current: 60, target: 200, done: false, unit: "hands" });
-    expect(checklistProgress(sessions, "H17 Chart", now)).toEqual({ current: 1, target: 2, done: false, unit: "runs" });
-    expect(checklistProgress(sessions, "Test Out", now)).toBeUndefined();
   });
 });
 

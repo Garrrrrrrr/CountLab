@@ -69,3 +69,33 @@ describe("deck-estimation drill photo sets", () => {
     expect(next.file).not.toBe(small[small.length - 1]);
   });
 });
+
+describe("tray photos by discard depth", () => {
+  it("gives every manifest file one depth that agrees with all its labels", async () => {
+    const { TRAY_PHOTOS } = await import("./deckPhotos");
+    const files = new Set(DECK_ESTIMATION_PHOTOS.map((photo) => photo.file));
+    expect(TRAY_PHOTOS).toHaveLength(files.size);
+    for (const photo of TRAY_PHOTOS) {
+      for (const label of DECK_ESTIMATION_PHOTOS.filter((entry) => entry.file === photo.file)) {
+        expect(Math.abs(label.numDecks - label.decks - photo.discarded)).toBeLessThan(0.085);
+      }
+    }
+  });
+
+  it("finds the nearest photo within a tenth of a deck across a six-deck shoe", async () => {
+    const { trayPhotoFor } = await import("./deckPhotos");
+    expect(trayPhotoFor(0.1)).toBeUndefined();
+    for (let discarded = 0.5; discarded <= 5.5; discarded += 0.05) {
+      expect(Math.abs(trayPhotoFor(discarded)!.discarded - discarded)).toBeLessThanOrEqual(0.1);
+    }
+  });
+
+  it("only draws photos that leave cards in the shoe, without repeating", async () => {
+    const { drawTrayPhoto, trayPhotosForShoe } = await import("./deckPhotos");
+    const pool = trayPhotosForShoe(2);
+    expect(pool.every((photo) => photo.discarded <= 1.75)).toBe(true);
+    const seen: string[] = [];
+    for (let index = 0; index < pool.length; index++) seen.push(drawTrayPhoto(2, seen).file);
+    expect(new Set(seen).size).toBe(pool.length);
+  });
+});

@@ -1,7 +1,6 @@
 import { unitsAt, RAMPS } from "./advantage";
-import { getBasicStrategyDecision } from "./basicStrategy";
-import { DEVIATIONS, deviationDecision, DeviationAction, getDeviationCatalog, resolveDeviation } from "./deviations";
-import { calculateHandValue, isPair, isSoft } from "./hand";
+import { decideHand, explainDecision, fromBlackjackRules, PLAY_INDICES, takeInsurance } from "@/lib/strategy";
+import { calculateHandValue, isSoft } from "./hand";
 import { hiLoValue, runningCount, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { Action, BlackjackRules, Card } from "./types";
@@ -86,7 +85,7 @@ export function makeTrueCountScenario({
       || (focus === "negative" && rc < 0)
       || (focus === "zero" && rc === 0)
       || (focus === "last-deck" && shoe.decksRemaining() <= 1)
-      || (focus === "index" && DEVIATIONS.some((d) => Math.abs(scenario.answer - d.index) <= 1));
+      || (focus === "index" && PLAY_INDICES.some((index) => Math.abs(scenario.answer - index.at) <= 1));
     if (match) return scenario;
   }
   return fallback!;
@@ -113,27 +112,29 @@ export interface SimulatedRound {
   heroInitial: Card[];
   dealerUpcard: Card;
   exposedCards: Card[];
-  correctPlay: DeviationAction;
+  /** The hero's first decision at the round's true count, from lib/strategy. */
+  correctPlay: Action;
   insurancePlay?: "I" | "N";
   basicPlay: Action;
   explanation: string;
 }
 
-function playHand(hand: Card[], dealer: Card, shoe: BlackjackShoe, rules: BlackjackRules, allowSplit = true): Card[][] {
-  const first = getBasicStrategyDecision({ playerCards: hand, dealerUpcard: dealer, rules }).action;
-  if (first === "P" && hand.length === 2 && allowSplit) {
+/** Plays a box out by basic strategy so the round deals the cards a real table would. */
+function playHand(hand: Card[], dealer: Card, shoe: BlackjackShoe, rules: BlackjackRules, fromSplit = false): Card[][] {
+  const table = fromBlackjackRules(rules);
+  const first = decideHand({ cards: hand, upcard: dealer, rules: table, canSplit: !fromSplit, canSurrender: !fromSplit }).action;
+  if (first === "P") {
     const left = [hand[0], shoe.deal()].filter(Boolean) as Card[];
     const right = [hand[1], shoe.deal()].filter(Boolean) as Card[];
-    return [left, right].flatMap((split) => playHand(split, dealer, shoe, { ...rules, lateSurrender: false }, false));
+    return [left, right].flatMap((split) => playHand(split, dealer, shoe, rules, true));
   }
-  if (first === "P") return [hand];
   if (first === "R" || first === "S") return [hand];
   if (first === "D") {
     const card = shoe.deal();
     return [card ? [...hand, card] : hand];
   }
   const result = [...hand];
-  while (calculateHandValue(result) < 21 && getBasicStrategyDecision({ playerCards: result, dealerUpcard: dealer, rules }).action === "H") {
+  while (calculateHandValue(result) < 21 && decideHand({ cards: result, upcard: dealer, rules: table, canSplit: false, canSurrender: false }).action === "H") {
     const card = shoe.deal();
     if (!card) break;
     result.push(card);
@@ -155,18 +156,9 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
   }
   const heroInitial = [...initial[0]];
   const dealerUpcard = dealer[0];
-  const basic = getBasicStrategyDecision({ playerCards: heroInitial, dealerUpcard, rules });
-  const total = calculateHandValue(heroInitial);
-  const handLabel = isPair(heroInitial)
-    ? `${heroInitial[0].rank === "J" || heroInitial[0].rank === "Q" || heroInitial[0].rank === "K" ? "10" : heroInitial[0].rank},${heroInitial[1].rank === "J" || heroInitial[1].rank === "Q" || heroInitial[1].rank === "K" ? "10" : heroInitial[1].rank}`
-    : isSoft(heroInitial)
-      ? `Soft ${total}`
-      : String(total);
-  const dealerLabel = dealerUpcard.rank === "J" || dealerUpcard.rank === "Q" || dealerUpcard.rank === "K" ? "10" : dealerUpcard.rank;
-  const resolvedDeviation = resolveDeviation(basic.action, handLabel, dealerLabel, currentTrueCount, rules);
-  const deviation = resolvedDeviation.deviation;
-  const correctPlay = resolvedDeviation.action;
-  const insurance = dealerUpcard.rank === "A" ? getDeviationCatalog(rules).find((d) => d.hand === "Insurance") : undefined;
+  const table = fromBlackjackRules(rules);
+  const basic = decideHand({ cards: heroInitial, upcard: dealerUpcard, rules: table });
+  const counted = decideHand({ cards: heroInitial, upcard: dealerUpcard, rules: table, tc: currentTrueCount });
   const playerHands = initial.flatMap((hand) => playHand(hand, dealerUpcard, shoe, rules));
   while (calculateHandValue(dealer) < 17 || (calculateHandValue(dealer) === 17 && isSoft(dealer) && rules.dealerHitsSoft17)) {
     const card = shoe.deal();
@@ -179,12 +171,10 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
     heroInitial,
     dealerUpcard,
     exposedCards: shoe.dealtCards().slice(before),
-    correctPlay,
-    insurancePlay: insurance ? deviationDecision(insurance, currentTrueCount) as "I" | "N" : undefined,
+    correctPlay: counted.action,
+    insurancePlay: dealerUpcard.rank === "A" ? (takeInsurance(currentTrueCount) ? "I" : "N") : undefined,
     basicPlay: basic.action,
-    explanation: deviation
-      ? `${deviation.hand} vs ${deviation.dealer} changes at ${deviation.index > 0 ? "+" : ""}${deviation.index}.`
-      : basic.explanation,
+    explanation: counted.cell ? explainDecision(counted.cell, counted, currentTrueCount) : `${calculateHandValue(heroInitial)} is played the same at every count.`,
   };
 }
 

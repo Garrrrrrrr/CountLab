@@ -1,65 +1,51 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import "@fortawesome/fontawesome-free/css/all.min.css";
-import { NoticeCenter } from "@/components/NoticeCenter";
-import { AppShell } from "@/components/AppShell";
-import { AuthGate } from "@/components/AuthGate";
+import { AppShell } from "@/components/shell/AppShell";
 import { AuthProvider } from "@/lib/supabase/AuthProvider";
 import { AnalyticsProvider } from "@/lib/analytics";
+import { PAGES } from "@/lib/routes";
 
 const SITE_URL = "https://countlab.ca";
-const DESCRIPTION =
-  "Hi-Lo card counting and blackjack decision training: full-shoe practice, basic strategy, index deviations, and a CVCX-style bankroll and risk lab.";
-const archivo = Archivo({ subsets: ["latin"], variable: "--font-archivo", display: "swap" });
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
-const plexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-plex-mono", display: "swap" });
+const sans = Geist({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: "CountLab",
-  title: { default: "CountLab · Blackjack Training", template: "%s · CountLab" },
-  description: DESCRIPTION,
-  openGraph: {
-    title: "CountLab · Blackjack Training",
-    description: DESCRIPTION,
-    url: SITE_URL,
-    siteName: "CountLab",
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "CountLab · Blackjack Training",
-    description: DESCRIPTION,
-  },
-  // iOS ignores alpha in home-screen icons and flattens onto black, so the
-  // apple icon is a dedicated opaque 180x180 rather than the RGBA icon-192.
+  title: { default: "CountLab · Card counting trainer", template: "%s · CountLab" },
+  description: PAGES["/"].description,
+  openGraph: { title: "CountLab · Card counting trainer", description: PAGES["/"].description, url: SITE_URL, siteName: "CountLab", locale: "en_CA", type: "website" },
+  twitter: { card: "summary_large_image", title: "CountLab · Card counting trainer", description: PAGES["/"].description },
+  // iOS flattens home-screen icons onto black, so the apple icon is a dedicated opaque PNG.
   icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "CountLab", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ECEFE8" },
-    { media: "(prefers-color-scheme: dark)", color: "#101915" },
+    { media: "(prefers-color-scheme: light)", color: "#F6F5F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0B0D11" },
   ],
-  // The shell already pads for the notch and home indicator. With the
-  // translucent status bar this must be enabled for those insets to resolve.
+  // The shell pads for the notch and home indicator, which needs `cover` to resolve the insets.
   viewportFit: "cover",
 };
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+/**
+ * Runs before first paint so the saved theme and motion preference never
+ * flash. The theme key is device-wide on purpose: it has to be readable before
+ * the account (and its synced settings) is known.
+ */
+const BOOT = `try{var t=localStorage.getItem("countlab:theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;if(localStorage.getItem("countlab:motion")==="off")document.documentElement.dataset.motion="off"}catch(e){}`;
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${archivo.variable} ${inter.variable} ${plexMono.variable}`}>
-      <head><script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem("countlab:theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch{}` }} /></head>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+      <head><script dangerouslySetInnerHTML={{ __html: BOOT }} /></head>
       <body>
         <AuthProvider>
           <AnalyticsProvider>
-            <NoticeCenter />
-            <AuthGate>
-              <AppShell>{children}</AppShell>
-            </AuthGate>
+            <AppShell>{children}</AppShell>
           </AnalyticsProvider>
         </AuthProvider>
       </body>

@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import { hiLoValue, runningCount, trueCount } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { calculateHandValue, isBlackjack, isPair, isSoft } from "./hand";
-import { getBasicStrategyDecision } from "./basicStrategy";
-import { DEVIATIONS, deviationDecision } from "./deviations";
+import { cellDecision, decideHand, DEFAULT_TABLE_RULES, fromBlackjackRules } from "@/lib/strategy";
 import { Card, DEFAULT_RULES, RANKS, SUITS } from "./types";
 import {
   calculateAdvantage,
@@ -30,6 +29,11 @@ const c = (rank: Card["rank"], suit: Card["suit"] = "spades"): Card => ({
   rank,
   suit,
 });
+
+/** The old call shape, answered by the one strategy engine. */
+const getBasicStrategyDecision = ({ playerCards, dealerUpcard, rules, canSplit }: { playerCards: Card[]; dealerUpcard: Card; rules: typeof DEFAULT_RULES; canSplit?: boolean }) =>
+  decideHand({ cards: playerCards, upcard: dealerUpcard, rules: fromBlackjackRules(rules), canSplit });
+
 describe("Hi-Lo", () => {
   it("maps ranks", () => {
     for (const r of ["2", "3", "4", "5", "6"] as const)
@@ -80,7 +84,7 @@ describe("hands", () => {
   it("plays 6,A,A as soft 18: hit against an ace under 6-deck H17", () => {
     const decision = getBasicStrategyDecision({ playerCards: [c("6"), c("A"), c("A", "hearts")], dealerUpcard: c("A"), rules: DEFAULT_RULES });
     expect(decision.action).toBe("H");
-    expect(decision.explanation).toContain("soft hand");
+    expect(decision.cell).toEqual({ section: "soft", row: "A,7", dealer: "A" });
   });
   it("detects blackjack and pairs", () => {
     expect(isBlackjack([c("A"), c("K")])).toBe(true);
@@ -138,7 +142,6 @@ describe("strategy", () => {
     const twoCards = getBasicStrategyDecision({ playerCards: [c("A"), c("7")], dealerUpcard: c("2"), rules: DEFAULT_RULES });
     expect(twoCards.action).toBe("D");
     expect(twoCards.fallback).toBe("S");
-    expect(twoCards.explanation).toContain("otherwise Stand");
   });
   it("hits lower soft doubles when doubling is unavailable", () => {
     const decision = getBasicStrategyDecision({
@@ -169,20 +172,15 @@ describe("strategy", () => {
     expect(getBasicStrategyDecision({ playerCards: hand, dealerUpcard: c("10"), rules: { ...DEFAULT_RULES, dealerHitsSoft17: false } }).action).toBe("R");
   });
 });
-describe("deviations", () => {
+describe("index plays", () => {
   it("uses the H17 chart's thresholds", () => {
-    const d = DEVIATIONS.find((x) => x.hand === "15" && x.dealer === "10" && x.deviationAction === "S")!;
-    expect(deviationDecision(d, 3)).toBe("H");
-    expect(deviationDecision(d, 4)).toBe("S");
+    const at = (row: string, tc: number) => cellDecision({ ...DEFAULT_TABLE_RULES, surrender: "none" }, { section: "hard", row, dealer: "10" }, tc).action;
+    expect(at("15", 3)).toBe("H");
+    expect(at("15", 4)).toBe("S");
     // The chart's 10 v 10 double, the cell that first showed the two teaching
     // surfaces disagreeing: the reference said +7 where the chart prints 4+.
-    const ten = DEVIATIONS.find((x) => x.hand === "10" && x.dealer === "10")!;
-    expect(ten.index).toBe(4);
-    expect(deviationDecision(ten, 3)).toBe("H");
-    expect(deviationDecision(ten, 4)).toBe("D");
-  });
-  it("uses the complete H17 chart catalog", () => {
-    expect(DEVIATIONS).toHaveLength(39);
+    expect(at("10", 3)).toBe("H");
+    expect(at("10", 4)).toBe("D");
   });
 });
 describe("advantage model", () => {

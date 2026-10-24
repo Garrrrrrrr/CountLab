@@ -1,17 +1,54 @@
 import type { Config } from "tailwindcss";
+
+/** Each token is an RGB triplet in app/globals.css, so every colour takes an alpha modifier. */
+const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 export default {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
-  darkMode: ["class", '[data-theme="dark"]'],
-  theme: { extend: { colors: {
-    ink: "var(--ink)", paper: "var(--paper)", panel: "var(--paper-raised)", rule: "var(--rule)", felt: "var(--felt)",
-    "count-cold": "var(--count-cold)", "count-low": "var(--count-low)", "count-flat": "var(--count-flat)", "count-warm": "var(--count-warm)", "count-hot": "var(--count-hot)",
-    // Theme-aware translucent layers. `overlay` lifts a surface toward the
-    // foreground (white on dark, ink on light) for hairlines, hovers, and
-    // selected states; `well` recesses it (black on dark, a faint ink tint on
-    // light) for inset fields and tracks. Each theme scales the alpha so the
-    // same `/[.07]` or `/20` modifier reads with similar weight on either paper.
-    overlay: "rgb(var(--overlay-rgb) / calc(<alpha-value> * var(--overlay-scale)))",
-    well: "rgb(var(--well-rgb) / calc(<alpha-value> * var(--well-scale)))",
-  } } },
-  plugins: []
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./features/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
+  darkMode: ["variant", [":root[data-theme='dark'] &", "@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) & }"]],
+  theme: {
+    extend: {
+      colors: {
+        bg: token("bg"),
+        surface: token("surface"),
+        "surface-2": token("surface-2"),
+        "surface-3": token("surface-3"),
+        ink: token("ink"),
+        "ink-2": token("ink-2"),
+        "ink-3": token("ink-3"),
+        brand: token("brand"),
+        "brand-ink": token("brand-ink"),
+        "brand-text": token("brand-text"),
+        pos: token("pos"),
+        neg: token("neg"),
+        warn: token("warn"),
+        info: token("info"),
+        felt: token("felt"),
+        "felt-2": token("felt-2"),
+        "act-h": token("act-h"),
+        "act-h-ink": token("act-h-ink"),
+        "act-s": token("act-s"),
+        "act-d": token("act-d"),
+        "act-p": token("act-p"),
+        "act-r": token("act-r"),
+        "act-ink": token("act-ink"),
+      },
+      borderColor: {
+        line: "rgb(var(--line) / var(--line-a))",
+        "line-strong": "rgb(var(--line) / calc(var(--line-a) * 2))",
+      },
+      fontFamily: {
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      boxShadow: {
+        1: "var(--shadow-1)",
+        2: "var(--shadow-2)",
+      },
+      screens: {
+        xs: "400px",
+      },
+    },
+  },
+  plugins: [],
 } satisfies Config;

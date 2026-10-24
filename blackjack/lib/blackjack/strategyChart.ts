@@ -84,12 +84,16 @@ const SURRENDER_FALLING_BACK_TO: Partial<Record<ChartCode, ChartCode>> = {
   S: "Rs", Ds: "Rs", P: "Rp", Ph: "Rp", Pd: "Rp", Ps: "Rp", Rh: "Rh", Rs: "Rs", Rp: "Rp",
 };
 
-/** Hard totals a restricted double rule still permits. Soft doubles are never permitted under a restriction. */
-const doubleAllowed = (rules: StrategyChartRules, section: StrategySectionId, row: string): boolean => {
+/**
+ * Hard totals a restricted double rule still permits. Soft doubles are never
+ * permitted under a restriction. A pair is its hard total for this purpose:
+ * 5,5 is a hard 10, and a table that doubles on 10 doubles it.
+ */
+export const doubleAllowed = (rules: Pick<StrategyChartRules, "doubleRule">, section: StrategySectionId, row: string): boolean => {
   if (rules.doubleRule === "any") return true;
-  if (section !== "hard") return false;
-  const permitted = rules.doubleRule === "9-11" ? ["9", "10", "11"] : ["10", "11"];
-  return permitted.includes(row);
+  const total = section === "hard" ? Number(row) : section === "pairs" && row !== "A,A" ? 2 * (row === "T,T" ? 10 : Number(row.split(",")[0])) : NaN;
+  const permitted = rules.doubleRule === "9-11" ? [9, 10, 11] : [10, 11];
+  return permitted.includes(total);
 };
 
 /**

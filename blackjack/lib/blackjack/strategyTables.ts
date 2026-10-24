@@ -59,19 +59,20 @@ const EARLY_SURRENDER_VS_TEN: readonly string[] = [
 /**
  * Whether early surrender versus a ten applies to one cell under these rules.
  *
- * Single deck with double-after-split is the one exception: the extra value
- * double-after-split gives the split lifts 8,8 back above the flat -0.5, so
- * eights are split rather than surrendered there.
+ * Two single-deck exceptions:
  *
- * Two further published exceptions are composition-dependent — do not surrender
- * a fourteen made of 4+10 or 5+9 in single deck, nor 4+10 in double deck — and
- * this grid is total-dependent, with no card composition to test. They are
- * carried as a note on the chart page instead of being silently applied to
- * every fourteen.
+ * - With double-after-split, the extra value of doubling after the split lifts
+ *   8,8 back above the flat -0.5, so eights are split rather than surrendered.
+ * - Hard 14 is played on. The published exception is composition-dependent
+ *   (keep 10-4 and 9-5, give up 8-6), but 10-4 alone is about two thirds of
+ *   single-deck fourteens, so a total-dependent cell comes out ahead hitting:
+ *   -0.4952 against -0.5000 by exact finite-deck calculation. Double deck still
+ *   surrenders the total (10-4 is the only fourteen worth keeping there).
  */
 export function earlySurrendersVsTen(cellKey: string, rules: { decks: number; doubleAfterSplit: boolean }): boolean {
   if (!EARLY_SURRENDER_VS_TEN.includes(cellKey)) return false;
   if (cellKey === "pairs:8,8v10") return !(rules.decks === 1 && rules.doubleAfterSplit);
+  if (cellKey === "hard:14v10") return rules.decks !== 1;
   return true;
 }
 
@@ -100,7 +101,7 @@ const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, str
       A,2    H   H   H   D   D   H   H   H   H   H
     `,
     hard: `
-      17     S   S   S   S   S   S   S   S   S   S
+      17     S   S   S   S   S   S   S   S   S  Rs
       16     S   S   S   S   S   H   H  Rh  Rh  Rh
       15     S   S   S   S   S   H   H   H  Rh  Rh
       14     S   S   S   S   S   H   H   H   H   H
@@ -164,7 +165,7 @@ const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, str
     soft: `
       A,9    S   S   S   S   S   S   S   S   S   S
       A,8    S   S   S   S  Ds   S   S   S   S   S
-      A,7    S  Ds  Ds  Ds  Ds   S   S   H   H   H
+      A,7   Ds  Ds  Ds  Ds  Ds   S   S   H   H   H
       A,6    H   D   D   D   D   H   H   H   H   H
       A,5    H   H   D   D   D   H   H   H   H   H
       A,4    H   H   D   D   D   H   H   H   H   H
@@ -214,7 +215,7 @@ const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, str
       14     S   S   S   S   S   H   H   H   H   H
       13     S   S   S   S   S   H   H   H   H   H
       12     H   H   S   S   S   H   H   H   H   H
-      11     D   D   D   D   D   D   D   D   D   H
+      11     D   D   D   D   D   D   D   D   D   D
       10     D   D   D   D   D   D   D   D   H   H
       9      D   D   D   D   D   H   H   H   H   H
       8      H   H   H   H   H   H   H   H   H   H
@@ -246,7 +247,7 @@ const TABLES: Record<`${DeckClass}/${Soft17Rule}`, Record<StrategySectionId, str
     hard: `
       17     S   S   S   S   S   S   S   S   S  Rs
       16     S   S   S   S   S   H   H   H  Rh  Rh
-      15     S   S   S   S   S   H   H   H   H   H
+      15     S   S   S   S   S   H   H   H   H  Rh
       14     S   S   S   S   S   H   H   H   H   H
       13     S   S   S   S   S   H   H   H   H   H
       12     H   H   S   S   S   H   H   H   H   H
