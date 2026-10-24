@@ -30,7 +30,7 @@ const collectErrors = (page: Page) => {
 };
 
 test.describe("pages", () => {
-  for (const path of ["/", "/train/", "/charts/", "/charts/indices/", "/progress/", "/settings/", "/signin/", "/terms/", "/privacy/", "/calculator/", "/journal/"]) {
+  for (const path of ["/", "/train/", "/charts/", "/charts/indices/", "/charts/pocket/", "/progress/", "/settings/", "/signin/", "/terms/", "/privacy/", "/calculator/", "/journal/"]) {
     test(`${path} renders without errors or sideways scroll`, async ({ page }) => {
       const errors = collectErrors(page);
       await page.goto(path);
@@ -108,6 +108,15 @@ test.describe("strategy charts", () => {
     await expect(cell(page, "Hard 16 versus dealer ace")).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("dialog").getByRole("heading", { name: "Hard 16 vs an ace" })).toBeVisible();
+  });
+
+  test("pocket chart follows the rules and saves as an image", async ({ page }) => {
+    await page.goto("/charts/pocket/?decks=1&soft17=s17&das=0&surrender=none");
+    const card = page.getByRole("img", { name: /Pocket strategy chart for 1D · S17/ });
+    await expect(card).toBeVisible();
+    await expect(card).not.toContainText("Surrender first");
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save image" }).click()]);
+    expect(download.suggestedFilename()).toMatch(/^countlab-chart-1d-s17.*\.png$/);
   });
 
   test("rank the Illustrious 18 and Fab 4 first in the index list", async ({ page }) => {

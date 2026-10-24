@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
-import { ListOrdered, Printer } from "lucide-react";
+import { ListOrdered, Printer, WalletCards } from "lucide-react";
 import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { Button, ButtonLink, Card, PageHeader, Segmented, Stepper } from "@/components/ui";
@@ -46,6 +46,7 @@ export function ChartsPage() {
         actions={
           <div className="no-print hidden items-center gap-2 sm:flex">
             <ButtonLink href="/charts/indices" variant="secondary" size="sm" icon={<ListOrdered size={16} aria-hidden />}>Index list</ButtonLink>
+            <ButtonLink href="/charts/pocket" variant="secondary" size="sm" icon={<WalletCards size={16} aria-hidden />}>Pocket chart</ButtonLink>
             <Button variant="secondary" size="sm" icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
           </div>
         }
@@ -121,6 +122,7 @@ export function ChartsPage() {
 
       <div className="no-print mt-6 flex flex-wrap gap-2 sm:hidden">
         <ButtonLink href="/charts/indices" variant="secondary" icon={<ListOrdered size={16} aria-hidden />}>Index list</ButtonLink>
+        <ButtonLink href="/charts/pocket" variant="secondary" icon={<WalletCards size={16} aria-hidden />}>Pocket chart</ButtonLink>
         <Button variant="secondary" icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
       </div>
 

@@ -198,7 +198,8 @@
 }
 
 @media print {
-  :root, :root[data-theme="dark"] {
+  /* Must match the dark selectors' specificity, or a dark OS prints dark. */
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
     color-scheme: light;
     --bg: 255 255 255;
     --surface: 255 255 255;

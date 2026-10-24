@@ -42,6 +42,7 @@ export const PAGES: Record<string, PageInfo> = {
   "/train": { title: "Train", description: "Counting, deck estimation, true count, strategy and index drills, and full-shoe practice with a graded checkout." },
   "/charts": { title: "Strategy charts", description: "Basic strategy and Hi-Lo index plays for your exact table rules: decks, H17 or S17, double after split, late or early surrender.", public: true },
   "/charts/indices": { title: "Index plays", description: "Every Hi-Lo index play for your table rules, ranked by how much it is worth, with the count where the play changes.", public: true },
+  "/charts/pocket": { title: "Pocket chart", description: "Basic strategy and Wong's index numbers for your table rules on one card, to print or save to your phone.", public: true },
   "/calculator": { title: "Calculator", description: "Expected win, standard deviation, risk of ruin and bankroll needs for your game and bet ramp." },
   "/journal": { title: "Journal", description: "Log casino sessions and bankroll movements, then compare your results with what the game should pay." },
   "/progress": { title: "Progress", description: "Accuracy, speed and readiness across every drill, and what to practise next." },
