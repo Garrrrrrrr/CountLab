@@ -60,7 +60,7 @@ export function SignInPage() {
     <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-5xl items-center gap-10 py-6 lg:grid-cols-2 lg:py-12">
       <div className="hidden lg:block">
         <Wordmark />
-        <h1 className="mt-8 text-4xl leading-tight">Your training, on every device.</h1>
+        <p className="mt-8 text-4xl font-semibold leading-tight tracking-tight">Your training, on every device.</p>
         <ul className="mt-6 space-y-3">
           {BENEFITS.map((benefit) => (
             <li key={benefit} className="flex items-start gap-3 text-ink-2">

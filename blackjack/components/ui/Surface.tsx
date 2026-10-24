@@ -91,11 +91,12 @@ export function Callout({ tone = "info", title, children, className, action }: {
   );
 }
 
-export function EmptyState({ icon, title, children, action, className }: { icon?: ReactNode; title: ReactNode; children?: ReactNode; action?: ReactNode; className?: string }) {
+export function EmptyState({ icon, title, children, action, className, heading }: { icon?: ReactNode; title: ReactNode; children?: ReactNode; action?: ReactNode; className?: string; heading?: "h1" | "h2" }) {
+  const Title = heading ?? "p";
   return (
     <div className={cx("flex flex-col items-center rounded-[var(--radius)] border border-dashed border-line-strong px-6 py-10 text-center", className)}>
       {icon && <div className="mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-surface-2 text-ink-2">{icon}</div>}
-      <p className="font-semibold">{title}</p>
+      <Title className={cx("font-semibold", heading === "h1" && "text-xl")}>{title}</Title>
       {children && <p className="mt-1 max-w-sm text-sm leading-6 text-ink-2">{children}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

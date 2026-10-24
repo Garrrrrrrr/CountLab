@@ -2,41 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0D11" />
 <title>Offline · CountLab</title>
 <style>
+  :root { color-scheme: dark; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: #101411;
-    color: #e4e4e7;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0B0D11;
+    color: #ECEEF2;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     display: grid;
     place-items: center;
     text-align: center;
     padding: 1.5rem;
   }
-  .card { max-width: 26rem; }
-  .icon {
-    width: 3.5rem; height: 3.5rem; border-radius: 1rem;
-    background: #a8ee72; color: #10200f;
-    display: grid; place-items: center;
-    font-size: 1.5rem; font-weight: 700;
-    margin: 0 auto 1.25rem;
-  }
-  h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
-  p { color: #a1a1aa; line-height: 1.6; margin: 0 0 1.5rem; }
+  .card { max-width: 24rem; }
+  svg { display: block; margin: 0 auto 1.25rem; }
+  h1 { font-size: 1.375rem; margin: 0 0 .5rem; letter-spacing: -0.01em; }
+  p { color: #A4ABB8; line-height: 1.6; margin: 0 0 1.5rem; }
   button {
-    min-height: 44px; padding: 0 1.25rem; border-radius: .75rem;
-    background: #a8ee72; color: #10200f; font-weight: 600;
+    min-height: 48px; padding: 0 1.5rem; border-radius: .875rem;
+    background: #F5B93C; color: #211804; font: inherit; font-weight: 600;
     border: none; cursor: pointer;
   }
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">♠</div>
-    <h1>You're offline</h1>
-    <p>This page needs a connection CountLab doesn't have right now. Pages you've already visited may still be available from the sidebar.</p>
+    <svg width="56" height="56" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="15" fill="#1C2028"/>
+      <rect x="17" y="11" width="30" height="42" rx="5.5" fill="#F5B93C" transform="rotate(-9 32 32)"/>
+      <path d="M32 21.5c-2.9 4.6-9.2 7.6-9.2 12.6 0 3.3 2.6 5.7 5.7 5.7 1.3 0 2.5-.4 3.3-1.2-.4 2.3-1.6 4.1-3.3 5.3h7c-1.7-1.2-2.9-3-3.3-5.3.8.8 2 1.2 3.3 1.2 3.1 0 5.7-2.4 5.7-5.7 0-5-6.3-8-9.2-12.6Z" fill="#1C2028" transform="rotate(-9 32 32)"/>
+    </svg>
+    <h1>You&rsquo;re offline</h1>
+    <p>This page isn&rsquo;t saved on your device yet. Pages you have opened before, including the drills and charts, still work without a connection.</p>
     <button onclick="location.reload()">Try again</button>
   </div>
 </body>

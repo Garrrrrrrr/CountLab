@@ -10,7 +10,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
     reportHandledError("ReactErrorBoundary", error, "app/error");
   }, [error]);
   return (
-    <EmptyState className="mt-10" icon={<RotateCcw size={22} aria-hidden />} title="Something went wrong"
+    <EmptyState className="mt-10" icon={<RotateCcw size={22} aria-hidden />} heading="h1" title="Something went wrong"
       action={<div className="flex gap-2"><Button onClick={reset}>Try again</Button><ButtonLink href="/" variant="secondary">Go home</ButtonLink></div>}>
       This page hit an unexpected error. Your saved training and journal are not affected.
     </EmptyState>
