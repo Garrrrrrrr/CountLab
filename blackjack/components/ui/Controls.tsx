@@ -26,7 +26,7 @@ export function Segmented<T extends string | number>({ label, value, options, on
               title={option.hint}
               className={cx(
                 "relative flex min-w-0 flex-1 cursor-pointer items-center justify-center rounded-[0.6rem] px-2 text-center font-semibold transition",
-                size === "sm" ? "h-8 text-[0.8125rem]" : "h-9 text-sm",
+                size === "sm" ? "h-8 text-[0.8125rem]" : "h-10 text-sm",
                 checked ? "bg-surface text-ink shadow-1" : "text-ink-2 hover:text-ink",
                 option.disabled && "cursor-not-allowed opacity-40",
                 "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand",

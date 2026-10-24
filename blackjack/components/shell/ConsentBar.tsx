@@ -27,7 +27,7 @@ export function ConsentBar() {
   if (!visible) return null;
   return (
     <aside aria-label="Analytics choice" className="no-print fixed inset-x-3 z-50 mx-auto max-w-xl rounded-2xl border border-line bg-surface p-3 shadow-2 sm:p-3.5 lg:bottom-4 lg:left-[calc(16rem+1rem)] lg:right-4 lg:mx-0 lg:ml-auto"
-      style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b) + 0.75rem)" }}>
+      style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b) + var(--dock-h, 0px) + 0.75rem)" }}>
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
         <p className="min-w-0 flex-1 text-[0.8125rem] leading-5 text-ink-2">
           Allow privacy-minimized analytics to help improve CountLab? No emails, notes or exact bankrolls are recorded. <Link href="/privacy" className="font-medium text-ink underline underline-offset-2">Details</Link>

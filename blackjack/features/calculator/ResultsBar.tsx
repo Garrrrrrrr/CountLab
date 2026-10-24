@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, ChevronUp } from "lucide-react";
 import { chance, count, DASH, money, percent, riskLabel, signedMoney } from "@/lib/blackjack/labFormat";
 import type { TripOutlook } from "@/lib/blackjack/labModel";
 import { Button, cx } from "@/components/ui";
+import { useBottomDock } from "@/components/shell/useBottomDock";
 import type { Calc } from "./useCalculator";
 
 function Cell({ label, value, tone }: { label: string; value: string; tone?: "neg" | "warn" | "pos" }) {
@@ -23,11 +24,14 @@ function Cell({ label, value, tone }: { label: string; value: string; tone?: "ne
  */
 export function ResultsBar({ calc, trip, onOpenResults, className }: { calc: Calc; trip: TripOutlook; onOpenResults: () => void; className?: string }) {
   const [expanded, setExpanded] = useState(false);
+  const bar = useRef<HTMLDivElement>(null);
+  useBottomDock(bar);
   const { pricing, config } = calc;
   const { result, noBets, figures } = pricing;
   const ruinTone = result.riskOfRuin <= config.targetRisk ? undefined : result.riskOfRuin <= 0.135 ? "warn" : "neg";
   return (
     <div
+      ref={bar}
       role="region"
       aria-label="Live results"
       className={cx(

@@ -47,7 +47,7 @@ export function ToastHost() {
   return (
     <>
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{spoken}</div>
-      <div aria-hidden className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4" style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b) + 1rem)" }}>
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 z-[70] flex flex-col items-center gap-2 px-4" style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b) + var(--dock-h, 0px) + 1rem)" }}>
         {items.map((item) => {
           const Icon = ICON[item.tone];
           return (

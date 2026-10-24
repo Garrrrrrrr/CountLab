@@ -83,8 +83,8 @@ function SyncPill() {
   if (loading) return null;
   if (!user) {
     return (
-      <Link href="/signin" className="inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:bg-surface-2">
-        <UserRound size={16} aria-hidden /> Sign in
+      <Link href="/signin" aria-label="Sign in" className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:bg-surface-2">
+        <UserRound size={16} aria-hidden /> <span className="hidden min-[360px]:inline">Sign in</span>
       </Link>
     );
   }
