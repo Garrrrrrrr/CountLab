@@ -132,3 +132,20 @@ export function drawTrayPhoto(numDecks: number, seen: readonly string[], rng: ()
   const candidates = fresh.length ? fresh : usable.length > 1 ? usable.filter((photo) => photo.file !== seen[seen.length - 1]) : usable;
   return candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
 }
+
+/**
+ * As `drawTrayPhoto`, from the shoe's photos that pass `keep` (a deck or less
+ * left, say). When none pass, every photo that fits the shoe is used, so a
+ * session never runs dry.
+ */
+export function drawTrayPhotoWhere(numDecks: number, seen: readonly string[], keep: (photo: TrayPhoto) => boolean, rng: () => number = Math.random): TrayPhoto {
+  const fitting = trayPhotosForShoe(numDecks);
+  const kept = fitting.filter(keep);
+  const usable = kept.length ? kept : fitting.length ? fitting : [...TRAY_PHOTOS];
+  const fresh = usable.filter((photo) => !seen.includes(photo.file));
+  const candidates = fresh.length ? fresh : usable.length > 1 ? usable.filter((photo) => photo.file !== seen[seen.length - 1]) : usable;
+  return candidates[Math.min(candidates.length - 1, Math.floor(rng() * candidates.length))];
+}
+
+/** Decks left in a shoe of `numDecks` when the tray holds this photo's discards. */
+export const decksLeftFor = (photo: TrayPhoto, numDecks: number) => Number(Math.max(0, numDecks - photo.discarded).toFixed(2));

@@ -4,7 +4,8 @@ import { calculateHandValue, isSoft } from "./hand";
 import { hiLoValue, runningCount, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
 import { Action, BlackjackRules, Card } from "./types";
-import { CountingErrorCategory, Session } from "../statistics/storage";
+import { parseAnswer } from "./numericAnswer";
+import type { CountingErrorCategory, Mistake, Session } from "../statistics/storage";
 
 export type DeckResolution = 1 | 0.5 | 0.25;
 export type CountBias = "none" | "positive" | "negative";
@@ -54,26 +55,37 @@ export function makeTrueCountScenario({
   resolution,
   rounding,
   focus = "all",
+  discarded,
   rng = Math.random,
 }: {
   decks: number;
   resolution: DeckResolution;
   rounding: TrueCountRounding;
   focus?: "all" | "positive" | "negative" | "zero" | "index" | "last-deck";
+  /**
+   * Decks already in the discard tray, when the question shows a tray photo:
+   * that many cards are dealt, so the running count is one a shoe this deep
+   * could really have, and the decks left are the photo's.
+   */
+  discarded?: number;
   rng?: () => number;
 }): TrueCountScenario {
   let fallback: TrueCountScenario | undefined;
+  const fromPhoto = discarded !== undefined && Number.isFinite(discarded);
   for (let attempt = 0; attempt < 80; attempt++) {
     const shoe = new BlackjackShoe(decks, rng);
     const maxDealt = Math.max(1, Math.floor(decks * 52 * 0.8));
     const minDealt = focus === "last-deck" ? Math.max(1, (decks - 1) * 52) : 1;
-    const count = minDealt + Math.floor(rng() * Math.max(1, maxDealt - minDealt));
+    const count = fromPhoto
+      ? Math.min(decks * 52 - 1, Math.max(1, Math.round((discarded as number) * 52)))
+      : minDealt + Math.floor(rng() * Math.max(1, maxDealt - minDealt));
     for (let i = 0; i < count; i++) shoe.deal();
     const rc = shoe.runningCount();
-    const estimated = roundDeckEstimate(shoe.decksRemaining(), resolution);
+    const exact = fromPhoto ? Math.max(0.01, Number((decks - (discarded as number)).toFixed(2))) : shoe.decksRemaining();
+    const estimated = roundDeckEstimate(exact, resolution);
     const scenario = {
       runningCount: rc,
-      exactDecksRemaining: shoe.decksRemaining(),
+      exactDecksRemaining: exact,
       estimatedDecksRemaining: estimated,
       cardsDealt: count,
       totalDecks: decks,
@@ -84,7 +96,7 @@ export function makeTrueCountScenario({
       || (focus === "positive" && rc > 0)
       || (focus === "negative" && rc < 0)
       || (focus === "zero" && rc === 0)
-      || (focus === "last-deck" && shoe.decksRemaining() <= 1)
+      || (focus === "last-deck" && (fromPhoto || exact <= 1))
       || (focus === "index" && PLAY_INDICES.some((index) => Math.abs(scenario.answer - index.at) <= 1));
     if (match) return scenario;
   }
@@ -108,6 +120,8 @@ export function classifyTrueCountError(rc: number, decks: number, expected: numb
 
 export interface SimulatedRound {
   playerHands: Card[][];
+  /** The same hands by spot: `seats[spot]` is one hand, or several after a split. */
+  seats: Card[][][];
   dealerHand: Card[];
   heroInitial: Card[];
   dealerUpcard: Card;
@@ -159,7 +173,8 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
   const table = fromBlackjackRules(rules);
   const basic = decideHand({ cards: heroInitial, upcard: dealerUpcard, rules: table });
   const counted = decideHand({ cards: heroInitial, upcard: dealerUpcard, rules: table, tc: currentTrueCount });
-  const playerHands = initial.flatMap((hand) => playHand(hand, dealerUpcard, shoe, rules));
+  const seats = initial.map((hand) => playHand(hand, dealerUpcard, shoe, rules));
+  const playerHands = seats.flat();
   while (calculateHandValue(dealer) < 17 || (calculateHandValue(dealer) === 17 && isSoft(dealer) && rules.dealerHitsSoft17)) {
     const card = shoe.deal();
     if (!card) break;
@@ -167,6 +182,7 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
   }
   return {
     playerHands,
+    seats,
     dealerHand: dealer,
     heroInitial,
     dealerUpcard,
@@ -177,6 +193,87 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
     explanation: counted.cell ? explainDecision(counted.cell, counted, currentTrueCount) : `${calculateHandValue(heroInitial)} is played the same at every count.`,
   };
 }
+
+/** A card on the table in a Running Count table round. */
+export interface TableCard {
+  card: Card;
+  /** Its place in the round's reveal order: face up once more than `at` cards of the round are showing. */
+  at: number;
+  /** The dealer's hole card: on the table face down once `downFrom` cards are showing, turned over at `at`. */
+  downFrom?: number;
+}
+/** One round as the table shows it: the dealer's cards and each spot's hands. */
+export interface TableRound {
+  dealer: TableCard[];
+  seats: TableCard[][][];
+  /** Cards the round reveals; the hole card counts once, when it is turned over. */
+  size: number;
+}
+
+/**
+ * The order a played round's cards appear in: one card to each spot and the
+ * dealer, a second to each spot with the hole card face down, then each spot's
+ * draws in turn, the hole card turned over, and the dealer's draws.
+ *
+ * A split pair shows as two hands from the second pass on (its second card
+ * lands on the second hand), which is the only liberty taken with real dealing
+ * and changes nothing about the count.
+ */
+export function tableRoundLayout(round: Pick<SimulatedRound, "seats" | "dealerHand">): TableRound {
+  let next = 0;
+  const seats: TableCard[][][] = round.seats.map((hands) => hands.map(() => []));
+  const placed = round.seats.map((hands) => hands.map(() => 0));
+  const place = (spot: number, hand: number) => {
+    const card = round.seats[spot]?.[hand]?.[placed[spot][hand]];
+    if (!card) return;
+    seats[spot][hand].push({ card, at: next++ });
+    placed[spot][hand] += 1;
+  };
+  const dealer: TableCard[] = [];
+  const [up, hole, ...draws] = round.dealerHand;
+  round.seats.forEach((_, spot) => place(spot, 0));
+  if (up) dealer.push({ card: up, at: next++ });
+  round.seats.forEach((hands, spot) => place(spot, hands.length > 1 ? 1 : 0));
+  const holeShows = next;
+  round.seats.forEach((hands, spot) => hands.forEach((cards, hand) => { while (placed[spot][hand] < cards.length) place(spot, hand); }));
+  if (hole) dealer.push({ card: hole, at: next++, downFrom: holeShows });
+  for (const card of draws) dealer.push({ card, at: next++ });
+  return { dealer, seats, size: next };
+}
+
+/** Every card of a laid-out round in reveal order. */
+export const tableRoundCards = (round: TableRound): Card[] =>
+  [...round.dealer, ...round.seats.flat(2)].sort((a, b) => a.at - b.at).map((entry) => entry.card);
+
+/**
+ * A Running Count session dealt as full table rounds: `spots` players and the
+ * dealer, every hand played out by basic strategy for `rules`, until about
+ * `amount` cards have been shown or the shoe runs low. `cards` is every card
+ * in reveal order, so a running count at any point is the sum of a prefix.
+ */
+export function makeTableRounds({ decks, amount, spots, rules, rng = Math.random }: { decks: number; amount: number; spots: number; rules: BlackjackRules; rng?: () => number }) {
+  const shoe = new BlackjackShoe(decks, rng);
+  shoe.deal(); // burned, as in makeCountSequence
+  const rounds: TableRound[] = [];
+  const cards: Card[] = [];
+  // Room for a long round (splits, several hits) so the shoe never runs out mid-round.
+  const reserve = spots * 6 + 8;
+  while (cards.length < amount && shoe.cardsRemaining() >= reserve) {
+    const tc = trueCount(shoe.runningCount(), Math.max(0.25, shoe.decksRemaining()));
+    const layout = tableRoundLayout(simulateRound(shoe, spots, { ...rules, decks }, tc));
+    rounds.push(layout);
+    cards.push(...tableRoundCards(layout));
+  }
+  return { rounds, cards };
+}
+
+/** Where each round starts in the session's card list. */
+export const roundStarts = (rounds: readonly Pick<TableRound, "size">[]) => {
+  const starts: number[] = [];
+  let total = 0;
+  for (const round of rounds) { starts.push(total); total += round.size; }
+  return starts;
+};
 
 export function expectedBet(trueCountValue: number, baseBet: number, spread: keyof typeof RAMPS, wongOutNegative: boolean) {
   if (wongOutNegative && trueCountValue < 0) return 0;
@@ -236,6 +333,8 @@ const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export function countingCategoryLabel(key: string) {
   const running = /^(1|2|3|4|random)-card groups, (negative|positive|zero)$/.exec(key);
   if (running) return `${GROUP_LABEL[running[1]]} · ${SIGN_LABEL[running[2]]}`;
+  const table = /^table rounds, (negative|positive|zero)$/.exec(key);
+  if (table) return `Table rounds · ${SIGN_LABEL[table[1]]}`;
   const conversion = /^(negative|positive|zero), (1|0\.5|0\.25)-deck divisor$/.exec(key);
   if (conversion) return `${capitalise(SIGN_LABEL[conversion[1]])} · ${RESOLUTION_PRECISION[conversion[2]].toLowerCase()} divisor`;
   const estimate = /^(1|0\.5|0\.25)-deck(, last deck)?$/.exec(key);
@@ -282,10 +381,10 @@ export function countingMastery(sessions: Session[]) {
   const shoe = latestQualifying(sessions, "Full Shoe");
   const mae = metric(deck, "meanAbsoluteDeckError");
   const checks = [
-    { label: "Count a deck perfectly in 30 seconds", met: Boolean(running && wasPerfectDeck(running)) && metric(running, "elapsedSeconds") <= 30, href: "/training/running-count" },
-    { label: "Reach 95% true-count accuracy", met: (tc?.accuracy ?? 0) >= 95, href: "/training/true-count" },
-    { label: "Estimate within 0.25 decks on average", met: (Number.isFinite(mae) ? mae : Infinity) <= 0.25, href: "/training/deck-estimation" },
-    { label: "Reach 95% across a casino shoe", met: (shoe?.accuracy ?? 0) >= 95, href: "/training/full-shoe" },
+    { label: "Count a deck perfectly in 30 seconds", met: Boolean(running && wasPerfectDeck(running)) && metric(running, "elapsedSeconds") <= 30, href: "/train/running-count" },
+    { label: "Reach 95% true-count accuracy", met: (tc?.accuracy ?? 0) >= 95, href: "/train/true-count" },
+    { label: "Estimate within 0.25 decks on average", met: (Number.isFinite(mae) ? mae : Infinity) <= 0.25, href: "/train/deck-estimation" },
+    { label: "Reach 95% across a casino shoe", met: (shoe?.accuracy ?? 0) >= 95, href: "/train/full-shoe" },
   ];
   return { score: Math.round(checks.filter((x) => x.met).length / checks.length * 100), checks, next: checks.find((x) => !x.met) ?? checks[0] };
 }
@@ -338,27 +437,27 @@ export function countingBenchmarkDetails(sessions: Session[]): BenchmarkDetail[]
       ...checks[0], drill: "Running Count",
       latest: runningLatest(running),
       note: noteFor("Running Count", running, "Only full-deck runs count, and your latest run was shorter."),
-      practiceHref: "/training/running-count?focus=one-deck-speed",
+      practiceHref: "/train/running-count?focus=one-deck-speed",
     },
     {
       ...checks[1], drill: "True Count",
       latest: tc ? `${tc.accuracy}% (target 95%)` : `No ${BENCHMARK_MIN_QUESTIONS}-question session yet`,
       note: noteFor("True Count", tc, `Sessions under ${BENCHMARK_MIN_QUESTIONS} questions do not count.`),
       progress: tc ? Math.min(1, tc.accuracy / 95) : undefined,
-      practiceHref: "/training/true-count",
+      practiceHref: "/train/true-count",
     },
     {
       ...checks[2], drill: "Deck Estimation",
       latest: deck && Number.isFinite(mae) ? `${mae.toFixed(2)} decks off on average (target 0.25 or less)` : `No ${BENCHMARK_MIN_QUESTIONS}-photo session yet`,
       note: noteFor("Deck Estimation", deck, `Sessions under ${BENCHMARK_MIN_QUESTIONS} photos do not count.`),
       progress: deck && Number.isFinite(mae) ? (mae <= 0 ? 1 : Math.min(1, 0.25 / mae)) : undefined,
-      practiceHref: "/training/deck-estimation?focus=0.25-deck",
+      practiceHref: "/train/deck-estimation?focus=0.25-deck",
     },
     {
       ...checks[3], drill: "Full Shoe",
       latest: shoe ? `${shoe.accuracy}% (target 95%)` : "Not tried yet",
       progress: shoe ? Math.min(1, shoe.accuracy / 95) : undefined,
-      practiceHref: "/training/full-shoe",
+      practiceHref: "/train/full-shoe",
     },
   ];
 }
@@ -370,4 +469,95 @@ export function countingBenchmarkDetails(sessions: Session[]): BenchmarkDetail[]
  */
 export function rightForOwnEstimate({ runningCount: rc, decksAnswer, trueCountAnswer, rounding }: { runningCount: number; decksAnswer: number; trueCountAnswer: number; rounding: TrueCountRounding }) {
   return Number.isFinite(decksAnswer) && decksAnswer > 0 && Number.isFinite(trueCountAnswer) && trueCount(rc, decksAnswer, rounding) === trueCountAnswer;
+}
+
+/**
+ * A True Count answer, graded from the typed text so a resumed feedback
+ * screen shows the same verdict. "combined" also grades the decks-left
+ * estimate, which must match the estimate at the session's resolution.
+ *
+ * `ownEstimate` is true when the decks estimate was wrong but the true count
+ * is exactly right for it: the division was sound and the tray reading slipped.
+ */
+export function gradeTrueCount({ question, mode, tcText, deckText, rounding }: {
+  question: Pick<TrueCountScenario, "runningCount" | "estimatedDecksRemaining" | "answer">;
+  mode: "division" | "combined";
+  tcText: string;
+  deckText: string;
+  rounding: TrueCountRounding;
+}) {
+  const tc = parseAnswer(tcText, "signed-int");
+  const deck = parseAnswer(deckText, "decimal");
+  const tcValue = tc.ok ? tc.value : null;
+  const deckValue = deck.ok && deck.value > 0 ? deck.value : null;
+  const tcOk = tcValue !== null && tcValue === question.answer;
+  const deckOk = mode === "division" || (deckValue !== null && Math.abs(deckValue - question.estimatedDecksRemaining) < 0.001);
+  const ok = tcOk && deckOk;
+  const ownEstimate = mode === "combined" && !deckOk && deckValue !== null && tcValue !== null
+    && rightForOwnEstimate({ runningCount: question.runningCount, decksAnswer: deckValue, trueCountAnswer: tcValue, rounding });
+  const category: CountingErrorCategory | undefined = ok
+    ? undefined
+    : !deckOk ? "deck estimate" : classifyTrueCountError(question.runningCount, question.estimatedDecksRemaining, question.answer, tcValue ?? 0);
+  return { ok, tcOk, deckOk, tc: tcValue, deck: deckValue, ownEstimate, category };
+}
+
+/** The division written out: "+7 ÷ 2.5 = 2.80". */
+export const divisionText = (rc: number, decks: number) => {
+  const sign = (value: number) => (value < 0 ? `−${Math.abs(value)}` : value > 0 ? `+${value}` : "0");
+  const raw = decks > 0 ? rc / decks : rc;
+  return `${sign(rc)} ÷ ${decks} = ${raw.toFixed(2).replace("-", "−")}`;
+};
+
+/**
+ * One Deck Estimation answer. `remaining` is the tray's exact decks left and
+ * the answer must match it rounded to the session's resolution. A blank
+ * answer counts as missing by the whole shoe, as it always has.
+ */
+export function gradeDeckEstimate({ remaining, resolution, value, decks }: { remaining: number; resolution: DeckResolution; value: number | null; decks: number }) {
+  const expected = roundDeckEstimate(remaining, resolution);
+  const ok = value !== null && Math.abs(value - expected) < 0.001;
+  const signedError = value === null ? null : Number((value - remaining).toFixed(2));
+  const error = value === null ? decks : Number(Math.abs(value - remaining).toFixed(2));
+  return { expected, ok, error, signedError };
+}
+
+/**
+ * Which way a reader's deck estimates lean: "over" means they see more decks
+ * left than there are (the tray looks emptier to them than it is). Under a
+ * tenth of a deck either way is no lean at all.
+ */
+export function estimateBias(signedErrors: readonly number[]) {
+  const values = signedErrors.filter(Number.isFinite);
+  if (!values.length) return { mean: 0, direction: "even" as const };
+  const mean = Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2));
+  return { mean, direction: mean >= 0.1 ? "over" as const : mean <= -0.1 ? "under" as const : "even" as const };
+}
+
+/** One habit that fixes each kind of slip, for the summary. */
+export const ERROR_CATEGORY_TIP: Partial<Record<CountingErrorCategory, string>> = {
+  "missed cancellation": "Pair each +1 with a −1 and drop both; carry only what is left over.",
+  "negative arithmetic": "Below zero a low card moves you toward zero: −3 and then a 5 is −2.",
+  "zero crossing": "Say the sign to yourself whenever the count passes zero.",
+  "interruption recovery": "Repeat the count to yourself the moment you look away.",
+  "true-count rounding": "Round only after dividing, and the same way every time.",
+  "true-count division": "Divide first, round last. When the decks end in .5, double both numbers: +7 ÷ 2.5 is +14 ÷ 5.",
+  "deck estimate": "Read the tray first, then subtract it from the shoe size.",
+};
+
+/**
+ * The slips behind a session's misses, most common first. Only causes worth
+ * naming count: "Adding negatives" is the classifier's fallback, so it only
+ * counts when the right answer really was negative.
+ */
+export function mistakeCauses(mistakes: readonly Mistake[]) {
+  const tally = new Map<CountingErrorCategory, number>();
+  for (const mistake of mistakes) {
+    const category = mistake.category;
+    if (!category) continue;
+    if (category === "negative arithmetic" && !(Number(String(mistake.correctAnswer).replace("−", "-")) < 0)) continue;
+    tally.set(category, (tally.get(category) ?? 0) + 1);
+  }
+  return [...tally]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => ({ category, count, label: ERROR_CATEGORY_LABEL[category], tip: ERROR_CATEGORY_TIP[category] }));
 }

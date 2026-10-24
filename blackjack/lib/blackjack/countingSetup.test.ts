@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkpointsFor,
+  dealOf,
   describeRunningSession,
   describeTrueCountSession,
   effectiveCardCount,
+  fitCheckpoint,
+  fitQuestionTarget,
+  fitShoeSize,
+  isCheckDue,
+  isSettingsPreset,
+  nextCheckText,
+  randomCheckGap,
+  spotsOf,
   estimateRunningSeconds,
   formatApproxDuration,
   formatInterval,
@@ -59,7 +69,76 @@ describe("running count setup", () => {
     expect(describeRunningSession({ ...runningPresetValues("recovery"), bias: "negative", feedbackMode: "end" })).toContain("one interruption halfway");
   });
 
+  it("matches table rounds by spots, not by group", () => {
+    const table = RUNNING_SESSION_CARDS.find((card) => card.id === "table")!.values;
+    expect(matchRunningPreset(table)).toBe("table");
+    expect(matchRunningPreset({ ...table, group: "random" })).toBe("table");
+    expect(matchRunningPreset({ ...table, spots: 5 })).toBeNull();
+    expect(matchRunningPreset({ ...table, deal: "cards" })).toBeNull();
+    expect(isSettingsPreset("table")).toBe(false);
+    expect(isSettingsPreset("recovery")).toBe(true);
+    expect(isSettingsPreset("starter")).toBe(false);
+  });
+
+  it("matches against a caller's own card list", () => {
+    const cards = RUNNING_SESSION_CARDS.map((card) => (card.id === "starter" ? { ...card, values: { ...card.values, speed: 750 } } : card));
+    expect(matchRunningPreset({ ...RUNNING_STARTER, speed: 750 }, cards)).toBe("starter");
+    expect(matchRunningPreset(RUNNING_STARTER, cards)).toBeNull();
+  });
+
+  it("describes table rounds and their duration", () => {
+    const table = RUNNING_SESSION_CARDS.find((card) => card.id === "table")!.values;
+    expect(runningCardMeta(table)).toMatch(/^156 cards · 6 decks · 3 spots · 0\.65 s per card · about \d+ min$/);
+    expect(describeRunningSession({ ...table, bias: "positive", feedbackMode: "immediate" })).toEqual([
+      "156 cards from a 6-deck shoe", "full rounds at a 3-spot table", "0.65 s per card", "a check every 3 rounds", "results after each check",
+    ]);
+    expect(dealOf({})).toBe("cards");
+    expect(spotsOf({ spots: 9 })).toBe(3);
+  });
+
+  it("offers checks that fit the deal and maps the rest", () => {
+    expect(checkpointsFor("table")).not.toContain("5");
+    expect(checkpointsFor("cards")).not.toContain("round");
+    expect(fitCheckpoint("5", "table")).toBe("round");
+    expect(fitCheckpoint("10", "table")).toBe("3-rounds");
+    expect(fitCheckpoint("3-rounds", "cards")).toBe("10");
+    expect(fitCheckpoint("deck", "table")).toBe("deck");
+  });
+
+  it("decides when a check is due", () => {
+    const base = { total: 104, countBefore: 2, countAfter: 3, steps: 1, randomGap: 12 };
+    expect(isCheckDue({ ...base, checkpoint: "5", from: 3, to: 5 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "5", from: 5, to: 7 })).toBe(false);
+    expect(isCheckDue({ ...base, checkpoint: "10", from: 8, to: 11 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "deck", from: 50, to: 53 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "deck", from: 40, to: 51 })).toBe(false);
+    expect(isCheckDue({ ...base, checkpoint: "final", from: 40, to: 51 })).toBe(false);
+    expect(isCheckDue({ ...base, checkpoint: "final", from: 100, to: 104 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "round", from: 0, to: 11 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "3-rounds", from: 0, to: 11, steps: 2 })).toBe(false);
+    expect(isCheckDue({ ...base, checkpoint: "3-rounds", from: 0, to: 11, steps: 3 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "random", from: 0, to: 11, steps: 12 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "sign", from: 0, to: 2 })).toBe(false);
+    expect(isCheckDue({ ...base, checkpoint: "sign", from: 0, to: 2, countAfter: 0 })).toBe(true);
+    expect(isCheckDue({ ...base, checkpoint: "sign", from: 0, to: 2, countBefore: 0, countAfter: -1 })).toBe(false);
+  });
+
+  it("says where the next check comes", () => {
+    expect(nextCheckText("5", 7, 20)).toBe("Next check after card 10");
+    expect(nextCheckText("deck", 60, 234)).toBe("Next check after card 104");
+    expect(nextCheckText("5", 18, 20)).toBe("Next check after card 20");
+    expect(nextCheckText("3-rounds", 30, 156, 1)).toBe("Check in 2 rounds");
+    expect(nextCheckText("3-rounds", 30, 156, 2)).toBe("Check after this round");
+  });
+
+  it("draws random gaps inside the bounds", () => {
+    expect(randomCheckGap("cards", () => 0)).toBe(10);
+    expect(randomCheckGap("cards", () => 0.9999)).toBe(25);
+    expect(randomCheckGap("table", () => 0.5)).toBeGreaterThanOrEqual(2);
+  });
+
   it("maps practice hand-offs to a session", () => {
+    expect(normalizeRunningFocus("table rounds")).toBe("table");
     expect(normalizeRunningFocus("one-deck-speed")).toBe("one-deck-speed");
     expect(normalizeRunningFocus("running count")).toBe("six-deck-casino");
     expect(normalizeRunningFocus("starter")).toBe("starter");
@@ -87,6 +166,17 @@ describe("true count setup", () => {
   it("describes the session", () => {
     expect(describeTrueCountSession({ mode: "combined", resolution: 0.5, focus: "adaptive", decks: 6, target: 10, rounding: "floor", feedbackMode: "immediate" }).join(" · "))
       .toBe("10 questions · 6-deck shoe · you estimate decks left and the true count · decks to the nearest half deck · Floor rounding · results after each question");
+  });
+});
+
+describe("shared counting setup", () => {
+  it("fits saved settings to the offered shoe sizes and question counts", () => {
+    expect(fitShoeSize(6)).toBe(6);
+    expect(fitShoeSize(5)).toBe(6);
+    expect(fitShoeSize(3)).toBe(2);
+    expect(fitShoeSize(4)).toBe(4);
+    expect(fitQuestionTarget(20)).toBe(20);
+    expect(fitQuestionTarget(7)).toBe(10);
   });
 });
 
