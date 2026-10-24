@@ -178,9 +178,18 @@ test("the table fits the phone screen without scrolling", async ({ page }, testI
   const overflow = await page.evaluate(() => ({ x: document.documentElement.scrollWidth - window.innerWidth, y: document.documentElement.scrollHeight - window.innerHeight }));
   expect(overflow.x).toBeLessThanOrEqual(0);
   expect(overflow.y).toBeLessThanOrEqual(0);
-  for (const hand of await page.getByTestId("full-shoe-player-hand").all()) {
+  // Four hands of readable cards are wider than a 320px felt, so there (and only there) the row
+  // scrolls inside its own rail (lib/full-shoe/layout.ts). The hand being played is always in view;
+  // on a wider phone every hand is.
+  const rail = page.getByTestId("full-shoe-seats-rail");
+  const view = (await rail.boundingBox())!;
+  const scrolls = await rail.evaluate((element) => element.scrollWidth > element.clientWidth);
+  if (page.viewportSize()!.width >= 360) expect(scrolls).toBe(false);
+  const inView = async (hand: ReturnType<Page["locator"]>) => {
     const box = (await hand.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width);
-  }
+    expect(box.x).toBeGreaterThanOrEqual(view.x - 0.5);
+    expect(box.x + box.width).toBeLessThanOrEqual(view.x + view.width + 0.5);
+  };
+  await inView(page.locator('[data-testid="full-shoe-player-hand"][data-active]'));
+  if (!scrolls) for (const hand of await page.getByTestId("full-shoe-player-hand").all()) await inView(hand);
 });

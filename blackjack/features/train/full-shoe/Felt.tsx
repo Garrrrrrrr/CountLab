@@ -292,7 +292,7 @@ function SeatsRail({ activeId, children }: { activeId?: number; children: ReactN
     else rail.scrollTo({ left: (rail.scrollWidth - rail.clientWidth) / 2, behavior: "smooth" });
   }, [activeId]);
   return (
-    <div ref={ref} className="scrollbar-none w-full overflow-x-auto pb-1 pt-1">
+    <div ref={ref} data-testid="full-shoe-seats-rail" className="scrollbar-none w-full overflow-x-auto pb-1 pt-1">
       <div className="mx-auto flex w-max items-end gap-4 px-1">{children}</div>
     </div>
   );

@@ -109,6 +109,8 @@ test.describe("strategy charts", () => {
 test.describe("settings", () => {
   test("table rules flow into the charts", async ({ page }) => {
     await page.goto("/settings/");
+    // The controls stay disabled until saved settings load; `force` would click straight through that.
+    await expect(page.getByRole("radio", { name: "Stands (S17)" }).first()).toBeEnabled();
     await page.getByRole("radio", { name: "Stands (S17)" }).first().check({ force: true });
     await page.getByRole("radio", { name: "None" }).first().check({ force: true });
     await page.goto("/charts/");
@@ -118,6 +120,7 @@ test.describe("settings", () => {
 
   test("the theme applies immediately", async ({ page }) => {
     await page.goto("/settings/");
+    await expect(page.getByRole("radio", { name: "Dark" })).toBeEnabled();
     await page.getByRole("radio", { name: "Dark" }).check({ force: true });
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.reload();

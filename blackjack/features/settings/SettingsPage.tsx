@@ -39,7 +39,7 @@ const download = (content: string, type: string, name: string) => {
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function SettingsPage() {
-  const { settings, update } = useSettings();
+  const { settings, update, ready } = useSettings();
   const isAdmin = useIsAdmin();
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => update({ [key]: value } as Partial<Settings>);
 
@@ -49,6 +49,9 @@ export function SettingsPage() {
       <div className="space-y-7">
         <AccountGroup />
 
+        {/* Disabled until the saved settings load (in the prerendered HTML too), so a tap that lands
+            before then is not undone when they arrive. */}
+        <fieldset disabled={!ready} aria-busy={!ready} className="m-0 min-w-0 space-y-7 border-0 p-0">
         <Group title="Table rules" sub="Drills, the full shoe and the charts start from these.">
           <Row>
             <Segmented label="Decks" value={settings.decks} onChange={(decks) => set("decks", decks)}
@@ -101,6 +104,7 @@ export function SettingsPage() {
           <Row><Toggle label="Sound" description="A tone after each answer in drills." checked={settings.sound} onChange={(value) => set("sound", value)} /></Row>
           <Row><Toggle label="Keyboard shortcuts" description="H S D P R and number keys in drills, on devices with a keyboard." checked={settings.shortcuts} onChange={(value) => set("shortcuts", value)} /></Row>
         </Group>
+        </fieldset>
 
         <PrivacyGroup />
         <DataGroup />
