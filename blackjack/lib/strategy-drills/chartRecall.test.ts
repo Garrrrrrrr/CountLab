@@ -78,7 +78,11 @@ describe("chart recall", () => {
     expect(byKey.get("surrender|hard:16v10")).toEqual({ base: "R", dev: undefined });
     expect(byKey.get("surrender|hard:15v10")).toEqual({ base: "R", dev: { play: "R", at: 0 } });
     expect(byKey.get("surrender|hard:14v10")).toEqual({ base: "-", dev: { play: "R", at: 3 } });
-    expect(byKey.get("surrender|hard:16v2")).toEqual({ base: "-", dev: undefined });
+    // Small dealer cards are never surrendered against, so they are shown, not asked.
+    expect(surrender.cells.some((cell) => ["2", "3", "4", "5", "6", "7"].includes(cell.ref.dealer))).toBe(false);
+    expect(surrender.rows.every((row) => row.cells.length === 10)).toBe(true);
+    const shown = new Map(surrender.rows.flatMap((row) => row.cells).map((cell) => [cell.key, cell.expected]));
+    expect(shown.get("surrender|hard:16v2")).toEqual({ base: "-", dev: undefined });
     expect(recallTables(rules({ surrender: "none" }), "indices", ["surrender"])).toEqual([]);
     expect(formatEntry({ base: "-", dev: { play: "R", at: 3 } }, "up")).toBe("— · R +3↑");
   });

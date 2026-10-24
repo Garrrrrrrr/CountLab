@@ -66,6 +66,8 @@ export function availableTables(rules: TableRules): RecallTableId[] {
   return RECALL_TABLE_IDS.filter((id) => id !== "surrender" || chartFor(rules).surrender !== null);
 }
 
+const SURRENDER_DEALERS: readonly string[] = ["8", "9", "10", "A"];
+
 export function recallTable(rules: TableRules, id: RecallTableId, level: RecallLevel): RecallTable | null {
   const chart = chartFor(rules);
   const rows: RecallRow[] = [];
@@ -108,7 +110,9 @@ export function recallTable(rules: TableRules, id: RecallTableId, level: RecallL
       rows.push({ row, section: id, label: rowLabel(id, row), cells });
     }
   }
-  const cells = rows.flatMap((row) => row.cells);
+  // Nothing is ever surrendered against a 2 through 7 under any rule set, so
+  // those cells are shown as given rather than asked sixty times a chart.
+  const cells = rows.flatMap((row) => row.cells).filter((cell) => id !== "surrender" || SURRENDER_DEALERS.includes(cell.ref.dealer));
   const expectedKeys = new Set(cells.map((cell) => cell.expected.base!));
   const baseKeys = KEY_ORDER.filter((key) => STANDARD_KEYS[id].includes(key) || expectedKeys.has(key));
   return { id, title: TABLE_TITLE[id], rows, cells, baseKeys };
