@@ -145,7 +145,17 @@ const LEARNING_ORDER = [
 export const CORE_INDEX_COUNT = LEARNING_ORDER.length;
 
 /** Every index that changes a two-card play under these rules, in learning order. */
-export function indexList(rules: TableRules): IndexEntry[] {
+const indexLists = new Map<string, readonly IndexEntry[]>();
+
+/** Cached per rule set: drills ask for it on every question. Callers must not mutate it. */
+export function indexList(rules: TableRules): readonly IndexEntry[] {
+  const key = JSON.stringify(rules);
+  let list = indexLists.get(key);
+  if (!list) indexLists.set(key, (list = buildIndexList(rules)));
+  return list;
+}
+
+function buildIndexList(rules: TableRules): IndexEntry[] {
   const chart = buildChart(rules);
   const entries: IndexEntry[] = [{ id: "insurance", kind: "insurance", play: "insurance", basic: "no insurance", dir: "up", at: chart.insuranceAt, source: "T11", priority: 0 }];
   for (const table of Object.values(chart.tables)) {

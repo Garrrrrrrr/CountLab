@@ -40,7 +40,7 @@ describe("index play questions", () => {
         }
       }
     }
-  });
+  }, 30_000); // every index of every rule set; CI runners are several times slower than a laptop
 
   it("asks index stand plays on drawn hands where a two-card hand would surrender", () => {
     const table = rules();
