@@ -29,6 +29,7 @@ import {
   type TrueCountMode,
   type TrueCountValues,
 } from "@/lib/blackjack/countingSetup";
+import { TrayPhoto } from "@/components/blackjack/TrayPhoto";
 import { decksLeftFor, drawTrayPhoto, drawTrayPhotoWhere, trayPhotoFor, type TrayPhoto as TrayPhotoData } from "@/lib/blackjack/deckPhotos";
 import { signed } from "@/lib/blackjack/hiLo";
 import { parseAnswer } from "@/lib/blackjack/numericAnswer";
@@ -362,7 +363,9 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
               )}
             />
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center [@media(max-height:700px)]:gap-1 [@media(max-height:700px)]:py-1">
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-center [@media(max-height:700px)]:gap-1 [@media(max-height:700px)]:py-1">
+              {/* The real tray at this depth, so the number and the picture are learned together. */}
+              <TrayPhoto photo={trayPhotoFor(decks - est)} width={104} label={`Discard tray with ${est} decks left`} caption={`${est} left looks like this`} className="mb-2 [@media(max-height:700px)]:hidden" />
               <p className="text-lg font-semibold">What is the true count?</p>
               <p className="tnum text-sm text-ink-2">Running count ÷ decks left, then {ROUNDING_LABEL[rounding].toLowerCase()} rounding.</p>
               <p className="text-xs text-ink-3">{decks}-deck shoe</p>
