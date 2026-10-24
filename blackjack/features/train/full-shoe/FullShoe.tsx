@@ -85,13 +85,18 @@ function save(game: FullShoeGame): ReportData {
   };
 }
 
+// The Train hub links straight to a mode with ?mode=coached or ?mode=checkout. Read from
+// location rather than useSearchParams so the page needs no Suspense boundary; it only
+// runs once settings are ready, which is after hydration.
+const modeFromUrl = (): FullShoeSetup["mode"] => (new URLSearchParams(location.search).get("mode") === "checkout" ? "checkout" : "coached");
+
 const savedTitle = (shoe: SavedShoe) => new Date(shoe.savedAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 export function FullShoe() {
   const { settings, ready } = useSettings();
   const [draft, setDraft] = useState<FullShoeSetup>();
   const [screen, setScreen] = useState<Screen>({ name: "setup" });
-  const setup = draft ?? (ready ? setupFromSettings(settings) : undefined);
+  const setup = draft ?? (ready ? { ...setupFromSettings(settings), mode: modeFromUrl() } : undefined);
 
   const start = (chosen: FullShoeSetup) => {
     const game = newGame(chosen);

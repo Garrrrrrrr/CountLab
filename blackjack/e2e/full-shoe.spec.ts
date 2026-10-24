@@ -41,6 +41,14 @@ const action = (page: Page, name: string) => page.getByRole("group", { name: "Ch
 const ready = (page: Page, name: string) => page.getByRole("group", { name: "Choose an action" }).locator("button:not([disabled])", { hasText: new RegExp(`^${name}`) });
 const visible = (locator: ReturnType<Page["locator"]>) => locator.isVisible().catch(() => false);
 
+test("the Train hub opens the mode it names", async ({ page }) => {
+  await prepareGuest(page);
+  await page.goto("/train/full-shoe/?mode=checkout");
+  await expect(page.getByRole("radio", { name: /^Checkout/ })).toBeChecked();
+  await page.goto("/train/full-shoe/?mode=coached");
+  await expect(page.getByRole("radio", { name: /^Coached/ })).toBeChecked();
+});
+
 test("a checkout stays silent, finishes the shoe, and files its report", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "One desktop shoe is enough.");
   test.setTimeout(90_000);

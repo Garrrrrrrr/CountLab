@@ -38,11 +38,12 @@ export function BetDock({ game, busy, onChip, onUndo, onClear, onRepeat, onDeal,
         </span>
         <span className="tnum whitespace-nowrap font-semibold">{money(game.totalBet)} <span className="font-normal text-ink-3">bet{seatsWithBets > 1 ? ` on ${seatsWithBets} seats` : ""}</span></span>
       </div>
-      <div role="group" aria-label="Chips" className="scrollbar-none -mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 py-0.5 xs:justify-between">
+      {/* Seven equal columns: every chip stays in view, up to 44px each, on the narrowest dock. */}
+      <div role="group" aria-label="Chips" className="grid grid-cols-7 justify-items-center gap-1 py-0.5">
         {chipOptions.map((value, index) => (
           <button key={value} type="button" disabled={busy || !game.canAdd(value)} onClick={() => onChip(value)} aria-label={`Add a ${chipLabel(value)} chip`} aria-keyshortcuts={String(index + 1)}
-            className="relative grid h-11 w-11 shrink-0 snap-start place-items-center rounded-full transition active:scale-95 disabled:opacity-30">
-            <ChipFace value={value} className="h-11 w-11 text-[0.625rem]" />
+            className="relative grid aspect-square w-full max-w-11 place-items-center rounded-full transition active:scale-95 disabled:opacity-30">
+            <ChipFace value={value} className="h-full w-full text-[0.625rem]" />
           </button>
         ))}
       </div>

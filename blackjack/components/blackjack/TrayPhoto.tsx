@@ -57,9 +57,11 @@ export function TrayPhoto({ photo, label = "Discard tray", width, className, zoo
       <div className="relative overflow-hidden rounded-2xl border border-line bg-[#2b2e33]" style={style}>
         {body}
         {photo && zoomable && (
-          <button type="button" onClick={() => setZoom(true)} aria-label="Enlarge tray photo"
-            className="absolute bottom-1.5 right-1.5 grid h-8 w-8 place-items-center rounded-lg bg-black/45 text-white backdrop-blur-sm hover:bg-black/60">
-            <Expand size={15} aria-hidden />
+          // The whole photo is the target, so it is easy to hit on a phone; the corner icon only hints at it.
+          <button type="button" onClick={() => setZoom(true)} aria-label="Enlarge tray photo" className="group absolute inset-0 cursor-zoom-in">
+            <span className="absolute bottom-1.5 right-1.5 grid h-8 w-8 place-items-center rounded-lg bg-black/45 text-white backdrop-blur-sm group-hover:bg-black/60">
+              <Expand size={15} aria-hidden />
+            </span>
           </button>
         )}
       </div>
