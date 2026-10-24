@@ -20,7 +20,9 @@ export type CardSize = keyof typeof CARD_SIZES;
 export function PlayingCard({ card, faceDown = false, size = "md", className, style, animate = false, delay = 0 }: {
   card?: Card; faceDown?: boolean; size?: CardSize; className?: string; style?: CSSProperties; animate?: boolean; delay?: number;
 }) {
-  const sizing = { "--card-w": `${CARD_SIZES[size]}px`, width: "var(--card-w)", height: "calc(var(--card-w) * 1.4)", fontSize: "calc(var(--card-w) * 0.3)", animationDelay: delay ? `${delay}ms` : undefined, ...style } as CSSProperties;
+  // The size falls back to `size` unless a class sets --card-w, so `sm:[--card-w:76px]` can make a card responsive.
+  const base = `${CARD_SIZES[size]}px`;
+  const sizing = { width: `var(--card-w, ${base})`, height: `calc(var(--card-w, ${base}) * 1.4)`, fontSize: `calc(var(--card-w, ${base}) * 0.3)`, animationDelay: delay ? `${delay}ms` : undefined, ...style } as CSSProperties;
   if (faceDown || !card) {
     return (
       <div role="img" aria-label="Face-down card" style={sizing} className={cx("relative shrink-0 rounded-[0.14em] p-[0.12em] shadow-[0_6px_16px_-6px_rgb(0_0_0/0.5)]", animate && "animate-deal", "bg-[#f7f4ec]", className)}>

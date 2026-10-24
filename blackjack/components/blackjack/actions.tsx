@@ -67,6 +67,7 @@ export function ActionPad({ onAnswer, available = ["H", "S", "D", "P", "R"], dis
             disabled={!enabled}
             onClick={() => onAnswer(action)}
             aria-keyshortcuts={ACTION_KEY[action]}
+            aria-label={ACTION_NAME[action]}
             className={cx(
               "relative flex h-14 flex-col items-center justify-center rounded-2xl text-[0.9375rem] font-bold transition active:scale-[0.97] sm:h-16",
               ACTION_FILL[action],
@@ -76,7 +77,9 @@ export function ActionPad({ onAnswer, available = ["H", "S", "D", "P", "R"], dis
               disabled && available.includes(action) && highlight !== action && "opacity-50",
             )}
           >
-            <span className="text-[0.8125rem] leading-none xs:text-[0.9375rem]">{ACTION_NAME[action]}</span>
+            <span className="text-[0.8125rem] leading-none xs:text-[0.9375rem]">
+              {action === "R" ? <><span className="min-[360px]:hidden">Surr.</span><span className="hidden min-[360px]:inline">Surrender</span></> : ACTION_NAME[action]}
+            </span>
             <span className="mt-1 hidden font-mono text-[0.625rem] font-medium uppercase opacity-60 [@media(hover:hover)]:block">{ACTION_KEY[action]}</span>
           </button>
         );

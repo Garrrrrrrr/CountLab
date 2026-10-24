@@ -1,24 +1,8 @@
-/**
- * A cell's play across the true-count range, for the hand actually dealt.
- *
- * `countLadder` in lib/strategy answers for an original two-card hand at a
- * table that offers surrender. A drill also asks about hands that cannot
- * surrender or double (a three-card 16 against a 10), and those switch at the
- * stand index, not at the surrender threshold. This is the same loop with the
- * hand's permissions passed through to `cellDecision`, so it stays the
- * engine's answer at every count.
- */
-import { cellDecision, takeInsurance, type CellRef, type LadderSegment, type Permissions, type TableRules } from "@/lib/strategy";
+import { countLadder, takeInsurance, type CellRef, type LadderSegment, type Permissions, type TableRules } from "@/lib/strategy";
 
+/** A cell's play across the true-count range for the hand actually dealt (with its own permissions). */
 export function handLadder(rules: TableRules, cell: CellRef, permissions: Permissions, min = -6, max = 10): LadderSegment[] {
-  const segments: LadderSegment[] = [];
-  for (let tc = min; tc <= max; tc += 1) {
-    const decision = cellDecision(rules, cell, tc, permissions);
-    const last = segments[segments.length - 1];
-    if (last && last.action === decision.action && last.fallback === decision.fallback) last.to = tc;
-    else segments.push({ from: tc, to: tc, action: decision.action, fallback: decision.fallback });
-  }
-  return segments;
+  return countLadder(rules, cell, min, max, permissions);
 }
 
 /** Insurance across the range: decline, then take from the index up. */

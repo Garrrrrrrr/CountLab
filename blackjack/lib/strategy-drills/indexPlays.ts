@@ -15,20 +15,15 @@
  */
 import type { Action, Card } from "@/lib/blackjack/types";
 import type { Mistake } from "@/lib/statistics/storage";
-import { ACTION_NAMES, cellDecision, decideHand, explainDecision, handLabel, dealerLabel, indexList, rowLabel, signedCount, surrenderOffered, takeInsurance, thresholdPhrase, type CellRef, type Decision, type IndexEntry, type Permissions, type TableRules } from "@/lib/strategy";
+import { ACTION_NAMES, CORE_INDEX_COUNT, cellDecision, decideHand, explainDecision, handLabel, dealerLabel, indexList, rowLabel, signedCount, surrenderOffered, takeInsurance, thresholdPhrase, type CellRef, type Decision, type IndexEntry, type Permissions, type TableRules } from "@/lib/strategy";
 import { legalActions } from "./basic";
 import { drawnHand, insuranceHand, isCard, pick, ranksText, sameCell, twoCardHand, upcardFor, type Rng } from "./cards";
 
 export type IndexSet = "core" | "all";
 export const indexSetOf = (value: unknown): IndexSet => (value === "all" ? "all" : "core");
 
-/**
- * `indexList` ranks the Illustrious 18 and the Fab 4 first, with priorities
- * 0–21 (their place in the learning order in lib/strategy/chart.ts); every
- * other index is ranked from 22 up. So "priority below 22" is exactly the
- * I18 + Fab 4 that apply under the reader's rules.
- */
-export const CORE_PRIORITY_LIMIT = 22;
+/** `indexList` ranks the Illustrious 18 and the Fab 4 first; this is where they end. */
+export const CORE_PRIORITY_LIMIT = CORE_INDEX_COUNT;
 
 export type IndexSide = "index" | "basic";
 export type IndexAnswer = Action | "I" | "N";

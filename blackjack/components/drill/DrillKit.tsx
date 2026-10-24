@@ -43,7 +43,7 @@ export function DrillSetup({ title, intro, children, onStart, startLabel = "Star
       <h1 className="text-[1.625rem] leading-tight sm:text-3xl">{title}</h1>
       <p className="mt-1.5 max-w-2xl text-[0.9375rem] leading-6 text-ink-2">{intro}</p>
       {resume && <div className="mt-5">{resume}</div>}
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="space-y-5">
           {children}
           <Button size="lg" className="hidden min-w-48 lg:inline-flex" onClick={onStart}>{startLabel}</Button>
@@ -112,8 +112,8 @@ export const formatClock = (ms: number) => {
 export function PlayFrame({ title, onExit, progress, clock, streak, children, className }: {
   title: string;
   onExit: () => void;
-  /** e.g. { done: 3, total: 20 } */
-  progress?: { done: number; total: number };
+  /** e.g. { done: 3, total: 20 }; `unit` names what is counted for screen readers ("Question", "Card"). */
+  progress?: { done: number; total: number; unit?: string };
   clock?: number;
   streak?: number;
   children: ReactNode;
@@ -134,7 +134,7 @@ export function PlayFrame({ title, onExit, progress, clock, streak, children, cl
           <div className="flex shrink-0 items-center gap-3 text-sm font-medium text-ink-2">
             {streak !== undefined && streak > 1 && <span className="inline-flex items-center gap-1 text-brand-text" aria-label={`${streak} in a row`}><Flame size={16} aria-hidden />{streak}</span>}
             {clock !== undefined && <span className="tnum inline-flex items-center gap-1" aria-label="Time"><Timer size={16} aria-hidden />{formatClock(clock)}</span>}
-            {progress && <span className="tnum" aria-label={`Question ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`}>{Math.min(progress.done + 1, progress.total)}/{progress.total}</span>}
+            {progress && <span className="tnum" aria-label={`${progress.unit ?? "Question"} ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`}>{Math.min(progress.done + 1, progress.total)}/{progress.total}</span>}
           </div>
         </div>
         {progress && (

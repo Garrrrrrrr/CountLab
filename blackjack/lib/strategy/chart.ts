@@ -8,7 +8,7 @@
  */
 import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
 import type { Action } from "@/lib/blackjack/types";
-import { basicPlay, basicSurrenders, cellDecision, playIndex, signedCount, surrenderRule, type ActiveIndex, type CellRef, type Resolved, type Section, type SurrenderThreshold } from "./engine";
+import { basicPlay, basicSurrenders, cellDecision, playIndex, signedCount, surrenderRule, type ActiveIndex, type CellRef, type Permissions, type Resolved, type Section, type SurrenderThreshold } from "./engine";
 import { DEALERS, INSURANCE_INDEX, type Dealer, type IndexSource } from "./indices";
 import { effectiveSurrender, type TableRules } from "./rules";
 
@@ -92,11 +92,16 @@ function buildSurrenderTable(rules: TableRules): SurrenderTable | null {
 
 export interface LadderSegment { from: number; to: number; action: Action; fallback?: Action }
 
-/** A cell's two-card play from `min` to `max`, merged into runs. The ends are open: "−6" means "−6 or lower". */
-export function countLadder(rules: TableRules, ref: CellRef, min = -6, max = 10): LadderSegment[] {
+/**
+ * A cell's play from `min` to `max`, merged into runs. The ends are open: "−6"
+ * means "−6 or lower". Defaults to an original two-card hand; pass the hand's
+ * permissions for one that has drawn or split (it switches at the stand index,
+ * not at the surrender threshold).
+ */
+export function countLadder(rules: TableRules, ref: CellRef, min = -6, max = 10, permissions?: Permissions): LadderSegment[] {
   const segments: LadderSegment[] = [];
   for (let tc = min; tc <= max; tc++) {
-    const decision = cellDecision(rules, ref, tc);
+    const decision = cellDecision(rules, ref, tc, permissions);
     const last = segments[segments.length - 1];
     if (last && last.action === decision.action && last.fallback === decision.fallback) last.to = tc;
     else segments.push({ from: tc, to: tc, action: decision.action, fallback: decision.fallback });
