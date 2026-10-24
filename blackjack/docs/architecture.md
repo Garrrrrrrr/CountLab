@@ -22,8 +22,11 @@ features/                  one folder per page or tool: home, train (+ each dril
                            legal, admin, misc
 lib/
   strategy/                the only decision engine (see below)
-  blackjack/               shoe, hand values, Hi-Lo, counting drills, full-shoe
-                           grading, journal, calculator models and coefficients
+  blackjack/               shoe, hand values, Hi-Lo, counting drills, tray photos,
+                           journal, calculator models and coefficients
+  full-shoe/               the full-shoe table: round engine, grading (bets, plays,
+                           count checks) and the session controller
+  strategy-drills/         question generators and grading for the strategy drills
   statistics/              drill history, settings and progress storage + sync
   supabase/                auth provider, per-account storage scope, sync
   analytics/               privacy-minimized first-party analytics client
