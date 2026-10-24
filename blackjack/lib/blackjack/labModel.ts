@@ -1,8 +1,10 @@
 import { DEFAULT_ADVANTAGE_RULES, zeroBetsBelow, type AdvantageRules, type RampPoint } from "./advantage";
 import { GAME_OPTIONS } from "./coefficients";
-import { analyzeCvcx, createOptimalRamp, type CvcxPerformance, type CvcxScenario } from "./cvcx";
-import { AUDITED_RULES, type LabConfig } from "./labConfig";
-import { sumRuleAdjustment, type RuleAdjustmentFlags } from "./ruleAdjustments";
+import { analyzeCvcx, createOptimalRamp, goalByHorizonProbability, resultPercentile, riskSizedUnit, type CvcxPerformance, type CvcxScenario } from "./cvcx";
+import type { CvcxTemplate } from "./cvcxLibrary";
+import { AUDITED_RULES, normalizeConfig, OPTIMAL_RAMP_NAME, PRESET_NAMES, presetRamp, type LabConfig } from "./labConfig";
+import { sameRamp } from "./rampSteps";
+import { isEstimated, sumRuleAdjustment, type RuleAdjustmentFlags } from "./ruleAdjustments";
 import type { SessionSimulationConfig } from "./sessionSimulation";
 import type { SimulationTemplate } from "./simulationLibrary";
 
@@ -199,3 +201,200 @@ export const sameSimulationSetup = (first: SessionSimulationConfig, second: Sess
 /** An existing simulator template with this name and setup, so repeated hand-offs don't fill the library with copies. */
 export const reusableSimulationTemplate = (templates: readonly SimulationTemplate[], config: SessionSimulationConfig, name: string) =>
   templates.find((template) => template.name === name && sameSimulationSetup(template.config, config));
+
+/* ------------------------------------------------------------------------ */
+/* The whole page's pricing                                                  */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * Everything the Calculator shows for one set of inputs, from one computation:
+ * the played ramp priced in the audited engine, the Kelly-weighted ramp for the
+ * same game, the unit the bankroll supports, and the expert figures. It is the
+ * computation the Game & Bankroll Lab ran in its page hook, moved here so the
+ * page and the tests read the same function.
+ */
+export function priceLab(config: LabConfig) {
+  const rules = labRules(config);
+  const flags = labRuleFlags(config);
+  const activeRamp = playedRamp(config);
+  const scenario = labScenario(config, rules);
+  const result = analyzeCvcx(scenario, activeRamp, config.baseBet);
+  const optimalRamp = createOptimalRamp(rules, config.maxSpread, config.wongInAt, config.chipIncrement, extraRuleAdjustment(config));
+  const noBets = bettingNothing(activeRamp);
+  const sizedUnit = riskSizedUnit(scenario, activeRamp);
+  return {
+    rules,
+    activeRamp,
+    scenario,
+    result,
+    optimalRamp,
+    /** The optimal ramp's SCORE, so its trade-off against the current ramp shows before anyone builds it. */
+    optimalScore: analyzeCvcx(scenario, optimalRamp, config.baseBet).cScore,
+    usingOptimal: sameRamp(activeRamp, optimalRamp),
+    /** The unit the optimal ramp would suit at the target risk; shown as guidance, never applied by the ramp builder. */
+    optimalUnit: riskSizedUnit(scenario, optimalRamp),
+    /** The largest unit (unrounded) that keeps this ramp at the target risk of ruin with this bankroll. */
+    riskSizedUnit: sizedUnit,
+    noBets,
+    estimated: isEstimated(flags),
+    /** The full rule adjustment, for display; the engine receives only the part it cannot derive. */
+    ruleAdjustment: sumRuleAdjustment(flags),
+    fit: bankrollFit({ bankroll: config.bankroll, unit: config.baseBet, required: result.requiredBankroll, evPerRound: result.evPerRound, riskSizedUnit: sizedUnit, noBets }),
+    staleOptimal: config.rampName === OPTIMAL_RAMP_NAME && !sameRamp(config.ramp, optimalRamp),
+    figures: expertFigures(result, config.baseBet),
+  };
+}
+
+export type LabPricing = ReturnType<typeof priceLab>;
+
+/**
+ * The comparison figures CVCX users read, from one priced result: units won
+ * per hour and per 100 rounds, DI (1000 × EV ÷ SD per round, the square root
+ * of SCORE) and SCORE. DI and SCORE only mean something with an edge.
+ */
+export function expertFigures(result: CvcxPerformance, unit: number) {
+  const edge = result.evPerRound > 0 && result.sdPerRound > 0;
+  return {
+    unitsPerHour: unit > 0 ? result.hourlyEv / unit : NaN,
+    unitsPer100: unit > 0 ? result.evPer100 / unit : NaN,
+    desirabilityIndex: edge ? (1000 * result.evPerRound) / result.sdPerRound : NaN,
+    score: edge ? result.cScore : NaN,
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Trip outlook                                                              */
+/* ------------------------------------------------------------------------ */
+
+/** Nested ranges of trip results, by the share of trips that land inside each. */
+export const TRIP_RANGES = [
+  { label: "2 in 3 trips", z: 1 },
+  { label: "9 in 10 trips", z: 1.6448536 },
+  { label: "19 in 20 trips", z: 1.959964 },
+] as const;
+
+/** Trip-result percentiles, from a bad trip to a good one. */
+export const TRIP_PERCENTILES = [
+  { percentile: 5, z: -1.6448536, label: "Bad trip", detail: "1 in 20 do worse" },
+  { percentile: 25, z: -0.6744898, label: "Below par", detail: "1 in 4 do worse" },
+  { percentile: 50, z: 0, label: "Middle", detail: "half do better" },
+  { percentile: 75, z: 0.6744898, label: "Above par", detail: "1 in 4 do better" },
+  { percentile: 95, z: 1.6448536, label: "Good trip", detail: "1 in 20 do better" },
+] as const;
+
+/**
+ * What one trip of `config.hours` looks like. The normal approximation the Lab
+ * and the Trip Planner always used, built on the Lab's own priced result so the
+ * hole-card and doubling adjustments carry through.
+ */
+export function tripOutlook(config: LabConfig, result: CvcxPerformance) {
+  const rounds = config.handsPerHour * config.hours;
+  const variance = result.sdPerRound ** 2;
+  const expected = result.tripEv;
+  const sd = result.standardDeviation;
+  return {
+    rounds,
+    expected,
+    standardDeviation: sd,
+    endingBankroll: config.bankroll + expected,
+    ranges: TRIP_RANGES.map((range) => ({ ...range, low: expected - range.z * sd, high: expected + range.z * sd })),
+    percentiles: TRIP_PERCENTILES.map((point) => ({ ...point, value: expected + point.z * sd })),
+    chanceAhead: result.chanceOfProfit,
+    chanceOfLoss: 1 - result.chanceOfProfit,
+    riskOfRuin: result.tripRiskOfRuin,
+    /** Chance the trip ends down at least `loss` dollars. */
+    lossAtLeast: (loss: number) => resultPercentile(-Math.abs(loss), expected, sd),
+    /** Chance the trip is up `goal` dollars at some point, not only at the end. */
+    reachesGoal: (goal: number) => goalByHorizonProbability(goal, result.evPerRound, variance, rounds),
+  };
+}
+
+export type TripOutlook = ReturnType<typeof tripOutlook>;
+
+/* ------------------------------------------------------------------------ */
+/* Suggest a ramp (the Bet Spread Recommender, on the Lab's own game)        */
+/* ------------------------------------------------------------------------ */
+
+export type SuggestionStatus = "met" | "risk-limited" | "minimum-too-high";
+
+export interface SpreadSuggestion {
+  key: string;
+  name: string;
+  kind: "preset" | "optimal" | "yours";
+  /** The seventeen-point ramp to apply; counts below the sit-out point stay in it and are masked when played. */
+  ramp: RampPoint[];
+  /** The whole-dollar unit chosen for the targets. */
+  baseBet: number;
+  minBet: number;
+  maxBet: number;
+  status: SuggestionStatus;
+  /** Meets both the hourly goal and the risk ceiling. */
+  feasible: boolean;
+  /** Keeps risk of ruin at or under the target. */
+  withinRisk: boolean;
+  result: CvcxPerformance;
+}
+
+/**
+ * Candidate spreads for this game, bankroll and risk tolerance. Each gets the
+ * smallest whole-dollar unit (at least the table minimum) that reaches the
+ * hourly goal, capped by the largest unit the risk ceiling allows: the Bet
+ * Spread Recommender's rule, priced on the Lab's actual game instead of a
+ * fixed one (its rules, play mode, hands per count, sitting out and pace).
+ *
+ * The recommendation is the candidate that meets both targets with the
+ * smallest top bet (the least attention at the table), as the recommender
+ * chose. When none can, it is the one that comes closest to the goal within
+ * the risk ceiling (the most per hour); the recommender used to pick the
+ * smallest top bet there too, which could recommend the slowest earner.
+ */
+export function suggestSpreads(config: LabConfig, { tableMinimum, hourlyGoal }: { tableMinimum: number; hourlyGoal: number }) {
+  const rules = labRules(config);
+  const scenario = labScenario(config, rules);
+  const sitOut = (ramp: RampPoint[]) => (config.wongInAt === null ? ramp : zeroBetsBelow(ramp, config.wongInAt));
+  const candidates = [
+    ...PRESET_NAMES.map((name) => ({ key: name, name: `${name.replace("-", "–")} spread`, kind: "preset" as const, ramp: presetRamp(name) })),
+    { key: "optimal", name: "Kelly-weighted ramp", kind: "optimal" as const, ramp: createOptimalRamp(rules, config.maxSpread, config.wongInAt, config.chipIncrement, extraRuleAdjustment(config)) },
+    { key: "yours", name: "Your ramp", kind: "yours" as const, ramp: config.ramp },
+  ].filter((candidate, index, all) => all.findIndex((other) => sameRamp(sitOut(other.ramp), sitOut(candidate.ramp))) === index);
+
+  const minimumWhole = Math.max(1, Math.ceil(tableMinimum - 1e-9));
+  const suggestions: SpreadSuggestion[] = candidates.map((candidate) => {
+    const played = sitOut(candidate.ramp);
+    const perDollar = analyzeCvcx(scenario, played, 1);
+    const requiredRaw = perDollar.evPerRound > 0 ? Math.max(0, hourlyGoal) / (perDollar.evPerRound * config.handsPerHour) : Infinity;
+    const allowedRaw = riskSizedUnit(scenario, played);
+    const requiredWhole = Number.isFinite(requiredRaw) ? Math.max(minimumWhole, Math.ceil(requiredRaw - 1e-9)) : Infinity;
+    const allowedWhole = Number.isFinite(allowedRaw) ? Math.floor(allowedRaw + 1e-9) : Number.MAX_SAFE_INTEGER;
+    let baseBet: number, status: SuggestionStatus;
+    if (allowedWhole < minimumWhole) { baseBet = minimumWhole; status = "minimum-too-high"; }
+    else if (requiredWhole <= allowedWhole) { baseBet = requiredWhole; status = "met"; }
+    else { baseBet = allowedWhole; status = "risk-limited"; }
+    const units = played.map((point) => point.units).filter((value) => value > 0);
+    return {
+      ...candidate,
+      baseBet,
+      minBet: units.length ? Math.min(...units) * baseBet : 0,
+      maxBet: units.length ? Math.max(...units) * baseBet : 0,
+      status,
+      feasible: status === "met",
+      withinRisk: status !== "minimum-too-high",
+      result: analyzeCvcx(scenario, played, baseBet),
+    };
+  });
+  const recommended = suggestions
+    .filter((suggestion) => suggestion.withinRisk && suggestion.maxBet > 0)
+    .sort((a, b) => Number(b.feasible) - Number(a.feasible) || (a.feasible ? a.maxBet - b.maxBet : b.result.hourlyEv - a.result.hourlyEv))[0];
+  return { suggestions, recommended };
+}
+
+/* ------------------------------------------------------------------------ */
+/* Saved scenarios side by side                                              */
+/* ------------------------------------------------------------------------ */
+
+/** Prices a saved scenario exactly as loading it into the Calculator would. */
+export function priceTemplate(template: CvcxTemplate) {
+  const config = normalizeConfig(template.config);
+  const pricing = priceLab(config);
+  return { id: template.id, name: template.name, config, pricing, trip: tripOutlook(config, pricing.result) };
+}

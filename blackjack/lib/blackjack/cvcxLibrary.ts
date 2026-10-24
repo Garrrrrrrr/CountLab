@@ -161,6 +161,20 @@ export const cvcxLibrary = {
     write(TEMPLATES_KEY, [updated, ...templates.filter((template) => template.id !== id)], store);
     return updated;
   },
+  /**
+   * Gives a saved scenario a new name and nothing else: its inputs, id, date
+   * and place in the list stay, so a rename never bumps it ahead of newer work.
+   * A blank name or an unknown id changes nothing.
+   */
+  renameTemplate(id: string, name: string, store?: StorageLike) {
+    const trimmed = name.trim();
+    const templates = this.templates(store);
+    const existing = templates.find((template) => template.id === id);
+    if (!existing || !trimmed) return undefined;
+    const renamed: CvcxTemplate = { ...existing, name: trimmed };
+    write(TEMPLATES_KEY, templates.map((template) => (template.id === id ? renamed : template)), store);
+    return renamed;
+  },
   deleteTemplate(id: string, store?: StorageLike) {
     write(TEMPLATES_KEY, this.templates(store).filter((template) => template.id !== id), store);
   },
