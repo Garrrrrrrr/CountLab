@@ -1,112 +1,71 @@
 # CountLab architecture
 
-## Current application boundary
+CountLab is a Next.js static export (`output: "export"`) served from GitHub
+Pages at countlab.ca. There is no application server: every page is
+prerendered HTML plus client components, accounts and sync run against
+Supabase from the browser, and a hand-written service worker makes visited
+pages and the discard-tray photos work offline.
 
-CountLab remains the existing Next.js application in this directory. A second
-scaffold would duplicate navigation, persistence, and already-working trainers.
-New work therefore evolves the current app incrementally while preserving its
-static-export deployment.
-
-## Current layers
+## Layout
 
 ```text
-app/                         Next.js static-export routing, layout, metadata
-components/                  route-level client components and UI primitives
-  ui.tsx                     the shared kit: panels, fields, segmented controls,
-                             help tips, sheets, toasts, live announcements
-  AppShell.tsx               grouped sidebar, phone bottom bar, search, breadcrumbs
-  drill/                     the drill kit: setup, play frame, feedback, summary
-  drills/counting/           running count, true count, deck estimation, benchmark
-  drills/strategy/           basic strategy, deviations, H17 chart drills
-  cvcx/                      Game & Bankroll Lab (game, bankroll, ramp, results)
-  journal/                   Session Journal (log sheet, sessions, cash, venues)
-  reference/                 strategy and index reference charts
+app/                       one real route per page (page.tsx renders a feature),
+                           legacy URLs as tiny redirect pages, metadata, sitemap
+components/
+  ui/                      the kit: Button, Card, Segmented, Stepper, Sheet, toast…
+  blackjack/               PlayingCard, ActionPad, NumberPad, TrayPhoto
+  drill/DrillKit.tsx       Setup → Play (full screen) → Summary frame for drills
+  shell/                   AppShell (phone tab bar, desktop sidebar, focus mode),
+                           consent bar, update prompt, password-recovery sheet
+features/                  one folder per page or tool: home, train (+ each drill),
+                           charts, calculator, journal, progress, settings, auth,
+                           legal, admin, misc
 lib/
-  routes.ts                  NAV_GROUPS: the one list behind the sidebar, search,
-                             breadcrumbs and page titles
-  blackjack/                 blackjack rules, deviations, EV, simulation
-  ddm/                       Double Down Madness engine and exact EV
-  uth/                       Ultimate Texas Hold'em evaluator
-  chaseFlush/                Chase the Flush solver bridge
-  statistics/                persistence repository and analytics
-workers/                     thin worker protocols around pure simulation
-docs/                        methodology, reference analysis, specifications
+  strategy/                the only decision engine (see below)
+  blackjack/               shoe, hand values, Hi-Lo, counting drills, full-shoe
+                           grading, journal, calculator models and coefficients
+  statistics/              drill history, settings and progress storage + sync
+  supabase/                auth provider, per-account storage scope, sync
+  analytics/               privacy-minimized first-party analytics client
+  routes.ts                the site map: nav, titles, descriptions, redirects
+workers/                   web workers for heavy calculations
+e2e/                       Playwright specs against the static export
+docs/design-system.md      tokens, components and the mobile rules every page follows
 ```
 
-The application intentionally keeps page components together rather than
-maintaining a second, speculative `features/` tree. Domain code is organized by
-game under `lib/`, while `components/` owns presentation and interaction.
+## One strategy engine
 
-## Core contracts
+`lib/strategy` answers every blackjack decision on the site. Charts, drills
+and the full-shoe table call it, so they cannot disagree.
 
-```ts
-interface CountingSystem {
-  id: string;
-  name: string;
-  tag(card: Card): number;
-  trueCount(runningCount: number, decksRemaining: number, method: TrueCountMethod): number;
-}
+- **Basic strategy** comes from the total-dependent grids in
+  `lib/blackjack/strategyTables.ts` (1, 2 and 4–8 decks × H17/S17), whose
+  composite codes (`Ds`, `Ph`, `Rh`…) resolve against the table's rules in
+  `lib/blackjack/strategyChart.ts`. `lib/strategy/audit.test.ts` holds every
+  clear-cut cell of 180 rule sets to an exact finite-deck EV calculation
+  (`blackjack-simulator/basic_strategy/`).
+- **Index plays** live in `lib/strategy/indices.ts` as plain data: "play X at a
+  true count at or above N" (or at or below). A row is used only where it
+  changes basic strategy for the reader's rules; each names its source.
+- **Surrender** is one threshold per hand ("surrender at or above N"), with
+  Wong's early-surrender table replacing the ten column under ES10.
+- `engine.ts` decides in table order: insurance, surrender, then the play.
+  `chart.ts` turns that into chart tables, count ladders and the index list.
 
-interface BetRamp {
-  id: string;
-  unit: number;
-  points: Array<{ trueCount: number; units: number }>;
-}
+## Data and sync
 
-interface SimulationRequest {
-  rules: BlackjackRules;
-  countingSystemId: string;
-  ramp: BetRamp;
-  rounds: number;
-  roundsPerHour: number;
-  seed?: string;
-  detail: "summary" | "sampled-shoes";
-}
-```
-
-`BlackjackRules` is the sole rule authority. It must describe hole-card and
-peek behavior separately, because American peek, no-peek, ENHC, and OBO settle
-doubled/split wagers differently.
-
-## Engine principles
-
-- Pure functions own card math, legal actions, strategy, settlement, and
-  aggregation. React owns presentation only.
-- Randomness enters through an injected RNG. Seeded test runs are reproducible.
-- The simulator returns event/result data; it does not call browser storage.
-- A bounded progress callback is the only hot-loop side effect.
-- Summary accumulators use numerically stable online moments. Confidence
-  intervals use the reported sample size and standard error.
-- Detailed replay is opt-in and bounded. Million-round runs never retain every
-  card or hand in React memory.
-- Workers communicate with versioned request/progress/result/cancel messages.
-- Cancellation is checked between batches and shoes.
-
-## Strategy architecture
-
-Basic strategy is a rule-indexed decision engine returning a preferred action,
-legal fallback, and explanation. Deviations decorate that decision only when
-their rule predicate and count condition match. UI components never contain
-strategy matrices or count thresholds.
-
-Action legality is resolved before coaching. For example, a three-card soft 18
-cannot be marked wrong for standing merely because the two-card preferred play
-is double; the engine compares against its legal fallback.
-
-## Persistence
-
-Browser persistence is accessed through repositories with schema versions and
-migrations. Attempt events are append-oriented and contain feature, scenario,
-answer, correctness, latency, timestamp, and optional confidence. Derived
-statistics are recomputable and are not the only stored truth.
+All user data goes through `lib/statistics/storage.ts`, `lib/blackjack/journal.ts`
+and the other library modules, which write to an account-scoped
+`localStorage` namespace (`lib/supabase/accountStorage.ts`) and sync to Supabase
+in the background for signed-in readers. Guests use the "guest" scope; signing
+in switches scope and never merges guest data unless the reader imports it in
+Settings. Storage keys and record shapes are unchanged from earlier versions,
+so existing history, journals and settings carry over.
 
 ## Verification
 
-- Unit tests cover cards, hands, rules, legal actions, strategy, deviations,
-  ramps, settlement, seeded RNG, and accumulator math.
-- Golden tests cover known basic-strategy and payout cases.
-- Simulation tests use deterministic short shoes and statistical sanity bounds;
-  stochastic tests never assert a guessed exact EV.
-- Browser checks exercise keyboard and pointer flows, mobile layouts, worker
-  progress/cancel, persistence, and console errors.
-- Each analytical view links to methodology and displays exact assumptions.
+- `npm test`: unit tests for the engines, storage, sync and the EV audit.
+- `npm run test:e2e`: Playwright against the built export on desktop,
+  iPhone SE and iPhone 13 viewports (set `PLAYWRIGHT_CHROMIUM_PATH` to use a
+  preinstalled Chromium).
+- The deploy workflow runs both, then re-checks the live site's offline worker.

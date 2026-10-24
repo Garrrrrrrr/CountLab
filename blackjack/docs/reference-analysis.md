@@ -1,5 +1,7 @@
 # Reference workflow analysis
 
+> **October 2026:** the index catalogs discussed below (`h17Pro.ts`, `s17Pro.ts`, `earlySurrender.ts`, `resolveDeviation`) were replaced by the plain index table in `lib/strategy/indices.ts` and the resolver in `lib/strategy/engine.ts`. The measurements here are still valid background (for example why the starred stand indices never beat late surrender); the code references are historical.
+
 Observed on 2026-08-13 and 2026-08-14 through an external product's normal
 authenticated simulator, results tracker, and game-directory UI. This document records product
 behavior only. It does not reproduce source code, branding, copy, or assets.

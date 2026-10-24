@@ -1,5 +1,7 @@
 # Game directory implementation plan
 
+> **October 2026:** the directory pages were removed from the site in the remake. The tables, migration, import scripts and private sync workflow described here remain, so the data can be kept current.
+
 Prepared September 22, 2026. Scope: implementation design and delivery notes.
 
 Implementation status: the directory UI, admin workflows, importer, database migration, and tests described below are now implemented in the repository. The migration and staged CBJN data still require review and deployment to the target Supabase project before records can be published.

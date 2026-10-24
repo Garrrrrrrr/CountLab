@@ -1,15 +1,21 @@
 # CountLab
 
-The blackjack Hi-Lo trainer hosted at `countlab.ca`. Accounts and per-user
-data run on Supabase; see "Accounts (Supabase)" below before your first
-`npm run dev`.
+The Hi-Lo card-counting trainer hosted at `countlab.ca`: counting, deck
+estimation and true-count drills built on real discard-tray photos; basic
+strategy, index-play and chart-recall drills; a full-shoe table with coached
+practice and a silent graded checkout; strategy and index charts for any
+rules; a bankroll calculator; and a session journal.
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Run `npm test`, `npm run lint`, `npm run build`, then `npm run test:e2e` before release. Browser tests serve the actual static export on port 3100; build first. Install Chromium with `npx playwright install chromium` in CI (local tests use Chrome). Set `COUNTLAB_E2E_DEV=1` to test the development server instead. The production build is a static export in `out/`, deployed by this repo's own GitHub Pages workflow (`.github/workflows/deploy.yml`) to `countlab.ca`.
+Run `npm test`, `npm run lint`, `npm run build`, then `npm run test:e2e` before release. Browser tests serve the actual static export on port 3100; build first. CI installs Chromium with `npx playwright install chromium`; locally the suite uses Chrome, or any Chromium you point `PLAYWRIGHT_CHROMIUM_PATH` at. Set `COUNTLAB_E2E_DEV=1` to test the development server instead, or `COUNTLAB_E2E_URL` to test a server you started yourself. The production build is a static export in `out/`, deployed by this repo's own GitHub Pages workflow (`.github/workflows/deploy.yml`) to `countlab.ca`.
+
+Read `docs/design-system.md` before building a page and `docs/architecture.md`
+for how the pieces fit, in particular the single strategy engine in
+`lib/strategy`.
 
 ## Accounts (Supabase)
 
@@ -17,7 +23,11 @@ CountLab is a fully static export with no server, so auth runs entirely
 client-side against Supabase (`@supabase/supabase-js`) — email/password
 sign-up and sign-in, no server-side session needed. `lib/supabase/client.ts`
 builds the browser client from two public env vars, and
-`lib/supabase/AuthProvider.tsx` + `components/AuthGate.tsx` allow public discovery and reference routes, and offer account or guest access to the workspace. Admin access requires an authorized account. Guest history stays separate until explicitly imported from Settings.
+`lib/supabase/AuthProvider.tsx` provides the session. Everything works without
+an account (guest data stays on the device); the shell only waits for sign-in
+to settle before showing pages that read the reader's own data. Admin access
+requires an authorized account. Guest history stays separate until explicitly
+imported from Settings.
 
 Per-account data (trainer settings, drill session history, bankroll/Kelly
 journal) is cached in `localStorage` for instant reads and synced to Supabase
@@ -72,58 +82,15 @@ statement in `supabase/schema.sql`, or directly:
 insert into admin_users (user_id) select id from auth.users where email = 'you@example.com';
 ```
 
-The nav only shows the "Analytics" link once `is_admin()` returns true for
-the signed-in user.
+Settings shows a "Product analytics" link once `is_admin()` returns true for
+the signed-in user; the dashboard lives at `/admin`.
 
-### Game directory
+### Game directory (data only)
 
-`/directory/` shows published records to everyone and also shows private drafts
-to signed-in users on the `admin_users` allowlist. Supabase row-level security
-keeps those drafts inaccessible to other visitors. `/admin/directory/` lets
-admins import, review, edit, delete, restore, and remove locations and games.
-The site remains a static export: directory records are read live from Supabase,
-so adding a location does not require a rebuild. Apply `supabase/schema.sql` to a new installation,
-or `supabase/migrations/20260922_game_directory.sql` to an existing one before
-using these routes. The Pages workflow does not apply SQL migrations.
-
-For maps and address search, set `NEXT_PUBLIC_MAPTILER_KEY` in
-`blackjack/.env.local` during development and as a GitHub Actions repository
-variable for deployment. Restrict the public browser key to the site's domains
-in MapTiler and choose a plan that permits the intended traffic. The directory
-list and manual location entry still work when no map key is configured.
-
-To prepare the supplied September 2026 CBJN file, install PyMuPDF in the
-local Python environment and run this from the repository root:
-
-```bash
-python -m pip install pymupdf
-python blackjack/scripts/directory/import_cbjn.py original_132.pdf --out tmp/directory/cbjn-2026-09-staging.json
-```
-
-The JSON is private and gitignored. To investigate venue coordinates online for
-review, run `NEXT_PUBLIC_MAPTILER_KEY=... node blackjack/scripts/directory/geocode-staging.mjs tmp/directory/cbjn-2026-09-staging.json`.
-The script writes a private `-geocoded.json` file and a `-coordinate-review.json`
-report. Then run `node blackjack/scripts/directory/merge-exact-coordinates.mjs
-tmp/directory/cbjn-2026-09-staging.json tmp/directory/osm-casinos.json`.
-The optional private OSM cache is produced by
-`node blackjack/scripts/directory/fetch-osm-casinos.mjs
-tmp/directory/osm-casinos.json`.
-That second step keeps only named venue POIs confirmed by the online results;
-city centers, city halls, and other administrative points are never used. Any
-venue without a confirmed venue POI stays without map coordinates for manual
-review. MapTiler requests include venue names and addresses, not game rules.
-After deploying the site, sign in as an
-admin, open `/admin/directory/`, choose **Import review**, and select the
-private `-exact.json` output in **Private staging JSON**. Existing
-batch decisions survive a repeated upload. Select **Approve rows without
-warnings** and review flagged rows individually, or select **Approve all pending
-rows (including warnings)** to import them for later correction. Parser warnings
-remain visible in the batch. Then select **Apply reviewed rows as drafts**. The
-drafts appear only in the signed-in admin directory; no public publication step
-is part of this private import.
-Keep the PDF and staging JSON out of the website build. Location and game
-reports retain their reported month; import time is not a claim that conditions
-were verified then.
+The public game directory pages were removed in the October 2026 remake. The
+database tables, `supabase/migrations/20260922_game_directory.sql`, the import
+scripts under `scripts/directory/` and the private sync workflow remain, so the
+data can be maintained and a directory brought back without re-importing.
 
 Apply `supabase/schema.sql` before deploying the Edge Functions. The Pages
 workflow does not migrate the database. Then configure these server-only Edge
@@ -173,14 +140,10 @@ interval, seed, software versions, strategy manifest, and generator source hash.
 The current production artifact contains 116,624,081,778 resolved rounds from
 250,000,000 shoes for each of nine deck/penetration profiles.
 
-The Counter's Edge Lab at `/cvcx/` is a CVCX-style post-simulation workspace
+The Calculator at `/calculator/` is a CVCX-style post-simulation workspace
 over those profiles. It includes custom and Kelly-weight bet ramps, wong-in
 points, risk-sized units, EV/variance, c-SCORE, DI, N0, lifetime and finite-trip
 risk, bankroll and goal calculators, result percentiles, probable ranges, and
 side-by-side penetration comparisons. It deliberately labels the exact fixed
 ruleset supported by the audit data rather than extrapolating unsupported game
 rules or multi-hand correlations.
-
-The Chase the Flush tab includes an in-browser conditional-EV hand analyzer. Its
-auditable Python research engine, CLIs, tests, and machine-readable results live
-in [`../chase-flush-solver`](../chase-flush-solver/README.md).
