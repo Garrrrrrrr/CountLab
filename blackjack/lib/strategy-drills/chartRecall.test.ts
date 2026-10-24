@@ -24,7 +24,8 @@ describe("chart recall", () => {
           } else {
             const printed = chart.tables[recall.id].cells.get(cellKey(cell.ref))!;
             expect(cell.expected.base).toBe(playToken(printed.basic));
-            expect(cell.expected.dev).toEqual(printed.index ? { play: printed.index.play, at: printed.index.at } : undefined);
+            // A play Wong makes at every count has no number to recall.
+            expect(cell.expected.dev).toEqual(printed.index && Number.isFinite(printed.index.at) ? { play: printed.index.play, at: printed.index.at } : undefined);
           }
         }
       }
@@ -75,7 +76,8 @@ describe("chart recall", () => {
     const table = rules();
     const surrender = recallTables(table, "indices", ["surrender"])[0];
     const byKey = new Map(surrender.cells.map((cell) => [cell.key, cell.expected]));
-    expect(byKey.get("surrender|hard:16v10")).toEqual({ base: "R", dev: undefined });
+    // Wong's table 33: late surrender 16 v 10 from -2.
+    expect(byKey.get("surrender|hard:16v10")).toEqual({ base: "R", dev: { play: "R", at: -2 } });
     expect(byKey.get("surrender|hard:15v10")).toEqual({ base: "R", dev: { play: "R", at: 0 } });
     expect(byKey.get("surrender|hard:14v10")).toEqual({ base: "-", dev: { play: "R", at: 3 } });
     // Small dealer cards are never surrendered against, so they are shown, not asked.

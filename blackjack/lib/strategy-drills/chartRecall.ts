@@ -103,7 +103,7 @@ export function recallTable(rules: TableRules, id: RecallTableId, level: RecallL
           ref,
           name: `${handLabel(id, row)} versus dealer ${dealerWord(dealer)}`,
           short: `${rowLabel(id, row)} vs ${dealer}`,
-          expected: { base: playToken(cell.basic), dev: level === "indices" && cell.index ? { play: cell.index.play, at: cell.index.at } : undefined },
+          expected: { base: playToken(cell.basic), dev: level === "indices" && cell.index && Number.isFinite(cell.index.at) ? { play: cell.index.play, at: cell.index.at } : undefined },
           dir: cell.index?.dir,
         };
       });

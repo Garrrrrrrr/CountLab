@@ -195,7 +195,7 @@ function InsurancePad({ onAnswer, disabled }: { onAnswer: (answer: "I" | "N") =>
 function ladderFor(hand: IndexHand, rules: TableRules): { bands: LadderBand[]; min: number; max: number } {
   const { min, max } = ladderDomain([hand.entry.at, hand.tc], -4, 8);
   if (hand.entry.kind === "insurance") {
-    return { min, max, bands: insuranceLadder(min, max).map((segment) => ({ from: segment.from, to: segment.to, label: segment.take ? "Take insurance" : "Decline", short: segment.take ? "Take" : "No", fill: segment.take ? "bg-brand text-brand-ink" : "bg-surface-3 text-ink-2" })) };
+    return { min, max, bands: insuranceLadder(rules, min, max).map((segment) => ({ from: segment.from, to: segment.to, label: segment.take ? "Take insurance" : "Decline", short: segment.take ? "Take" : "No", fill: segment.take ? "bg-brand text-brand-ink" : "bg-surface-3 text-ink-2" })) };
   }
   const segments = handLadder(rules, hand.cell!, permissionsFor(hand.drawn ? "drawn" : "two", rules, hand.cell!), min, max);
   return {

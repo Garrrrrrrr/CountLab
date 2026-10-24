@@ -6,10 +6,10 @@ export function handLadder(rules: TableRules, cell: CellRef, permissions: Permis
 }
 
 /** Insurance across the range: decline, then take from the index up. */
-export function insuranceLadder(min = -6, max = 10): { from: number; to: number; take: boolean }[] {
+export function insuranceLadder(rules: Pick<TableRules, "decks">, min = -6, max = 10): { from: number; to: number; take: boolean }[] {
   const segments: { from: number; to: number; take: boolean }[] = [];
   for (let tc = min; tc <= max; tc += 1) {
-    const take = takeInsurance(tc);
+    const take = takeInsurance(rules, tc);
     const last = segments[segments.length - 1];
     if (last && last.take === take) last.to = tc;
     else segments.push({ from: tc, to: tc, take });

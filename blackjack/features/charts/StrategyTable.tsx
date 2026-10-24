@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { cx } from "@/components/ui/cx";
-import { DEALERS, cellDecision, cellKey, handLabel, signedCount, type CellRef, type ChartCell, type Dealer, type PlayTable, type StrategyChart, type SurrenderTable, type TableRules } from "@/lib/strategy";
+import { DEALERS, cellDecision, cellKey, handLabel, signedCount, thresholdPhrase, type CellRef, type ChartCell, type Dealer, type PlayTable, type StrategyChart, type SurrenderTable, type TableRules } from "@/lib/strategy";
 
 export type ChartMode = "basic" | "indices" | "count";
 
 /** "+4↑" / "−1↓": where the other play starts and which way it runs. */
-const stripLabel = (at: number, dir: "up" | "down") => `${signedCount(at)}${dir === "up" ? "↑" : "↓"}`;
+const stripLabel = (at: number, dir: "up" | "down") => (Number.isFinite(at) ? `${signedCount(at)}${dir === "up" ? "↑" : "↓"}` : "any");
 const dealerName = (dealer: Dealer) => (dealer === "A" ? "ace" : dealer);
 
 interface CellView {
@@ -103,7 +103,7 @@ export function playCellView(rules: TableRules, cell: ChartCell, mode: ChartMode
     suffix: suffixFor(cell.basic.action, cell.basic.fallback),
     strip: index ? { action: index.play, label: stripLabel(index.at, index.dir) } : undefined,
     surrenderFlag: cell.surrenderFirst,
-    label: `${name}: ${basicText}${index ? `. ${ACTION_NAME[index.play]} at ${signedCount(index.at)} or ${index.dir === "up" ? "higher" : "lower"}` : ""}${surrenderNote}`,
+    label: `${name}: ${basicText}${index ? `. ${ACTION_NAME[index.play]} ${thresholdPhrase(index)}` : ""}${surrenderNote}`,
   };
 }
 
@@ -111,19 +111,21 @@ export function surrenderCellView(rules: TableRules, table: SurrenderTable, ref:
   const rule = table.cells.get(cellKey(ref));
   const name = `Surrender ${handLabel(ref.section, ref.row)} versus dealer ${dealerName(ref.dealer)}`;
   if (!rule) return { action: null, label: `${name}: never` };
-  if (rule.shoeOnly) {
-    return {
-      action: rule.basic ? "R" : null,
-      note: true,
-      label: `${name}: ${rule.basic ? "surrender" : "do not surrender"} at every count. The published ${signedCount(rule.shoeOnly.at)} is a shoe-game figure that does not fit ${rules.decks}-deck basic strategy`,
-    };
-  }
   const play = cellDecision(rules, ref, rule.basic ? Math.min(rule.at - 1, 10) : rule.at, { canDouble: true, canSplit: true, canSurrender: false }).action;
   if (mode === "count") {
     const surrenders = tc >= rule.at;
     return { action: surrenders ? "R" : null, changed: surrenders !== rule.basic, label: `${name}: at ${signedCount(tc)}, ${surrenders ? "surrender" : "do not surrender"}` };
   }
   const finite = Number.isFinite(rule.at) && mode === "indices";
+  if (rule.basic && rule.at === Infinity) {
+    // Basic strategy gives it up, but Wong prints no number: with a count, never surrender it.
+    return {
+      action: "R",
+      note: true,
+      strip: mode === "indices" ? { action: play, label: "any" } : undefined,
+      label: `${name}: basic strategy surrenders. With a count, Wong never does: ${ACTION_NAME[play].toLowerCase()} at every count`,
+    };
+  }
   if (rule.basic) {
     return {
       action: "R",

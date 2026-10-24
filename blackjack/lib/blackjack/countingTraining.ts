@@ -1,5 +1,5 @@
 import { unitsAt, RAMPS } from "./advantage";
-import { decideHand, explainDecision, fromBlackjackRules, PLAY_INDICES, takeInsurance } from "@/lib/strategy";
+import { CORE_INDEX_COUNT, decideHand, DEFAULT_TABLE_RULES, explainDecision, fromBlackjackRules, indexList, takeInsurance } from "@/lib/strategy";
 import { calculateHandValue, isSoft } from "./hand";
 import { hiLoValue, runningCount, trueCount, TrueCountRounding } from "./hiLo";
 import { BlackjackShoe } from "./shoe";
@@ -20,6 +20,10 @@ export const COUNTING_PRESETS: Record<CountingPreset, {
   "six-deck-casino": { label: "Six-deck casino", decks: 6, cards: 234, group: "random", speed: 750, checkpoint: "random", interruption: false },
   recovery: { label: "Interruption recovery", decks: 6, cards: 156, group: "random", speed: 850, checkpoint: "sign", interruption: true },
 };
+
+let coreCounts: number[] | undefined;
+/** The counts of the Illustrious 18 and Fab 4 cells, in Wong's numbers: what the "index" focus practises near. */
+const coreIndexCounts = () => (coreCounts ??= indexList(DEFAULT_TABLE_RULES).slice(0, CORE_INDEX_COUNT).map((entry) => entry.at));
 
 export function makeCountSequence(decks: number, amount: number, bias: CountBias = "none", rng: () => number = Math.random) {
   const shoe = new BlackjackShoe(decks, rng);
@@ -97,7 +101,7 @@ export function makeTrueCountScenario({
       || (focus === "negative" && rc < 0)
       || (focus === "zero" && rc === 0)
       || (focus === "last-deck" && (fromPhoto || exact <= 1))
-      || (focus === "index" && PLAY_INDICES.some((index) => Math.abs(scenario.answer - index.at) <= 1));
+      || (focus === "index" && coreIndexCounts().some((at) => Math.abs(scenario.answer - at) <= 1));
     if (match) return scenario;
   }
   return fallback!;
@@ -188,7 +192,7 @@ export function simulateRound(shoe: BlackjackShoe, spots: number, rules: Blackja
     dealerUpcard,
     exposedCards: shoe.dealtCards().slice(before),
     correctPlay: counted.action,
-    insurancePlay: dealerUpcard.rank === "A" ? (takeInsurance(currentTrueCount) ? "I" : "N") : undefined,
+    insurancePlay: dealerUpcard.rank === "A" ? (takeInsurance(table, currentTrueCount) ? "I" : "N") : undefined,
     basicPlay: basic.action,
     explanation: counted.cell ? explainDecision(counted.cell, counted, currentTrueCount) : `${calculateHandValue(heroInitial)} is played the same at every count.`,
   };

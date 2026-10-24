@@ -8,8 +8,8 @@
  */
 import { STRATEGY_ROWS } from "@/lib/blackjack/strategyTables";
 import type { Action } from "@/lib/blackjack/types";
-import { basicPlay, basicSurrenders, cellDecision, playIndex, signedCount, surrenderRule, type ActiveIndex, type CellRef, type Permissions, type Resolved, type Section, type SurrenderThreshold } from "./engine";
-import { DEALERS, INSURANCE_INDEX, type Dealer, type IndexSource } from "./indices";
+import { basicPlay, basicSurrenders, cellDecision, insuranceAt, playIndex, signedCount, surrenderRule, type ActiveIndex, type CellRef, type Permissions, type Resolved, type Section, type SurrenderThreshold } from "./engine";
+import { DEALERS, type Dealer, type IndexSource } from "./indices";
 import { effectiveSurrender, type TableRules } from "./rules";
 
 export const cellKey = (ref: { section: string; row: string; dealer: string }) => `${ref.section}:${ref.row}v${ref.dealer}`;
@@ -43,6 +43,7 @@ export interface StrategyChart {
   tables: { hard: PlayTable; soft: PlayTable; pairs: PlayTable };
   /** Null when the table offers no surrender. */
   surrender: SurrenderTable | null;
+  /** Wong's table 11: it depends on the deck count, and is not a whole number. */
   insuranceAt: number;
 }
 
@@ -63,7 +64,7 @@ export function buildChart(rules: TableRules): StrategyChart {
     rules,
     tables: { hard: table("hard"), soft: table("soft"), pairs: table("pairs") },
     surrender: buildSurrenderTable(rules),
-    insuranceAt: INSURANCE_INDEX.at,
+    insuranceAt: insuranceAt(rules),
   };
 }
 
@@ -76,8 +77,8 @@ function buildSurrenderTable(rules: TableRules): SurrenderTable | null {
       let used = false;
       for (const dealer of DEALERS) {
         const rule = surrenderRule(rules, { section, row, dealer });
-        // A hand never surrendered is left out, unless a shoe-game figure for it needs a footnote.
-        if (rule.at === Infinity && !rule.shoeOnly) continue;
+        // A hand neither basic strategy nor the count ever surrenders is left out.
+        if (rule.at === Infinity && !rule.basic) continue;
         cells.set(cellKey({ section, row, dealer }), rule);
         used = true;
       }
@@ -130,10 +131,10 @@ export interface IndexEntry {
 }
 
 /**
- * Learning order. The Illustrious 18 and Fab 4 were ranked by Schlesinger by
- * how much each play is worth, and that order is still the standard way to
- * learn them; everything else follows, with the indices closest to zero (the
- * ones that come up most often) first.
+ * Learning order. The numbers are Wong's; the order is Schlesinger's ranking
+ * of the Illustrious 18 and Fab 4 by how much each play is worth, still the
+ * standard way to learn them. Everything else follows, with the indices
+ * closest to zero (the ones that come up most often) first.
  */
 const LEARNING_ORDER = [
   "insurance", "hard:16v10", "hard:15v10", "pairs:T,Tv5", "pairs:T,Tv6", "hard:10v10", "hard:12v3", "hard:12v2", "hard:11vA", "hard:9v2", "hard:10vA", "hard:9v7", "hard:16v9", "hard:13v2", "hard:12v4", "hard:12v5", "hard:12v6", "hard:13v3",
@@ -146,22 +147,29 @@ export const CORE_INDEX_COUNT = LEARNING_ORDER.length;
 /** Every index that changes a two-card play under these rules, in learning order. */
 export function indexList(rules: TableRules): IndexEntry[] {
   const chart = buildChart(rules);
-  const entries: IndexEntry[] = [{ id: "insurance", kind: "insurance", play: "insurance", basic: "no insurance", dir: "up", at: chart.insuranceAt, source: INSURANCE_INDEX.source, priority: 0 }];
+  const entries: IndexEntry[] = [{ id: "insurance", kind: "insurance", play: "insurance", basic: "no insurance", dir: "up", at: chart.insuranceAt, source: "T11", priority: 0 }];
   for (const table of Object.values(chart.tables)) {
     for (const cell of table.cells.values()) {
-      if (!cell.index) continue;
+      // An index has a switch point to learn; a play Wong makes at every count does not.
+      if (!cell.index || !Number.isFinite(cell.index.at)) continue;
+      // A pair is only ever played on its first two cards; where surrender takes the hand on both
+      // sides of the number (one-deck 7,7 v 10 gives up from −1, its stand number is 0), it never decides.
+      if (cell.ref.section === "pairs" && effectiveSurrender(rules) !== "none") {
+        const index = cell.index.dir === "up" ? Math.ceil(cell.index.at) : Math.floor(cell.index.at);
+        if (cellDecision(rules, cell.ref, index).action !== cell.index.play) continue;
+      }
       const key = cellKey(cell.ref);
       entries.push({ id: key, kind: "play", ref: cell.ref, play: cell.index.play, basic: cell.basic.action, dir: cell.index.dir, at: cell.index.at, source: cell.index.source, priority: 0 });
     }
   }
   if (chart.surrender) {
     for (const [key, rule] of chart.surrender.cells) {
-      if (!Number.isFinite(rule.at)) continue;
+      if (!Number.isFinite(rule.at) || !rule.source) continue;
       const [section, rest] = key.split(":");
       const [row, dealer] = rest.split("v");
       const ref = { section: section as Section, row, dealer: dealer as Dealer };
       const fallback = cellDecision(rules, ref, rule.at, { canDouble: true, canSplit: true, canSurrender: false }).action;
-      entries.push({ id: `R:${key}`, kind: "surrender", ref, play: "R", basic: fallback, dir: "up", at: rule.at, source: rule.source ?? "BJA", priority: 0 });
+      entries.push({ id: `R:${key}`, kind: "surrender", ref, play: "R", basic: fallback, dir: "up", at: rule.at, source: rule.source, priority: 0 });
     }
   }
   const rank = (entry: IndexEntry) => {
@@ -178,8 +186,8 @@ export function indexList(rules: TableRules): IndexEntry[] {
 /** The short tag printed in a cell: "+4", "−1", "0". Direction is carried by the arrow in `indexTag`. */
 export const indexNumber = (index: { at: number }) => signedCount(index.at);
 
-/** "S +4↑": the play, the count and which way it applies. */
-export const indexTag = (index: { play: Action | string; at: number; dir: "up" | "down" }) => `${index.play} ${signedCount(index.at)}${index.dir === "up" ? "↑" : "↓"}`;
+/** "S +4↑": the play, the count and which way it applies; "S any" at every count. */
+export const indexTag = (index: { play: Action | string; at: number; dir: "up" | "down" }) => `${index.play} ${Number.isFinite(index.at) ? `${signedCount(index.at)}${index.dir === "up" ? "↑" : "↓"}` : "any"}`;
 
 /** Surrender thresholds, as the surrender table prints them. */
 export function surrenderTag(rule: SurrenderThreshold): string {

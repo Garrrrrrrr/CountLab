@@ -37,7 +37,7 @@ import {
   thresholdPhrase,
   dealerLabel,
   dealerOf,
-  INSURANCE_INDEX,
+  insuranceAt,
   type Decision,
   type Permissions,
   type TableRules,
@@ -110,14 +110,14 @@ export function gradeBet({ bets, unit, ramp, tc, bankroll, playerTc }: {
 
 export interface InsuranceGrade { ok: boolean; credited: boolean; take: boolean; chosen: string; correct: string; explanation: string }
 
-export function gradeInsurance({ took, tc, playerTc, evenMoney = false }: { took: boolean; tc: number; playerTc?: number; evenMoney?: boolean }): InsuranceGrade {
-  const take = takeInsurance(tc);
+export function gradeInsurance({ rules, took, tc, playerTc, evenMoney = false }: { rules: Pick<TableRules, "decks">; took: boolean; tc: number; playerTc?: number; evenMoney?: boolean }): InsuranceGrade {
+  const take = takeInsurance(rules, tc);
   let ok = took === take;
   let credited = false;
-  if (!ok && playerTc !== undefined && playerTc !== tc && took === takeInsurance(playerTc)) { ok = true; credited = true; }
+  if (!ok && playerTc !== undefined && playerTc !== tc && took === takeInsurance(rules, playerTc)) { ok = true; credited = true; }
   const what = evenMoney ? "even money" : "insurance";
   const label = (yes: boolean) => (yes ? `Take ${what}` : `No ${what}`);
-  const rule = `Take ${what} at a true count of ${signedCount(INSURANCE_INDEX.at)} or higher, never below.`;
+  const rule = `Take ${what} at a true count of ${signedCount(insuranceAt(rules))} or higher, never below.`;
   const explanation = credited
     ? `Right for the count you reported (${signedCount(playerTc!)}). The real true count was ${signedCount(tc)}. ${rule}`
     : `${rule} The true count is ${signedCount(tc)}.`;

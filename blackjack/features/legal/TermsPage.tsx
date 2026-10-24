@@ -21,7 +21,7 @@ export function TermsPage() {
         <p>Signed in, your settings, drill history and journal are stored in this project&rsquo;s database, scoped to your account, and cached on your device. As a guest the same data lives only in your browser. Either way, back up anything you want to keep with the export tools in Settings before clearing browser data, switching devices or deleting your account.</p>
       </LegalSection>
       <LegalSection title="Content and third-party references">
-        <p>Basic strategy, the Hi-Lo count and the published index plays used here (including the Blackjack Apprenticeship H17 chart, the Illustrious 18 and Fab 4, and Wong&rsquo;s early-surrender table) are established blackjack theory; their sources are named where they are used. CountLab does not reproduce another product&rsquo;s source code, branding or copyrighted text.</p>
+        <p>Basic strategy, the Hi-Lo count and the index numbers used here (Stanford Wong&rsquo;s, from <i>Professional Blackjack</i>) are established blackjack theory; their sources are named where they are used. CountLab does not reproduce another product&rsquo;s source code, branding or copyrighted text.</p>
       </LegalSection>
       <LegalSection title="Limitation of liability">
         <p>To the fullest extent permitted by law, the maintainer of CountLab is not liable for any loss or damage, including gambling losses, data loss, account loss, or a casino&rsquo;s response to card counting, arising from your use of this site.</p>

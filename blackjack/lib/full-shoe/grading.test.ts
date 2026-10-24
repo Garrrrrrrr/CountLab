@@ -47,11 +47,14 @@ describe("bet grading by the ramp", () => {
 
 describe("insurance", () => {
   it("takes insurance and even money at +3 or more, never below", () => {
-    expect(gradeInsurance({ took: true, tc: 3 }).ok).toBe(true);
-    expect(gradeInsurance({ took: true, tc: 2 }).ok).toBe(false);
-    expect(gradeInsurance({ took: false, tc: 2 }).ok).toBe(true);
-    expect(gradeInsurance({ took: false, tc: 5, evenMoney: true })).toMatchObject({ ok: false, correct: "Take even money" });
-    expect(gradeInsurance({ took: false, tc: 4, playerTc: 1 })).toMatchObject({ ok: true, credited: true });
+    // Wong's table 11: +3.0 for six decks, +1.4 for one.
+    const six = { decks: 6 }, one = { decks: 1 };
+    expect(gradeInsurance({ rules: six, took: true, tc: 3 }).ok).toBe(true);
+    expect(gradeInsurance({ rules: six, took: true, tc: 2 }).ok).toBe(false);
+    expect(gradeInsurance({ rules: one, took: true, tc: 2 }).ok).toBe(true);
+    expect(gradeInsurance({ rules: six, took: false, tc: 2 }).ok).toBe(true);
+    expect(gradeInsurance({ rules: six, took: false, tc: 5, evenMoney: true })).toMatchObject({ ok: false, correct: "Take even money" });
+    expect(gradeInsurance({ rules: six, took: false, tc: 4, playerTc: 1 })).toMatchObject({ ok: true, credited: true });
   });
 });
 

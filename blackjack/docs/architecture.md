@@ -47,13 +47,17 @@ and the full-shoe table call it, so they cannot disagree.
   `lib/blackjack/strategyChart.ts`. `lib/strategy/audit.test.ts` holds every
   clear-cut cell of 180 rule sets to an exact finite-deck EV calculation
   (`blackjack-simulator/basic_strategy/`).
-- **Index plays** live in `lib/strategy/indices.ts` as plain data: "play X at a
-  true count at or above N" (or at or below). A row is used only where it
-  changes basic strategy for the reader's rules; each names its source.
-- **Surrender** is one threshold per hand ("surrender at or above N"), with
-  Wong's early-surrender table replacing the ten column under ES10.
-- `engine.ts` decides in table order: insurance, surrender, then the play.
-  `chart.ts` turns that into chart tables, count ladders and the index list.
+- **Every count-based play** comes from Stanford Wong, *Professional
+  Blackjack*, transcribed in `lib/strategy/wong.ts`: appendix tables A1–A4
+  (one deck, and four decks for every multiple-deck game, as Wong says),
+  tables 32 and 33 for surrender, table 11 for insurance and table 30 for the
+  no-hole-card game. Nothing is simulated. `wong.test.ts` checks the
+  appendix transcription against Wong's own summary tables 9 and 10, cell by
+  cell. Numbers past ±10 read as always or never, as in those summaries.
+- With a count, `engine.ts` plays Wong's layers in his order (insurance,
+  surrender, split, double, hit or stand); with no count it plays basic
+  strategy. `chart.ts` turns that into chart tables (basic play plus Wong's
+  number), count ladders and the index list.
 
 ## Data and sync
 

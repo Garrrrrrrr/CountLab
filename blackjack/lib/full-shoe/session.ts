@@ -343,7 +343,7 @@ export class FullShoeGame {
     if (stake > this.cash + 1e-9) return;
     const tc = this.tc;
     const evenMoney = offer.blackjacks > 0 && (choice === "even-money" || offer.others === 0);
-    const grade = gradeInsurance({ took: stake > 0, tc, playerTc: this.playerTc, evenMoney });
+    const grade = gradeInsurance({ rules: this.table.rules, took: stake > 0, tc, playerTc: this.playerTc, evenMoney });
     this.grade("Deviations", grade.ok, {
       title: grade.ok ? (grade.take ? `${evenMoney ? "Even money" : "Insurance"} is right here` : `No ${evenMoney ? "even money" : "insurance"} is right`) : grade.take ? `${evenMoney ? "Even money" : "Insurance"} was right` : `Skip ${evenMoney ? "even money" : "insurance"} here`,
       question: `${evenMoney ? "Even money" : "Insurance"} against an ace, round ${this.roundNumber}`,

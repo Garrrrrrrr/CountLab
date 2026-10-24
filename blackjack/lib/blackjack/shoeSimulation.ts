@@ -289,7 +289,7 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
     let dealerCards = [dealerUpcard, dealerHoleCard];
     const dealerBlackjack = isBlackjack(dealerCards);
 
-    const wantsInsurance = indexed && dealerUpcard.rank === "A" && takeInsurance(currentTrueCount());
+    const wantsInsurance = indexed && dealerUpcard.rank === "A" && takeInsurance(rules, currentTrueCount());
     const insuranceNet = wantsInsurance ? (dealerBlackjack ? bet : -bet / 2) : 0;
 
     const playedHands: SimulatedPlayerHand[] = [];

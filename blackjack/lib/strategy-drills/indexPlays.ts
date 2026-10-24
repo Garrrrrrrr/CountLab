@@ -57,9 +57,14 @@ const DRAWN: Permissions = { canDouble: false, canSplit: false, canSurrender: fa
 const twoCardPermissions = (rules: TableRules, cell: CellRef): Permissions => ({ canDouble: true, canSplit: cell.section === "pairs", canSurrender: surrenderOffered(rules) });
 export const permissionsFor = (shape: Shape, rules: TableRules, cell: CellRef) => (shape === "drawn" ? DRAWN : twoCardPermissions(rules, cell));
 
-/** The count on each side of the switch: the index, and one step back on the basic-strategy side. */
+/**
+ * The count on each side of the switch: the index, and one step back on the
+ * basic-strategy side. Counts are whole numbers; insurance's number is not
+ * (Wong's table 11: +2.9 for four decks), so it switches at the next one up.
+ */
 export function switchCounts(entry: Pick<IndexEntry, "at" | "dir">): { index: number; basic: number } {
-  return { index: entry.at, basic: entry.dir === "up" ? entry.at - 1 : entry.at + 1 };
+  const index = entry.dir === "up" ? Math.ceil(entry.at) : Math.floor(entry.at);
+  return { index, basic: entry.dir === "up" ? index - 1 : index + 1 };
 }
 
 /** Hand shapes on which this row is the switch: the index play at the index, something else one count back. */
@@ -124,7 +129,7 @@ export function resolveIndex(question: IndexQuestion, rules: TableRules, list: r
   const category = entryLabel(entry);
   if (entry.kind === "insurance") {
     if (question.upcard.rank !== "A") return null;
-    return { ...question, entry, drawn: false, surrender: "none", available: ["I", "N"], correct: takeInsurance(question.tc) ? "I" : "N", category };
+    return { ...question, entry, drawn: false, surrender: "none", available: ["I", "N"], correct: takeInsurance(rules, question.tc) ? "I" : "N", category };
   }
   const decision = decideHand({ cards: question.cards, upcard: question.upcard, rules, tc: question.tc });
   if (!decision.cell || !entry.ref || !sameCell(decision.cell, entry.ref)) return null;

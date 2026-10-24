@@ -5,15 +5,18 @@
  * teach different plays for the same hand. The order is the order a player
  * decides at the table: insurance, then surrender, then the play.
  *
- *   basic play   the audited total-dependent grids (lib/blackjack/strategyTables.ts)
- *   index play   lib/strategy/indices.ts, applied only where it changes the basic play
- *   surrender    one threshold per hand: surrender at or above it
+ *   no count     basic strategy: the audited total-dependent grids
+ *                (lib/blackjack/strategyTables.ts)
+ *   with a count Stanford Wong's High-Low strategy numbers (wong.ts), read
+ *                the way he lays them out: surrender, then split, then
+ *                double, then hit or stand
  */
 import { calculateHandValue, isPair, isSoft, rankValue } from "@/lib/blackjack/hand";
 import { chartCell, chartCode, doubleAllowed, type ChartCode } from "@/lib/blackjack/strategyChart";
 import type { Action, Card } from "@/lib/blackjack/types";
-import { DEALERS, EARLY_SURRENDER_TEN_INDICES, INSURANCE_INDEX, LATE_SURRENDER_INDICES, PLAY_INDICES, type Dealer, type PlayIndex, type SurrenderIndex } from "./indices";
+import { DEALERS, type Dealer, type IndexSource, type PlayIndex } from "./indices";
 import { effectiveSurrender, toChartRules, type TableRules } from "./rules";
+import { insuranceGate, noHoleCardDouble, noHoleCardSplit, passes, splits, surrenderGate, WONG_RANGE, wongTable, type Gate, type SplitGate, type Sourced } from "./wong";
 
 export type Section = "hard" | "soft" | "pairs";
 export interface CellRef { section: Section; row: string; dealer: Dealer }
@@ -53,7 +56,8 @@ export function locateHand(cards: Card[], canSplit: boolean): { section: Section
   // Soft 12 (an unsplit A,A) cannot bust with one card, so it always draws.
   if (isSoft(cards) && total === 12) return { outside: "H" };
   if (total >= 18) return { outside: "S" };
-  if (total < 8) return { outside: "H" };
+  // Hard 5-7 sit below the printed chart, but Wong has doubles for them at high counts.
+  if (total < 5) return { outside: "H" };
   return { section: "hard", row: String(total) };
 }
 
@@ -77,6 +81,8 @@ export interface Resolved { action: Action; fallback?: Action }
  */
 export function basicPlay(rules: TableRules, cell: CellRef, permissions: Permissions = TWO_CARD): Resolved {
   if (cell.section === "soft" && cell.row === "A,A") return { action: "H" };
+  // Below the chart: nothing to do but draw.
+  if (cell.section === "hard" && Number(cell.row) < 8) return { action: "H" };
   const chart = toChartRules(rules);
   const resolved = chartCell(chart, cell.section, cell.row, cell.dealer, {
     canDouble: permissions.canDouble,
@@ -92,51 +98,136 @@ export const gridCode = (rules: TableRules, cell: CellRef): ChartCode => chartCo
 /** Whether basic strategy gives this two-card hand up. Soft hands never surrender. */
 export function basicSurrenders(rules: TableRules, cell: CellRef): boolean {
   if (effectiveSurrender(rules) === "none" || cell.section === "soft") return false;
+  if (cell.section === "hard" && Number(cell.row) < 8) return false;
   return chartCell(toChartRules(rules), cell.section, cell.row, cell.dealer, { canSurrender: true }).action === "R";
 }
 
 /* ------------------------------------------------------------------ */
-/* Index plays                                                         */
+/* Wong's play, with a count                                           */
 /* ------------------------------------------------------------------ */
 
-const family = (rules: TableRules) => (rules.hitSoft17 ? "h17" : "s17");
-const inFamily = (row: { only?: "h17" | "s17" }, rules: TableRules) => !row.only || row.only === family(rules);
+/** The appendix table these rules read (A1-A4). */
+export const wongSource = (rules: TableRules): IndexSource => wongTable(rules).source;
+
+const tenOrAce = (dealer: Dealer): dealer is "10" | "A" => dealer === "10" || dealer === "A";
+
+/** `pair` is an unsplit pair's own row ("5,5", "4,4"), which Wong prints apart from the total. */
+function doubleGate(rules: TableRules, section: "hard" | "soft", row: string, dealer: Dealer, pair?: string): Sourced<Gate> {
+  const table = wongTable(rules);
+  if (!doubleAllowed({ doubleRule: rules.doubling }, section, row)) return { value: "never", source: table.source };
+  if (rules.noHoleCard && tenOrAce(dealer)) return noHoleCardDouble(rules, row, dealer);
+  const own = pair ? table.pair.double.get(pair)?.[dealer] : undefined;
+  return { value: own ?? table.double.get(row)?.[dealer] ?? "never", source: table.source };
+}
+
+function splitGate(rules: TableRules, row: string, dealer: Dealer): Sourced<SplitGate> {
+  const table = wongTable(rules);
+  if (rules.noHoleCard && tenOrAce(dealer)) return noHoleCardSplit(rules, row, dealer);
+  return { value: (rules.das ? table.split.das : table.split.noDas).get(row)?.[dealer] ?? { from: "never" }, source: table.source };
+}
+
+/** Wong's hit/stand rows: hard 12-17 and soft 18 by number; soft 19+ and hard 18+ stand; everything else draws. */
+function stands(rules: TableRules, section: "hard" | "soft", row: string, dealer: Dealer, tc: number, pair?: string): boolean {
+  const table = wongTable(rules);
+  const own = pair ? table.pair.stand.get(pair)?.[dealer] : undefined;
+  if (own !== undefined) return passes(own, tc);
+  if (section === "soft") return row === "A,9" || row === "A,8" || (row === "A,7" && passes(table.stand.get("A,7")![dealer], tc));
+  const total = Number(row);
+  return total >= 18 || (total >= 12 && passes(table.stand.get(row)![dealer], tc));
+}
+
+/**
+ * Wong's play for a hand at a true count, surrender aside. The layers are his
+ * (p. 37): split, then double, then hit or stand, each read from its own rows
+ * of the appendix table for these rules.
+ */
+export function wongPlay(rules: TableRules, cell: CellRef, tc: number, permissions: Permissions = TWO_CARD): Resolved & { source: IndexSource } {
+  const source = wongTable(rules).source;
+  if (cell.section === "pairs") {
+    if (permissions.canSplit) {
+      // Without DAS, doubling 8 beats splitting 4-4 at every count; the no-DAS
+      // 4-4 numbers are for a table that will not let you double 8 (p. 270).
+      const doublesEight = cell.row === "4,4" && !rules.das && permissions.canDouble && doubleAllowed({ doubleRule: rules.doubling }, "hard", "8");
+      if (!doublesEight) {
+        const rule = splitGate(rules, cell.row, cell.dealer);
+        if (splits(rule.value, tc)) return { action: "P", source: rule.source };
+      }
+    }
+    if (cell.row === "A,A") return { action: "H", source };
+    // Not split: played as its total, but by the pair's own two-card rows where Wong prints them.
+    return playTotal(rules, { ...pairTotalRow(cell.row), dealer: cell.dealer }, tc, permissions, cell.row);
+  }
+  if (cell.section === "soft" && cell.row === "A,A") return { action: "H", source };
+  return playTotal(rules, cell, tc, permissions);
+}
+
+function playTotal(rules: TableRules, cell: CellRef, tc: number, permissions: Permissions, pair?: string): Resolved & { source: IndexSource } {
+  const section = cell.section as "hard" | "soft";
+  const play: Action = stands(rules, section, cell.row, cell.dealer, tc, pair) ? "S" : "H";
+  if (permissions.canDouble) {
+    const rule = doubleGate(rules, section, cell.row, cell.dealer, pair);
+    if (passes(rule.value, tc)) return { action: "D", fallback: play, source: rule.source };
+  }
+  return { action: play, source: wongTable(rules).source };
+}
+
+/** Counts past ±10 all read the same (see `gate`), so these two ends stand for "−11 or lower" and "+11 or higher". */
+const LOW = -WONG_RANGE - 1;
+const HIGH = WONG_RANGE + 1;
+
+interface PlaySegment { from: number; to: number; action: Action; source: IndexSource }
+
+function wongLadder(rules: TableRules, cell: CellRef, permissions: Permissions): PlaySegment[] {
+  const segments: PlaySegment[] = [];
+  for (let tc = LOW; tc <= HIGH; tc++) {
+    const play = wongPlay(rules, cell, tc, permissions);
+    const last = segments[segments.length - 1];
+    if (last && last.action === play.action) last.to = tc;
+    else segments.push({ from: tc, to: tc, action: play.action, source: play.source });
+  }
+  return segments;
+}
 
 export interface ActiveIndex extends PlayIndex {
-  /** The play on the other side of the index: basic strategy for these rules. */
+  /** Basic strategy for the same hand, the play with no count. */
   basic: Resolved;
 }
 
 /**
- * The index play that applies to a cell under these rules, if any.
+ * A run of the ladder as an index: "from here up" or, for a run that starts
+ * below −10, "from here down". A run that covers every count (Wong's play
+ * never matches basic strategy, as when two-deck basic strategy splits 6,6 v 7
+ * and his multiple-deck numbers never do) is `at: -Infinity`: at every count.
+ */
+function asIndex(cell: CellRef, segment: PlaySegment, basic: Resolved): ActiveIndex {
+  if (segment.from === LOW && segment.to === HIGH) return { hand: cell.row, dealer: cell.dealer, play: segment.action as PlayIndex["play"], dir: "up", at: -Infinity, source: segment.source, basic };
+  const down = segment.from === LOW;
+  return { hand: cell.row, dealer: cell.dealer, play: segment.action as PlayIndex["play"], dir: down ? "down" : "up", at: down ? segment.to : segment.from, source: segment.source, basic };
+}
+
+/**
+ * The count-based change to basic strategy that a chart cell prints, if any:
+ * Wong's play wherever it differs from basic strategy, as one threshold. When
+ * the count changes the play twice inside −10…+10 the change nearest zero is
+ * the one printed; the cell's count ladder shows the rest.
  *
- * A row is used only when its play differs from basic strategy here, which is
- * what lets one list serve every deck count: in double deck, where 9 v 2 is
- * already a basic double, the shoe game's "double at +1" has nothing to change.
- * Doubles that the table refuses (restricted doubling, or against a ten or ace
- * in a no-hole-card game, where a double loses to a dealer blackjack) are not
- * offered as index plays either.
- *
- * A pair that basic strategy does not split is a hard total, so it takes that
- * total's index (5,5 v 10 doubles at +4 exactly as hard 10 does). A pair that
- * is split keeps its own row: 8,8 v 10 never borrows hard 16's stand index.
+ * A pair that is not split is played as its total, so its index is the total's
+ * (5,5 v 10 doubles at +4 exactly as hard 10 does).
  */
 export function playIndex(rules: TableRules, cell: CellRef): ActiveIndex | undefined {
   const basic = basicPlay(rules, cell);
-  const candidates = PLAY_INDICES.filter((row) => row.dealer === cell.dealer && inFamily(row, rules));
-  let row = candidates.find((entry) => entry.hand === cell.row);
-  if (!row && cell.section === "pairs" && basic.action !== "P") {
-    const total = pairTotalRow(cell.row);
-    row = candidates.find((entry) => entry.hand === total.row && entry.play !== "P");
-  }
-  if (!row || row.play === basic.action) return undefined;
-  const tenOrAce = cell.dealer === "10" || cell.dealer === "A";
-  if (row.play === "D") {
-    if (!doubleAllowed({ doubleRule: rules.doubling }, cell.section, cell.row)) return undefined;
-    if (rules.noHoleCard && tenOrAce) return undefined;
-  }
-  if (row.play === "P" && rules.noHoleCard && tenOrAce) return undefined;
-  return { ...row, basic };
+  const distance = (segment: PlaySegment) => (segment.from > 0 ? segment.from : segment.to < 0 ? -segment.to : 0);
+  const changed = wongLadder(rules, cell, TWO_CARD)
+    .filter((segment) => segment.action !== basic.action)
+    .sort((a, b) => distance(a) - distance(b) || b.from - a.from);
+  return changed.length ? asIndex(cell, changed[0], basic) : undefined;
+}
+
+/** The index behind Wong's play at this count, when it is not the basic play. */
+function indexAt(rules: TableRules, cell: CellRef, tc: number, permissions: Permissions): ActiveIndex {
+  const at = Math.max(LOW, Math.min(HIGH, tc));
+  const segment = wongLadder(rules, cell, permissions).find((run) => run.from <= at && at <= run.to)!;
+  return asIndex(cell, segment, basicPlay(rules, cell, permissions));
 }
 
 /** True when an index row's condition holds at this true count. */
@@ -147,39 +238,26 @@ export const indexApplies = (index: { dir: "up" | "down"; at: number }, tc: numb
 /* ------------------------------------------------------------------ */
 
 export interface SurrenderThreshold {
-  /** Surrender when the true count is at or above this. -Infinity: always. +Infinity: never. */
+  /** With a count: surrender at this true count or higher. -Infinity: always. +Infinity: never. */
   at: number;
   /** Basic strategy (no count) surrenders. */
   basic: boolean;
-  source?: SurrenderIndex["source"];
-  /**
-   * A published threshold that belongs to the shoe game: these rules' basic
-   * strategy plays the hand the other way, so it cannot apply and no figure
-   * for these rules is listed. Shown as a note, never used.
-   */
-  shoeOnly?: { at: number; source: SurrenderIndex["source"] };
+  source?: IndexSource;
 }
 
-const surrenderHand = (cell: CellRef) => cell.row;
-
 /**
- * When a hand should be given up, as one threshold.
- *
- * The index list is checked against basic strategy for the reader's rules: a
- * threshold at or below zero must belong to a hand basic strategy surrenders,
- * and one above zero to a hand it plays. Where the two disagree (single deck,
- * whose basic strategy differs from the shoe game the indices were built for)
- * basic strategy wins and the count is not used for that hand; the published
- * figure rides along as `shoeOnly` so the chart can say why.
+ * When a two-card hand should be given up. `basic` is the play with no count;
+ * `at` is Wong's number for these rules (tables 32 and 33, or the one-deck
+ * appendix), read across −10…+10 like every other number.
  */
 export function surrenderRule(rules: TableRules, cell: CellRef): SurrenderThreshold {
   const rule = effectiveSurrender(rules);
   if (rule === "none" || cell.section === "soft") return { at: Infinity, basic: false };
   const basic = basicSurrenders(rules, cell);
-  const lists = rule === "early" && cell.dealer === "10" ? [EARLY_SURRENDER_TEN_INDICES] : [LATE_SURRENDER_INDICES];
-  const row = lists.flat().find((entry) => entry.hand === surrenderHand(cell) && entry.dealer === cell.dealer && inFamily(entry, rules));
-  if (row && (row.at <= 0) === basic) return { at: row.at, basic, source: row.source };
-  return { at: basic ? -Infinity : Infinity, basic, ...(row && { shoeOnly: { at: row.at, source: row.source } }) };
+  const printed = surrenderGate(rules, rule === "early", cell.row, cell.dealer);
+  if (!printed) return { at: Infinity, basic };
+  const at = passes(printed.value, LOW) ? -Infinity : passes(printed.value, HIGH) ? (printed.value as number) : Infinity;
+  return { at, basic, source: printed.source };
 }
 
 /* ------------------------------------------------------------------ */
@@ -209,13 +287,9 @@ export function cellDecision(rules: TableRules, cell: CellRef, tc: number | unde
   }
   const basic = basicPlay(rules, cell, permissions);
   if (tc === undefined) return { ...basic, via: "basic" };
-  const index = playIndex(rules, cell);
-  if (!index || !indexApplies(index, tc)) return { ...basic, via: "basic" };
-  if (index.play === "D" && !permissions.canDouble) return { ...basic, via: "basic" };
-  if (index.play === "P" && !permissions.canSplit) return { ...basic, via: "basic" };
-  // A double index keeps the cell's own fallback for a hand that cannot double.
-  const fallback = index.play === "D" ? basicPlay(rules, cell, { ...permissions, canDouble: false }).action : undefined;
-  return { action: index.play, fallback: fallback === "D" ? undefined : fallback, via: "index", index };
+  const play = wongPlay(rules, cell, tc, permissions);
+  if (play.action === basic.action) return { action: play.action, fallback: play.fallback, via: "basic" };
+  return { action: play.action, fallback: play.fallback, via: "index", index: indexAt(rules, cell, tc, permissions) };
 }
 
 export interface HandQuestion {
@@ -245,8 +319,9 @@ export function decideHand({ cards, upcard, rules, tc, canDouble, canSplit, canS
   return { ...cellDecision(rules, cell, tc, permissions), cell };
 }
 
-/** Insurance and even money: take at the index, never without a count. */
-export const takeInsurance = (tc: number | undefined) => tc !== undefined && tc >= INSURANCE_INDEX.at;
+/** Insurance and even money: take at Wong's number for the deck count (table 11), never without a count. */
+export const insuranceAt = (rules: Pick<TableRules, "decks">) => insuranceGate(rules.decks).value;
+export const takeInsurance = (rules: Pick<TableRules, "decks">, tc: number | undefined) => tc !== undefined && tc >= insuranceAt(rules);
 
 /* ------------------------------------------------------------------ */
 /* Copy                                                                */
@@ -256,8 +331,8 @@ const MINUS = "−";
 /** A true count as people write it: +4, 0, −1. */
 export const signedCount = (value: number) => (value > 0 ? `+${value}` : value < 0 ? `${MINUS}${Math.abs(value)}` : "0");
 
-/** "at +4 or higher" / "at −1 or lower". */
-export const thresholdPhrase = (index: { dir: "up" | "down"; at: number }) => `at ${signedCount(index.at)} or ${index.dir === "up" ? "higher" : "lower"}`;
+/** "at +4 or higher" / "at −1 or lower" / "at every count". */
+export const thresholdPhrase = (index: { dir: "up" | "down"; at: number }) => (Number.isFinite(index.at) ? `at ${signedCount(index.at)} or ${index.dir === "up" ? "higher" : "lower"}` : "at every count");
 
 /** "Hard 16", "Soft 18 (A,7)", "Pair of 8s". */
 export function handLabel(section: Section, row: string): string {

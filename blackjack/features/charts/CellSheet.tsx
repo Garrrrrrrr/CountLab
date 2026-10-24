@@ -5,7 +5,7 @@ import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { Sheet } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
-import { SOURCE_NAME, basicPlay, countLadder, handLabel, playIndex, rulesSummary, signedCount, surrenderRule, type CellRef, type LadderSegment, type TableRules } from "@/lib/strategy";
+import { SOURCE_NAME, basicPlay, countLadder, handLabel, playIndex, rulesSummary, signedCount, surrenderRule, thresholdPhrase, wongSource, type CellRef, type LadderSegment, type TableRules } from "@/lib/strategy";
 
 const LADDER_MIN = -6;
 const LADDER_MAX = 10;
@@ -71,11 +71,11 @@ export function CellSheet({ rules, cell, open, onClose, tc }: {
   const surrender = cell.section === "soft" ? undefined : surrenderRule(rules, cell);
   const hasSurrender = surrender && surrender.at !== Infinity;
   const differentWithoutSurrender = hasSurrender && countLadderNoSurrender(rules, cell).length > 1;
-  const shoeOnly = surrender?.shoeOnly;
+  const neverWithCount = surrender?.basic && surrender.at === Infinity;
   const changes = [
     hasSurrender && Number.isFinite(surrender!.at) && (surrender!.basic ? `Play on at ${signedCount(surrender!.at - 1)} or lower` : `Surrender at ${signedCount(surrender!.at)} or higher`),
-    shoeOnly && `No published ${rules.decks}-deck surrender figure`,
-    index && `${hasSurrender ? `Can't surrender: ${lower(index.play)}` : ACTION_NAME[index.play]} at ${signedCount(index.at)} or ${index.dir === "up" ? "higher" : "lower"}`,
+    neverWithCount && "Never surrender",
+    index && `${hasSurrender ? `Can't surrender: ${lower(index.play)}` : ACTION_NAME[index.play]} ${thresholdPhrase(index)}`,
   ].filter((line): line is string => Boolean(line));
   return (
     <Sheet open={open} onClose={onClose} title={title} description={rulesSummary(rules)}>
@@ -110,20 +110,17 @@ export function CellSheet({ rules, cell, open, onClose, tc }: {
           </section>
         )}
 
-        {shoeOnly && (
+        {neverWithCount && (
           <p className="rounded-xl bg-surface-2 p-3 text-sm leading-6 text-ink-2">
-            {SOURCE_NAME[shoeOnly.source]} gives {signedCount(shoeOnly.at)} for shoe games, where basic strategy {shoeOnly.at <= 0 ? "surrenders" : "plays"} this hand.
-            With {rules.decks === 1 ? "one deck" : `${rules.decks} decks`} basic strategy {surrender!.basic ? "surrenders" : "plays"} it, so that figure does not apply,
-            and with no {rules.decks}-deck figure listed this chart shows basic strategy at every count.
+            Basic strategy surrenders this hand, but Wong&rsquo;s surrender table prints no number for it: with a count, play it out.
           </p>
         )}
 
-        {(index || (surrender && surrender.source)) && (
-          <p className="text-xs leading-5 text-ink-3">
-            Source: {[index && SOURCE_NAME[index.source], surrender?.source && SOURCE_NAME[surrender.source]].filter(Boolean).filter((value, position, all) => all.indexOf(value) === position).join(" · ")}.
-            {rules.decks <= 2 && " Index numbers are shoe-game values; single- and double-deck games can differ by about one count."}
-          </p>
-        )}
+        <p className="text-xs leading-5 text-ink-3">
+          Numbers: {[SOURCE_NAME[wongSource(rules)], surrender?.source && SOURCE_NAME[surrender.source]].filter(Boolean).filter((value, position, all) => all.indexOf(value) === position).join(" · ")}.
+          {rules.decks > 1 && rules.decks !== 4 && ` Wong's four-deck numbers, which he gives for every multiple-deck game.`}
+          {" "}Basic strategy, the play with no count, is checked against an exact calculation for these rules.
+        </p>
 
         <div className="grid gap-2 sm:grid-cols-2">
           <Link href="/train/basic-strategy" className="flex h-11 items-center justify-between rounded-xl border border-line px-3.5 text-sm font-semibold hover:bg-surface-2">Drill basic strategy <ChevronRight size={16} aria-hidden /></Link>

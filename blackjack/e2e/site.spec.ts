@@ -63,13 +63,15 @@ test.describe("old addresses", () => {
 test.describe("strategy charts", () => {
   const cell = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}`) });
 
-  test("print the published indices for the default H17 game", async ({ page }) => {
+  test("print Wong's numbers for the default H17 game", async ({ page }) => {
     await page.goto("/charts/");
+    // Wong, Professional Blackjack, tables A2 and 33.
     await expect(cell(page, "Hard 16 versus dealer 10")).toHaveAccessibleName(/Hit.*Stand at 0 or higher.*Surrender first/);
     await expect(cell(page, "Hard 12 versus dealer 4")).toHaveAccessibleName(/Stand.*Hit at −1 or lower/);
-    await expect(cell(page, "Hard 11 versus dealer ace")).toHaveAccessibleName(/Double.*Hit at −2 or lower/);
-    await expect(cell(page, "Surrender Hard 17 versus dealer ace")).toHaveAccessibleName(/surrender, at every count/);
+    await expect(cell(page, "Hard 11 versus dealer ace")).toHaveAccessibleName(/Double.*Hit at −1 or lower/);
+    await expect(cell(page, "Surrender Hard 17 versus dealer ace")).toHaveAccessibleName(/basic strategy surrenders\. With a count, Wong never does/);
     await expect(cell(page, "Surrender Hard 15 versus dealer 10")).toHaveAccessibleName(/unless the true count is −1 or lower/);
+    await expect(cell(page, "Surrender Hard 16 versus dealer 10")).toHaveAccessibleName(/unless the true count is −3 or lower/);
   });
 
   test("follow the rules in the link and redraw when they change", async ({ page }) => {

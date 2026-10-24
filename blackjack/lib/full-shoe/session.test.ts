@@ -66,7 +66,7 @@ function playPerfectly(game: FullShoeGame, seats = [2]) {
         break;
       }
       case "dealing": game.dealt(); break;
-      case "insurance": game.chooseInsurance(takeInsurance(game.tc) ? "insure" : "decline"); break;
+      case "insurance": game.chooseInsurance(takeInsurance(game.setup.rules, game.tc) ? "insure" : "decline"); break;
       case "playing": {
         if (game.waitingForSplitCard) { game.dealSplitCard(); break; }
         const hand = game.activeHand!;

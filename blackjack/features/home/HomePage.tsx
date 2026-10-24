@@ -10,7 +10,7 @@ import { ACTION_FILL } from "@/components/blackjack/actions";
 import { hiLoValue } from "@/lib/blackjack/hiLo";
 import { RANKS, SUITS, type Card } from "@/lib/blackjack/types";
 import { trayPhotoFor } from "@/lib/blackjack/deckPhotos";
-import { DEFAULT_TABLE_RULES, buildChart, cellKey, signedCount, type Dealer } from "@/lib/strategy";
+import { DEFAULT_TABLE_RULES, buildChart, cellKey, indexTag, signedCount, type Dealer } from "@/lib/strategy";
 
 const randomCard = (): Card => ({ rank: RANKS[Math.floor(Math.random() * RANKS.length)], suit: SUITS[Math.floor(Math.random() * SUITS.length)] });
 
@@ -81,7 +81,7 @@ function ChartPreview() {
             return (
               <span key={dealer} className={cx("relative flex h-8 items-start justify-center overflow-hidden rounded-md pt-1 text-xs font-bold", ACTION_FILL[cell.basic.action])}>
                 {cell.basic.action}
-                {cell.index && <span className={cx("absolute inset-x-0 bottom-0 text-center text-[0.5625rem] leading-3", ACTION_FILL[cell.index.play])}>{signedCount(cell.index.at)}{cell.index.dir === "up" ? "↑" : "↓"}</span>}
+                {cell.index && <span className={cx("absolute inset-x-0 bottom-0 text-center text-[0.5625rem] leading-3", ACTION_FILL[cell.index.play])}>{indexTag(cell.index).split(" ")[1]}</span>}
               </span>
             );
           })}
@@ -168,7 +168,7 @@ export function HomePage() {
         <div>
           <h2 className="text-xl sm:text-2xl">Charts you can check</h2>
           <p className="mt-2 max-w-3xl text-[0.9375rem] leading-7 text-ink-2">
-            Basic strategy is checked cell by cell against an exact finite-deck calculation for 1, 2, 4, 6 and 8 decks under every rule combination. Each index play names its source (the Blackjack Apprenticeship H17 chart, the Illustrious 18 and Fab 4, Wong&rsquo;s early-surrender table) and follows your surrender rule. The drills and the full shoe grade against the same engine, so nothing on the site disagrees.
+            Basic strategy is checked cell by cell against an exact finite-deck calculation for 1, 2, 4, 6 and 8 decks under every rule combination. Every index number is Stanford Wong&rsquo;s, from <i>Professional Blackjack</i>: his one-deck and multiple-deck tables, his surrender, insurance and no-hole-card tables, each cell naming the table it comes from. The drills and the full shoe grade against the same engine, so nothing on the site disagrees.
           </p>
           <Link href="/charts" className="mt-3 inline-flex items-center gap-1.5 font-semibold text-brand-text">See the chart for your rules <ArrowRight size={16} aria-hidden /></Link>
         </div>

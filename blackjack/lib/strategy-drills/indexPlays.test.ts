@@ -25,7 +25,7 @@ describe("index play questions", () => {
             expect(hand, `${label(table)} ${entry.id}`).not.toBeNull();
             const name = `${label(table)} ${entry.id} ${side}+${offset} at ${question.tc} (${question.cards.map((card) => card.rank)})`;
             if (entry.kind === "insurance") {
-              expect(hand!.correct, name).toBe(takeInsurance(question.tc) ? "I" : "N");
+              expect(hand!.correct, name).toBe(takeInsurance(table, question.tc) ? "I" : "N");
               expect(hand!.correct, name).toBe(side === "index" ? "I" : "N");
               continue;
             }
@@ -35,7 +35,7 @@ describe("index play questions", () => {
             expect(hand!.available, name).toContain(hand!.correct);
             if (side === "index") expect(hand!.correct, name).toBe(entry.play);
             else expect(hand!.correct, name).not.toBe(entry.play);
-            if (offset === 0) expect(question.tc).toBe(side === "index" ? entry.at : switchCounts(entry).basic);
+            if (offset === 0) expect(question.tc).toBe(side === "index" ? switchCounts(entry).index : switchCounts(entry).basic);
           }
         }
       }
@@ -118,7 +118,8 @@ describe("index play questions", () => {
     const question = buildIndexQuestion(entry, "basic", table, seeded(14))!;
     const hand = resolveIndex(question, table)!;
     expect(entryLabel(entry)).toBe("12 vs 3");
-    expect(explainIndex(hand, table)).toMatch(/The index is stand at \+2 or higher, so at \+1 basic strategy holds/);
+    // Wong's table A2: H17 12 v 3 stands from +1.
+    expect(explainIndex(hand, table)).toMatch(/The index is stand at \+1 or higher, so at 0 basic strategy holds/);
     expect(questionFromMistake(indexMistake(hand, "S", table))).toEqual(question);
     const focused = focusQuestions(entry, table, seeded(15));
     expect(new Set(focused.map((item) => item.side))).toEqual(new Set(["index", "basic"]));
