@@ -10,7 +10,10 @@ export default defineConfig({
     // CI installs Chromium separately; using the system Chrome locally keeps
     // the suite runnable when Playwright's optional headless-shell package is
     // unavailable on a managed workstation.
-    channel: process.env.CI ? undefined : "chrome",
+    channel: process.env.CI || process.env.PLAYWRIGHT_CHROMIUM_PATH ? undefined : "chrome",
+    // Sandboxed environments ship one prebuilt Chromium that may not match this
+    // Playwright release; point at it rather than downloading another.
+    launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH } : undefined,
   },
   projects: [
     { name: "desktop-chromium", use: { browserName: "chromium", viewport: { width: 1440, height: 900 } } },
