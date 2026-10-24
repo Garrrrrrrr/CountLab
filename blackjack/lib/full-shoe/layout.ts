@@ -6,10 +6,10 @@
  * Widths mirror CARD_SIZES in components/blackjack/PlayingCard.tsx; height is
  * always 1.4 × width there too.
  */
-export type FeltCardSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type FeltCardSize = "xs" | "sm" | "md" | "lg" | "xl" | "2xl";
 
-export const FELT_CARD_WIDTH: Record<FeltCardSize, number> = { xs: 34, sm: 44, md: 58, lg: 76, xl: 96 };
-const ORDER: FeltCardSize[] = ["xl", "lg", "md", "sm", "xs"];
+export const FELT_CARD_WIDTH: Record<FeltCardSize, number> = { xs: 34, sm: 44, md: 58, lg: 76, xl: 96, "2xl": 124 };
+const ORDER: FeltCardSize[] = ["2xl", "xl", "lg", "md", "sm", "xs"];
 
 /** Share of each overlapped card left showing. */
 export const CARD_REVEAL = 0.4;
@@ -50,13 +50,13 @@ export function pickCardSizes({ width, height, dealerCards, seats, reserve = 0, 
   const seatsRow = seats.length ? seats : [[2]];
   for (const player of sizes) {
     if (rowWidth(player, seatsRow) > width) continue;
-    // The dealer's cards may be one size smaller than the player's to save
-    // height (more only when a long dealer hand needs the width), so the two
-    // rows still read as one table.
+    // The dealer's cards may be up to two sizes bigger than a row of split
+    // hands, or one size smaller to save height (more only when a long dealer
+    // hand needs the width), so the two rows still read as one table.
     const from = sizes.indexOf(player);
-    const widest = sizes.slice(from).findIndex(fitsDealer);
+    const widest = sizes.findIndex((size, index) => index >= from - 2 && fitsDealer(size));
     if (widest < 0) continue;
-    const dealer = sizes.slice(from + widest, from + widest + 2).find((size) => fitsHeight(size, player));
+    const dealer = sizes.slice(widest, Math.max(widest, from + 1) + 1).find((size) => fitsHeight(size, player));
     if (dealer) return { dealer, player, overflow: false };
   }
   const smallest = sizes[sizes.length - 1];

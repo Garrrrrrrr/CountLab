@@ -108,6 +108,9 @@ export interface CoachNote {
   detail: string;
   category: FullShoeGradingCategory;
   tc: number;
+  /** The running count and divisor behind `tc`, for "graded at" copy. */
+  rc: number;
+  decks: number;
   credited: boolean;
 }
 
@@ -231,6 +234,11 @@ export class FullShoeGame {
 
   private startBetting() {
     if (this.lastResult) this.lastResult = undefined;
+  }
+
+  /** Sweeps the finished round off the felt so the betting circles show. */
+  clearResult() {
+    if (this.phase === "betting") this.lastResult = undefined;
   }
 
   selectSeat(seat: number) {
@@ -556,7 +564,7 @@ export class FullShoeGame {
         context: { round: attachToRound ?? this.roundNumber, trueCount: detail.tc, mode: this.setup.mode, grade: category },
       });
     }
-    this.note = { id: ++this.noteId, ok, title: detail.title, detail: detail.explanation, category, tc: detail.tc, credited: Boolean(detail.credited) };
+    this.note = { id: ++this.noteId, ok, title: detail.title, detail: detail.explanation, category, tc: detail.tc, rc: decision.runningCount ?? this.rc, decks: this.divisor, credited: Boolean(detail.credited) };
   }
 
   /* ---------------------------------------------------------------- */

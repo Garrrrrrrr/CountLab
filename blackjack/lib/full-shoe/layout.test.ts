@@ -26,6 +26,17 @@ describe("felt card sizes", () => {
     expect(layout.dealer).not.toBe("xl");
   });
 
+  it("keeps the dealer's cards bigger than a row of split hands when there is room", () => {
+    const layout = pickCardSizes({ width: 358, height: 590, dealerCards: 2, seats: [[2, 2, 2, 2]], reserve: 72 });
+    const order = ["xs", "sm", "md", "lg", "xl"];
+    expect(order.indexOf(layout.dealer)).toBeGreaterThan(order.indexOf(layout.player));
+  });
+
+  it("uses the biggest cards only where a wide felt allows them", () => {
+    expect(pickCardSizes({ width: 720, height: 640, dealerCards: 2, seats: [[2]], reserve: 94, max: "2xl" }).player).toBe("2xl");
+    expect(pickCardSizes({ width: 358, height: 590, dealerCards: 2, seats: [[2]], reserve: 72 }).player).toBe("xl");
+  });
+
   it("reports overflow when even the smallest cards cannot fit the row", () => {
     expect(pickCardSizes({ width: 200, height: 400, dealerCards: 2, seats: [[4, 4], [4, 4], [4, 4]] }).overflow).toBe(true);
   });
