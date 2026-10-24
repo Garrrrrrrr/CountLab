@@ -59,6 +59,26 @@ describe("cvcxLibrary.updateTemplate", () => {
   });
 });
 
+describe("cvcxLibrary.renameTemplate", () => {
+  it("changes only the name, keeping the inputs, id, date and position", () => {
+    const store = new MemoryStorage();
+    const first = cvcxLibrary.saveTemplate(config(), "First", store, new Date("2026-01-01T00:00:00Z"));
+    const second = cvcxLibrary.saveTemplate(config({ bankroll: 5000 }), "Second", store, new Date("2026-01-02T00:00:00Z"));
+    const renamed = cvcxLibrary.renameTemplate(first.id, "  Downtown 6D  ", store);
+    expect(renamed).toMatchObject({ id: first.id, name: "Downtown 6D", createdAt: first.createdAt, config: first.config });
+    expect(cvcxLibrary.templates(store).map((item) => [item.id, item.name])).toEqual([[second.id, "Second"], [first.id, "Downtown 6D"]]);
+  });
+
+  it("ignores a blank name and an unknown id", () => {
+    const store = new MemoryStorage();
+    const saved = cvcxLibrary.saveTemplate(config(), "Keep", store);
+    const before = store.getItem("countlab:cvcx-templates:v1");
+    expect(cvcxLibrary.renameTemplate(saved.id, "   ", store)).toBeUndefined();
+    expect(cvcxLibrary.renameTemplate("missing", "X", store)).toBeUndefined();
+    expect(store.getItem("countlab:cvcx-templates:v1")).toBe(before);
+  });
+});
+
 describe("cvcxLibrary.saveTemplate", () => {
   it("keeps the newest twenty scenarios", () => {
     const store = new MemoryStorage();
