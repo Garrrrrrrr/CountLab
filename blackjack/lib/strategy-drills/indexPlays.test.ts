@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cellDecision, countLadder, decideHand, DEFAULT_TABLE_RULES, indexList, takeInsurance, type TableRules } from "@/lib/strategy";
-import { buildIndexQuestion, CORE_PRIORITY_LIMIT, dealIndex, entryLabel, focusQuestions, indexMistake, indexPool, permissionsFor, playable, questionFromMistake, resolveIndex, switchCounts, workingShapes, type DealState } from "./indexPlays";
+import { buildIndexQuestion, CORE_PRIORITY_LIMIT, dealIndex, entryLabel, explainIndex, focusQuestions, indexMistake, indexPool, permissionsFor, playable, questionFromMistake, resolveIndex, switchCounts, workingShapes, type DealState } from "./indexPlays";
 import { handLadder } from "./ladder";
 import { ALL_RULES, label, seeded } from "./testRules";
 
@@ -118,6 +118,7 @@ describe("index play questions", () => {
     const question = buildIndexQuestion(entry, "basic", table, seeded(14))!;
     const hand = resolveIndex(question, table)!;
     expect(entryLabel(entry)).toBe("12 vs 3");
+    expect(explainIndex(hand, table)).toMatch(/The index is stand at \+2 or higher, so at \+1 basic strategy holds/);
     expect(questionFromMistake(indexMistake(hand, "S", table))).toEqual(question);
     const focused = focusQuestions(entry, table, seeded(15));
     expect(new Set(focused.map((item) => item.side))).toEqual(new Set(["index", "basic"]));

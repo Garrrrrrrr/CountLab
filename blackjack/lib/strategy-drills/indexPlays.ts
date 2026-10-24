@@ -144,12 +144,15 @@ export function explainIndex(hand: IndexHand, rules: TableRules): string {
     const take = hand.correct === "I";
     return `Insurance pays 2 to 1 and is worth taking at a true count of ${signedCount(hand.entry.at)} or higher. At ${signedCount(hand.tc)}, ${take ? "take it" : "decline it"}.`;
   }
-  const base = explainDecision(hand.cell!, hand.decision!, hand.tc);
-  if (hand.surrender === "drawn") {
-    const twoCard = cellDecision(rules, hand.cell!, hand.tc);
-    if (twoCard.action === "R") return `${base} On two cards you would surrender here; once you have hit, surrender is gone and the stand index decides.`;
+  let text = explainDecision(hand.cell!, hand.decision!, hand.tc);
+  // On the basic-strategy side the engine's sentence never mentions the index, which is the point of the question.
+  if (hand.decision!.via === "basic" || (hand.entry.kind === "surrender" && hand.correct !== "R")) {
+    text += ` The index is ${indexRule(hand.entry).toLowerCase()}, so at ${signedCount(hand.tc)} basic strategy holds.`;
   }
-  return base;
+  if (hand.surrender === "drawn" && cellDecision(rules, hand.cell!, hand.tc).action === "R") {
+    text += " On two cards you would surrender here; once you have hit, surrender is gone and the stand index decides.";
+  }
+  return text;
 }
 
 /** The sentence under the cards that says whether surrender is allowed for this hand. */
