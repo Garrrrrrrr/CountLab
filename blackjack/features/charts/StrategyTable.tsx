@@ -30,7 +30,7 @@ function Cell({ view, onSelect, selected }: { view: CellView; onSelect: () => vo
       aria-label={view.label}
       aria-pressed={selected}
       className={cx(
-        "relative flex h-11 w-full items-center justify-center overflow-hidden rounded-[0.4rem] font-semibold leading-none transition sm:h-12 lg:h-11",
+        "relative flex h-11 w-full items-center justify-center overflow-hidden rounded-[0.4rem] font-semibold leading-none transition sm:h-12 lg:h-11 print:h-8",
         fill,
         view.changed && "ring-2 ring-brand ring-offset-1 ring-offset-surface",
         selected && "outline outline-2 outline-offset-1 outline-ink",
@@ -125,15 +125,15 @@ function DealerHeader() {
 export function TableFrame({ id, title, sub, children, aside }: { id: string; title: string; sub?: ReactNode; children: ReactNode; aside?: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-28 break-inside-avoid lg:scroll-mt-6">
-      <div className="mb-2 flex items-end justify-between gap-3">
+      <div className="mb-2 flex items-end justify-between gap-3 print:mb-1">
         <div>
           <h2 id={`${id}-title`} className="text-lg font-semibold">{title}</h2>
-          {sub && <p className="text-sm text-ink-3">{sub}</p>}
+          {sub && <p className="text-sm text-ink-3 print:hidden">{sub}</p>}
         </div>
         {aside}
       </div>
-      <div className="card p-1.5 sm:p-2.5">
-        <p className="mb-1 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-3" aria-hidden>Dealer&rsquo;s upcard</p>
+      <div className="card p-1.5 sm:p-2.5 print:p-1">
+        <p className="mb-1 text-center text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-3 print:hidden" aria-hidden>Dealer&rsquo;s upcard</p>
         {children}
       </div>
     </section>

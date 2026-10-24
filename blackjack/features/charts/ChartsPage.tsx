@@ -38,6 +38,7 @@ export function ChartsPage() {
   return (
     <div className="print:text-[11px]">
       <PageHeader
+        className="print:hidden"
         title="Strategy charts"
         sub="Basic strategy and Hi-Lo index plays for your exact table rules. Tap any cell for the play at every count."
         actions={
@@ -47,7 +48,7 @@ export function ChartsPage() {
           </div>
         }
       />
-      <p className="print-only mb-3 font-mono text-sm font-semibold">CountLab · {rulesSummary(rules)}</p>
+      <p className="print-only mb-2 text-base font-semibold">CountLab strategy chart · <span className="font-mono">{rulesSummary(rules)}</span> · Hi-Lo indices: the strip shows the play the count switches to and the true count where it starts</p>
 
       <div className="no-print space-y-3">
         <RulesControl rules={rules} onChange={setRules} differsFromSaved={differsFromSaved} onSave={saveAsMine} onReset={resetToSaved} />
@@ -76,7 +77,7 @@ export function ChartsPage() {
 
       <Legend mode={mode} hasSurrender={Boolean(chart.surrender)} />
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-2 print:grid-cols-2 print:gap-3">
+      <div className="mt-5 grid gap-6 lg:grid-cols-2 print:mt-2 print:grid-cols-2 print:gap-x-4 print:gap-y-2">
         <TableFrame id="hard" title="Hard totals" sub="No ace, or every ace counted as 1. 18+ always stands; 5–7 always hits.">
           <PlayTableView table={chart.tables.hard} onSelect={(ref) => select(ref)} {...tableProps} />
         </TableFrame>
@@ -95,7 +96,7 @@ export function ChartsPage() {
             <Card className="text-sm text-ink-2"><span className="font-semibold text-ink">No surrender</span> at this table, so the hard and pair tables are the whole story.</Card>
           )}
           <section id="insurance" className="scroll-mt-28 lg:scroll-mt-6">
-            <Card className="flex items-center gap-4">
+            <Card className="flex items-center gap-4 print:p-2">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand/15 font-mono text-lg font-bold text-brand-text">+{chart.insuranceAt}</div>
               <div className="min-w-0">
                 <h2 className="text-base font-semibold">Insurance and even money</h2>
@@ -107,7 +108,7 @@ export function ChartsPage() {
               </div>
             </Card>
           </section>
-          <RuleNotes rules={rules} />
+          <div className="print:hidden"><RuleNotes rules={rules} /></div>
         </div>
       </div>
 
@@ -132,7 +133,7 @@ function Swatch({ action, children }: { action: Action; children?: ReactNode }) 
 
 function Legend({ mode, hasSurrender }: { mode: ChartMode; hasSurrender: boolean }) {
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-surface px-3.5 py-3 print:mt-2 print:py-2">
+    <div className="mt-4 rounded-2xl border border-line bg-surface px-3.5 py-3 print:hidden">
       <ul className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Key">
         <Swatch action="H" />
         <Swatch action="S" />

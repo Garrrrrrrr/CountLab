@@ -6,6 +6,7 @@ import { Button, ButtonLink, ConfirmSheet, PageHeader, Segmented, SelectField, T
 import { applyTheme } from "@/components/shell/ThemeToggle";
 import { useSettings } from "@/lib/hooks/useSettings";
 import { useAuth } from "@/lib/supabase/AuthProvider";
+import { useIsAdmin } from "@/lib/supabase/admin";
 import { accountStorage, guestBackup, hasLegacyBackup, legacyBackup } from "@/lib/supabase/accountStorage";
 import { storage, type Settings } from "@/lib/statistics/storage";
 import { analytics } from "@/lib/analytics";
@@ -39,6 +40,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export function SettingsPage() {
   const { settings, update } = useSettings();
+  const isAdmin = useIsAdmin();
   const set = <K extends keyof Settings>(key: K, value: Settings[K]) => update({ [key]: value } as Partial<Settings>);
 
   return (
@@ -109,6 +111,7 @@ export function SettingsPage() {
               <Link href="/terms" className="font-medium text-ink underline-offset-2 hover:underline">Terms of Service</Link>
               <Link href="/privacy" className="font-medium text-ink underline-offset-2 hover:underline">Privacy Policy</Link>
               <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-ink underline-offset-2 hover:underline">Contact</a>
+              {isAdmin && <Link href="/admin" className="font-medium text-brand-text underline-offset-2 hover:underline">Product analytics</Link>}
             </div>
             <p className="mt-2 text-xs text-ink-3">CountLab {APP_VERSION}. For training and education. Gamble responsibly.</p>
           </Row>
