@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeftRight, Plus } from "lucide-react";
 import { Button, Callout, ConfirmSheet, IconButton, PageHeader, Tabs, toast } from "@/components/ui";
+import { BottomDock } from "@/components/shell/BottomDock";
 import { analytics } from "@/lib/analytics";
 import { track } from "@/lib/analytics/track";
 import { journalLibrary, type BankrollTransaction, type JournalSession } from "@/lib/blackjack/journal";
@@ -400,12 +401,12 @@ export function Journal() {
       {data.ready && !dockHidden && (
         <>
           <div aria-hidden className="h-20 lg:hidden" />
-          <div className="fixed inset-x-0 z-30 border-t border-line bg-bg/90 px-4 py-3 backdrop-blur-xl lg:hidden" style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b))" }}>
+          <BottomDock>
             <div role="group" aria-label="Journal actions" className="mx-auto flex max-w-xl gap-2">
               <Button block icon={<Plus size={18} aria-hidden />} onClick={() => openLog()}>Log session</Button>
               <IconButton label="Deposit or withdrawal" variant="secondary" onClick={() => openCash()}><ArrowLeftRight size={19} aria-hidden /></IconButton>
             </div>
-          </div>
+          </BottomDock>
         </>
       )}
 

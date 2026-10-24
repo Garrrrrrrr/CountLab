@@ -35,7 +35,8 @@ export function Sheet({ open, onClose, title, description, children, footer, siz
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!open) return;
+    // Waits for `mounted` too: a sheet rendered already open has no panel to focus until the portal exists.
+    if (!open || !mounted) return;
     const opener = document.activeElement as HTMLElement | null;
     stack.push(id);
     const { overflow } = document.body.style;
@@ -66,7 +67,7 @@ export function Sheet({ open, onClose, title, description, children, footer, siz
       if (!stack.length) document.body.style.overflow = overflow;
       opener?.focus?.({ preventScroll: true });
     };
-  }, [open, id, initialFocus]);
+  }, [open, mounted, id, initialFocus]);
 
   if (!open || !mounted) return null;
   const width = size === "sm" ? "sm:max-w-md" : size === "lg" ? "sm:max-w-3xl" : "sm:max-w-xl";

@@ -16,7 +16,7 @@ import { Check, ChevronRight, Flame, RotateCcw, Timer, X } from "lucide-react";
 import { Button, ButtonLink, Card, Kbd } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { useFocusMode } from "@/components/shell/FocusMode";
-import { useBottomDock } from "@/components/shell/useBottomDock";
+import { BottomDock } from "@/components/shell/BottomDock";
 import type { Mistake } from "@/lib/statistics/storage";
 
 /* ------------------------------------------------------------------ */
@@ -35,8 +35,6 @@ export function DrillSetup({ title, intro, children, onStart, startLabel = "Star
   resume?: ReactNode;
   eyebrow?: string;
 }) {
-  const dock = useRef<HTMLDivElement>(null);
-  useBottomDock(dock);
   return (
     <div className="pb-24 lg:pb-0">
       <Link href="/train" className="-ml-1 mb-3 inline-flex h-8 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
@@ -53,9 +51,9 @@ export function DrillSetup({ title, intro, children, onStart, startLabel = "Star
         {aside && <div className="space-y-4">{aside}</div>}
       </div>
       {/* Phones: Start sits above the tab bar, where the thumb already is. */}
-      <div ref={dock} className="fixed inset-x-0 z-30 border-t border-line bg-bg/90 px-4 py-3 backdrop-blur-xl lg:hidden" style={{ bottom: "calc(var(--tabbar-h) + var(--safe-b))" }}>
+      <BottomDock>
         <Button size="lg" block onClick={onStart}>{startLabel}</Button>
-      </div>
+      </BottomDock>
     </div>
   );
 }

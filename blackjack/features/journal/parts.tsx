@@ -4,24 +4,14 @@
  * not in components/ui, because only this feature grades results against EV
  * and validates money as it is typed.
  */
-import { useCallback, useEffect, useId, useRef, useState, type ComponentProps, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { ChevronDown, ChevronsDown, ChevronsUp, CircleAlert, CircleCheck, CircleQuestionMark, Search, TrendingDown, TrendingUp, TriangleAlert, X } from "lucide-react";
 import { Button, Sheet, cx } from "@/components/ui";
 import type { SessionAssessment } from "@/lib/blackjack/journalAnalysis";
 import { parseAmount, type AmountEntry, type ResultDirection } from "@/lib/blackjack/journalForm";
 
-/**
- * The shared Sheet, opened one render after it mounts. Sheet portals its panel
- * only once it has mounted itself, but moves focus in when `open` changes, so
- * a Sheet mounted already open can try to focus before its panel exists and
- * leave focus on the page. Opening a beat later puts the two in order. The
- * journal's sheets mount when they open, so they all go through this.
- */
-export function JournalSheet(props: ComponentProps<typeof Sheet>) {
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
-  return <Sheet {...props} open={props.open && ready} />;
-}
+/** Sheet, kept as the journal's name for it. */
+export const JournalSheet = Sheet;
 
 /* ------------------------------------------------------------------------ */
 /* Verdicts                                                                  */

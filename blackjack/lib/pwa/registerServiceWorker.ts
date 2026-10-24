@@ -43,8 +43,12 @@ function announce(registration: ServiceWorkerRegistration) {
 export function registerServiceWorker() {
   if (typeof window === "undefined" || process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
   installChunkRecovery();
+  // On a first visit the new worker claims the page, which also fires
+  // controllerchange. Reloading then would wipe whatever the reader had started
+  // (a half-filled form, a drill), so reload only when replacing a worker.
+  const hadController = Boolean(navigator.serviceWorker.controller);
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (reloading) return;
+    if (reloading || !hadController) return;
     reloading = true;
     window.location.reload();
   });
