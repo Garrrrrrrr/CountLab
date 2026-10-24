@@ -87,9 +87,10 @@ test.describe("counting drills", () => {
     await page.keyboard.press("Enter");
     await press(page, "-1");
     await page.keyboard.press("Enter");
-    const verdict = page.getByRole("status").filter({ hasText: /True count/ }).filter({ hasText: "÷" });
+    const verdict = page.getByRole("status").filter({ hasText: /true count/i }).filter({ hasText: "÷" });
     await expect(verdict).toBeVisible();
-    await expect(verdict).toContainText("You said 3 decks and −1.");
+    // The question is random, so 3 decks and −1 is sometimes simply right.
+    await expect(verdict).toContainText(/You said 3 decks and −1\.|Correct: true count −1/);
     await page.getByRole("button", { name: "End drill" }).click();
     await expect(page.getByText("Questions right", { exact: true })).toBeVisible();
   });
