@@ -17,13 +17,6 @@
  * House additions sit on top of the transcription. This is the chart the drill
  * grades, so the additions are listed here rather than hidden in the catalog:
  *
- * - Soft 20 doubles against 4, 5 and 6 at 6+, 5+ and 4+. The printed chart
- *   stands there at every count, but those are the counts where doubling
- *   actually overtakes standing — the same shape, and the same three indices,
- *   as the chart's own T,T splits. Measured with `priceCell` (H17, 6 decks,
- *   75% dealt): against a 6 the double is behind by 0.013 units at +3 and ahead
- *   by 0.020 at +4; against a 5, behind 0.017 at +4 and ahead 0.021 at +5;
- *   against a 4, behind 0.018 at +5 and ahead 0.003 at +6.
  * - Six Illustrious 18 / Fab 4 cells the printed chart leaves at their basic
  *   action: pairs 9,9 v 7 `3+` (printed N), hard 13 v 3 `-2+`, 12 v 5 `-2+` and
  *   12 v 6 `-3+` (all printed S), hard 11 v A `-1+` (printed D), and the
@@ -106,7 +99,7 @@ export const BJA_H17_SECTIONS: readonly ChartSection[] = [
     2,2  Y/N  Y/N  Y   Y    Y    Y  N  N  N  N
   `),
   section("soft", "Soft totals", `
-    A,9  S   S   6+  5+   4+   S  S  S  S  S
+    A,9  S   S   S   S    S    S  S  S  S  S
     A,8  S   S   3+  1+  0-  S  S  S  S  S
     A,7  Ds  Ds  Ds  Ds  Ds  S  S  H  H  H
     A,6  1+  D   D   D   D   H  H  H  H  H

@@ -76,7 +76,8 @@ function buildSurrenderTable(rules: TableRules): SurrenderTable | null {
       let used = false;
       for (const dealer of DEALERS) {
         const rule = surrenderRule(rules, { section, row, dealer });
-        if (rule.at === Infinity) continue;
+        // A hand never surrendered is left out, unless a shoe-game figure for it needs a footnote.
+        if (rule.at === Infinity && !rule.shoeOnly) continue;
         cells.set(cellKey({ section, row, dealer }), rule);
         used = true;
       }

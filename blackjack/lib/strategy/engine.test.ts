@@ -112,8 +112,7 @@ describe("Blackjack Apprenticeship H17 chart", () => {
     switchesAt(H17, hard("16", "8"), 4, "up", "H", "R");
     switchesAt(H17_NS, hard("16", "A"), 3, "up", "H", "S");
     switchesAt(H17_NS, hard("15", "A"), 5, "up", "H", "S");
-    // The chart prints no index for 16 v 10 (surrender is basic); hitting does take over below -3.
-    switchesAt(H17, hard("16", "10"), -3, "up", "H", "R");
+    expect(at(H17, hard("16", "10"), -10)).toBe("R");
     expect(at(H17, hard("17", "A"), -10)).toBe("R");
   });
 });
@@ -145,11 +144,12 @@ describe("early surrender against a ten (Wong table 32)", () => {
     expect(at(H17_ES, hard("17", "A"), -10)).toBe("R");
   });
 
-  it("gives single deck its own 14 and 8,8 thresholds, where basic strategy plays them on", () => {
+  it("keeps Wong's shoe figure as a note where single-deck basic strategy plays the hand on", () => {
     const single = rules({ decks: 1, surrender: "early" });
-    switchesAt(single, hard("14", "10"), 1, "up", "H", "R");
-    switchesAt(single, pair("8,8", "10"), 1, "up", "P", "R");
-    // Without DAS single deck surrenders 8,8 off the top, so Wong's figure stands.
+    expect(surrenderRule(single, hard("14", "10"))).toEqual({ at: Infinity, basic: false, shoeOnly: { at: 0, source: "Wong" } });
+    expect(surrenderRule(single, pair("8,8", "10"))).toEqual({ at: Infinity, basic: false, shoeOnly: { at: -2, source: "Wong" } });
+    expect(at(single, hard("14", "10"), 10)).toBe("H");
+    // Without DAS single deck surrenders 8,8 off the top, so Wong's figure applies.
     switchesAt(rules({ decks: 1, surrender: "early", das: false }), pair("8,8", "10"), -2, "up", "P", "R");
     switchesAt(rules({ decks: 2, surrender: "early" }), hard("14", "10"), 0, "up", "H", "R");
     switchesAt(rules({ decks: 2, surrender: "early" }), pair("8,8", "10"), -2, "up", "P", "R");
@@ -182,15 +182,21 @@ describe("whole-chart invariants", () => {
     }
   });
 
-  it("keeps a count threshold on every surrender row, whatever the decks and rules", () => {
+  it("uses every published surrender figure, or keeps it as a shoe-game note, never drops it", () => {
     for (const decks of [1, 2, 4, 6, 8]) for (const hitSoft17 of [true, false]) for (const das of [true, false]) for (const surrender of ["late", "early"] as const) {
       const table = rules({ decks, hitSoft17, das, surrender });
       const rows = [...(surrender === "early" ? EARLY_SURRENDER_TEN_INDICES : []), ...LATE_SURRENDER_INDICES.filter((row) => surrender === "late" || row.dealer !== "10")];
       for (const row of rows) {
         if (row.only && row.only !== (hitSoft17 ? "h17" : "s17")) continue;
         const cell = row.hand.includes(",") ? pair(row.hand, row.dealer) : hard(row.hand, row.dealer);
-        // Infinity would mean "never" (or -Infinity "always") at any count: a published threshold lost to a basic-strategy mismatch.
-        expect(Number.isFinite(surrenderRule(table, cell).at), `${decks}D ${hitSoft17 ? "H17" : "S17"} ${das ? "DAS" : "no DAS"} ${surrender} ${row.hand} v ${row.dealer}`).toBe(true);
+        const rule = surrenderRule(table, cell);
+        const label = `${decks}D ${hitSoft17 ? "H17" : "S17"} ${das ? "DAS" : "no DAS"} ${surrender} ${row.hand} v ${row.dealer}`;
+        if (Number.isFinite(rule.at)) expect(rule.at, label).toBe(row.at);
+        else {
+          expect(rule.shoeOnly, label).toEqual({ at: row.at, source: row.source });
+          // Only single- and double-deck basic strategy departs from the shoe game's.
+          expect(decks, label).toBeLessThanOrEqual(2);
+        }
       }
     }
   });
@@ -201,6 +207,8 @@ describe("whole-chart invariants", () => {
       for (const cell of cells.filter((entry) => entry.section !== "soft" && entry.dealer === "10")) {
         const early = surrenderRule(rules({ decks, hitSoft17, das, surrender: "early" }), cell).at;
         const late = surrenderRule(rules({ decks, hitSoft17, das, surrender: "late" }), cell).at;
+        // Compared where both are published numbers; "always" and "never" just mean no figure is listed.
+        if (!Number.isFinite(early) || !Number.isFinite(late)) continue;
         expect(early, `${decks}D ${hitSoft17 ? "H17" : "S17"} ${das ? "DAS" : "no DAS"} ${cell.section} ${cell.row} v 10`).toBeLessThanOrEqual(late);
       }
     }

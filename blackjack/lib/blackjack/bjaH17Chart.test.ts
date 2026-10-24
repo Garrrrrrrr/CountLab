@@ -52,9 +52,6 @@ describe("BJA H17 chart", () => {
       "pairs T,Tv5 5+",
       "pairs T,Tv6 4+",
       "pairs 9,9v7 3+",
-      "soft A,9v4 6+",
-      "soft A,9v5 5+",
-      "soft A,9v6 4+",
       "soft A,8v4 3+",
       "soft A,8v5 1+",
       "soft A,8v6 0-",
@@ -99,8 +96,9 @@ describe("BJA H17 chart", () => {
     expect(cell("pairs", "T,T", "4")).toBe("6+");
     expect(cell("pairs", "4,4", "5")).toBe("Y/N");
     expect(cell("soft", "A,9", "3")).toBe("S");
-    expect(cell("soft", "A,9", "4")).toBe("6+");
-    expect(cell("soft", "A,9", "6")).toBe("4+");
+    // The printed chart stands on soft 20 at every count.
+    expect(cell("soft", "A,9", "4")).toBe("S");
+    expect(cell("soft", "A,9", "6")).toBe("S");
     expect(cell("soft", "A,7", "6")).toBe("Ds");
     expect(cell("soft", "A,7", "9")).toBe("H");
     expect(cell("hard", "8", "6")).toBe("2+");

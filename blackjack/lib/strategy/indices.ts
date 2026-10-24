@@ -1,7 +1,6 @@
 /**
- * Hi-Lo index plays for shoe games (4–8 decks), as plain data, plus the
- * single- and double-deck surrender thresholds where those games' basic
- * strategy differs from the shoe's.
+ * Hi-Lo index plays for shoe games (4–8 decks), as plain data. Every number is
+ * a published one, with its source on the row; none comes from a simulation.
  *
  * Every row says exactly one thing: "play X when the true count is at or above
  * N" (`up`) or "at or below N" (`down`). There is no baseline field and no
@@ -22,7 +21,13 @@
  *   Wong  Wong, Professional Blackjack: table 32 (early surrender) for ES10.
  *   S17P  The S17 Pro chart supplied with this project (provenance of the
  *         individual numbers not recorded), for S17 cells nothing above covers.
- *   CL    CountLab, measured with `priceCell` in lib/blackjack/deviationEv.ts.
+ *
+ * SINGLE AND DOUBLE DECK. These are shoe figures. Where 1- or 2-deck basic
+ * strategy plays a hand the other way from the shoe game (single deck hits
+ * 14 v 10 under ES10, for one), a shoe threshold cannot apply; the engine
+ * keeps it as a `shoeOnly` note and the chart says so, rather than inventing a
+ * single-deck number. Wong's single- and double-deck tables (Professional
+ * Blackjack, appendix A) are not transcribed here.
  *
  * WHY H17 AND S17 SHARE THE 7–10 COLUMNS. With a 7, 8, 9 or ten showing the
  * dealer can never hold a soft 17 (the ace would have to count 11 on top of a
@@ -36,7 +41,7 @@ import type { Action } from "@/lib/blackjack/types";
 export type Dealer = "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10" | "A";
 export const DEALERS: readonly Dealer[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "A"];
 
-export type IndexSource = "BJA" | "I18" | "Fab4" | "Wong" | "S17P" | "CL";
+export type IndexSource = "BJA" | "I18" | "Fab4" | "Wong" | "S17P";
 export type GameFamily = "h17" | "s17";
 
 /** A count-based change to a hit, stand, double or split decision. */
@@ -59,10 +64,6 @@ export interface SurrenderIndex {
   at: number;
   source: IndexSource;
   only?: GameFamily;
-  /** Absent: every deck count. A row with deck counts sits above the shoe row it overrides. */
-  decks?: readonly number[];
-  /** Absent: with or without double after split. */
-  das?: boolean;
 }
 
 const up = (hand: string, dealer: Dealer, play: PlayIndex["play"], at: number, source: IndexSource, only?: GameFamily): PlayIndex => ({ hand, dealer, play, dir: "up", at, source, only });
@@ -99,9 +100,9 @@ export const PLAY_INDICES: readonly PlayIndex[] = [
   up("8", "5", "D", 4, "S17P", "s17"),
 
   // Soft doubles and stands.
-  up("A,9", "4", "D", 6, "CL"),
-  up("A,9", "5", "D", 5, "CL"),
-  up("A,9", "6", "D", 4, "CL", "h17"),
+  // The BJA H17 chart stands on soft 20 at every count; the S17 Pro chart doubles it.
+  up("A,9", "4", "D", 6, "S17P", "s17"),
+  up("A,9", "5", "D", 5, "S17P", "s17"),
   up("A,9", "6", "D", 5, "S17P", "s17"),
   up("A,8", "4", "D", 3, "BJA"),
   up("A,8", "5", "D", 1, "BJA"),
@@ -117,33 +118,13 @@ export const PLAY_INDICES: readonly PlayIndex[] = [
   up("9,9", "7", "P", 3, "S17P"),
 ];
 
-/**
- * Late surrender, and the non-ten columns of early surrender.
- *
- * The shoe figures assume shoe basic strategy. Where single- or double-deck
- * basic strategy differs (it hits 16 v 9 and, at one deck, 15 v 10, and gives
- * up 7,7 v 10 off the top), the deck-specific row above the shoe row takes
- * over. Priced with `priceCell` (1 deck 65% dealt, 2 decks 70%, 60M rounds):
- * 16 v 9 crosses between +1 and +2 at one deck and between 0 and +1 at two;
- * single-deck 15 v 10 crosses just below 0, where the exact calculation calls
- * the full-deck decision a tie, so it is listed at +1 to agree with
- * single-deck basic strategy, which hits; single-deck 7,7 v 10 crosses between
- * -3 and -2 (240M rounds). 16 v 10 is surrendered off the top everywhere, but
- * not at any count: hitting takes over below -3 (shoe and two decks, 30M
- * rounds) and below -2 at one deck, never above early surrender's -5.
- */
+/** Late surrender, and the non-ten columns of early surrender. */
 export const LATE_SURRENDER_INDICES: readonly SurrenderIndex[] = [
   { hand: "16", dealer: "8", at: 4, source: "BJA" },
-  { hand: "16", dealer: "9", at: 2, source: "CL", decks: [1] },
-  { hand: "16", dealer: "9", at: 1, source: "CL", decks: [2] },
   { hand: "16", dealer: "9", at: 0, source: "BJA" },
   { hand: "15", dealer: "9", at: 2, source: "BJA" },
-  { hand: "15", dealer: "10", at: 1, source: "CL", decks: [1] },
   { hand: "15", dealer: "10", at: 0, source: "BJA" },
-  { hand: "16", dealer: "10", at: -2, source: "CL", decks: [1] },
-  { hand: "16", dealer: "10", at: -3, source: "CL" },
   { hand: "14", dealer: "10", at: 3, source: "Fab4" },
-  { hand: "7,7", dealer: "10", at: -2, source: "CL", decks: [1] },
   // Wong: "a 7,7 you would consider surrendering is just a hard fourteen".
   { hand: "7,7", dealer: "10", at: 3, source: "Fab4" },
   { hand: "15", dealer: "A", at: -1, source: "BJA", only: "h17" },
@@ -155,24 +136,15 @@ export const LATE_SURRENDER_INDICES: readonly SurrenderIndex[] = [
  * column. The soft-17 rule cannot reach this column. 8,8 at -2 is Wong's
  * no-double-after-split figure; with DAS the split is worth a little more, so
  * the true break-even sits slightly higher.
- *
- * Single deck: basic strategy hits 14 and (with DAS) splits 8,8 against a ten,
- * so Wong's shoe figures cannot apply. Priced with `priceCell` (1 deck, 65%
- * dealt, ES10, ~20M and ~260M rounds): both cross between 0 and +1, so
- * "surrender at +1" agrees with basic strategy at 0. Single-deck 7,7 is given
- * up down to -6 (120M rounds), below its late-surrender -2.
  */
 export const EARLY_SURRENDER_TEN_INDICES: readonly SurrenderIndex[] = [
   { hand: "17", dealer: "10", at: 5, source: "Wong" },
   { hand: "16", dealer: "10", at: -5, source: "Wong" },
   { hand: "15", dealer: "10", at: -2, source: "Wong" },
-  { hand: "14", dealer: "10", at: 1, source: "CL", decks: [1] },
   { hand: "14", dealer: "10", at: 0, source: "Wong" },
   { hand: "13", dealer: "10", at: 3, source: "Wong" },
   { hand: "12", dealer: "10", at: 8, source: "Wong" },
-  { hand: "8,8", dealer: "10", at: 1, source: "CL", decks: [1], das: true },
   { hand: "8,8", dealer: "10", at: -2, source: "Wong" },
-  { hand: "7,7", dealer: "10", at: -6, source: "CL", decks: [1] },
   { hand: "7,7", dealer: "10", at: 0, source: "Wong" },
   { hand: "6,6", dealer: "10", at: 8, source: "Wong" },
 ];
@@ -186,5 +158,4 @@ export const SOURCE_NAME: Record<IndexSource, string> = {
   Fab4: "Fab 4 surrenders (Schlesinger)",
   Wong: "Wong, Professional Blackjack, table 32",
   S17P: "S17 Pro chart",
-  CL: "CountLab simulation",
 };

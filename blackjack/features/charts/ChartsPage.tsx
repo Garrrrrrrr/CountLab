@@ -25,6 +25,8 @@ export function ChartsPage() {
   const [selected, setSelected] = useState<{ ref: CellRef; key: string } | null>(null);
   const chart = useMemo(() => buildChart(rules), [rules]);
   const surrender = effectiveSurrender(rules);
+  // Shoe-game surrender figures that these rules' basic strategy contradicts: footnoted, not used.
+  const shoeOnly = chart.surrender ? [...chart.surrender.cells.entries()].filter(([, rule]) => rule.shoeOnly) : [];
   const select = (ref: CellRef, surrenderTable = false) => setSelected({ ref, key: surrenderTable ? `R:${cellKey(ref)}` : cellKey(ref) });
   const sections = [
     { id: "hard", label: "Hard" },
@@ -91,6 +93,11 @@ export function ChartsPage() {
           {chart.surrender ? (
             <TableFrame id="surrender" title={surrender === "early" ? "Surrender (early vs 10, late otherwise)" : "Late surrender"} sub="Decide this first, on your first two cards only.">
               <SurrenderTableView table={chart.surrender} onSelect={(ref) => select(ref, true)} {...tableProps} />
+              {shoeOnly.length > 0 && (
+                <p className="mt-2 text-xs leading-5 text-ink-3">
+                  * {shoeOnly.map(([key, rule]) => `${key.split(":")[1].replace("v", " v ")} (${signedCount(rule.shoeOnly!.at)})`).join(", ")}: published for shoe games, where basic strategy plays {shoeOnly.length > 1 ? "these hands" : "this hand"} the other way. No {rules.decks}-deck figure is listed, so {shoeOnly.length > 1 ? "these cells show" : "this cell shows"} basic strategy at every count.
+                </p>
+              )}
             </TableFrame>
           ) : (
             <Card className="text-sm text-ink-2"><span className="font-semibold text-ink">No surrender</span> at this table, so the hard and pair tables are the whole story.</Card>

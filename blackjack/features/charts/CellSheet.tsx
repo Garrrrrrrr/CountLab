@@ -71,8 +71,10 @@ export function CellSheet({ rules, cell, open, onClose, tc }: {
   const surrender = cell.section === "soft" ? undefined : surrenderRule(rules, cell);
   const hasSurrender = surrender && surrender.at !== Infinity;
   const differentWithoutSurrender = hasSurrender && countLadderNoSurrender(rules, cell).length > 1;
+  const shoeOnly = surrender?.shoeOnly;
   const changes = [
     hasSurrender && Number.isFinite(surrender!.at) && (surrender!.basic ? `Play on at ${signedCount(surrender!.at - 1)} or lower` : `Surrender at ${signedCount(surrender!.at)} or higher`),
+    shoeOnly && `No published ${rules.decks}-deck surrender figure`,
     index && `${hasSurrender ? `Can't surrender: ${lower(index.play)}` : ACTION_NAME[index.play]} at ${signedCount(index.at)} or ${index.dir === "up" ? "higher" : "lower"}`,
   ].filter((line): line is string => Boolean(line));
   return (
@@ -106,6 +108,14 @@ export function CellSheet({ rules, cell, open, onClose, tc }: {
             <p className="mb-2 text-sm text-ink-3">After you hit or split, or at a table without surrender.</p>
             <CountLadder rules={rules} cell={cell} marker={tc} surrender={false} />
           </section>
+        )}
+
+        {shoeOnly && (
+          <p className="rounded-xl bg-surface-2 p-3 text-sm leading-6 text-ink-2">
+            {SOURCE_NAME[shoeOnly.source]} gives {signedCount(shoeOnly.at)} for shoe games, where basic strategy {shoeOnly.at <= 0 ? "surrenders" : "plays"} this hand.
+            With {rules.decks === 1 ? "one deck" : `${rules.decks} decks`} basic strategy {surrender!.basic ? "surrenders" : "plays"} it, so that figure does not apply,
+            and with no {rules.decks}-deck figure listed this chart shows basic strategy at every count.
+          </p>
         )}
 
         {(index || (surrender && surrender.source)) && (

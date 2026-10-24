@@ -17,6 +17,8 @@ interface CellView {
   suffix?: string;
   strip?: { action: Action; label: string };
   surrenderFlag?: boolean;
+  /** An asterisk: the cell has a footnote under its table. */
+  note?: boolean;
   changed?: boolean;
   label: string;
 }
@@ -70,6 +72,7 @@ function Cell({ view, onSelect, selected, row, col }: { view: CellView; onSelect
         </span>
       )}
       {view.surrenderFlag && <span aria-hidden className="absolute right-0 top-0 h-2.5 w-2.5 bg-act-r [clip-path:polygon(0_0,100%_0,100%_100%)] sm:h-3 sm:w-3" />}
+      {view.note && <span aria-hidden className="absolute left-1 top-0.5 text-[0.6875rem] font-bold leading-none opacity-80">*</span>}
     </button>
   );
 }
@@ -108,6 +111,13 @@ export function surrenderCellView(rules: TableRules, table: SurrenderTable, ref:
   const rule = table.cells.get(cellKey(ref));
   const name = `Surrender ${handLabel(ref.section, ref.row)} versus dealer ${dealerName(ref.dealer)}`;
   if (!rule) return { action: null, label: `${name}: never` };
+  if (rule.shoeOnly) {
+    return {
+      action: rule.basic ? "R" : null,
+      note: true,
+      label: `${name}: ${rule.basic ? "surrender" : "do not surrender"} at every count. The published ${signedCount(rule.shoeOnly.at)} is a shoe-game figure that does not fit ${rules.decks}-deck basic strategy`,
+    };
+  }
   const play = cellDecision(rules, ref, rule.basic ? Math.min(rule.at - 1, 10) : rule.at, { canDouble: true, canSplit: true, canSurrender: false }).action;
   if (mode === "count") {
     const surrenders = tc >= rule.at;
