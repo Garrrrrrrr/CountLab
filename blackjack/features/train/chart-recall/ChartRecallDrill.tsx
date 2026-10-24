@@ -190,11 +190,12 @@ export function ChartRecallDrill() {
     setSession(undefined);
     setEntries(state?.entries ?? {});
     setGraded(state?.graded ?? []);
-    const at = state?.index ?? 0;
+    // A retry chart drops tables with nothing left to ask, so a saved position is clamped to what remains.
+    const at = Math.min(state?.index ?? 0, list.length - 1);
     setIndex(at);
     clock.set(state?.activeMs ?? 0);
     setView("chart");
-    setPhase(state?.phase ?? "fill");
+    setPhase(state?.phase === "review" && state.graded.includes(list[at].id) ? "review" : "fill");
     const firstBlank = list[at].cells.find((item) => !state?.entries[item.key]?.base) ?? list[at].cells[0];
     select(firstBlank.key);
     track("drill_started", { drill: DRILL, mode: next.level, questionTarget: list.reduce((sum, item) => sum + item.cells.length, 0), ...startedRules(next.rules) });
@@ -420,7 +421,7 @@ function ReviewDock({ grade, cell, rules, last, nextTitle, onNext }: { grade: Ta
           <span className="tnum whitespace-nowrap text-sm text-ink-2">{grade.wrong} wrong · {grade.blank} blank</span>
         </p>
         <p className="mt-1 text-sm leading-5 text-ink-2">
-          {cell ? <CellVerdict grade={cell} rules={rules} /> : perfect ? "Every cell right." : "Tap a cell marked ✕ to see the answer and why."}
+          {cell ? <CellVerdict grade={cell} rules={rules} /> : perfect ? "Every cell right." : "Tap a cell with a red mark to see the answer and why."}
         </p>
       </div>
       <Button ref={button} block onClick={onNext} trailing={<ChevronRight size={18} aria-hidden />}>{last ? "See results" : `Next: ${nextTitle?.toLowerCase()}`}</Button>
@@ -453,7 +454,7 @@ function GradedTableCard({ table, grade, entries, rules }: { table: RecallTable;
       </div>
       <RecallGrid table={table} entries={entries} grades={map} view={view} selected={picked} onSelect={setPicked} />
       <p className="mt-3 text-sm leading-5 text-ink-2" aria-live="polite">
-        {shown ? <CellVerdict grade={shown} rules={rules} /> : grade.correct === grade.total ? "Every cell right." : "Cells marked ✕ were wrong or blank. Tap one for the answer."}
+        {shown ? <CellVerdict grade={shown} rules={rules} /> : grade.correct === grade.total ? "Every cell right." : "Cells with a red mark were wrong or blank. Tap one for the answer."}
       </p>
     </Card>
   );

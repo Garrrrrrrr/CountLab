@@ -251,9 +251,9 @@ function IndexPlay({ round, hand, rules }: { round: StrategyRound<IndexQuestion,
               <p>{explainIndex(hand, rules)}</p>
               {ladder && (
                 <div className="-ml-9 mt-3">
-                  <p className="mb-1 text-xs font-medium text-ink-3">{insurance ? "Insurance" : `${totalLabel(hand.cards)}${hand.drawn ? ` (${hand.cards.length} cards)` : ""} vs ${hand.entry.ref!.dealer === "A" ? "ace" : hand.entry.ref!.dealer}`} across the count · index {indexRule(hand.entry).toLowerCase()}</p>
+                  <p className="mb-1 text-xs font-medium text-ink-3">{insurance ? "Insurance" : `${totalLabel(hand.cards)}${hand.drawn ? ` (${hand.cards.length} cards)` : ""} vs ${hand.entry.ref!.dealer === "A" ? "ace" : hand.entry.ref!.dealer}`} across the count<span className="hidden sm:inline"> · index {indexRule(hand.entry).toLowerCase()}</span></p>
                   <CountLadder bands={ladder.bands} min={ladder.min} max={ladder.max} tc={hand.tc} />
-                  <p className="mt-1 text-[0.6875rem] text-ink-3">Source: {SOURCE_NAME[hand.entry.source]}</p>
+                  <p className="mt-1 hidden text-[0.6875rem] text-ink-3 sm:block">Source: {SOURCE_NAME[hand.entry.source]}</p>
                 </div>
               )}
             </Feedback>

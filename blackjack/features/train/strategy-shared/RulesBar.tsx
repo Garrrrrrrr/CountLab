@@ -32,7 +32,7 @@ export function RulesBar({ settings, update, note }: { settings: Settings; updat
   return (
     <div className="rounded-2xl border border-line bg-surface p-3.5 shadow-1">
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-2"><SlidersHorizontal size={18} aria-hidden /></span>
+        <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface-2 text-ink-2 min-[360px]:grid"><SlidersHorizontal size={18} aria-hidden /></span>
         {/* Zero width, then grow: the summary never sets a minimum width, so the bar fits a 320px phone. */}
         <div className="w-0 min-w-0 flex-1">
           <p className="text-xs font-medium text-ink-3">Table rules</p>

@@ -29,7 +29,7 @@ const fillOf = (entry?: CellEntry) => {
  * One table of the chart as a grid of buttons: 11 columns that fit a 320px
  * phone (the row label and the ten dealer cards). Tapping a cell selects it;
  * answers come from the keypad below or the keyboard. After grading, wrong
- * and blank cells carry a red ✕ badge (never colour alone) and the grid can
+ * and blank cells carry a red badge (and a struck-through answer in "Mine"), and the grid can
  * show either the chart's answers or the reader's own.
  */
 export const RecallGrid = memo(function RecallGrid({ table, entries, selected, onSelect, grades, view = "chart", dockSpace = 0 }: {
@@ -98,7 +98,7 @@ export const RecallGrid = memo(function RecallGrid({ table, entries, selected, o
                   >
                     <CellFace entry={shown} surrender={surrender} struck={Boolean(wrong && view === "mine" && !grade?.blank)} />
                     {wrong && (
-                      <span aria-hidden className="absolute -right-1 -top-1 grid h-3.5 w-3.5 place-items-center rounded-full bg-neg text-[0.5rem] font-black leading-none text-white ring-2 ring-bg">✕</span>
+                      <span aria-hidden className="absolute -right-1 -top-1 grid h-2.5 w-2.5 place-items-center rounded-full bg-neg text-[0.5rem] font-black leading-none text-white ring-2 ring-bg sm:h-3.5 sm:w-3.5"><span className="hidden sm:inline">✕</span></span>
                     )}
                   </button>
                 </td>
