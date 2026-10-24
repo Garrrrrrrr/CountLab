@@ -147,7 +147,7 @@ function SavedScenarios({ calc, trip, onSave }: { calc: Calc; trip: TripOutlook;
                 <th key={column.id} scope="col" className="min-w-[7.5rem] px-3 py-2 align-bottom text-xs font-semibold">
                   <span className="line-clamp-2 break-words">{column.name}</span>
                   {column.current ? <span className="block font-normal text-ink-3">now</span> : (
-                    <button type="button" className="mt-0.5 block min-h-9 font-semibold text-brand-text underline-offset-2 hover:underline" onClick={() => { const template = templates.find((item) => item.id === column.id); if (template) calc.loadTemplate(template); }} aria-label={`Load ${column.name}`}>Load</button>
+                    <button type="button" className="mt-0.5 block min-h-11 font-semibold text-brand-text underline-offset-2 hover:underline sm:min-h-9" onClick={() => { const template = templates.find((item) => item.id === column.id); if (template) calc.loadTemplate(template); }} aria-label={`Load ${column.name}`}>Load</button>
                   )}
                 </th>
               ))}
