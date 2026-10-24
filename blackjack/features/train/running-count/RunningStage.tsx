@@ -132,7 +132,7 @@ export function CardRecap({ before, cards, className }: { before: Card[]; cards:
           ["Net", signedText(net)],
           ["Count now", signedText(start + net)],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-surface-2 px-1 py-1.5">
+          <div key={label} className="rounded-lg bg-surface-2 px-1 py-1.5 [@media(max-height:700px)]:py-1">
             <dt className="text-[0.6875rem] text-ink-3">{label}</dt>
             <dd className="font-semibold">{value}</dd>
           </div>

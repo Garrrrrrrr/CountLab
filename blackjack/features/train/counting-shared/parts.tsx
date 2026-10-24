@@ -26,6 +26,14 @@ export const COMPACT_DISPLAY = "[@media(max-height:700px)]:h-12";
 /** "+3", "0", "−2" with a real minus sign. */
 export const signedText = (value: number) => (value > 0 ? `+${value}` : value < 0 ? `−${Math.abs(value)}` : "0");
 
+/**
+ * Stored misses keep ASCII hyphens ("-3"), as every saved session always has;
+ * on screen a negative number gets a real minus sign.
+ */
+const prettyMinus = (text: string) => text.replace(/(^|[\s(])-(?=\d)/g, "$1−");
+export const displayMistakes = (mistakes: readonly Mistake[]): Mistake[] =>
+  mistakes.map((mistake) => ({ ...mistake, question: prettyMinus(mistake.question), userAnswer: prettyMinus(mistake.userAnswer), correctAnswer: prettyMinus(mistake.correctAnswer), explanation: prettyMinus(mistake.explanation) }));
+
 /** The sentence above Start that says exactly what is about to happen. */
 export function SessionLine({ parts }: { parts: readonly string[] }) {
   return (

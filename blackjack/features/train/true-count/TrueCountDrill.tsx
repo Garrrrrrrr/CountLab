@@ -41,7 +41,7 @@ import { makeSession, storage, type CountingErrorCategory, type Mistake, type Se
 import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
 import { FitTray } from "../counting-shared/FitTray";
 import { readSetupMemory, useArrival, useNow, useSavedProgress, writeSetupMemory } from "../counting-shared/hooks";
-import { BenchmarkNote, Breakdown, CauseCard, COMPACT_PAD, PadField, signedText, verdict } from "../counting-shared/parts";
+import { BenchmarkNote, Breakdown, CauseCard, COMPACT_PAD, displayMistakes, PadField, signedText, verdict } from "../counting-shared/parts";
 import { TrueCountSetup, type TrueCountSetupState } from "./TrueCountSetup";
 
 const DRILL = "True Count" as const;
@@ -428,7 +428,7 @@ function TrueCountSummary({ session, onAgain, onChangeSetup }: { session: Sessio
         ...(combined && typeof metrics.deckAccuracy === "number" ? [{ label: "Tray reads right", value: `${metrics.deckAccuracy}%` }] : []),
         ...(typeof metrics.divisionAccuracy === "number" ? [{ label: "Division right", value: `${metrics.divisionAccuracy}%` }] : []),
       ]}
-      mistakes={session.mistakes}
+      mistakes={displayMistakes(session.mistakes)}
       onAgain={onAgain}
       next={next}
     >

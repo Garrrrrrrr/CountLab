@@ -107,7 +107,11 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
       <SetupGroup title="How the cards come">
         <div className="space-y-4">
           <Segmented<Deal> label="Deal" hideLabel value={deal} onChange={setDeal}
-            options={[{ value: "single", label: "Single cards" }, { value: "groups", label: "Groups" }, { value: "table", label: "Table rounds" }]} />
+            options={[
+              { value: "single", label: <><span className="min-[360px]:hidden">Singles</span><span className="hidden min-[360px]:inline">Single cards</span></>, hint: "Single cards" },
+              { value: "groups", label: "Groups", hint: "Card groups" },
+              { value: "table", label: <><span className="min-[360px]:hidden">Table</span><span className="hidden min-[360px]:inline">Table rounds</span></>, hint: "Full table rounds" },
+            ]} />
           {deal === "groups" && (
             <Segmented<RunningGroup> label="Cards at once" value={setup.group} onChange={(group) => onChange({ group })}
               options={[{ value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" }, { value: "random", label: "1–4", hint: "A random 1 to 4 each time" }]} />

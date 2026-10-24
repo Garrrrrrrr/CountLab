@@ -4,7 +4,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { DrillSummary, formatClock } from "@/components/drill/DrillKit";
 import { announce, Button, Callout } from "@/components/ui";
 import type { Session } from "@/lib/statistics/storage";
-import { BenchmarkNote, Breakdown, CauseCard, verdict } from "../counting-shared/parts";
+import { BenchmarkNote, Breakdown, CauseCard, displayMistakes, verdict } from "../counting-shared/parts";
 
 /** The end of a Running Count session. The session is already saved when this shows. */
 export function RunningSummary({ session, totalCards, interruptionUsed, onAgain, onChangeSetup }: {
@@ -28,7 +28,7 @@ export function RunningSummary({ session, totalCards, interruptionUsed, onAgain,
       scoreLabel="Checks right"
       scoreSub={<><span className="tnum font-semibold text-ink">{session.correct} of {session.questions}.</span> {verdict(session.accuracy)}</>}
       stats={stats}
-      mistakes={session.mistakes}
+      mistakes={displayMistakes(session.mistakes)}
       onAgain={onAgain}
       next={session.accuracy >= 85 ? { href: "/train/deck-estimation", label: "Next: Deck Estimation" } : undefined}
     >

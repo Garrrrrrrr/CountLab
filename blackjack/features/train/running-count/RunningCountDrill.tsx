@@ -603,7 +603,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
           </StageNotice>
         ) : phase === "answer" ? (
           <div className="flex flex-1 flex-col items-center justify-center py-4 text-center">
-            <h2 className="text-2xl font-semibold">What is the running count?</h2>
+            <h2 className="text-2xl font-semibold [@media(max-height:700px)]:text-xl">What is the running count?</h2>
             <p className="mt-1.5 text-[0.9375rem] text-ink-2">{ending ? `You ended after card ${cursor}. Give your count to save the session.` : `After card ${cursor} of ${total}`}</p>
           </div>
         ) : phase === "feedback" && feedback ? (
