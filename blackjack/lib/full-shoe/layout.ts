@@ -14,6 +14,10 @@ const ORDER: FeltCardSize[] = ["2xl", "xl", "lg", "md", "sm", "xs"];
 /** Share of each overlapped card left showing. */
 export const CARD_REVEAL = 0.4;
 export const HAND_GAP = 8;
+/** A hand is never narrower than its caption ("$10 · 12"), however small its cards. */
+export const HAND_MIN = 60;
+/** Padding around each hand (the active-hand highlight). */
+export const HAND_PAD = 12;
 export const SEAT_GAP = 16;
 /** Label, captions, gaps and padding around the two card rows. */
 export const FELT_CHROME = 92;
@@ -25,7 +29,7 @@ export const handWidth = (size: FeltCardSize, cards: number) => {
 
 /** Width of the seats row: hands side by side within a seat, seats apart. */
 export function rowWidth(size: FeltCardSize, seats: readonly (readonly number[])[]): number {
-  return seats.reduce((sum, hands, index) => sum + (index ? SEAT_GAP : 0) + hands.reduce((inner, cards, h) => inner + (h ? HAND_GAP : 0) + handWidth(size, Math.max(2, cards)), 0), 0);
+  return seats.reduce((sum, hands, index) => sum + (index ? SEAT_GAP : 0) + hands.reduce((inner, cards, h) => inner + (h ? HAND_GAP : 0) + Math.max(HAND_MIN, handWidth(size, Math.max(2, cards))) + HAND_PAD, 0), 0);
 }
 
 export interface FeltLayout {
@@ -59,6 +63,8 @@ export function pickCardSizes({ width, height, dealerCards, seats, reserve = 0, 
     const dealer = sizes.slice(widest, Math.max(widest, from + 1) + 1).find((size) => fitsHeight(size, player));
     if (dealer) return { dealer, player, overflow: false };
   }
-  const smallest = sizes[sizes.length - 1];
-  return { dealer: smallest, player: smallest, overflow: rowWidth(smallest, seatsRow) > width };
+  // Nothing fits on one row: keep cards readable and let the row scroll in its rail.
+  const readable = sizes.includes("sm") ? "sm" : sizes[sizes.length - 1];
+  const dealer = sizes.find((size, index) => index >= sizes.indexOf(readable) - 2 && fitsDealer(size) && fitsHeight(size, readable)) ?? readable;
+  return { dealer, player: readable, overflow: rowWidth(readable, seatsRow) > width };
 }

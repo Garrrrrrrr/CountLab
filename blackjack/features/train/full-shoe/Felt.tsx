@@ -104,12 +104,15 @@ function HandView({ hand, size, active, result, delays, animate, label }: {
     <div data-testid="full-shoe-player-hand" data-active={active || undefined}
       className={cx("flex min-w-0 flex-col items-center rounded-2xl px-1.5 pb-1 pt-1.5 transition", active ? "bg-white/10 ring-2 ring-brand" : hand.status === "waiting" && "opacity-60")}>
       <HandCards cards={hand.cards} size={size} delays={delays} animate={animate} label={label} />
-      <p className="tnum mt-1 whitespace-nowrap text-[0.75rem] font-semibold text-white/90">
+      <p className={cx("tnum mt-1 whitespace-nowrap font-semibold text-white/90", FELT_CARD_WIDTH[size] < 58 ? "text-[0.6875rem]" : "text-[0.75rem]")}>
         {money(hand.bet)}{hand.doubled ? " doubled" : ""} · {hand.status === "waiting" ? "next" : hand.status === "surrendered" ? "surrendered" : hand.status === "busted" ? `bust ${calculateHandValue(hand.cards)}` : total}
       </p>
       {result && (
         <span className={cx("tnum mt-0.5 whitespace-nowrap rounded-full bg-surface px-2 py-px text-[0.6875rem] font-bold shadow-1", OUTCOME_TONE[result.outcome])}>
-          {result.outcome}{result.net ? ` ${money(result.net, { sign: true })}` : ""}
+          {/* Small cards get just the money, so a row of split hands keeps its width. */}
+          {FELT_CARD_WIDTH[size] < 58 && result.net
+            ? <><span className="sr-only">{result.outcome} </span>{money(result.net, { sign: true })}</>
+            : <>{result.outcome}{result.net ? ` ${money(result.net, { sign: true })}` : ""}</>}
         </span>
       )}
     </div>
@@ -240,7 +243,7 @@ export function Felt({ game, dealing, stagger, animate, coached, note, onSeat, o
             })}
           </div>
         ) : (
-          <SeatsRail overflow={layout.overflow} activeId={game.activeHand?.id}>
+          <SeatsRail activeId={game.activeHand?.id}>
             {seatGroups.map((group, seatIndex) => (
               <div key={group.seat} data-table-spot={group.seat} className="flex shrink-0 flex-col items-center">
                 {multiSeat && <p className="mb-0.5 text-[0.625rem] font-semibold uppercase tracking-wider text-white/55">{game.setup.players > 1 ? `P${group.owner + 1} · ` : ""}Seat {group.seat + 1}</p>}
@@ -274,16 +277,23 @@ function groupBySeat(hands: SeatHand[]) {
   return groups;
 }
 
-/** The row of seats. Normally it fits; when it cannot it scrolls sideways and keeps the active hand in view. */
-function SeatsRail({ overflow, activeId, children }: { overflow: boolean; activeId?: number; children: React.ReactNode }) {
+/**
+ * The row of seats. Centred when it fits; when it cannot, it scrolls sideways
+ * from its left edge (a centred row that overflows would cut off its first
+ * hand) and keeps the active hand in view.
+ */
+function SeatsRail({ activeId, children }: { activeId?: number; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!overflow || !ref.current) return;
-    ref.current.querySelector<HTMLElement>("[data-active]")?.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
-  }, [overflow, activeId]);
+    const rail = ref.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+    const active = rail.querySelector<HTMLElement>("[data-active]");
+    if (active) active.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
+    else rail.scrollTo({ left: (rail.scrollWidth - rail.clientWidth) / 2, behavior: "smooth" });
+  }, [activeId]);
   return (
-    <div ref={ref} className={cx("flex w-full items-end gap-4 pb-1", overflow ? "scrollbar-none overflow-x-auto px-2" : "justify-center")}>
-      {children}
+    <div ref={ref} className="scrollbar-none w-full overflow-x-auto pb-1 pt-1">
+      <div className="mx-auto flex w-max items-end gap-4 px-1">{children}</div>
     </div>
   );
 }
