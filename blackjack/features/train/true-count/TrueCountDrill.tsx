@@ -356,7 +356,7 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
               label={`Discard tray, ${decks}-deck shoe`}
               freeze={phase === "feedback"}
               overlay={graded && photo && (
-                <span className="tnum absolute left-2 top-2 rounded-lg bg-black/65 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                <span className="tnum absolute left-2 top-2 whitespace-nowrap rounded-lg bg-black/65 px-2 py-1 text-[0.6875rem] font-semibold text-white backdrop-blur-sm sm:text-xs">
                   {decksLeftFor(photo, decks).toFixed(2)} decks left
                 </span>
               )}

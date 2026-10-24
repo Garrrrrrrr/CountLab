@@ -263,8 +263,8 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
             freeze={phase === "feedback"}
             className="mt-3 [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:min-h-[9.5rem]"
             overlay={graded && (
-              <span className="tnum absolute left-2 top-2 rounded-lg bg-black/65 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                {photo.discarded.toFixed(2)} decks in the tray
+              <span className="tnum absolute left-2 top-2 whitespace-nowrap rounded-lg bg-black/65 px-2 py-1 text-[0.6875rem] font-semibold text-white backdrop-blur-sm sm:text-xs">
+                {photo.discarded.toFixed(2)} in the tray
               </span>
             )}
           />
