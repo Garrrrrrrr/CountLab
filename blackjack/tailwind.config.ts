@@ -47,6 +47,8 @@ export default {
       },
       screens: {
         xs: "400px",
+        // The calculator's step cards sit beside the results from 1280px and are too narrow for row layouts until about 1360px.
+        "wide-card": { raw: "(min-width: 640px) and (max-width: 1279.98px), (min-width: 1360px)" },
       },
     },
   },

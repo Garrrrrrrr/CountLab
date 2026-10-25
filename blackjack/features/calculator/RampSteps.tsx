@@ -59,7 +59,7 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
           <span><b className="tnum text-ink">Below {tcLabel(sittingOutBelow)}</b>: sitting out (set by When you play)</span>
         </p>
       )}
-      <div aria-hidden className="hidden gap-x-2 px-[0.6875rem] text-xs font-medium text-ink-3 sm:grid sm:grid-cols-[8rem_8.5rem_minmax(4.5rem,1fr)_9rem_2.75rem]">
+      <div aria-hidden className="hidden gap-x-2 px-[0.6875rem] text-xs font-medium text-ink-3 wide-card:grid wide-card:grid-cols-[8rem_8.5rem_minmax(4.5rem,1fr)_9rem_2.75rem]">
         <span className="pl-1">True count</span><span className="text-center">Units</span><span>Bet</span><span className="text-center">Hands</span>
       </div>
       <ol className="grid gap-2">
@@ -72,7 +72,7 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
             <li key={index}>
               <fieldset data-step-from={step.from} className="m-0 min-w-0 rounded-xl border border-line bg-surface-2/50 p-2.5">
                 <legend className="sr-only">Step {index + 1}: true count {range}</legend>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:grid-cols-[8rem_8.5rem_minmax(4.5rem,1fr)_9rem_2.75rem]">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 wide-card:grid-cols-[8rem_8.5rem_minmax(4.5rem,1fr)_9rem_2.75rem]">
                   <div className="tnum flex min-h-11 min-w-0 items-center gap-2 text-sm font-semibold">
                     <span className="sr-only">True count</span>
                     {index === 0 ? <span className="pl-1">{range}{step.from === step.to && step.from > MIN_TC ? <span className="font-normal text-ink-2"> only</span> : null}</span> : (
@@ -90,7 +90,7 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
                       </>
                     )}
                   </div>
-                  <div className="col-start-2 row-start-1 flex justify-end sm:col-start-5">
+                  <div className="col-start-2 row-start-1 flex justify-end wide-card:col-start-5">
                     {index > 0 ? (
                       <button type="button" onClick={() => remove(index)} aria-label={`Remove step starting at ${tcLabel(step.from)}`}
                         className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-neg/10 hover:text-neg">
@@ -98,14 +98,14 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
                       </button>
                     ) : <span className="h-11 w-11" aria-hidden />}
                   </div>
-                  <div className="col-span-2 flex min-w-0 items-center gap-3 sm:col-span-1 sm:col-start-2 sm:row-start-1">
-                    <NumberStepper label={`Units at ${range}`} value={step.units} min={0} max={200} field="ramp_step_units" className="w-36 shrink-0 sm:w-full"
+                  <div className="col-span-2 flex min-w-0 items-center gap-3 wide-card:col-span-1 wide-card:col-start-2 wide-card:row-start-1">
+                    <NumberStepper label={`Units at ${range}`} value={step.units} min={0} max={200} field="ramp_step_units" className="w-36 shrink-0 wide-card:w-full"
                       onChange={(units) => { onChange(setStepUnits(steps, index, units)); track("cvcx_input_changed", { input: "ramp_step_units" }); }} />
-                    <p className="tnum min-w-0 text-sm leading-tight sm:hidden">{step.units > 0 ? <><span className="font-semibold text-ink">{money(bet, bet % 1 ? 2 : 0)}</span><span className="block text-xs text-ink-3">a hand</span></> : <span className="text-ink-2">Sit out</span>}</p>
+                    <p className="tnum min-w-0 text-sm leading-tight wide-card:hidden">{step.units > 0 ? <><span className="font-semibold text-ink">{money(bet, bet % 1 ? 2 : 0)}</span><span className="block text-xs text-ink-3">a hand</span></> : <span className="text-ink-2">Sit out</span>}</p>
                   </div>
-                  <p className="tnum hidden min-w-0 whitespace-nowrap text-sm text-ink-2 sm:col-start-3 sm:row-start-1 sm:block">{step.units > 0 ? <>{money(bet, bet % 1 ? 2 : 0)}<span className="text-ink-3"> a hand</span></> : "Sit out"}</p>
-                  <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:col-start-4 sm:row-start-1">
-                    <span aria-hidden className="text-xs font-medium text-ink-3 sm:hidden">Hands</span>
+                  <p className="tnum hidden min-w-0 whitespace-nowrap text-sm text-ink-2 wide-card:col-start-3 wide-card:row-start-1 wide-card:block">{step.units > 0 ? <>{money(bet, bet % 1 ? 2 : 0)}<span className="text-ink-3"> a hand</span></> : "Sit out"}</p>
+                  <div className="col-span-2 flex items-center gap-2 wide-card:col-span-1 wide-card:col-start-4 wide-card:row-start-1">
+                    <span aria-hidden className="text-xs font-medium text-ink-3 wide-card:hidden">Hands</span>
                     <Segmented
                       label={`Hands at ${range}`}
                       hideLabel
@@ -113,7 +113,7 @@ export function RampSteps({ steps, unit, sittingOutBelow, onChange }: { steps: R
                       value={step.hands}
                       onChange={(hands) => onChange(setStepHands(steps, index, hands))}
                       options={[1, 2, 3].map((hands) => ({ value: hands, label: <span aria-label={`${hands} hand${hands === 1 ? "" : "s"} at ${range}`}>{hands}</span> }))}
-                      className="w-36 sm:w-full"
+                      className="w-36 wide-card:w-full"
                     />
                   </div>
                 </div>
