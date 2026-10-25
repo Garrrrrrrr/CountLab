@@ -208,7 +208,7 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", layout 
 
   return (
     <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} fontFamily={FONT}
-      role="img" aria-label={`Pocket strategy chart for ${rulesSummary(rules)}`} className={className ?? "h-auto w-full print:h-auto print:w-[3.9in]"}>
+      role="img" aria-label={`Pocket strategy chart for ${rulesSummary(rules)}`} className={className ?? "h-auto w-full print:h-auto print:w-[min(100%,3.9in)]"}>
       <rect width={width} height={height} fill={palette.bg} />
 
       <g transform={`translate(${PAD} ${PAD}) scale(${26 / 64})`}>

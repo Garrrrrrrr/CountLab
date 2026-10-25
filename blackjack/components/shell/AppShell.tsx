@@ -44,7 +44,7 @@ function Shell({ children }: { children: ReactNode }) {
       {!focused && !bare && <Sidebar pathname={pathname} />}
       <div className="min-w-0 flex-1">
         {!focused && !bare && <TopBar />}
-        <main id="main" className={cx("mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10", focused ? "pt-0" : "pt-4 sm:pt-6 lg:pt-10", !focused && "pb-tabbar")}>
+        <main id="main" className={cx("mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10 print:p-0", focused ? "pt-0" : "pt-4 sm:pt-6 lg:pt-10", !focused && "pb-tabbar")}>
           <Gate pathname={pathname}>{children}</Gate>
         </main>
         {!focused && !bare && <Footer />}
