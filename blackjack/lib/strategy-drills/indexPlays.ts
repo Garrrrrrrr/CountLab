@@ -19,8 +19,10 @@ import { ACTION_NAMES, CORE_INDEX_COUNT, cellDecision, decideHand, explainDecisi
 import { legalActions } from "./basic";
 import { drawnHand, insuranceHand, isCard, pick, ranksText, sameCell, twoCardHand, upcardFor, type Rng } from "./cards";
 
-export type IndexSet = "core" | "all";
-export const indexSetOf = (value: unknown): IndexSet => (value === "all" ? "all" : "core");
+/** The I18 + Fab 4, every index, or one quick drill: insurance alone, or the Fab 4 surrenders. */
+export type IndexSet = "core" | "all" | "insurance" | "fab4";
+export const INDEX_SETS: readonly IndexSet[] = ["core", "all", "insurance", "fab4"];
+export const indexSetOf = (value: unknown): IndexSet => (INDEX_SETS.includes(value as IndexSet) ? (value as IndexSet) : "core");
 
 /** `indexList` ranks the Illustrious 18 and the Fab 4 first; this is where they end. */
 export const CORE_PRIORITY_LIMIT = CORE_INDEX_COUNT;
@@ -82,10 +84,13 @@ export function workingShapes(entry: IndexEntry, rules: TableRules): Shape[] {
 
 export const playable = (entry: IndexEntry, rules: TableRules) => entry.kind === "insurance" || workingShapes(entry, rules).length > 0;
 
-/** The indices a round deals: the I18 + Fab 4, or every index for these rules. */
+/** The indices a round deals. The Fab 4 set is empty at a table without surrender. */
 export function indexPool(rules: TableRules, set: IndexSet): IndexEntry[] {
   const list = indexList(rules).filter((entry) => playable(entry, rules));
-  return set === "core" ? list.filter((entry) => entry.priority < CORE_PRIORITY_LIMIT) : list;
+  if (set === "all") return list;
+  if (set === "insurance") return list.filter((entry) => entry.kind === "insurance");
+  const core = list.filter((entry) => entry.priority < CORE_PRIORITY_LIMIT);
+  return set === "fab4" ? core.filter((entry) => entry.kind === "surrender") : core;
 }
 
 /** "16 vs 10", "A,8 vs 6", "10,10 vs 5", "15 vs 10 surrender", "Insurance": the session category. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cellDecision, countLadder, decideHand, DEFAULT_TABLE_RULES, indexList, takeInsurance, type TableRules } from "@/lib/strategy";
-import { buildIndexQuestion, CORE_PRIORITY_LIMIT, dealIndex, entryLabel, explainIndex, focusQuestions, indexMistake, indexPool, permissionsFor, playable, questionFromMistake, resolveIndex, switchCounts, workingShapes, type DealState } from "./indexPlays";
+import { buildIndexQuestion, CORE_PRIORITY_LIMIT, dealIndex, entryLabel, explainIndex, focusQuestions, indexMistake, indexPool, indexSetOf, permissionsFor, playable, questionFromMistake, resolveIndex, switchCounts, workingShapes, type DealState } from "./indexPlays";
 import { handLadder } from "./ladder";
 import { ALL_RULES, label, seeded } from "./testRules";
 
@@ -110,6 +110,14 @@ describe("index play questions", () => {
     expect(core.map((entry) => entry.id)).toEqual(expect.arrayContaining(["R:hard:14v10", "R:hard:15v10", "R:hard:15v9", "R:hard:15vA", "pairs:T,Tv5", "hard:13v3"]));
     expect(core.length).toBe(22);
     expect(indexPool(table, "all").length).toBeGreaterThan(core.length);
+  });
+
+  it("offers insurance alone and the Fab 4 surrenders as quick drills", () => {
+    expect(indexPool(rules(), "insurance").map((entry) => entry.id)).toEqual(["insurance"]);
+    expect(indexPool(rules(), "fab4").map((entry) => entry.id).sort()).toEqual(["R:hard:14v10", "R:hard:15v10", "R:hard:15v9", "R:hard:15vA"]);
+    expect(indexPool(rules({ surrender: "none" }), "fab4")).toEqual([]);
+    expect(indexSetOf("fab4")).toBe("fab4");
+    expect(indexSetOf("nonsense")).toBe("core");
   });
 
   it("round-trips a mistake and focuses on both sides of one index", () => {

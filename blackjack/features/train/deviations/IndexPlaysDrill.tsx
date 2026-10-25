@@ -75,13 +75,15 @@ export function IndexPlaysDrill() {
   const focusEntry = wanted ? indexList(rules).find((entry) => entryLabel(entry).toLowerCase() === wanted) : undefined;
 
   const rulesKey = JSON.stringify(rules);
-  const { pool, core } = useMemo(() => {
+  const { pool, core, fab4 } = useMemo(() => {
     const parsed = JSON.parse(rulesKey) as TableRules;
-    return { pool: indexPool(parsed, "all"), core: indexPool(parsed, "core") };
+    return { pool: indexPool(parsed, "all"), core: indexPool(parsed, "core"), fab4: indexPool(parsed, "fab4") };
   }, [rulesKey]);
   const surrenders = pool.filter((entry) => entry.kind === "surrender").length;
+  // The Fab 4 drill needs surrender at the table; without it the round falls back to the I18.
+  const set: IndexSet = pref.set === "fab4" && !fab4.length ? "core" : pref.set;
   const plan = (patch: Partial<RoundPlan<IndexQuestion, Options>> = {}): RoundPlan<IndexQuestion, Options> =>
-    ({ length: pref.length, explain: pref.explain, retry: false, rules, options: cleanOptions(pref), ...patch });
+    ({ length: pref.length, explain: pref.explain, retry: false, rules, options: { ...cleanOptions(pref), set }, ...patch });
   const [replacing, setReplacing] = useState(false);
   const startFresh = () => (restored ? setReplacing(true) : begin());
   const begin = () => {
@@ -131,9 +133,11 @@ export function IndexPlaysDrill() {
       <ReplaceRoundSheet open={replacing} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={begin} onClose={() => setReplacing(false)} />
       <RulesBar settings={settings} update={update} note={`${pool.length} index plays for these rules${surrenders ? `, ${surrenders} of them surrender decisions` : ""}.`} />
       <SetupGroup title="Which indices">
-        <PresetPicker label="Which indices" value={pref.set} onChange={(set) => remember({ set })} options={[
+        <PresetPicker label="Which indices" value={set} onChange={(next) => remember({ set: next })} options={[
           { value: "core", title: "Illustrious 18 + Fab 4", detail: `The ${core.length} plays worth the most, in the order counters learn them.` },
           { value: "all", title: "All indices", detail: `Every index for your rules: ${pool.length} plays, including soft doubles and pair splits.` },
+          { value: "insurance", title: "Insurance only", detail: "A quick drill on the single most valuable index: take insurance or decline, either side of the number." },
+          ...(fab4.length ? [{ value: "fab4" as const, title: "Fab 4 surrenders", detail: `Only the ${fab4.length} surrender indices: when the count says give the hand up, and when to play it.` }] : []),
         ]} />
       </SetupGroup>
       <SetupGroup title="How to practise">
