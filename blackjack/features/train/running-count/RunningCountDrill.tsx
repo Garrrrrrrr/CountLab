@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, Pause, PhoneCall, Play } from "lucide-react";
+import { Eye, EyeOff, MessageCircle, Pause, PhoneCall, Play } from "lucide-react";
 import { AnswerDisplay, NumberPad } from "@/components/blackjack";
 import { Feedback, PlayDock, PlayFrame, ResumeBanner } from "@/components/drill/DrillKit";
 import { announce, Button, ConfirmSheet, Kbd } from "@/components/ui";
@@ -24,6 +24,9 @@ import {
   dealOf,
   effectiveCardCount,
   isCheckDue,
+  distractionGap,
+  makeDistraction,
+  type Distraction,
   isCountdown,
   isSettingsPreset,
   matchRunningPreset,
@@ -61,9 +64,9 @@ import { RunningSummary } from "./RunningSummary";
 const DRILL = "Running Count" as const;
 const MEMORY_KEY = "countlab:drill-setup:running-count";
 
-type Phase = "setup" | "ready" | "show" | "roundEnd" | "interruption" | "paused" | "answer" | "feedback" | "done";
+type Phase = "setup" | "ready" | "show" | "roundEnd" | "interruption" | "distraction" | "paused" | "answer" | "feedback" | "done";
 /** What a step leads to once it is over: a count check, the interruption, or (table rounds) the end-of-round decision. */
-type Pending = "check" | "interruption" | "round";
+type Pending = "check" | "interruption" | "distraction" | "round";
 
 /**
  * Saved progress ("hilo:progress:Running Count"). The field names and the
@@ -81,6 +84,7 @@ type RunningSaved = {
   elapsed: number; interruptionUsed: boolean;
   interruption?: boolean; hints?: boolean; lastCheckCursor?: number; pending?: Pending;
   deal?: RunningDeal; spots?: number; rounds?: TableRound[]; steps?: number; gap?: number; ending?: boolean; answerMs?: number;
+  distractions?: boolean; nextDistraction?: number; distractionsAsked?: number; distractionsRight?: number;
 };
 
 /** The last setup started here, so a counter's own session comes back. */
@@ -102,12 +106,12 @@ function sessionCards(settings: Settings) {
   });
 }
 
-function cardSetup(id: RunningCardId, cards: ReturnType<typeof sessionCards>, current: Pick<RunningSetupState, "bias" | "feedbackMode">): RunningSetupState {
+function cardSetup(id: RunningCardId, cards: ReturnType<typeof sessionCards>, current: Pick<RunningSetupState, "bias" | "feedbackMode" | "distractions">): RunningSetupState {
   const card = cards.find((option) => option.id === id) ?? cards[0];
-  return { deal: "cards", spots: 3, ...card.values, bias: id === "starter" ? "none" : current.bias, feedbackMode: current.feedbackMode, hints: id === "starter" };
+  return { deal: "cards", spots: 3, ...card.values, bias: id === "starter" ? "none" : current.bias, feedbackMode: current.feedbackMode, hints: id === "starter", distractions: id === "starter" ? false : current.distractions };
 }
 
-const valuesOf = (setup: RunningSetupState): RunningValues => ({ decks: setup.decks, amount: setup.amount, speed: setup.speed, group: setup.group, checkpoint: setup.checkpoint, interruption: setup.interruption, deal: dealOf(setup), spots: spotsOf(setup) });
+const valuesOf = (setup: RunningSetupState): RunningValues => ({ decks: setup.decks, amount: setup.amount, speed: setup.speed, group: setup.group, checkpoint: setup.checkpoint, interruption: setup.interruption, deal: dealOf(setup), spots: spotsOf(setup), distractions: setup.distractions });
 
 function setupFromSaved(saved: RunningSaved): RunningSetupState {
   const preset = RUNNING_SESSION_CARDS.find((card) => card.id === saved.preset);
@@ -115,7 +119,7 @@ function setupFromSaved(saved: RunningSaved): RunningSetupState {
     decks: saved.decks, amount: saved.amount, speed: saved.speed, group: saved.group, checkpoint: saved.checkpoint,
     interruption: saved.interruption ?? preset?.values.interruption ?? false,
     deal: saved.deal === "table" ? "table" : "cards", spots: saved.spots ?? 3,
-    bias: saved.bias ?? "none", feedbackMode: saved.feedbackMode ?? "immediate", hints: saved.hints ?? false,
+    bias: saved.bias ?? "none", feedbackMode: saved.feedbackMode ?? "immediate", hints: saved.hints ?? false, distractions: saved.distractions ?? false,
   };
 }
 
@@ -200,6 +204,11 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
   const interrupted = useRef(false);
   const interruptionUsed = useRef(saved?.interruptionUsed ?? false);
   const gap = useRef(saved?.gap ?? randomCheckGap(dealOf(init.setup)));
+  const nextDistraction = useRef(saved?.nextDistraction ?? distractionGap());
+  const distractionTally = useRef({ asked: saved?.distractionsAsked ?? 0, right: saved?.distractionsRight ?? 0 });
+  const [distraction, setDistraction] = useState<Distraction | null>(null);
+  const [distractionAnswer, setDistractionAnswer] = useState("");
+  const [distractionMiss, setDistractionMiss] = useState(false);
   const feedbackShownAt = useRef(0);
 
   const tableMode = dealOf(setup) === "table" && rounds !== null;
@@ -220,6 +229,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
     checks, correct, streak, best, mistakes, categories, elapsed,
     interruptionUsed: interruptionUsed.current,
     interruption: setup.interruption, hints: setup.hints, lastCheckCursor, pending: pending ?? undefined,
+    distractions: setup.distractions, nextDistraction: nextDistraction.current, distractionsAsked: distractionTally.current.asked, distractionsRight: distractionTally.current.right,
     deal: dealOf(setup), spots: spotsOf(setup), rounds: rounds ?? undefined, steps, gap: gap.current, ending, answerMs: answerTotal.current,
   } satisfies RunningSaved, { throttleMs: 10_000 });
   // Save at once at the moments worth resuming from, not only on the throttle.
@@ -245,6 +255,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
       interruptionAccuracy: interruptionUsed.current ? Number(nextMistakes.every((mistake) => mistake.category !== "interruption recovery")) * 100 : 100,
       deal: dealOf(setup), speed: setup.speed, decks: setup.decks,
       ...(isCountdown(valuesOf(setup)) ? { countdown: true } : {}),
+      ...(setup.distractions ? { distractions: distractionTally.current.asked, distractionsRightFirstTime: distractionTally.current.right } : {}),
       ...(dealOf(setup) === "table" ? { spots: spotsOf(setup) } : {}),
     }, [preset, dealOf(setup) === "table" ? "table" : setup.group, setup.checkpoint, setup.bias]);
     progress.cancel();
@@ -285,6 +296,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
     setCursor(0); setSize(table ? 1 : pickSize()); setChecks(0); setCorrect(0); setStreak(0); setBest(0); setMistakes([]); setCategories({}); setElapsed(0);
     setLastCheckCursor(0); setFeedback(undefined); setResult(undefined); setEnding(false); setAnswer(""); setPending(null); setRevealCount(false); setSteps(0);
     pausedTotal.current = 0; answerTotal.current = 0; interruptionUsed.current = false; interrupted.current = false;
+    nextDistraction.current = distractionGap(); distractionTally.current = { asked: 0, right: 0 };
     gap.current = randomCheckGap(dealOf(setup));
     setPhase("ready");
     track("drill_started", { drill: DRILL, preset: tag, mode: table ? "table" : "cards", decks: setup.decks, amount, speed: setup.speed, group: setup.group, checkpoint: setup.checkpoint, bias: setup.bias });
@@ -297,7 +309,8 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
   const outcomeAfter = (from: number, to: number, stepCount: number): Exclude<Pending, "round"> | "deal" => {
     if (setup.interruption && !interruptionUsed.current && to >= cards.length / 2 && to < cards.length) return "interruption";
     const due = isCheckDue({ checkpoint: setup.checkpoint, from, to, total: cards.length, countBefore: countThrough(from), countAfter: countThrough(to), steps: stepCount, randomGap: gap.current });
-    return due ? "check" : "deal";
+    if (due) return "check";
+    return setup.distractions && to >= nextDistraction.current && to < cards.length ? "distraction" : "deal";
   };
 
   const askForCount = (at: number) => {
@@ -317,6 +330,11 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
       interrupted.current = true;
       setPhase("interruption");
       announce("Interruption. Look away and hold your count.");
+    } else if (outcome === "distraction") {
+      const next = makeDistraction();
+      setDistraction(next); setDistractionAnswer(""); setDistractionMiss(false);
+      setPhase("distraction");
+      announce(`${next.prompt} Answer, then keep counting.`);
     } else if (outcome === "check") askForCount(at);
     else { setSize(pickSize()); setPhase("show"); }
   };
@@ -443,6 +461,25 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [keysOn, keyRef]);
+
+  /** A distraction answered: a sum must be right; any reply ends small talk. Then the cards go on. */
+  const answerDistraction = (reply: string) => {
+    if (!distraction) return;
+    if (distraction.kind === "sum" && Number(reply) !== distraction.answer) {
+      if (!distractionMiss) distractionTally.current.asked += 1;
+      setDistractionMiss(true); setDistractionAnswer("");
+      announce(`Not ${reply}. Try again.`);
+      return;
+    }
+    if (!distractionMiss) distractionTally.current = { asked: distractionTally.current.asked + 1, right: distractionTally.current.right + 1 };
+    // A miss at the next check is then a count lost to the distraction.
+    interrupted.current = true;
+    nextDistraction.current = cursor + distractionGap();
+    setDistraction(null);
+    setSize(pickSize());
+    setPhase("show");
+    announce("Back to the cards.");
+  };
 
   function returnToTable() {
     // Straight to a check: holding the count through the break is the skill.
@@ -601,6 +638,10 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
               {revealCount && <p className="tnum mt-2 text-5xl font-semibold text-ink">{signedText(countThrough(cursor))}</p>}
             </div>
           </StageNotice>
+        ) : phase === "distraction" && distraction ? (
+          <StageNotice icon={<MessageCircle size={24} aria-hidden />} title={distraction.prompt}>
+            {distraction.kind === "sum" ? (distractionMiss ? <span className="font-medium text-neg">Not quite. Try again, and hold your count.</span> : "Answer it, and hold your count.") : "Answer, and hold your count."}
+          </StageNotice>
         ) : phase === "interruption" ? (
           <StageNotice icon={<PhoneCall size={24} aria-hidden />} title="Interruption">
             Look away from the screen and hold your count. When you come back, we ask for it.
@@ -637,6 +678,17 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
           )}
           {phase === "paused" && <Button size="lg" block onClick={resumePlay} icon={<Play size={18} aria-hidden />}>Resume</Button>}
           {phase === "interruption" && <Button size="lg" block onClick={returnToTable}>Back to the table</Button>}
+          {phase === "distraction" && distraction?.kind === "sum" && (
+            <div className="space-y-2">
+              <AnswerDisplay value={distractionAnswer} label="Your answer" tone={distractionMiss ? "neg" : undefined} className={COMPACT_DISPLAY} />
+              <NumberPad value={distractionAnswer} onChange={setDistractionAnswer} onSubmit={() => distractionAnswer && answerDistraction(distractionAnswer)} allowNegative={false} maxLength={3} submitLabel="Answer" className={COMPACT_PAD} />
+            </div>
+          )}
+          {phase === "distraction" && distraction?.kind === "talk" && (
+            <div className="grid gap-2">
+              {distraction.options.map((option) => <Button key={option} size="lg" variant="secondary" block onClick={() => answerDistraction(option)}>{option}</Button>)}
+            </div>
+          )}
           {phase === "answer" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">

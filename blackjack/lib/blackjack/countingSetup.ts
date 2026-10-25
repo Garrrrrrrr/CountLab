@@ -89,6 +89,35 @@ export const isCountdown = (values: RunningValues) =>
   dealOf(values) === "cards" && values.decks >= 2 && values.speed === SELF_PACED && values.group === "1" && values.checkpoint === "final" && !values.interruption
   && effectiveCardCount(values.decks, values.amount) >= values.decks * 52 - 1;
 
+/**
+ * Something that stops the cards mid-deal, like a casino does: a sum to work
+ * out (the answer must be right before the cards go on), or small talk from
+ * the floor that any reply ends. The count has to survive it.
+ */
+export type Distraction =
+  | { kind: "sum"; prompt: string; answer: number }
+  | { kind: "talk"; prompt: string; options: readonly string[] };
+
+const SMALL_TALK: ReadonlyArray<{ prompt: string; options: readonly string[] }> = [
+  { prompt: "The floor supervisor asks: “Can I get your players card?”", options: ["Sure, here you go", "Not today"] },
+  { prompt: "The floor supervisor asks: “How long are you in town?”", options: ["Just the weekend", "Leaving tonight"] },
+  { prompt: "The cocktail server asks: “Anything to drink?”", options: ["Water, please", "I'm fine, thanks"] },
+  { prompt: "The player next to you asks: “Has this table been good to you?”", options: ["Up and down", "Not really"] },
+  { prompt: "The dealer asks: “Where are you from?”", options: ["Not far", "Out of state"] },
+];
+
+export function makeDistraction(rng: () => number = Math.random): Distraction {
+  if (rng() < 0.5) {
+    const talk = SMALL_TALK[Math.floor(rng() * SMALL_TALK.length)];
+    return { kind: "talk", ...talk };
+  }
+  const a = 4 + Math.floor(rng() * 9), b = 3 + Math.floor(rng() * 9);
+  return { kind: "sum", prompt: `Quick: what's ${a} + ${b}?`, answer: a + b };
+}
+
+/** Cards dealt before the next distraction: often enough to matter, rarely enough to still be counting. */
+export const distractionGap = (rng: () => number = Math.random) => 15 + Math.floor(rng() * 21);
+
 /** One card is burned before dealing, so a shoe gives at most decks × 52 − 1. */
 export const effectiveCardCount = (decks: number, amount: number) => Math.max(0, Math.min(amount, decks * 52 - 1));
 
@@ -240,6 +269,7 @@ export function describeRunningSession(values: RunningValues & { bias: CountBias
     CHECKPOINT_PHRASE[values.checkpoint],
     values.feedbackMode === "immediate" ? "results after each check" : "results at the end",
     values.interruption ? "one interruption halfway" : null,
+    values.distractions ? "quick questions now and then" : null,
     values.bias !== "none" && !table ? `${values.bias} stretches` : null,
   ].filter((part): part is string => Boolean(part));
 }

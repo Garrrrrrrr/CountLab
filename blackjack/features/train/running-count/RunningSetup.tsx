@@ -140,7 +140,7 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
         </div>
       </SetupGroup>
 
-      <Disclosure summary={<span className="inline-flex items-center gap-2">Checks and extras {setup.interruption && <Badge tone="brand">Interruption on</Badge>}</span>}>
+      <Disclosure summary={<span className="inline-flex items-center gap-2">Checks and extras {setup.interruption && <Badge tone="brand">Interruption on</Badge>}{setup.distractions && <Badge tone="brand">Distractions on</Badge>}</span>}>
         <SelectField label="Ask for the count" value={setup.checkpoint} onChange={(event) => onChange({ checkpoint: event.target.value as RunningCheckpoint })}>
           {checkpointsFor(dealOf(setup)).map((checkpoint) => <option key={checkpoint} value={checkpoint}>{CHECKPOINT_LABEL[checkpoint]}</option>)}
         </SelectField>
@@ -155,6 +155,7 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
           </SelectField>
         )}
         <Toggle label="Interrupt me once, halfway" description="The cards stop and you look away; then we ask for the count." checked={setup.interruption} onChange={(interruption) => onChange({ interruption })} />
+        <Toggle label="Distract me now and then" description="Every 15 to 35 cards a quick sum or a word from the floor stops the cards. Answer it, then keep counting." checked={Boolean(setup.distractions)} onChange={(distractions) => onChange({ distractions })} />
         <Toggle label="Show each card's value" description="A +1, 0 or −1 under every card while you learn." checked={setup.hints} onChange={(hints) => onChange({ hints })} />
         <p className="text-xs leading-5 text-ink-3">Show results applies to this session; its default is in Settings.</p>
       </Disclosure>

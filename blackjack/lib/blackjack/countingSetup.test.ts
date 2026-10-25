@@ -3,6 +3,8 @@ import {
   checkpointsFor,
   dealOf,
   describeRunningSession,
+  distractionGap,
+  makeDistraction,
   describeTrueCountSession,
   effectiveCardCount,
   fitCheckpoint,
@@ -40,6 +42,20 @@ describe("running count setup", () => {
     expect(matchRunningPreset({ ...runningPresetValues("six-deck-casino"), speed: 500 })).toBeNull();
     // Recovery without its interruption is no longer the Recovery session.
     expect(matchRunningPreset({ ...runningPresetValues("recovery"), interruption: false })).toBeNull();
+  });
+
+  it("makes distractions: a sum with its answer, or small talk any reply ends", () => {
+    const sum = makeDistraction(() => 0.9);
+    expect(sum.kind).toBe("sum");
+    if (sum.kind === "sum") {
+      const [a, b] = sum.prompt.match(/\d+/g)!.map(Number);
+      expect(sum.answer).toBe(a + b);
+    }
+    const talk = makeDistraction(() => 0.1);
+    expect(talk.kind === "talk" && talk.options.length).toBeGreaterThan(1);
+    for (let roll = 0; roll < 1; roll += 0.05) expect(distractionGap(() => roll)).toBeGreaterThanOrEqual(15);
+    expect(distractionGap(() => 0.999)).toBe(35);
+    expect(describeRunningSession({ ...RUNNING_STARTER, distractions: true, bias: "none", feedbackMode: "end" })).toContain("quick questions now and then");
   });
 
   it("recognises a count-down of any shoe of two decks or more", () => {
