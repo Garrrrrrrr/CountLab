@@ -15,7 +15,8 @@ const VARIANT: Record<ButtonVariant, string> = {
 };
 
 const SIZE: Record<ButtonSize, string> = {
-  sm: "h-9 px-3 text-sm gap-1.5 rounded-lg",
+  // Phones and tablets get 44px targets; a mouse gets the compact size.
+  sm: "h-11 px-3 text-sm gap-1.5 rounded-lg lg:h-9",
   md: "h-11 px-4 text-[0.9375rem] gap-2 rounded-xl",
   lg: "h-14 px-6 text-base gap-2.5 rounded-2xl",
 };
@@ -86,7 +87,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       className={cx(
         "inline-flex shrink-0 items-center justify-center rounded-xl text-ink-2 transition hover:text-ink disabled:opacity-40",
         variant === "ghost" ? "hover:bg-surface-2" : "border border-line bg-surface-2 hover:bg-surface-3",
-        size === "md" ? "h-11 w-11" : "h-9 w-9",
+        size === "md" ? "h-11 w-11" : "h-11 w-11 lg:h-9 lg:w-9",
         className,
       )}
       {...rest}

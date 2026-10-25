@@ -26,7 +26,7 @@ export function Segmented<T extends string | number>({ label, value, options, on
               title={option.hint}
               className={cx(
                 "relative flex min-w-0 flex-1 cursor-pointer items-center justify-center rounded-[0.6rem] px-2 text-center font-semibold transition",
-                size === "sm" ? "h-8 text-[0.8125rem]" : "h-10 text-sm",
+                size === "sm" ? "h-11 text-[0.8125rem] lg:h-8" : "h-11 text-sm lg:h-10",
                 checked ? "bg-surface text-ink shadow-1" : "text-ink-2 hover:text-ink",
                 option.disabled && "cursor-not-allowed opacity-40",
                 "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand",
@@ -75,7 +75,7 @@ export function Stepper({ label, value, onChange, min = -Infinity, max = Infinit
   label: string; value: number; onChange: (value: number) => void; min?: number; max?: number; step?: number; format?: (value: number) => ReactNode; hideLabel?: boolean; className?: string; size?: "sm" | "md";
 }) {
   const clamp = (next: number) => Math.min(max, Math.max(min, Number(next.toFixed(6))));
-  const btn = cx("grid place-items-center rounded-lg text-ink-2 transition hover:bg-surface-3 hover:text-ink disabled:opacity-30", size === "md" ? "h-10 w-10" : "h-8 w-8");
+  const btn = cx("grid place-items-center rounded-lg text-ink-2 transition hover:bg-surface-3 hover:text-ink disabled:opacity-30", size === "md" ? "h-11 w-11 lg:h-10 lg:w-10" : "h-8 w-8");
   return (
     <div className={cx("min-w-0", className)}>
       {!hideLabel && <p className="mb-1.5 text-sm font-medium text-ink-2">{label}</p>}
@@ -154,7 +154,7 @@ export function Tabs<T extends string>({ label, value, tabs, onChange, className
     requestAnimationFrame(() => document.getElementById(`tab-${label}-${next.value}`)?.focus());
   };
   return (
-    <div role="tablist" aria-label={label} className={cx("scrollbar-none -mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0", className)}
+    <div role="tablist" aria-label={label} className={cx("scrollbar-none scroll-fade-x -mx-4 flex gap-1 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0", className)}
       onKeyDown={(event) => {
         if (event.key === "ArrowRight") { event.preventDefault(); move(1); }
         if (event.key === "ArrowLeft") { event.preventDefault(); move(-1); }

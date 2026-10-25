@@ -113,6 +113,8 @@
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
     text-rendering: optimizeLegibility;
+    /* Focus and find-in-page scroll targets clear the fixed tab bar and any dock above it. */
+    scroll-padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + var(--dock-h, 0px) + 0.75rem);
   }
   body {
     @apply bg-bg text-ink antialiased;
@@ -149,8 +151,31 @@
   }
   .scrollbar-none { scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
+  /*
+   * A sideways-scrolling strip fades out at an edge that has more to scroll to. Browsers with
+   * scroll-driven animations fade only the edges that hide something; others always fade the right.
+   */
+  .scroll-fade-x {
+    --fade-r: 1.75rem;
+    mask-image: linear-gradient(to right, transparent, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent);
+  }
+  @supports (animation-timeline: scroll()) {
+    .scroll-fade-x {
+      --fade-r: 0px;
+      animation: scroll-fade-x linear both;
+      animation-timeline: scroll(self inline);
+    }
+  }
   /* The page body clears the phone tab bar; drills in focus mode set it to 0. */
   .pb-tabbar { padding-bottom: calc(var(--tabbar-h) + var(--safe-b) + 1.5rem); }
+}
+
+@property --fade-l { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade-r { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes scroll-fade-x {
+  0% { --fade-l: 0px; --fade-r: 1.75rem; }
+  10%, 90% { --fade-l: 1.75rem; --fade-r: 1.75rem; }
+  100% { --fade-l: 1.75rem; --fade-r: 0px; }
 }
 
 /* Cards dealt onto the felt. Kept short: a counter's eyes should be on the rank, not the motion. */

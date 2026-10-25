@@ -83,7 +83,7 @@ function SyncPill() {
   if (loading) return null;
   if (!user) {
     return (
-      <Link href="/signin" aria-label="Sign in" className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:bg-surface-2">
+      <Link href="/signin" aria-label="Sign in" className="inline-flex h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-surface px-3 text-sm font-semibold hover:bg-surface-2">
         <UserRound size={16} aria-hidden /> <span className="hidden min-[360px]:inline">Sign in</span>
       </Link>
     );
@@ -92,7 +92,7 @@ function SyncPill() {
   const label = syncStatus === "error" ? "Sync paused" : syncStatus === "syncing" ? "Syncing" : "Synced";
   return (
     <Link href="/settings#account" title={`${label} · ${user.email ?? "Account"}`} aria-label={`Account: ${label}`}
-      className={cx("inline-flex h-9 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm font-medium", syncStatus === "error" ? "text-warn" : "text-ink-2")}>
+      className={cx("inline-flex h-11 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-sm font-medium", syncStatus === "error" ? "text-warn" : "text-ink-2")}>
       <Icon size={16} aria-hidden className={syncStatus === "syncing" ? "animate-spin" : undefined} />
       <span className="hidden xs:inline">{label}</span>
     </Link>
