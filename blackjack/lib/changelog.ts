@@ -60,7 +60,10 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       },
       {
         title: "Reading",
-        items: ["Grey labels, green and blue badges, and labels on the table felt now meet the WCAG AA contrast ratio in light and dark."],
+        items: [
+          "Grey labels, green and blue badges, and labels on the table felt now meet the WCAG AA contrast ratio in light and dark.",
+          "On the smallest phones, the Calculator's header no longer grows wider than the screen once you have a saved scenario, which had zoomed the page out and made taps miss. Save is an icon there, like Share.",
+        ],
       },
     ],
   },
@@ -179,6 +182,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
           "Charts footnote the two cells where basic strategy and Wong never agree (two-deck 6,6 v 7 and no-hole-card 8,8 v 10).",
           "Backup and CSV file names use your local date, not tomorrow's in the evening.",
           "The 404 page has a proper title.",
+          "Chart Recall's surrender table only asks against 8, 9, 10 and ace; nothing is surrendered against a lower card, so those cells come filled in.",
         ],
       },
     ],
@@ -277,6 +281,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
           "Running Count, True Count, Deck Estimation, Basic Strategy, Index Plays and Chart Recall were rebuilt on one drill kit.",
           "New Progress and Settings pages: 30-day stats, readiness targets and weak spots; settings save instantly, with backup and restore.",
           "Printable charts on two landscape pages.",
+          "Each chart table is a single tab stop; the arrow keys move from cell to cell.",
         ],
       },
       {
