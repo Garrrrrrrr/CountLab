@@ -224,7 +224,7 @@ export function Felt({ game, dealing, stagger, animate, coached, note, onSeat, o
       <div className="relative flex h-full flex-col items-center px-2 pb-2 pt-2.5">
         {/* Dealer */}
         <div className="flex flex-col items-center">
-          <p className="h-4 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-white/60">
+          <p className="h-4 text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-white/70">
             Dealer{round && <span className="tnum normal-case tracking-normal text-white/85"> · {settlement?.dealerBust ? `bust ${settlement.dealerTotal}` : dealerTotal}</span>}
           </p>
           <div className="mt-1.5 flex justify-center" style={{ minHeight: FELT_CARD_WIDTH[layout.dealer] * 1.4 }}>

@@ -78,12 +78,12 @@ export const RoundReplay = forwardRef<HTMLDivElement, { rounds: FullShoeLiveRoun
       </div>
       <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div className="rounded-2xl bg-felt p-3 sm:p-4">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-white/60">Dealer · {calculateHandValue(round.dealerCards) > 21 ? "bust" : calculateHandValue(round.dealerCards)}</p>
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.16em] text-white/70">Dealer · {calculateHandValue(round.dealerCards) > 21 ? "bust" : calculateHandValue(round.dealerCards)}</p>
           <div className="mt-1.5 flex flex-wrap gap-1">{round.dealerCards.map((card, i) => <PlayingCard key={i} card={card} size="sm" />)}</div>
           <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
             {round.playerHands.map((hand, i) => (
               <div key={i}>
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-white/60">{hand.seat !== undefined && round.playerHands.some((other) => other.seat !== hand.seat) ? `Seat ${hand.seat + 1}` : round.playerHands.length > 1 ? `Hand ${i + 1}` : "Your hand"}</p>
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-wider text-white/70">{hand.seat !== undefined && round.playerHands.some((other) => other.seat !== hand.seat) ? `Seat ${hand.seat + 1}` : round.playerHands.length > 1 ? `Hand ${i + 1}` : "Your hand"}</p>
                 <div className="mt-1 flex gap-1">{hand.cards.map((card, c) => <PlayingCard key={c} card={card} size="sm" />)}</div>
                 <p className="tnum mt-1 text-xs font-semibold text-white/90">{money(hand.bet)}{hand.doubled ? " doubled" : ""} · <span className="rounded-full bg-surface px-1.5 py-px text-[0.6875rem]"><span className={outcomeTone(hand.net)}>{hand.outcome ?? (hand.surrendered ? "Surrender" : hand.net > 0 ? "Win" : hand.net < 0 ? "Loss" : "Push")} {hand.net ? money(hand.net, { sign: true }) : ""}</span></span></p>
               </div>

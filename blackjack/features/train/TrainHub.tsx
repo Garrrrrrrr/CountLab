@@ -135,7 +135,7 @@ function FullShoeCard({ stats }: { stats: DrillStats }) {
         <div>
           <p className="text-xl font-semibold">{drill.name}</p>
           <p className="mt-1 max-w-xl text-sm leading-6 text-white/75">Coached practice tells you after every bet and play. Checkout stays silent and grades the whole shoe at the end, like a test before you play for real.</p>
-          <p className="mt-2 text-xs text-white/60">{last ? `Last shoe ${timeAgo(last.date)} · ${recent}% recently` : "Uses real discard-tray photos so you estimate decks the way you will at a casino."}</p>
+          <p className="mt-2 text-xs text-white/70">{last ? `Last shoe ${timeAgo(last.date)} · ${recent}% recently` : "Uses real discard-tray photos so you estimate decks the way you will at a casino."}</p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:w-64">
           <Link href={`${drill.href}?mode=coached`} className="flex h-12 items-center justify-center rounded-xl bg-white/15 font-semibold backdrop-blur hover:bg-white/25">Coached</Link>

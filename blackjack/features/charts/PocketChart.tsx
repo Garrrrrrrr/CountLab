@@ -12,8 +12,8 @@ import { useChartRules } from "./useChartRules";
 export type PocketTheme = "light" | "dark";
 const ACTION: Record<Exclude<Action, "H">, string> = { S: "#cf363d", D: "#1f844a", P: "#2c68d6", R: "#7c4dcc" };
 const PALETTE = {
-  light: { bg: "#ffffff", panel: "#f7f6f2", line: "#e6e3db", band: "#ebe8e0", ink: "#15181e", ink2: "#535a67", ink3: "#7a808c", hit: "#e2e5eb", hitInk: "#1f2430", empty: "#efede7", brand: "#f5b93c", brandText: "#8a5c00", mark: "#15181e" },
-  dark: { bg: "#0d0f13", panel: "#161920", line: "#262b35", band: "#1f232c", ink: "#eceef2", ink2: "#a4abb8", ink3: "#767e8c", hit: "#353b47", hitInk: "#e8ebf0", empty: "#1c2028", brand: "#f6be46", brandText: "#f6be46", mark: "#262b35" },
+  light: { bg: "#ffffff", panel: "#f7f6f2", line: "#e6e3db", band: "#ebe8e0", ink: "#15181e", ink2: "#535a67", ink3: "#646b78", hit: "#e2e5eb", hitInk: "#1f2430", empty: "#efede7", brand: "#f5b93c", brandText: "#8a5c00", mark: "#15181e" },
+  dark: { bg: "#0d0f13", panel: "#161920", line: "#262b35", band: "#1f232c", ink: "#eceef2", ink2: "#a4abb8", ink3: "#8a92a0", hit: "#353b47", hitInk: "#e8ebf0", empty: "#1c2028", brand: "#f6be46", brandText: "#f6be46", mark: "#262b35" },
 } as const;
 type Palette = (typeof PALETTE)[PocketTheme];
 const fill = (palette: Palette, action: Action) => (action === "H" ? palette.hit : ACTION[action]);

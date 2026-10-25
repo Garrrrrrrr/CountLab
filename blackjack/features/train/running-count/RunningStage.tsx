@@ -89,7 +89,7 @@ export function TableView({ round, revealed, spots, animate, hints, roundNumber,
   return (
     <div className={cx("flex w-full flex-1 flex-col justify-between gap-5 py-2", TABLE_CARD[spots] ?? TABLE_CARD[3])}>
       <div className="flex flex-col items-center gap-1.5 [container-type:inline-size]">
-        <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-white/60">Dealer · round {roundNumber}</span>
+        <span className="text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-white/70">Dealer · round {roundNumber}</span>
         <Hand entries={round.dealer} revealed={revealed} animate={animate} hints={hints} label="Dealer's cards" />
       </div>
       {rules && <p aria-hidden className="text-center text-[0.6875rem] font-semibold uppercase tracking-[0.18em] text-white/25">{rules}</p>}
