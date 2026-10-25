@@ -12,6 +12,8 @@ import { storage, type Settings } from "@/lib/statistics/storage";
 import { analytics } from "@/lib/analytics";
 import { APP_VERSION } from "@/lib/analytics/config";
 import { CONTACT_EMAIL } from "@/lib/contact";
+import { rulesFromSettings, rulesSummary } from "@/lib/strategy";
+import { localDateString } from "@/lib/blackjack/journalForm";
 
 function Group({ id, title, sub, children }: { id?: string; title: string; sub?: ReactNode; children: ReactNode }) {
   return (
@@ -36,8 +38,6 @@ const download = (content: string, type: string, name: string) => {
   URL.revokeObjectURL(url);
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 export function SettingsPage() {
   const { settings, update, ready } = useSettings();
   const { loading: checkingAccount } = useAuth();
@@ -53,7 +53,7 @@ export function SettingsPage() {
         {/* Disabled until the saved settings load and we know whose they are (in the prerendered HTML
             too): a tap before then would be undone when they arrive, or saved to the guest's copy. */}
         <fieldset disabled={!ready || checkingAccount} aria-busy={!ready || checkingAccount} className="m-0 min-w-0 space-y-7 border-0 p-0">
-        <Group title="Table rules" sub="Drills, the full shoe and the charts start from these.">
+        <Group title="Table rules" sub={<>Drills, the full shoe and the charts start from these: <span className="whitespace-nowrap font-mono font-semibold text-ink-2">{rulesSummary(rulesFromSettings(settings))}</span></>}>
           <Row>
             <Segmented label="Decks" value={settings.decks} onChange={(decks) => set("decks", decks)}
               options={[1, 2, 4, 6, 8].map((value) => ({ value, label: String(value) }))} />
@@ -79,7 +79,7 @@ export function SettingsPage() {
           <Row>
             <Segmented label="True count rounding" value={settings.rounding} onChange={(value) => set("rounding", value)}
               options={[{ value: "floor", label: "Floor" }, { value: "truncate", label: "Truncate" }, { value: "nearest", label: "Nearest" }]} />
-            <p className="mt-2 text-xs leading-5 text-ink-3">Floor rounds down: −1.2 becomes −2 and +2.8 becomes +2. Truncate drops the fraction: −1.2 becomes −1. Use the method your indices were built for; floor is the common choice.</p>
+            <p className="mt-2 text-xs leading-5 text-ink-3">Floor rounds down: −1.2 becomes −2 and +2.8 becomes +2. Truncate drops the fraction: −1.2 becomes −1. Use the method your indices were built for: the charts use Wong&rsquo;s, which assume truncate.</p>
           </Row>
           <Row>
             <SelectField label="Card speed" value={settings.speed} onChange={(event) => set("speed", Number(event.target.value))}>
@@ -112,11 +112,11 @@ export function SettingsPage() {
 
         <Group title="About">
           <Row>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
-              <Link href="/terms" className="font-medium text-ink underline-offset-2 hover:underline">Terms of Service</Link>
-              <Link href="/privacy" className="font-medium text-ink underline-offset-2 hover:underline">Privacy Policy</Link>
-              <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-ink underline-offset-2 hover:underline">Contact</a>
-              {isAdmin && <Link href="/admin" className="font-medium text-brand-text underline-offset-2 hover:underline">Product analytics</Link>}
+            <div className="-my-2.5 flex flex-wrap gap-x-5 text-sm">
+              <Link href="/terms" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Terms of Service</Link>
+              <Link href="/privacy" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Privacy Policy</Link>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Contact</a>
+              {isAdmin && <Link href="/admin" className="inline-flex min-h-11 items-center font-medium text-brand-text underline-offset-2 hover:underline">Product analytics</Link>}
             </div>
             <p className="mt-2 text-xs text-ink-3">CountLab {APP_VERSION}. For training and education. Gamble responsibly.</p>
           </Row>
@@ -187,7 +187,7 @@ function AccountGroup() {
       )}
       {user && (
         <Row>
-          <button type="button" className="text-sm font-semibold text-neg underline-offset-2 hover:underline" onClick={() => setPending("delete")}>Request account deletion</button>
+          <button type="button" className="inline-flex min-h-11 items-center text-sm font-semibold text-neg underline-offset-2 hover:underline" onClick={() => setPending("delete")}>Request account deletion</button>
         </Row>
       )}
       <ConfirmSheet open={pending !== null && pending !== "delete"} onClose={() => setPending(null)} tone="primary" confirmLabel="Import my history"
@@ -230,9 +230,9 @@ function PrivacyGroup() {
           checked={enabled} onChange={(value) => { setEnabled(value); analytics.setConsent(value, "settings"); }} />
       </Row>
       <Row>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Link href="/privacy" className="font-medium text-ink underline-offset-2 hover:underline">How analytics and storage work</Link>
-          <button type="button" disabled={busy} className="font-semibold text-neg underline-offset-2 hover:underline disabled:opacity-50" onClick={() => setConfirm(true)}>
+        <div className="-my-2.5 flex flex-wrap items-center gap-x-4 text-sm">
+          <Link href="/privacy" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">How analytics and storage work</Link>
+          <button type="button" disabled={busy} className="inline-flex min-h-11 items-center font-semibold text-neg underline-offset-2 hover:underline disabled:opacity-50" onClick={() => setConfirm(true)}>
             {busy ? "Deleting…" : "Delete analytics history"}
           </button>
         </div>
@@ -257,9 +257,9 @@ function DataGroup() {
     <Group title="Data" sub="A JSON backup holds settings, drill history, the journal, saved calculator scenarios and venues.">
       <Row>
         <div className="grid gap-2 sm:grid-cols-3">
-          <Button variant="secondary" icon={<FileJson size={17} aria-hidden />} onClick={() => { download(storage.exportData(), "application/json", `countlab-backup-${today()}.json`); toast("Backup downloaded", "pos"); }}>Export backup</Button>
+          <Button variant="secondary" icon={<FileJson size={17} aria-hidden />} onClick={() => { download(storage.exportData(), "application/json", `countlab-backup-${localDateString()}.json`); toast("Backup downloaded", "pos"); }}>Export backup</Button>
           <Button variant="secondary" icon={<Upload size={17} aria-hidden />} onClick={() => input.current?.click()}>Import backup</Button>
-          <Button variant="secondary" icon={<Download size={17} aria-hidden />} onClick={() => { download(storage.exportCsv(), "text/csv", `countlab-training-${today()}.csv`); toast("CSV downloaded", "pos"); }}>Drill history CSV</Button>
+          <Button variant="secondary" icon={<Download size={17} aria-hidden />} onClick={() => { download(storage.exportCsv(), "text/csv", `countlab-training-${localDateString()}.csv`); toast("CSV downloaded", "pos"); }}>Drill history CSV</Button>
         </div>
         <input ref={input} type="file" accept="application/json,.json" className="hidden" aria-label="Choose a backup file"
           onChange={async (event) => {
