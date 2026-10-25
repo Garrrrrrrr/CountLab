@@ -29,6 +29,25 @@ export function entryDate({ date, from }: Pick<ChangelogEntry, "date" | "from">)
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: "2026-10-25-chart-recall",
+    date: "2026-10-25",
+    title: "Chart Recall: four levels and typed counts",
+    summary: "Chart Recall now goes from basic strategy to every index, with the Illustrious 18 and Fab 4 or your own pick of indices in between, and takes counts typed straight into the cells.",
+    tags: ["new", "improved"],
+    groups: [
+      {
+        title: "Chart Recall",
+        items: [
+          "Four levels: Basic strategy, All indices, I18 + Fab 4, and Custom. At I18 + Fab 4 and Custom, only those cells ask for an index; every other cell asks its basic play.",
+          "Custom opens a list of every index for your rules, grouped by table, with I18 + Fab 4, All and None shortcuts. Your pick is remembered on this device.",
+          "On a keyboard, type the count into a surrender cell: 5 means surrender at +5 or higher, and -5 or d5 means at −5. A lone - still means no surrender.",
+          "In the hard, soft and pair tables, typing a count opens the index entry with it filled in, ready for the play.",
+          "The resume banner says “1 cell”, not “1 cells”.",
+        ],
+      },
+    ],
+  },
+  {
     id: "2026-10-25-fixes",
     date: "2026-10-25",
     title: "Hit-and-run pricing, saved shoes and easier reading",

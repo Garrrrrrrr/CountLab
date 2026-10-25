@@ -9,17 +9,18 @@ import { useSettings } from "@/lib/hooks/useSettings";
 import { relativeTime } from "@/lib/statistics/drillRound";
 import { makeSession, storage, type Session } from "@/lib/statistics/storage";
 import { useDrillProgress } from "@/lib/statistics/useDrillProgress";
-import { DEFAULT_TABLE_RULES, rulesFromSettings, rulesSummary, type TableRules } from "@/lib/strategy";
+import { DEFAULT_TABLE_RULES, rulesFromSettings, rulesSummary, signedCount, type TableRules } from "@/lib/strategy";
 import {
-  availableTables, BASE_NAME, bestRunAcross, cellMistake, cleanEntries, explainCell, filledIn, formatEntry, gradeTable, recallLevelOf, recallTables,
+  availableTables, BASE_NAME, bestRunAcross, cellMistake, cleanEntries, coreIndexIds, explainCell, filledIn, formatEntry, gradeTable, isFilled, recallLevelOf, withIndices, recallTables,
   RECALL_TABLE_IDS, TABLE_TITLE, type CellEntry, type CellGrade, type Deviation, type RecallLevel, type RecallTable, type RecallTableId, type TableGrade,
 } from "@/lib/strategy-drills/chartRecall";
 import { RecentRounds, ReplaceRoundSheet, ReviewDue, startedRules } from "../strategy-shared/parts";
 import { recordAnswer } from "@/lib/statistics/spacedRepetition";
-import { chartReviewDue, chartReviewKey, chartReviewScope } from "@/lib/strategy-drills/review";
+import { chartReviewDue, chartReviewKey, chartReviewLevel, chartReviewScope } from "@/lib/strategy-drills/review";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
 import { RecallGrid, type GridView } from "./RecallGrid";
+import { CustomIndices } from "./CustomIndices";
 import { BaseKeypad, IndexPad } from "./RecallKeypad";
 import { useActiveClock } from "./useActiveClock";
 
@@ -28,12 +29,18 @@ const DRILL = "H17 Chart" as const;
 const MAX_MISTAKES = 40;
 
 type Scope = "all" | RecallTableId;
-type Pref = { level: RecallLevel; scope: Scope };
-const cleanPref = (raw: Partial<Pref>): Pref => ({ level: recallLevelOf(raw.level), scope: raw.scope === "all" || RECALL_TABLE_IDS.includes(raw.scope as RecallTableId) ? (raw.scope as Scope) : "all" });
+/** `picked` holds the custom level's indices by `indexList` id; absent until the reader picks. */
+type Pref = { level: RecallLevel; scope: Scope; picked?: string[] };
+const stringList = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : undefined);
+const cleanPref = (raw: Partial<Pref>): Pref => ({
+  level: recallLevelOf(raw.level),
+  scope: raw.scope === "all" || RECALL_TABLE_IDS.includes(raw.scope as RecallTableId) ? (raw.scope as Scope) : "all",
+  picked: stringList(raw.picked),
+});
 
 /** One chart attempt: fixed when it starts, so a rules change elsewhere never re-grades it. */
 /** `only` narrows a retry or a review chart to some cells; a review chart's answers update the schedule, a retry's do not. */
-interface Game { rules: TableRules; level: RecallLevel; ids: RecallTableId[]; only?: string[]; review?: boolean }
+interface Game { rules: TableRules; level: RecallLevel; ids: RecallTableId[]; only?: string[]; review?: boolean; picked?: string[] }
 type Phase = "setup" | "fill" | "review" | "summary";
 
 interface RecallSaved extends Game { v: 2; index: number; phase: "fill" | "review"; entries: Record<string, CellEntry>; graded: RecallTableId[]; activeMs: number }
@@ -50,26 +57,33 @@ function readSaved(raw: unknown): RecallSaved | undefined {
   if (!Object.keys(entries).length && !graded.length) return undefined;
   const index = Math.min(ids.length - 1, Math.max(0, Number.isInteger(state.index) ? state.index! : 0));
   const only = Array.isArray(state.only) ? state.only.filter((key): key is string => typeof key === "string") : undefined;
-  return { v: 2, rules, level: recallLevelOf(state.level), ids, only: only?.length ? only : undefined, review: state.review === true || undefined, index, phase: state.phase === "review" && graded.includes(ids[index]) ? "review" : "fill", entries, graded, activeMs: typeof state.activeMs === "number" && state.activeMs >= 0 ? state.activeMs : 0 };
+  const level = recallLevelOf(state.level);
+  return { v: 2, rules, level, picked: level === "custom" ? stringList(state.picked) ?? [] : undefined, ids, only: only?.length ? only : undefined, review: state.review === true || undefined, index, phase: state.phase === "review" && graded.includes(ids[index]) ? "review" : "fill", entries, graded, activeMs: typeof state.activeMs === "number" && state.activeMs >= 0 ? state.activeMs : 0 };
 }
 
 /** The tables as asked: a retry chart narrows each table to the cells that were wrong. */
 function scopedTables(game: Game): RecallTable[] {
-  const tables = recallTables(game.rules, game.level, game.ids);
+  const tables = recallTables(game.rules, game.level, game.ids, game.picked);
   if (!game.only) return tables;
   const only = new Set(game.only);
   return tables.map((table) => ({ ...table, cells: table.cells.filter((cell) => only.has(cell.key)) })).filter((table) => table.cells.length > 0);
 }
 
 const LEVELS = [
-  { value: "basic" as const, title: "Basic plays", detail: "Hit, stand, double or split in every cell, and which hands to surrender." },
-  { value: "indices" as const, title: "With indices", detail: "Also the count where each index play changes: the play it switches to and the number." },
+  { value: "basic" as const, title: "Basic strategy", detail: "Hit, stand, double or split in every cell, and which hands to surrender." },
+  { value: "indices" as const, title: "All indices", detail: "Also every index Wong prints for your rules: the play the count switches to and the number." },
+  { value: "core" as const, title: "I18 + Fab 4", detail: "Basic strategy, plus the indices to learn first: the Illustrious 18 and the Fab 4 surrenders." },
+  { value: "custom" as const, title: "Custom", detail: "Basic strategy, plus only the indices you pick." },
 ];
+const cellCount = (count: number) => `${count} ${count === 1 ? "cell" : "cells"}`;
+/** The level in a few words, for summaries and the resume banner. */
+const LEVEL_WORDS: Record<RecallLevel, string> = { basic: "basic plays", indices: "all indices", core: "I18 + Fab 4", custom: "custom indices" };
 
 export function ChartRecallDrill() {
   const { settings, update } = useSettings();
   const sessions = useSessions(DRILL);
   const [pref, remember] = useSetupPref<Pref>("chart-recall", { level: "basic", scope: "all" }, cleanPref);
+  const reviewLevel = pref.level === "basic" ? "basic" : "indices";
   const [saved, setSaved] = useState(() => {
     const progress = storage.progress(DRILL);
     const state = readSaved(progress?.state);
@@ -82,6 +96,10 @@ export function ChartRecallDrill() {
   const [graded, setGraded] = useState<RecallTableId[]>([]);
   const [selected, setSelected] = useState<string>();
   const [indexMode, setIndexMode] = useState(false);
+  /** What the index pad opens with when a count was typed straight into a cell. */
+  const [indexStart, setIndexStart] = useState<string>();
+  /** A "-" (or "d" in the surrender table) just typed, which a digit right after turns into a negative count. */
+  const minus = useRef<{ key: string; time: number } | null>(null);
   const [view, setView] = useState<GridView>("chart");
   const [session, setSession] = useState<Session>();
   const [confirmGrade, setConfirmGrade] = useState(false);
@@ -149,6 +167,15 @@ export function ChartRecallDrill() {
     setIndexMode(false);
     announce(dev ? `${cell.short}: index saved.` : `${cell.short}: no index.`);
   };
+  /** A bare count in the surrender table: surrender at that count or higher. */
+  const setCount = (key: string, at: number, advance: boolean) => {
+    const target = table!.cells.find((item) => item.key === key)!;
+    setEntries((current) => ({ ...current, [key]: { dev: { play: "R", at } } }));
+    const next = table!.cells[table!.cells.indexOf(target) + 1];
+    announce(`${target.short}: surrender at ${signedCount(at)} or higher.${next ? "" : " Last cell of this table."}`);
+    if (advance && next) select(next.key);
+  };
+  const openIndex = (start?: string) => { setIndexStart(start); setIndexMode(true); };
   const clearCell = () => {
     if (!cell) return;
     setEntries((current) => { const copy = { ...current }; delete copy[cell.key]; return copy; });
@@ -166,7 +193,23 @@ export function ChartRecallDrill() {
       const key = event.key.toLowerCase();
       if (event.key === "Backspace" || event.key === "Delete") { event.preventDefault(); clearCell(); return; }
       if (event.key === "Enter" && target?.hasAttribute("data-cell")) { event.preventDefault(); move(1); return; }
-      if (key === "i" && level === "indices") { event.preventDefault(); setIndexMode(true); return; }
+      if (key === "i" && withIndices(level)) { event.preventDefault(); openIndex(); return; }
+      // Counts typed straight into a cell. In the surrender table "5" is surrender at +5 or higher and
+      // "-5" or "d5" at −5; "-" alone still means no surrender, so a digit right after it rewrites that cell.
+      const surrender = table.id === "surrender";
+      const pending = minus.current && Date.now() - minus.current.time < 1500 ? minus.current : null;
+      minus.current = null;
+      if (withIndices(level) && /^[0-9]$/.test(key)) {
+        event.preventDefault();
+        const at = pending && key !== "0" ? -Number(key) : Number(key);
+        if (surrender) setCount(pending?.key ?? cell.key, at, !pending || pending.key === cell.key);
+        else openIndex(String(at));
+        return;
+      }
+      if (withIndices(level) && key === "+") { event.preventDefault(); return; }
+      if (withIndices(level) && surrender && (key === "-" || key === "d")) minus.current = { key: cell.key, time: Date.now() };
+      if (withIndices(level) && surrender && key === "d") { event.preventDefault(); return; }
+      if (withIndices(level) && !surrender && key === "-") { event.preventDefault(); openIndex("-"); return; }
       const token = key === "d" && event.shiftKey ? "Ds" : key === "n" || key === "-" ? "-" : ({ h: "H", s: "S", d: "D", p: "P", r: "R" } as Record<string, string>)[key];
       if (token && table.baseKeys.includes(token)) { event.preventDefault(); setBase(token); }
     };
@@ -199,7 +242,7 @@ export function ChartRecallDrill() {
     clock.set(state?.activeMs ?? 0);
     setView("chart");
     setPhase(state?.phase === "review" && state.graded.includes(list[at].id) ? "review" : "fill");
-    const firstBlank = list[at].cells.find((item) => !state?.entries[item.key]?.base) ?? list[at].cells[0];
+    const firstBlank = list[at].cells.find((item) => !isFilled(state?.entries[item.key])) ?? list[at].cells[0];
     select(firstBlank.key);
     track("drill_started", { drill: DRILL, mode: next.level, questionTarget: list.reduce((sum, item) => sum + item.cells.length, 0), ...startedRules(next.rules) });
   };
@@ -213,7 +256,8 @@ export function ChartRecallDrill() {
     const ids = pref.scope === "all" || !allowed.includes(pref.scope) ? allowed : [pref.scope];
     storage.clearProgress(DRILL);
     setSaved(undefined);
-    begin(review ? { rules, level: pref.level, ...review, review: true } : { rules, level: pref.level, ids });
+    // Reviews run on the two schedules the answers file under (see chartReviewLevel).
+    begin(review ? { rules, level: reviewLevel, ...review, review: true } : { rules, level: pref.level, ids, picked: pref.level === "custom" ? pref.picked ?? coreIndexIds(rules) : undefined });
   };
   const startReview = (scope: { ids: RecallTableId[]; only: string[] }) => (saved ? setReplacing(() => () => beginFresh(scope)) : beginFresh(scope));
 
@@ -225,7 +269,7 @@ export function ChartRecallDrill() {
     setPhase("review");
     setView("chart");
     const result = gradeOf(table);
-    if (game && (!game.only || game.review)) for (const cell of result.cells) recordAnswer(DRILL, chartReviewKey(game.level, cell.cell.key), cell.ok);
+    if (game && (!game.only || game.review)) for (const cell of result.cells) recordAnswer(DRILL, chartReviewKey(chartReviewLevel(game.level, Boolean(cell.cell.expected.dev)), cell.cell.key), cell.ok);
     const firstMiss = result.cells.find((item) => !item.ok);
     setSelected(firstMiss?.cell.key);
     announce(`${table.title} graded: ${result.correct} of ${result.total} right${result.blank ? `, ${result.blank} blank` : ""}.`);
@@ -261,7 +305,7 @@ export function ChartRecallDrill() {
       const next = tables[index + 1];
       setIndex(index + 1);
       setPhase("fill");
-      select((next.cells.find((item) => !entries[item.key]?.base) ?? next.cells[0]).key);
+      select((next.cells.find((item) => !isFilled(entries[item.key])) ?? next.cells[0]).key);
     } else finish();
   };
   const leaveForNow = () => {
@@ -307,7 +351,11 @@ export function ChartRecallDrill() {
         {phase === "fill" && (
           <p className="mt-3 hidden text-center text-xs text-ink-3 [@media(hover:hover)]:block">
             Keys: {table.baseKeys.map((token) => <span key={token} className="mr-1.5 inline-flex items-center gap-1"><Kbd>{token === "Ds" ? "⇧D" : token === "-" ? "N" : token}</Kbd>{BASE_NAME[token].split(",")[0].toLowerCase()}</span>)}
-            {level === "indices" && <span className="mr-1.5 inline-flex items-center gap-1"><Kbd>I</Kbd>index</span>} <Kbd>←</Kbd><Kbd>→</Kbd> move · <Kbd>⌫</Kbd> clear
+            {withIndices(level) && <span className="mr-1.5 inline-flex items-center gap-1"><Kbd>I</Kbd>index</span>}
+            {withIndices(level) && (table.id === "surrender"
+              ? <span className="mr-1.5 inline-flex items-center gap-1"><Kbd>5</Kbd><Kbd>-5</Kbd><Kbd>D5</Kbd>surrender at a count</span>
+              : <span className="mr-1.5 inline-flex items-center gap-1"><Kbd>0–9</Kbd><Kbd>-</Kbd>index count</span>)}
+            {" "}<Kbd>←</Kbd><Kbd>→</Kbd> move · <Kbd>⌫</Kbd> clear
           </p>
         )}
         <PlayDock>
@@ -315,14 +363,14 @@ export function ChartRecallDrill() {
             {phase === "review" && currentGrade ? (
               <ReviewDock grade={currentGrade} cell={reviewCell} rules={game.rules} last={index + 1 >= tables.length} nextTitle={tables[index + 1]?.title} onNext={nextTable} />
             ) : indexMode ? (
-              <IndexPad key={cell.key} cell={cell} surrender={surrender} initial={entries[cell.key]?.dev} onSave={setDev} onCancel={() => setIndexMode(false)} />
+              <IndexPad key={cell.key} cell={cell} surrender={surrender} initial={entries[cell.key]?.dev} start={indexStart} onSave={setDev} onCancel={() => setIndexMode(false)} />
             ) : (
               <>
                 {filled === table.cells.length && (
                   <Button block className="mb-2" onClick={gradeNow} trailing={<ChevronRight size={18} aria-hidden />}>Grade {table.title.toLowerCase()}</Button>
                 )}
                 <BaseKeypad table={table} cell={cell} entry={entries[cell.key]} level={level} filled={filled} total={table.cells.length}
-                  onBase={setBase} onClear={clearCell} onMove={move} onIndex={() => setIndexMode(true)} />
+                  onBase={setBase} onClear={clearCell} onMove={move} onIndex={() => openIndex()} />
               </>
             )}
           </div>
@@ -356,7 +404,7 @@ export function ChartRecallDrill() {
         title={game.review ? "Chart Recall: review done" : game.only ? "Chart Recall: retry done" : "Chart Recall"}
         score={session.accuracy}
         scoreLabel="Cells right"
-        scoreSub={<><span className="tnum font-semibold text-ink">{session.correct} of {session.questions}</span> cells · {game.level === "indices" ? "with indices" : "basic plays"} · {rulesSummary(game.rules)}</>}
+        scoreSub={<><span className="tnum font-semibold text-ink">{session.correct} of {session.questions}</span> cells · {LEVEL_WORDS[game.level]} · {rulesSummary(game.rules)}</>}
         stats={[
           { label: "Time", value: formatClock(clock.read()) },
           { label: "Wrong", value: session.questions - session.correct - blank },
@@ -366,12 +414,12 @@ export function ChartRecallDrill() {
         // The graded grids below show every miss; the list reads the first few with their reasons.
         mistakes={session.mistakes.slice(0, 10)}
         exportMistakes={session.mistakes}
-        onAgain={() => begin({ rules: game.rules, level: game.level, ids: game.ids })}
+        onAgain={() => begin({ rules: game.rules, level: game.level, ids: game.ids, picked: game.picked })}
         againLabel="New chart"
         next={{ href: "/charts", label: "Open the chart" }}
       >
         <div className="flex flex-col gap-2 sm:flex-row">
-          {wrongKeys.length > 0 && <Button variant="secondary" icon={<Target size={18} aria-hidden />} onClick={() => begin({ rules: game.rules, level: game.level, ids: game.ids, only: wrongKeys })}>Retry {wrongKeys.length} wrong {wrongKeys.length === 1 ? "cell" : "cells"}</Button>}
+          {wrongKeys.length > 0 && <Button variant="secondary" icon={<Target size={18} aria-hidden />} onClick={() => begin({ rules: game.rules, level: game.level, ids: game.ids, picked: game.picked, only: wrongKeys })}>Retry {wrongKeys.length} wrong {wrongKeys.length === 1 ? "cell" : "cells"}</Button>}
           <Button variant="secondary" icon={<Settings2 size={18} aria-hidden />} onClick={() => setPhase("setup")}>Change setup</Button>
         </div>
         {results.map(({ table: item, grade }) => <GradedTableCard key={item.id} table={item} grade={grade} entries={entries} rules={game.rules} />)}
@@ -382,8 +430,9 @@ export function ChartRecallDrill() {
   const rules = rulesFromSettings(settings);
   const allowed = availableTables(rules);
   const scope: Scope = pref.scope === "all" || allowed.includes(pref.scope) ? pref.scope : "all";
-  const count = recallTables(rules, pref.level, scope === "all" ? allowed : [scope]).reduce((sum, item) => sum + item.cells.length, 0);
-  const reviewScope = chartReviewScope(chartReviewDue(rules, pref.level), pref.level);
+  const picked = pref.picked ?? coreIndexIds(rules);
+  const count = recallTables(rules, pref.level, scope === "all" ? allowed : [scope], picked).reduce((sum, item) => sum + item.cells.length, 0);
+  const reviewScope = chartReviewScope(chartReviewDue(rules, reviewLevel), reviewLevel);
   return (
     <DrillSetup
       title="Chart Recall"
@@ -392,26 +441,27 @@ export function ChartRecallDrill() {
       startLabel={`Start (${count} cells)`}
       resume={saved && (
         <ResumeBanner
-          detail={`${saved.state.level === "indices" ? "With indices" : "Basic plays"}, ${TABLE_TITLE[saved.state.ids[saved.state.index]].toLowerCase()}: ${Object.values(saved.state.entries).filter((entry) => entry.base).length} cells filled, saved ${relativeTime(saved.updatedAt)}.`}
+          detail={`${LEVEL_WORDS[saved.state.level].replace(/^./, (first) => first.toUpperCase())}, ${TABLE_TITLE[saved.state.ids[saved.state.index]].toLowerCase()}: ${cellCount(Object.values(saved.state.entries).filter(isFilled).length)} filled, saved ${relativeTime(saved.updatedAt)}.`}
           onResume={() => { const state = saved.state; setSaved(undefined); begin(state, state); }}
           onDiscard={() => { storage.clearProgress(DRILL); setSaved(undefined); }}
         />
       )}
       aside={<RecentRounds sessions={sessions} unit="cells" />}
     >
-      <ReplaceRoundSheet open={Boolean(replacing)} detail={`Your unfinished chart has ${saved ? Object.values(saved.state.entries).filter((entry) => entry.base).length : 0} cells filled.`} onConfirm={() => replacing?.()} onClose={() => setReplacing(null)} />
-      <ReviewDue count={reviewScope.only.length} unit={[`${pref.level === "indices" ? "cell with indices" : "cell"}`, `${pref.level === "indices" ? "cells with indices" : "cells"}`]} onStart={() => startReview(reviewScope)} />
+      <ReplaceRoundSheet open={Boolean(replacing)} detail={`Your unfinished chart has ${cellCount(saved ? Object.values(saved.state.entries).filter(isFilled).length : 0)} filled.`} onConfirm={() => replacing?.()} onClose={() => setReplacing(null)} />
+      <ReviewDue count={reviewScope.only.length} unit={[reviewLevel === "indices" ? "cell with indices" : "cell", reviewLevel === "indices" ? "cells with indices" : "cells"]} onStart={() => startReview(reviewScope)} />
       <RulesBar settings={settings} update={update} note={rules.surrender === "none" ? "No surrender table: your rules have no surrender." : undefined} />
       <SetupGroup title="Difficulty">
         <PresetPicker label="Difficulty" value={pref.level} onChange={(value) => remember({ level: value })} options={LEVELS} />
       </SetupGroup>
+      {pref.level === "custom" && <CustomIndices rules={rules} picked={picked} onChange={(next) => remember({ picked: next })} />}
       <SetupGroup title="What to fill in" hint="The whole chart goes table by table: surrender first (it is decided first at the table), then hard, soft and pairs.">
         <Segmented label="What to fill in" hideLabel className="max-sm:[&>div]:flex-wrap max-sm:[&_label]:basis-1/3" value={scope} onChange={(value) => remember({ scope: value })}
           options={[{ value: "all" as Scope, label: "All tables" }, ...allowed.map((id) => ({ value: id as Scope, label: id === "surrender" ? "Surrender" : id === "hard" ? "Hard" : id === "soft" ? "Soft" : "Pairs" }))]} />
       </SetupGroup>
       <Card className="text-sm leading-6 text-ink-2">
         <h2 className="mb-1 text-sm font-semibold text-ink">How it works</h2>
-        <p>Tap a cell, or just follow the highlight: each key fills the cell and moves to the next. {pref.level === "indices" ? "For an index play, tap Index and enter the play it switches to and the count, then its basic play." : ""} Codes: <b className="text-ink">Ds</b> doubles or else stands; <b className="text-ink">—</b> in the surrender table means play the hand.</p>
+        <p>Tap a cell, or just follow the highlight: each key fills the cell and moves to the next. {withIndices(pref.level) ? "For an index play, tap Index and enter the play it switches to and the count, then its basic play. On a keyboard you can type the count straight into a cell: in the surrender table, 5 means surrender at +5 or higher and -5 or d5 means at −5; elsewhere it opens the index with that count." : ""} Codes: <b className="text-ink">Ds</b> doubles or else stands; <b className="text-ink">—</b> in the surrender table means play the hand.</p>
       </Card>
     </DrillSetup>
   );

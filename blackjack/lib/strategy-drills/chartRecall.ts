@@ -5,19 +5,32 @@
  * A cell's answer has two parts:
  *   base  the play without a count: "H", "S", "D", "Ds" (double, otherwise
  *         stand), "P" in the play tables; "R" or "-" in the surrender table.
- *   dev   "With indices" only: the play the count switches to and the index.
- *         In the surrender table the play is always surrender, so only the
- *         count is asked ("surrender at +3 or higher").
+ *   dev   At the index levels, for the cells whose index is asked: the play the
+ *         count switches to and the index. In the surrender table the play is
+ *         always surrender, so only the count is asked ("surrender at +3 or higher").
  */
 import type { Action } from "@/lib/blackjack/types";
 import type { Mistake } from "@/lib/statistics/storage";
-import { ACTION_NAMES, cellDecision, cellKey, DEALERS, explainDecision, handLabel, rowLabel, signedCount, thresholdPhrase, type CellRef, type Dealer, type Section, type TableRules } from "@/lib/strategy";
+import { ACTION_NAMES, cellDecision, cellKey, CORE_INDEX_COUNT, DEALERS, indexList, explainDecision, handLabel, rowLabel, signedCount, thresholdPhrase, type CellRef, type Dealer, type Section, type TableRules } from "@/lib/strategy";
 import { chartFor, playToken } from "./chartRow";
 
 export type RecallTableId = "surrender" | "hard" | "soft" | "pairs";
 export const RECALL_TABLE_IDS: readonly RecallTableId[] = ["surrender", "hard", "soft", "pairs"];
-export type RecallLevel = "basic" | "indices";
-export const recallLevelOf = (value: unknown): RecallLevel => (value === "indices" ? "indices" : "basic");
+/** Basic plays only; every index; the Illustrious 18 and Fab 4; or indices the reader picked. */
+export type RecallLevel = "basic" | "indices" | "core" | "custom";
+export const RECALL_LEVELS: readonly RecallLevel[] = ["basic", "indices", "core", "custom"];
+export const recallLevelOf = (value: unknown): RecallLevel => (RECALL_LEVELS.includes(value as RecallLevel) ? (value as RecallLevel) : "basic");
+export const withIndices = (level: RecallLevel) => level !== "basic";
+
+/** The `indexList` ids of the Illustrious 18 and Fab 4 under these rules (insurance is not on the chart). */
+export const coreIndexIds = (rules: TableRules) => indexList(rules).filter((entry) => entry.priority < CORE_INDEX_COUNT && entry.kind !== "insurance").map((entry) => entry.id);
+
+/** Which indices a level asks, by `indexList` id: null for every one. A custom level with no pick asks the I18 + Fab 4. */
+export function askedIndices(rules: TableRules, level: RecallLevel, picked?: readonly string[]): ReadonlySet<string> | null {
+  if (level === "indices") return null;
+  if (level === "basic") return new Set();
+  return new Set(level === "custom" && picked ? picked : coreIndexIds(rules));
+}
 
 export interface Deviation { play: Action; at: number }
 export interface CellEntry { base?: string; dev?: Deviation }
@@ -68,8 +81,10 @@ export function availableTables(rules: TableRules): RecallTableId[] {
 
 const SURRENDER_DEALERS: readonly string[] = ["8", "9", "10", "A"];
 
-export function recallTable(rules: TableRules, id: RecallTableId, level: RecallLevel): RecallTable | null {
+export function recallTable(rules: TableRules, id: RecallTableId, level: RecallLevel, picked?: readonly string[]): RecallTable | null {
   const chart = chartFor(rules);
+  const asked = askedIndices(rules, level, picked);
+  const asks = (indexId: string) => asked === null || asked.has(indexId);
   const rows: RecallRow[] = [];
   if (id === "surrender") {
     if (!chart.surrender) return null;
@@ -85,7 +100,7 @@ export function recallTable(rules: TableRules, id: RecallTableId, level: RecallL
           ref,
           name: `Surrender, ${handLabel(section, row)} versus dealer ${dealerWord(dealer)}`,
           short: `${rowLabel(section, row)} vs ${dealer}`,
-          expected: { base: rule?.basic ? "R" : "-", dev: level === "indices" && finite ? { play: "R", at: rule!.at } : undefined },
+          expected: { base: rule?.basic ? "R" : "-", dev: finite && asks(`R:${cellKey(ref)}`) ? { play: "R", at: rule!.at } : undefined },
           dir: finite ? "up" : undefined,
         };
       });
@@ -103,7 +118,7 @@ export function recallTable(rules: TableRules, id: RecallTableId, level: RecallL
           ref,
           name: `${handLabel(id, row)} versus dealer ${dealerWord(dealer)}`,
           short: `${rowLabel(id, row)} vs ${dealer}`,
-          expected: { base: playToken(cell.basic), dev: level === "indices" && cell.index && Number.isFinite(cell.index.at) ? { play: cell.index.play, at: cell.index.at } : undefined },
+          expected: { base: playToken(cell.basic), dev: cell.index && Number.isFinite(cell.index.at) && asks(cellKey(ref)) ? { play: cell.index.play, at: cell.index.at } : undefined },
           dir: cell.index?.dir,
         };
       });
@@ -118,14 +133,24 @@ export function recallTable(rules: TableRules, id: RecallTableId, level: RecallL
   return { id, title: TABLE_TITLE[id], rows, cells, baseKeys };
 }
 
-export function recallTables(rules: TableRules, level: RecallLevel, ids: readonly RecallTableId[] = RECALL_TABLE_IDS): RecallTable[] {
-  return ids.map((id) => recallTable(rules, id, level)).filter((table): table is RecallTable => table !== null);
+export function recallTables(rules: TableRules, level: RecallLevel, ids: readonly RecallTableId[] = RECALL_TABLE_IDS, picked?: readonly string[]): RecallTable[] {
+  return ids.map((id) => recallTable(rules, id, level, picked)).filter((table): table is RecallTable => table !== null);
 }
+
+/**
+ * A surrender cell typed as a bare count ("surrender at +5 or higher") is a whole answer on its
+ * own; it never infers the play at 0, where Wong's rounded index and exact basic strategy can part.
+ */
+const countOnly = (entry: CellEntry | undefined) => !entry?.base && entry?.dev?.play === "R";
+
+/** True once a cell holds an answer: a base play, or a surrender count. */
+export const isFilled = (entry: CellEntry | undefined) => Boolean(entry?.base) || countOnly(entry);
 
 const sameDev = (a?: Deviation, b?: Deviation) => (!a && !b) || Boolean(a && b && a.play === b.play && a.at === b.at);
 
 /** Right when the base play matches and, with indices, the deviation matches too (or both have none). */
 export function entryMatches(expected: CellEntry, entry: CellEntry | undefined, level: RecallLevel): boolean {
+  if (countOnly(entry)) return withIndices(level) && sameDev(expected.dev, entry!.dev);
   if (!entry?.base || entry.base !== expected.base) return false;
   return level === "basic" || sameDev(expected.dev, entry.dev);
 }
@@ -136,12 +161,14 @@ export function formatEntry(entry: CellEntry | undefined, dir?: "up" | "down"): 
   const base = entry.base === "-" ? "—" : entry.base ?? "?";
   if (!entry.dev) return base;
   const arrow = dir ? (dir === "up" ? "↑" : "↓") : "";
+  if (countOnly(entry)) return `R ${signedCount(entry.dev.at)}${arrow}`;
   return `${base} · ${entry.dev.play} ${signedCount(entry.dev.at)}${arrow}`;
 }
 
 /** The same in words, for screen readers and the mistake list. */
 export function spokenEntry(entry: CellEntry | undefined, dir?: "up" | "down"): string {
   if (!entry?.base && !entry?.dev) return "empty";
+  if (countOnly(entry)) return `surrender at ${signedCount(entry.dev!.at)} or higher`;
   const base = entry.base ? BASE_NAME[entry.base] : "no play";
   if (!entry.dev) return base;
   const direction = dir === "down" ? " or lower" : dir === "up" ? " or higher" : "";
@@ -158,7 +185,7 @@ export function gradeTable(table: RecallTable, entries: Readonly<Record<string, 
     const ok = entryMatches(cell.expected, entry, level);
     run = ok ? run + 1 : 0;
     bestRun = Math.max(bestRun, run);
-    return { cell, entry, ok, blank: !entry?.base };
+    return { cell, entry, ok, blank: !isFilled(entry) };
   });
   const correct = cells.filter((cell) => cell.ok).length;
   const blank = cells.filter((cell) => cell.blank).length;
@@ -216,4 +243,4 @@ export function cleanEntries(value: unknown): Record<string, CellEntry> {
   return result;
 }
 
-export const filledIn = (table: RecallTable, entries: Readonly<Record<string, CellEntry>>) => table.cells.filter((cell) => entries[cell.key]?.base).length;
+export const filledIn = (table: RecallTable, entries: Readonly<Record<string, CellEntry>>) => table.cells.filter((cell) => isFilled(entries[cell.key])).length;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildChart, cellKey, DEFAULT_TABLE_RULES, type TableRules } from "@/lib/strategy";
-import { availableTables, cellMistake, cleanEntries, entryMatches, formatEntry, gradeTable, recallTables, type CellEntry } from "./chartRecall";
+import { askedIndices, availableTables, cellMistake, coreIndexIds, cleanEntries, entryMatches, formatEntry, gradeTable, isFilled, recallTables, spokenEntry, type CellEntry } from "./chartRecall";
 import { playToken } from "./chartRow";
 import { ALL_RULES, label } from "./testRules";
 
@@ -52,7 +52,7 @@ describe("chart recall", () => {
     const hard = tables.find((recall) => recall.id === "hard")!;
     const sixteen = `hard|${cellKey({ section: "hard", row: "16", dealer: "10" })}`;
     expect(entries[sixteen]).toEqual({ base: "H", dev: { play: "S", at: 0 } });
-    // The right play with the wrong index is right at "Basic plays" and wrong "With indices".
+    // The right play with the wrong index is right at "Basic strategy" and wrong at "All indices".
     const wrongIndex = { ...entries, [sixteen]: { base: "H", dev: { play: "S" as const, at: 1 } } };
     expect(gradeTable(hard, wrongIndex, "indices").wrong).toBe(1);
     expect(gradeTable(hard, wrongIndex, "basic").wrong).toBe(0);
@@ -70,6 +70,49 @@ describe("chart recall", () => {
     expect(mistake.userAnswer).toBe("(blank)");
     expect(mistake.correctAnswer).toBe("H · S 0↑");
     expect(mistake.explanation).toMatch(/stand at 0 or higher/);
+  });
+
+  it("asks only the I18 + Fab 4, or only the picked indices, at those levels", () => {
+    const rules = DEFAULT_TABLE_RULES;
+    const indexed = (level: Parameters<typeof recallTables>[1], picked?: string[]) =>
+      recallTables(rules, level, undefined, picked).flatMap((table) => table.cells.filter((cell) => cell.expected.dev).map((cell) => cell.key));
+    const all = indexed("indices");
+    const core = indexed("core");
+    expect(indexed("basic")).toEqual([]);
+    // 22 learn-first entries less insurance, which has no cell.
+    expect(core).toHaveLength(coreIndexIds(rules).length);
+    expect(coreIndexIds(rules)).toHaveLength(21);
+    expect(core).toContain("hard|hard:16v10");
+    expect(core).toContain("surrender|hard:14v10");
+    expect(core.every((key) => all.includes(key))).toBe(true);
+    expect(core.length).toBeLessThan(all.length);
+    expect(indexed("custom", ["hard:16v10", "R:hard:15v9"])).toEqual(["surrender|hard:15v9", "hard|hard:16v10"]);
+    expect(indexed("custom", [])).toEqual([]);
+    // Custom with nothing saved yet starts from the I18 + Fab 4.
+    expect(askedIndices(rules, "custom")).toEqual(new Set(coreIndexIds(rules)));
+    expect(askedIndices(rules, "indices")).toBeNull();
+    // Base plays are asked the same way at every level.
+    const bases = (level: Parameters<typeof recallTables>[1]) => recallTables(rules, level).flatMap((table) => table.cells.map((cell) => cell.expected.base));
+    expect(bases("core")).toEqual(bases("basic"));
+  });
+
+  it("grades a surrender cell typed as a bare count right wherever the chart has that index", () => {
+    const misses: string[] = [];
+    for (const table of ALL_RULES) {
+      for (const cell of recallTables(table, "indices", ["surrender"])[0]?.cells ?? []) {
+        const typed: CellEntry = { dev: { play: "R", at: cell.expected.dev?.at ?? 0 } };
+        // Right exactly where the chart has that index, whatever basic strategy does at 0; wrong where it has none.
+        if (entryMatches(cell.expected, typed, "indices") !== Boolean(cell.expected.dev)) misses.push(`${label(table)} ${cell.short}`);
+        if (cell.expected.dev && entryMatches(cell.expected, { dev: { play: "R", at: cell.expected.dev.at + 1 } }, "indices")) misses.push(`${label(table)} ${cell.short} off by one`);
+      }
+    }
+    expect(misses).toEqual([]);
+    const count: CellEntry = { dev: { play: "R", at: 5 } };
+    expect(isFilled(count)).toBe(true);
+    expect(isFilled({ dev: { play: "S", at: 4 } })).toBe(false);
+    expect(entryMatches({ base: "-", dev: { play: "R", at: 5 } }, count, "basic")).toBe(false);
+    expect(formatEntry(count, "up")).toBe("R +5↑");
+    expect(spokenEntry(count)).toBe("surrender at +5 or higher");
   });
 
   it("asks the surrender table only where it is offered, with its thresholds", () => {

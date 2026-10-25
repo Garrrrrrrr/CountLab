@@ -10,6 +10,8 @@ export type GridView = "chart" | "mine";
 /** What a cell shows: the base play large, the index (if any) small underneath. */
 function CellFace({ entry, surrender, struck }: { entry?: CellEntry; surrender: boolean; struck?: boolean }) {
   if (!entry?.base && !entry?.dev) return <span aria-hidden className="text-ink-3/70">·</span>;
+  // A surrender cell typed as a bare count shows just the count.
+  if (!entry.base && surrender) return <span aria-hidden className={cx("tnum", struck && "line-through decoration-2")}>{signedCount(entry.dev!.at)}</span>;
   const base = entry.base === "-" ? "—" : entry.base ?? "?";
   return (
     <span aria-hidden className={cx("flex flex-col items-center leading-none", struck && "line-through decoration-2")}>
@@ -20,6 +22,7 @@ function CellFace({ entry, surrender, struck }: { entry?: CellEntry; surrender: 
 }
 
 const fillOf = (entry?: CellEntry) => {
+  if (!entry?.base && entry?.dev?.play === "R") return "bg-surface-3 text-ink";
   if (!entry?.base) return entry?.dev ? "bg-surface-2 text-ink border border-dashed border-line-strong" : "bg-surface-2 border border-line";
   const action = baseAction(entry.base);
   return action ? ACTION_FILL[action] : "bg-surface-3 text-ink-2";

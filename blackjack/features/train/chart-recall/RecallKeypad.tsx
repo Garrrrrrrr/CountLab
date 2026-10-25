@@ -5,7 +5,7 @@ import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack";
 import { Button, cx } from "@/components/ui";
 import type { Action } from "@/lib/blackjack/types";
 import { signedCount } from "@/lib/strategy";
-import { baseAction, DEV_KEYS, formatEntry, type CellEntry, type Deviation, type RecallCell, type RecallLevel, type RecallTable } from "@/lib/strategy-drills/chartRecall";
+import { baseAction, DEV_KEYS, formatEntry, withIndices, type CellEntry, type Deviation, type RecallCell, type RecallLevel, type RecallTable } from "@/lib/strategy-drills/chartRecall";
 
 const KEY_FACE: Record<string, { face: string; name: string }> = {
   H: { face: "H", name: "Hit" }, S: { face: "S", name: "Stand" }, D: { face: "D", name: "Double" }, Ds: { face: "Ds", name: "Dbl / stand" },
@@ -60,9 +60,9 @@ export function BaseKeypad({ table, cell, entry, level, filled, total, onBase, o
           );
         })}
       </div>
-      <div className={cx("mt-1.5 grid gap-1.5", level === "indices" ? "grid-cols-4" : "grid-cols-3")}>
+      <div className={cx("mt-1.5 grid gap-1.5", withIndices(level) ? "grid-cols-4" : "grid-cols-3")}>
         <button type="button" className={navButton} onClick={() => onMove(-1)} disabled={position <= 0} aria-label="Previous cell"><ChevronLeft size={18} aria-hidden /><span className="hidden xs:inline">Back</span></button>
-        {level === "indices" && (
+        {withIndices(level) && (
           <button type="button" className={cx(navButton, entry?.dev && "border-brand/40 bg-brand/15")} onClick={onIndex} aria-keyshortcuts="i">
             <Hash size={16} aria-hidden className="text-brand-text" />Index
           </button>
@@ -79,15 +79,17 @@ export function BaseKeypad({ table, cell, entry, level, filled, total, onBase, o
  * in the surrender table) and the index, a sign and one digit. Every index in
  * the chart is between −9 and +9.
  */
-export function IndexPad({ cell, surrender, initial, onSave, onCancel }: {
+export function IndexPad({ cell, surrender, initial, start, onSave, onCancel }: {
   cell: RecallCell;
   surrender: boolean;
   initial?: Deviation;
+  /** A count typed into the cell before the pad opened ("5", "-5", or just "-"). */
+  start?: string;
   onSave: (dev: Deviation | undefined) => void;
   onCancel: () => void;
 }) {
   const [play, setPlay] = useState<Action | undefined>(surrender ? "R" : initial?.play);
-  const [value, setValue] = useState(initial ? String(initial.at) : "");
+  const [value, setValue] = useState(start ?? (initial ? String(initial.at) : ""));
   const digits = value.replace("-", "");
   const ready = Boolean(play) && digits !== "";
   const save = () => { if (ready) onSave({ play: play!, at: Number(value) || 0 }); };

@@ -164,7 +164,7 @@ test.describe("Chart Recall", () => {
 
   test("keeps a half-filled chart for later, with its index entries", async ({ page }) => {
     await page.goto("/train/chart-recall/");
-    await page.getByRole("radio", { name: /With indices/ }).click();
+    await page.getByRole("radio", { name: /All indices/ }).click();
     await page.getByRole("radio", { name: "Hard" }).evaluate((element: HTMLElement) => element.click());
     await visible(page, /Start \(100 cells\)/).click();
     for (let cell = 0; cell < 11; cell += 1) await page.keyboard.press("h");
@@ -182,6 +182,55 @@ test.describe("Chart Recall", () => {
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByText("11/100 filled")).toBeVisible();
     await expect(page.getByRole("button", { name: /Hard 16 versus dealer 3: no play; stand at −3/ })).toBeVisible();
+  });
+
+  test("takes counts typed straight into the cells", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "Typing needs a keyboard.");
+    await page.goto("/train/chart-recall/");
+    await page.getByRole("radio", { name: /All indices/ }).click();
+    await page.getByRole("group", { name: "What to fill in" }).getByRole("radio", { name: "Surrender" }).evaluate((element: HTMLElement) => element.click());
+    await visible(page, /Start \(/).click();
+    const grid = page.getByRole("table", { name: "Surrender" });
+    const holding = (text: string) => grid.getByRole("button", { name: new RegExp(`: ${text}$`) });
+    // 5, then -3, then d2, then a lone "-" (no surrender), then R: five cells in a row.
+    for (const key of ["5", "-", "3", "d", "2", "-", "r"]) await page.keyboard.press(key);
+    await expect(holding("surrender at \\+5 or higher")).toHaveCount(1);
+    await expect(holding("surrender at −3 or higher")).toHaveCount(1);
+    await expect(holding("surrender at −2 or higher")).toHaveCount(1);
+    await expect(holding("No surrender")).toHaveCount(1);
+    await expect(page.getByText(/^5\/\d+ filled$/)).toBeVisible();
+  });
+
+  test("a count typed into a hard-total cell opens the index with it", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop-chromium", "Typing needs a keyboard.");
+    await page.goto("/train/chart-recall/");
+    await page.getByRole("radio", { name: /All indices/ }).click();
+    await page.getByRole("radio", { name: "Hard" }).evaluate((element: HTMLElement) => element.click());
+    await visible(page, /Start \(/).click();
+    for (const key of ["-", "4", "s"]) await page.keyboard.press(key);
+    await expect(page.getByRole("group", { name: /^Index for / })).toContainText("Stand at −4");
+  });
+
+  test("a custom chart asks only the indices picked for it", async ({ page }) => {
+    await page.goto("/train/chart-recall/");
+    await page.getByRole("radio", { name: /^Custom/ }).click();
+    await expect(page.getByText(/^21 of \d+ picked/)).toBeVisible();
+    await page.getByRole("button", { name: "Choose indices" }).click();
+    const sheet = page.getByRole("dialog", { name: "Choose indices" });
+    await sheet.getByRole("button", { name: "None", exact: true }).click();
+    await sheet.getByRole("group", { name: "Hard totals" }).getByRole("checkbox", { name: /^16 vs 10/ }).check();
+    await sheet.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByText(/^1 of \d+ picked/)).toBeVisible();
+    await page.getByRole("group", { name: "What to fill in" }).getByRole("radio", { name: "Hard" }).evaluate((element: HTMLElement) => element.click());
+    await visible(page, /Start \(100 cells\)/).click();
+    await expect(page.getByRole("table", { name: "Hard totals" })).toBeVisible();
+    await page.keyboard.press("h");
+    await page.getByRole("button", { name: "End drill" }).click();
+    await page.getByRole("button", { name: "Leave for now" }).click();
+    await expect(page.getByText(/Custom indices, hard totals: 1 cell filled/)).toBeVisible();
+    // The pick is remembered for next time.
+    await page.reload();
+    await expect(page.getByText(/^1 of \d+ picked/)).toBeVisible();
   });
 
   test("fits eleven columns on a 320px phone", async ({ page }) => {

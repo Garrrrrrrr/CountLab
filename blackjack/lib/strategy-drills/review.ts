@@ -16,6 +16,13 @@ export const REVIEW_LIMIT = 50;
 /** Chart Recall schedules a cell per level: a cell right as a basic play can still be wrong with its index. */
 export const chartReviewKey = (level: RecallLevel, cellKey: string) => `${level}/${cellKey}`;
 
+/**
+ * The schedule a cell's answer files under. Only basic and all-indices are kept: an I18 + Fab 4 or
+ * custom chart files a cell under indices when it asked that cell's index, else under basic.
+ */
+export const chartReviewLevel = (level: RecallLevel, askedIndex: boolean): "basic" | "indices" =>
+  level === "basic" || (level !== "indices" && !askedIndex) ? "basic" : "indices";
+
 export function basicReviewDue(rules: TableRules, now = new Date()): string[] {
   return reviewDueKeys("Basic Strategy", now, undefined, (key) => parsePracticeKey(key, rules) !== null);
 }
