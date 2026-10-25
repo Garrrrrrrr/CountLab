@@ -10,6 +10,9 @@ import { AmountField, DiscardBar, InputField, JournalSheet, useDiscardGuard } fr
 type CashDraft = { type: "deposit" | "withdrawal"; amount: AmountEntry; date: string; bankrollId: string; note: string };
 const same = (a: CashDraft, b: CashDraft) => JSON.stringify(a) === JSON.stringify(b);
 
+/** The note a starting bankroll is recorded with; opening the sheet with it asks for that amount alone. */
+export const STARTING_NOTE = "Starting bankroll";
+
 /** Money moving into or out of a bankroll, kept apart from table results. */
 export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", onSaved, onClose, registerGuard }: {
   bankrolls: Bankroll[];
@@ -21,6 +24,7 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   onClose: () => void;
   registerGuard: (guard: (() => boolean) | null) => void;
 }) {
+  const starting = note === STARTING_NOTE;
   const [initial] = useState<CashDraft>(() => ({ type: "deposit", amount: null, date: localDateString(), bankrollId, note }));
   const [draft, setDraft] = useState(initial);
   const [snapshot, setSnapshot] = useState(initial);
@@ -58,34 +62,38 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
   };
 
   const footer = discarding ? (
-    <DiscardBar message="Discard this deposit or withdrawal?" onKeep={keepEditing} onDiscard={onClose} />
+    <DiscardBar message={starting ? "Discard this starting bankroll?" : "Discard this deposit or withdrawal?"} onKeep={keepEditing} onDiscard={onClose} />
   ) : (
     <div className="grid grid-cols-1 gap-3">
-      <p className="text-sm text-ink-2">Bankroll after: <b className={cx("tnum font-semibold", after < 0 ? "text-neg" : "text-ink")}>{money(after)}</b></p>
+      {amount > 0 && <p className="text-sm text-ink-2">Bankroll after: <b className={cx("tnum font-semibold", after < 0 ? "text-neg" : "text-ink")}>{money(after)}</b></p>}
       <div ref={actionsRef} className="flex flex-wrap justify-end gap-2">
         <Button variant="secondary" className="flex-1 sm:flex-none" onClick={requestClose}>Cancel</Button>
-        <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => record(true)}>Record and add another</Button>
-        <Button type="submit" form={formId} className="flex-[2] sm:flex-none">{draft.type === "deposit" ? "Record deposit" : "Record withdrawal"}</Button>
+        {!starting && <Button variant="secondary" className="hidden sm:inline-flex" onClick={() => record(true)}>Record and add another</Button>}
+        <Button type="submit" form={formId} className="flex-[2] sm:flex-none">{starting ? "Record starting bankroll" : draft.type === "deposit" ? "Record deposit" : "Record withdrawal"}</Button>
       </div>
     </div>
   );
 
   return (
-    <JournalSheet open title="Deposit or withdrawal" description="Money you add to or take from a bankroll, kept apart from table results." onClose={onSheetClose} initialFocus="[data-autofocus-wrap] input" footer={footer}>
+    <JournalSheet open title={starting ? "Starting bankroll" : "Deposit or withdrawal"}
+      description={starting ? "The money you set aside for play before your first session. It is recorded as a deposit, so risk of ruin has a real bankroll to work from." : "Money you add to or take from a bankroll, kept apart from table results."}
+      onClose={onSheetClose} initialFocus="[data-autofocus-wrap] input" footer={footer}>
       <form id={formId} noValidate onSubmit={(event) => { event.preventDefault(); record(false); }} onChange={() => cashForm.start("inputs")} className="grid grid-cols-1 gap-4">
-        <Segmented<"deposit" | "withdrawal"> label="Type" value={draft.type} onChange={(type) => update({ type })}
-          options={[{ value: "deposit", label: "Deposit" }, { value: "withdrawal", label: "Withdrawal" }]} />
+        {!starting && (
+          <Segmented<"deposit" | "withdrawal"> label="Type" value={draft.type} onChange={(type) => update({ type })}
+            options={[{ value: "deposit", label: "Deposit" }, { value: "withdrawal", label: "Withdrawal" }]} />
+        )}
         <div data-autofocus-wrap="">
           <AmountField
             id={amountId}
-            label="Amount"
+            label={starting ? "Starting bankroll" : "Amount"}
             value={draft.amount}
             error={amountError}
             onBlur={() => setAmountLeft(true)}
             onValueChange={(next) => {
               setAmountLeft(false);
               // A typed minus sign reads as money going out.
-              if (typeof next === "number" && next < 0) update({ amount: -next, type: "withdrawal" });
+              if (typeof next === "number" && next < 0) update({ amount: -next, type: starting ? "deposit" : "withdrawal" });
               else update({ amount: next });
             }}
           />
@@ -100,7 +108,7 @@ export function CashMovementSheet({ bankrolls, bankrollId, balances, note = "", 
         </div>
         <TextField label="Note (optional)" value={draft.note} placeholder="e.g. Reload from savings" onChange={(event) => update({ note: event.target.value })} />
         <p className="text-xs leading-5 text-ink-3">Session expenses are reported separately and never deducted from the bankroll.</p>
-        <Button variant="secondary" block className="sm:hidden" onClick={() => record(true)}>Record and add another</Button>
+        {!starting && <Button variant="secondary" block className="sm:hidden" onClick={() => record(true)}>Record and add another</Button>}
       </form>
     </JournalSheet>
   );

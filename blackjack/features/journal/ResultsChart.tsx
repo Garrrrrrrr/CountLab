@@ -1,8 +1,10 @@
 "use client";
+import { useEffect, useState } from "react";
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 import type { JournalCumulativePoint } from "@/lib/blackjack/journalAnalysis";
 import { compactMoney, shortDate, signedMoney } from "@/lib/blackjack/journalFormat";
+import { Segmented } from "@/components/ui";
 import { toneClass } from "./model";
 
 type Point = JournalCumulativePoint & { band: [number, number] };
@@ -19,7 +21,7 @@ function ChartTooltip({ active, payload }: TooltipContentProps<ValueType, NameTy
   if (!point) return null;
   return (
     <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs leading-5 text-ink shadow-2">
-      <p className="font-semibold">{shortDate(point.date)} · session {point.index}</p>
+      <p className="font-semibold">{point.index === 0 ? "Start" : `${shortDate(point.date)} · session ${point.index} · ${Number(point.hours.toFixed(1))}h played`}</p>
       <p className="tnum"><span className="text-ink-2">Result </span><b className={toneClass(point.actual)}>{signedMoney(point.actual)}</b></p>
       <p className="tnum"><span className="text-ink-2">Expected </span><b>{signedMoney(point.theoretical)}</b></p>
       <p className="tnum text-ink-3">95% range {signedMoney(point.lower)} to {signedMoney(point.upper)}</p>
@@ -27,17 +29,35 @@ function ChartTooltip({ active, payload }: TooltipContentProps<ValueType, NameTy
   );
 }
 
+type Axis = "session" | "hours";
+const AXIS_KEY = "countlab:journal-chart-axis";
+
 /**
  * Cumulative results against expectation and its 95% range, plotted by
- * session number so sessions on the same day don't collide. The totals are in
- * text beside it, so the chart is one picture (role="img") with no keyboard
- * stops of its own.
+ * session number so sessions on the same day don't collide, or by hours
+ * played, where the range widens with time at the table the way the long
+ * run does. The totals are in text beside it, so the chart is one picture
+ * (role="img") with no keyboard stops of its own.
  */
 export function ResultsChart({ points, label }: { points: JournalCumulativePoint[]; label: string }) {
-  const data: Point[] = points.map((point) => ({ ...point, band: [point.lower, point.upper] }));
-  const dateOf = (index: number) => data[Math.round(index) - 1]?.date;
+  const [axis, setAxis] = useState<Axis>("session");
+  // The preferred axis is a per-viewer convenience, read after mount.
+  useEffect(() => {
+    try { if (localStorage.getItem(AXIS_KEY) === "hours") setAxis("hours"); } catch { /* storage unavailable */ }
+  }, []);
+  const chooseAxis = (next: Axis) => {
+    setAxis(next);
+    try { localStorage.setItem(AXIS_KEY, next); } catch { /* storage unavailable */ }
+  };
+  const byHours = axis === "hours";
+  // By hours the series starts from nothing played, so the range is seen opening out.
+  const start: Point = { index: 0, hours: 0, date: points[0]?.date ?? "", actual: 0, theoretical: 0, lower: 0, upper: 0, band: [0, 0] };
+  const data: Point[] = [...(byHours ? [start] : []), ...points.map((point) => ({ ...point, band: [point.lower, point.upper] as [number, number] }))];
+  const dateOf = (index: number) => points[Math.round(index) - 1]?.date;
   return (
     <figure className="m-0 min-w-0">
+      <Segmented<Axis> label="Plot by" hideLabel name="journal_chart_axis" size="sm" className="mb-2 w-full max-w-[16rem]" value={axis} onChange={chooseAxis}
+        options={[{ value: "session", label: "By session" }, { value: "hours", label: "By hours" }]} />
       <figcaption aria-hidden className="mb-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-2">
         <span className="inline-flex items-center gap-1.5"><span className="h-0.5 w-4 rounded bg-brand-text" />Your result</span>
         <span className="inline-flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-ink-2" />Expected (EV)</span>
@@ -48,11 +68,11 @@ export function ResultsChart({ points, label }: { points: JournalCumulativePoint
           <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
             <CartesianGrid stroke={GRID} vertical={false} />
             <XAxis
-              dataKey="index"
+              dataKey={byHours ? "hours" : "index"}
               type="number"
               domain={["dataMin", "dataMax"]}
-              allowDecimals={false}
-              tickFormatter={(value: number) => { const date = dateOf(value); return date ? shortDate(date) : ""; }}
+              allowDecimals={byHours}
+              tickFormatter={(value: number) => { if (byHours) return `${Number(value.toFixed(1))}h`; const date = dateOf(value); return date ? shortDate(date) : ""; }}
               tick={{ fill: AXIS, fontSize: 12 }}
               stroke={GRID}
               tickLine={false}

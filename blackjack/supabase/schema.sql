@@ -379,9 +379,14 @@ begin
   end if;
 end $$;
 
+-- Optional per-session extras (rounds played, top bet, buy-in, cash-out, heat): migrations/20261025_journal_session_details.sql.
+alter table journal_sessions add column if not exists details jsonb;
+
 alter table journal_sessions drop constraint if exists journal_sessions_size_limit;
 alter table journal_sessions add constraint journal_sessions_size_limit check (
-  pg_column_size(rules) < 5000 and pg_column_size(ramp) < 20000 and pg_column_size(hands_by_true_count) < 20000 and char_length(coalesce(notes, '')) < 5000 and char_length(coalesce(location, '')) < 200
+  pg_column_size(rules) < 5000 and pg_column_size(ramp) < 20000 and pg_column_size(hands_by_true_count) < 20000
+  and pg_column_size(details) < 10000
+  and char_length(coalesce(notes, '')) < 5000 and char_length(coalesce(location, '')) < 200
 );
 
 alter table journal_transactions drop constraint if exists journal_transactions_size_limit;

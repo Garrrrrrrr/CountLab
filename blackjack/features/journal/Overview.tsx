@@ -106,6 +106,22 @@ export function ResultsCard({ scopeLabel, aggregate, lifetime, points, filtered,
   );
 }
 
+/** The largest unit a table would take within the risk: whole $5 chips from $5 up, whole dollars below. */
+export const tableUnit = (unit: number) => (unit >= 5 ? Math.floor(unit / 5) * 5 : Math.floor(unit));
+
+/**
+ * What to do about a unit that is too big, in amounts that can be acted on: a unit a table takes,
+ * or the deposit that makes the current unit safe. The safe unit grows in step with the bankroll,
+ * so the bankroll the current unit needs is the bankroll times the overbet ratio.
+ */
+export function overbetAdvice(health: { bettingUnit: number; unitRatio: number; recommendedUnit: number; targetRisk: number }, bankroll: number) {
+  const risk = percent(health.targetRisk, 0);
+  const needed = bankroll * health.unitRatio;
+  const smaller = tableUnit(health.recommendedUnit);
+  const drop = smaller >= 1 ? `bet a ${money(smaller)} unit` : "lower the top bet";
+  return `Your ${unitMoney(health.bettingUnit)} unit is ${health.unitRatio.toFixed(1)}× what this bankroll supports at ${risk} risk of ruin. Either ${drop}, or add ${money(Math.ceil(needed - bankroll))} so the bankroll reaches the ${money(Math.ceil(needed))} a ${unitMoney(health.bettingUnit)} unit needs.`;
+}
+
 /**
  * How much money there is and whether the unit still suits it. Priced on the
  * game from the latest session, over the bankroll's whole history.
@@ -131,7 +147,7 @@ export function BankrollHealthCard({ scopeName, bankroll, results, cash, session
   const overbet = health?.unitRatio != null && health.unitRatio > 1;
   const verdict = health === null ? null
     : health.unitRatio === null ? "This game has no positive expectation, so no unit size makes it safe."
-    : overbet ? `Your ${unitMoney(health.bettingUnit)} unit is ${health.unitRatio.toFixed(1)}× what this bankroll supports at ${percent(health.targetRisk, 0)} risk of ruin. Drop to ${unitMoney(health.recommendedUnit)} or add to the bankroll.`
+    : overbet ? overbetAdvice({ ...health, unitRatio: health.unitRatio }, bankroll)
     : `Your ${unitMoney(health.bettingUnit)} unit is within what this bankroll supports. ${unitMoney(health.recommendedUnit)} would be the full ${percent(health.targetRisk, 0)}-risk size.`;
 
   let body: ReactNode;

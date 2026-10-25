@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, LoaderCircle, Pencil, Share2, Shuffle, Trash } from "lucide-react";
 import { Button, Callout, cx } from "@/components/ui";
 import { track } from "@/lib/analytics/track";
-import { isJournalDate, type JournalSession } from "@/lib/blackjack/journal";
+import { HEAT_LABEL, isJournalDate, type JournalSession } from "@/lib/blackjack/journal";
 import { classifySessionAssessment, sessionZScore, type TheoreticalOutcome } from "@/lib/blackjack/journalAnalysis";
 import { gameFromSession, handsSummary, rulesSummary, spreadLabel } from "@/lib/blackjack/journalForm";
 import { hoursLabel, longDate, money, percent, plural, signedMoney } from "@/lib/blackjack/journalFormat";
@@ -47,6 +47,7 @@ export function SessionDetailsSheet({ session, outcome, bankrollName, onEdit, on
   useEffect(() => { if (view === "shoes") shoesHeading.current?.focus(); }, [view]);
 
   const game = gameFromSession(session);
+  const planTopBet = Math.max(0, ...session.ramp.map((point) => point.units)) * session.bettingUnit;
   const low = outcome.tripEv - 1.96 * outcome.standardDeviation;
   const high = outcome.tripEv + 1.96 * outcome.standardDeviation;
   const assessment = classifySessionAssessment(sessionZScore(session, outcome));
@@ -154,7 +155,12 @@ export function SessionDetailsSheet({ session, outcome, bankrollName, onEdit, on
           )}
           <KeyValueList title="Details" items={[
             { label: "Hours", value: hoursLabel(session.hours) },
-            { label: "Pace", value: `${session.handsPerHour} hands/hour` },
+            { label: "Pace", value: `${session.handsPerHour} rounds/hour` },
+            ...(session.details?.roundsPlayed !== undefined ? [{ label: "Rounds played", value: session.details.roundsPlayed.toLocaleString("en-US") }] : []),
+            ...(session.details?.buyIn !== undefined ? [{ label: "Bought in for", value: exactMoney(session.details.buyIn) }] : []),
+            ...(session.details?.cashOut !== undefined ? [{ label: "Cashed out", value: exactMoney(session.details.cashOut) }] : []),
+            ...(session.details?.topBet !== undefined ? [{ label: "Top bet", value: `${exactMoney(session.details.topBet)}${session.details.topBet > planTopBet ? ` (plan ${exactMoney(planTopBet)})` : ""}` }] : []),
+            ...(session.details?.heat?.length ? [{ label: "Heat", value: session.details.heat.map((kind) => HEAT_LABEL[kind]).join(", ") }] : []),
             { label: "Hands at once", value: handsSummary(game) === "hands vary by count" ? "Varies by count" : String(game.playerHands) },
             { label: "Betting unit", value: exactMoney(session.bettingUnit) },
             { label: "Bet spread", value: spreadLabel(session.ramp) },

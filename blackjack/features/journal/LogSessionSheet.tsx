@@ -16,6 +16,7 @@ import type { SimulationTemplate } from "@/lib/blackjack/simulationLibrary";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
 import { GameEditor } from "./GameEditor";
 import { AmountField, DirectionToggle, DiscardBar, InputField, JournalSheet, NumberField, useDiscardGuard, Verdict } from "./parts";
+import { SessionDetailsFields } from "./SessionDetailsFields";
 import { calculatorHref } from "./useScenarioArrival";
 
 const same = (a: SessionDraft, b: SessionDraft) => JSON.stringify(a) === JSON.stringify(b);
@@ -66,7 +67,8 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const amountTypo = draft.amount === "invalid";
   const amountError = amountTypo ? (attempted || amountLeft ? AMOUNT_FORMAT_ERROR : null) : shown("amount") ? SESSION_ERRORS.amount : null;
 
-  const outcome = useMemo(() => theoreticalSessionOutcome({ ...gameFields(draft.game), hours: draft.hours }), [draft.game, draft.hours]);
+  const outcome = useMemo(() => theoreticalSessionOutcome({ ...gameFields(draft.game), hours: draft.hours, details: draft.details }), [draft.game, draft.hours, draft.details]);
+  const planTopBet = Math.max(0, ...draft.game.ramp.map((point) => point.units)) * draft.game.bettingUnit;
   const low = outcome.tripEv - 1.96 * outcome.standardDeviation;
   const high = outcome.tripEv + 1.96 * outcome.standardDeviation;
   const amount = typeof draft.amount === "number" ? draft.amount : null;
@@ -209,9 +211,16 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
           </div>
         )}
 
-        <TextArea label="Notes (optional)" rows={3} value={draft.notes} placeholder="Table conditions, heat, what to try next time"
+        <TextArea label="Notes (optional)" rows={3} value={draft.notes} placeholder="Table conditions, what to try next time"
           onChange={(event) => update({ notes: event.target.value })}
           onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); form.current?.requestSubmit(); } }} />
+
+        <SessionDetailsFields
+          details={draft.details}
+          onChange={(details) => update({ details })}
+          planTopBet={planTopBet}
+          onUseResult={(value) => update({ amount: Math.abs(value), direction: value < 0 ? "lost" : value > 0 ? "won" : draft.direction })}
+        />
 
         {showExpenses ? (
           <NumberField label="Expenses (comps, travel)" prefix="$" min={0} value={draft.expenses} hint="Tracked separately. It doesn't change your bankroll or the EV comparison." onValueChange={(expenses) => update({ expenses })} />

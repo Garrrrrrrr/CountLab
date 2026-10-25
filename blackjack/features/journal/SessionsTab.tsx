@@ -92,6 +92,8 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
                   const outcome = outcomes.get(session.id);
                   const casino = session.location?.trim();
                   const notes = Boolean(session.notes?.trim());
+                  const assessment = assessmentOf(session);
+                  const unusual = assessment !== "within-expected-range";
                   return (
                     <li key={session.id}>
                       {/* Phones: two lines with the result on the right. From md the same cells line up in columns. */}
@@ -111,9 +113,10 @@ export function SessionsTab({ sessions, lifetimeCount, outcomes, bankrollNames, 
                         <span className="tnum hidden text-right text-sm text-ink-2 md:block">EV {outcome ? signedMoney(outcome.tripEv) : "—"}</span>
                         <span className="flex shrink-0 flex-col items-end gap-0.5">
                           <span className={cx("tnum font-semibold", toneClass(session.netResult))}>{signedMoney(session.netResult)}</span>
-                          <Verdict assessment={assessmentOf(session)} size="sm" className="hidden xs:inline-flex md:hidden" />
+                          {unusual && <Verdict assessment={assessment} size="sm" className="hidden xs:inline-flex md:hidden" />}
                         </span>
-                        <Verdict assessment={assessmentOf(session)} size="sm" className="hidden md:inline-flex" />
+                        {/* Only sessions outside the expected range are badged; the empty cell keeps the columns aligned. */}
+                        {unusual ? <Verdict assessment={assessment} size="sm" className="hidden md:inline-flex" /> : <span aria-hidden className="hidden md:block" />}
                         <ChevronRight size={18} aria-hidden className="-mr-1 shrink-0 text-ink-3" />
                       </button>
                     </li>

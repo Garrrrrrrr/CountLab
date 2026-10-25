@@ -153,6 +153,16 @@ describe("gameFromScenario", () => {
   it("honours an explicit basic-strategy scenario", () => {
     expect(gameFromScenario({ ...scenario, useIndices: false }, scenario.ramp).useIndices).toBe(false);
   });
+
+  it("carries early surrender into the stored rules and the summary, and only when set", () => {
+    const game = gameFromScenario({ ...scenario, earlySurrender: true }, scenario.ramp);
+    expect(game).toMatchObject({ earlySurrender: true, lateSurrender: true });
+    expect(rulesOf(game).earlySurrender).toBe(true);
+    expect(rulesSummary(rulesOf(game))).toContain("ES10");
+    expect(gameFromSession(makeSession({ rules: rulesOf(game) })).earlySurrender).toBe(true);
+    expect("earlySurrender" in rulesOf(gameFromScenario(scenario, scenario.ramp))).toBe(false);
+    expect(sameGame(game, { ...game, earlySurrender: false })).toBe(false);
+  });
 });
 
 describe("gameFromSimulationSetup and applyVenue", () => {

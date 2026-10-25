@@ -6,7 +6,8 @@ import { Button, Callout, Segmented, SelectField, TextField, Toggle, cx, toast }
 import { analytics } from "@/lib/analytics";
 import { track } from "@/lib/analytics/track";
 import { calculateCountRows, fillRampFromTrueCount, RAMPS, type AdvantageRules, type CountRow, type RampPoint } from "@/lib/blackjack/advantage";
-import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { DECK_COUNTS, type Decks } from "@/lib/blackjack/coefficients";
+import { DEFAULT_DEALT } from "@/lib/blackjack/labConfig";
 import type { CvcxTemplate } from "@/lib/blackjack/cvcxLibrary";
 import {
   applyVenue, expandRamp, gameFromScenario, gameFromSimulationSetup, handsScheduleOf, handsSummary, normalizeHands,
@@ -47,9 +48,8 @@ export function TableRulesFields({ game, onChange }: { game: GameDraft; onChange
   return (
     <div className="grid grid-cols-1 gap-4">
       <div className="grid grid-cols-1 gap-3 xs:grid-cols-2">
-        <SelectField label="Decks" value={game.decks} onChange={(event) => { const decks = Number(event.target.value) as 6 | 8; onChange({ decks, dealt: GAME_OPTIONS[decks][1].dealt }); }}>
-          <option value={6}>6 decks</option>
-          <option value={8}>8 decks</option>
+        <SelectField label="Decks" value={game.decks} onChange={(event) => { const decks = Number(event.target.value) as Decks; onChange({ decks, dealt: DEFAULT_DEALT[decks] }); }}>
+          {DECK_COUNTS.map((decks) => <option key={decks} value={decks}>{decks === 1 ? "1 deck" : `${decks} decks`}</option>)}
         </SelectField>
         <SelectField label="Penetration" hint="How much of the shoe is dealt before the shuffle." value={game.dealt} onChange={(event) => onChange({ dealt: Number(event.target.value) })}>
           {penetrationOptions(game.decks, game.dealt).map((dealt) => <option key={dealt} value={dealt}>{penetrationLabel(dealt, game.decks)}</option>)}
@@ -62,15 +62,19 @@ export function TableRulesFields({ game, onChange }: { game: GameDraft; onChange
           <option value="indices">Basic strategy and index plays</option>
           <option value="basic">Basic strategy only</option>
         </SelectField>
+        <SelectField label="Surrender" value={game.earlySurrender ? "early" : game.lateSurrender ? "late" : "none"} onChange={(event) => onChange({ lateSurrender: event.target.value !== "none", earlySurrender: event.target.value === "early" })}>
+          <option value="late">Late surrender</option>
+          <option value="early">Early surrender vs 10</option>
+          <option value="none">No surrender</option>
+        </SelectField>
       </div>
       <div className="grid grid-cols-1 gap-3 rounded-xl border border-line p-3">
         <Toggle label="Dealer hits soft 17" checked={game.dealerHitsSoft17} onChange={(value) => onChange({ dealerHitsSoft17: value })} />
         <Toggle label="Double after splitting" checked={game.doubleAfterSplit} onChange={(value) => onChange({ doubleAfterSplit: value })} />
         <Toggle label="Resplit aces" checked={game.resplitAces} onChange={(value) => onChange({ resplitAces: value })} />
-        <Toggle label="Late surrender" checked={game.lateSurrender} onChange={(value) => onChange({ lateSurrender: value })} />
       </div>
       {isEstimated(flags) && (
-        <Callout tone="warn">Rules away from the audited H17 · DAS · RSA · LS · 3:2 game apply a flat literature-estimated {(sumRuleAdjustment(flags) * 100).toFixed(2)} percentage-point edge change rather than a fresh simulation, as the Calculator does.</Callout>
+        <Callout tone="warn">Rules away from the audited H17 · DAS · RSA · LS or ES10 · 3:2 game apply a flat literature-estimated {(sumRuleAdjustment(flags) * 100).toFixed(2)} percentage-point edge change rather than a fresh simulation, as the Calculator does.</Callout>
       )}
     </div>
   );
@@ -253,7 +257,7 @@ export function GameEditor({ game, source, onGame, location, onLocation, hours, 
         <div className="min-w-0 flex-1 basis-56">
           <h3 id={titleId} className="text-sm font-semibold">Game and betting</h3>
           <p className="mt-1 text-sm text-ink">{rulesSummary(rules)}</p>
-          <p className="text-sm text-ink-2">{exactMoney(game.bettingUnit)} unit · {spreadLabel(game.ramp)} spread · {game.handsPerHour} hands/hour · {handsSummary(game)}</p>
+          <p className="text-sm text-ink-2">{exactMoney(game.bettingUnit)} unit · {spreadLabel(game.ramp)} spread · {game.handsPerHour} rounds/hour · {handsSummary(game)}</p>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3"><Clock size={13} aria-hidden className="shrink-0" />{sourceText}</p>
           {sourceLink}
         </div>
@@ -278,7 +282,7 @@ export function GameEditor({ game, source, onGame, location, onLocation, hours, 
               <h4 className="eyebrow">Betting</h4>
               <div className="grid grid-cols-1 items-start gap-3 xs:grid-cols-2">
                 <NumberField label="Betting unit" prefix="$" min={0.01} value={game.bettingUnit} onValueChange={(value) => edit({ bettingUnit: value })} />
-                <NumberField label="Hands per hour" min={1} value={game.handsPerHour} onValueChange={(value) => edit({ handsPerHour: value })} />
+                <NumberField label="Rounds per hour" min={1} value={game.handsPerHour} onValueChange={(value) => edit({ handsPerHour: value })} />
                 <div className="min-w-0">
                   <Segmented<number> label="Hands at once" value={game.playerHands} onChange={(value) => edit({ ...normalizeHands(value, game.handsByCount) })}
                     options={[1, 2, 3].map((value) => ({ value, label: String(value) }))} />

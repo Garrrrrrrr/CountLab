@@ -1,7 +1,8 @@
 "use client";
-import { MapPin, Plus, Trash } from "lucide-react";
+import { Flame, MapPin, Plus, Trash } from "lucide-react";
 import { Button, cx } from "@/components/ui";
-import type { JournalVenueSummary } from "@/lib/blackjack/journalAnalysis";
+import { HEAT_LABEL } from "@/lib/blackjack/journal";
+import type { CasinoHeat, JournalVenueSummary } from "@/lib/blackjack/journalAnalysis";
 import { rulesSummary, spreadLabel } from "@/lib/blackjack/journalForm";
 import { hoursLabel, plural, shortDate, signedMoney } from "@/lib/blackjack/journalFormat";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
@@ -9,8 +10,9 @@ import { toneClass } from "./model";
 import { Verdict } from "./parts";
 
 /** Casinos compared with the EV of the games played there, and the venues saved for reuse. */
-export function VenuesTab({ venues, presets, scopePhrase, onAdd, onUse, onDelete }: {
+export function VenuesTab({ venues, heat, presets, scopePhrase, onAdd, onUse, onDelete }: {
   venues: JournalVenueSummary[];
+  heat: CasinoHeat[];
   presets: VenuePreset[];
   /** "all time" or "the last 30 days", the dates the results cover. */
   scopePhrase: string;
@@ -45,6 +47,33 @@ export function VenuesTab({ venues, presets, scopePhrase, onAdd, onUse, onDelete
                   <Button size="sm" variant="secondary" className="h-11" data-venue-row={preset.id} icon={<Plus size={16} aria-hidden />} onClick={() => onUse(preset)}>Log a session here</Button>
                   <Button size="sm" variant="ghost" className="h-11 text-neg hover:text-neg" aria-label={`Delete saved venue ${preset.name}`} icon={<Trash size={16} aria-hidden />} onClick={() => onDelete(preset)}>Delete</Button>
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-labelledby="journal-heat" className="grid grid-cols-1 gap-3">
+        <div className="max-w-xl">
+          <h3 id="journal-heat" className="text-base font-semibold">Heat by casino</h3>
+          <p className="mt-1 text-sm leading-6 text-ink-2">Attention from the pit you recorded under More details, across all your sessions, newest first.</p>
+        </div>
+        {heat.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-2">No heat recorded. When a session draws attention, note it under Log session → More details.</p>
+        ) : (
+          <ul aria-label="Heat by casino" className="card divide-y divide-line overflow-hidden">
+            {heat.map((casino) => (
+              <li key={casino.location.toLocaleLowerCase()} className="grid grid-cols-1 gap-1.5 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Flame size={15} aria-hidden className={cx("shrink-0", casino.worst === "back-off" || casino.worst === "barred" ? "text-neg" : "text-warn")} />
+                    <p className="truncate font-semibold">{casino.location}</p>
+                  </div>
+                  <p className="shrink-0 text-xs text-ink-3">Last {shortDate(casino.lastDate)}</p>
+                </div>
+                <ul className="flex flex-wrap gap-x-3 gap-y-1 pl-6 text-xs text-ink-2">
+                  {casino.kinds.map((item) => <li key={item.kind}>{HEAT_LABEL[item.kind]}{item.count > 1 ? ` ×${item.count}` : ""} <span className="text-ink-3">({shortDate(item.lastDate)})</span></li>)}
+                </ul>
               </li>
             ))}
           </ul>

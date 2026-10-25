@@ -2,7 +2,7 @@ import { accountGeneration, accountStorage } from "./accountStorage";
 import { getCurrentUser } from "./currentUser";
 import { supabase } from "./client";
 import { storage, type DrillProgress, type Session, type Settings } from "../statistics/storage";
-import { journalLibrary, type Bankroll, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
+import { cleanDetails, journalLibrary, type Bankroll, type JournalSession, type BankrollTransaction } from "../blackjack/journal";
 import { shoeLibrary, type SavedShoeHeader } from "../blackjack/shoeLibrary";
 import { observeApiRequest } from "../analytics";
 
@@ -99,6 +99,7 @@ export async function pullRemoteData(userId: string): Promise<void> {
       netResult: row.net_result,
       expenses: row.expenses,
       notes: row.notes ?? undefined,
+      details: cleanDetails(row.details),
     }));
     journalLibrary.mergeRemoteSessions(sessions);
   }
@@ -173,6 +174,7 @@ export async function pullRemoteJournalData(userId: string): Promise<void> {
       netResult: row.net_result,
       expenses: row.expenses,
       notes: row.notes ?? undefined,
+      details: cleanDetails(row.details),
     })));
   }
 

@@ -39,7 +39,54 @@ export interface JournalSession {
   netResult: number;
   expenses: number;
   notes?: string;
+  /** Optional extras; absent on sessions that recorded none. */
+  details?: SessionDetails;
 }
+
+/** Signs of attention from the casino, logged per session so each casino builds a heat history. */
+export const HEAT_KINDS = ["watched", "shuffle-up", "flat-bet", "id-check", "back-off", "barred"] as const;
+export type HeatKind = (typeof HEAT_KINDS)[number];
+export const HEAT_LABEL: Record<HeatKind, string> = {
+  watched: "Watched by the pit",
+  "shuffle-up": "Shuffled up early",
+  "flat-bet": "Asked to flat bet",
+  "id-check": "ID checked",
+  "back-off": "Backed off",
+  barred: "Barred / trespassed",
+};
+
+export interface SessionDetails {
+  /** Rounds actually played; when given, expected results use it instead of hours × pace. */
+  roundsPlayed?: number;
+  /** The largest single bet made, to check the spread against the plan. */
+  topBet?: number;
+  buyIn?: number;
+  cashOut?: number;
+  heat?: HeatKind[];
+}
+
+/**
+ * Details with anything empty or malformed dropped, or undefined when nothing is left. Applied
+ * wherever details come in (the form, sync, CSV) rather than rejecting the whole session.
+ */
+export function cleanDetails(details: unknown): SessionDetails | undefined {
+  if (!details || typeof details !== "object") return undefined;
+  const raw = details as Record<string, unknown>;
+  const clean: SessionDetails = {};
+  for (const field of ["roundsPlayed", "topBet", "buyIn", "cashOut"] as const) {
+    const value = raw[field];
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) clean[field] = value;
+  }
+  const heat = Array.isArray(raw.heat) ? raw.heat.filter((kind): kind is HeatKind => (HEAT_KINDS as readonly unknown[]).includes(kind)) : [];
+  if (heat.length) clean.heat = [...new Set(heat)];
+  return Object.keys(clean).length ? clean : undefined;
+}
+
+/** `{ details }` when there are any, else nothing, so records without details keep their shape. */
+const withDetails = (details: unknown) => {
+  const clean = cleanDetails(details);
+  return clean ? { details: clean } : {};
+};
 
 export interface BankrollTransaction {
   id: string;
@@ -77,7 +124,7 @@ export const JOURNAL_PRUNED_EVENT = "countlab-journal-pruned";
 /** Leave a margin below Supabase's 30 journal-insert/minute limit when importing a backup. */
 const IMPORT_WRITE_INTERVAL_MS = 2_100;
 
-const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "handsByTrueCount", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes"];
+const SESSION_CSV_COLUMNS = ["date", "bankroll", "location", "hours", "handsPerHour", "playerHands", "handsByTrueCount", "bettingUnit", "decks", "penetration", "dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "earlySurrender", "blackjackPayout", "useIndices", "indexPolicy", "ramp", "netResult", "expenses", "notes", "roundsPlayed", "topBet", "buyIn", "cashOut", "heat"];
 const TRANSACTION_CSV_COLUMNS = ["date", "bankroll", "type", "amount", "note"];
 const encodeRampCsv = (ramp: RampPoint[]) => ramp.map((point) => `${point.trueCount}:${point.units}`).join(";");
 const decodeRampCsv = (value: string): RampPoint[] => value.split(";").filter(Boolean).map((chunk) => {
@@ -106,6 +153,7 @@ const validRules = (value: unknown): value is AdvantageRules => {
     && typeof rules.doubleAfterSplit === "boolean"
     && typeof rules.resplitAces === "boolean"
     && typeof rules.lateSurrender === "boolean"
+    && (rules.earlySurrender === undefined || typeof rules.earlySurrender === "boolean")
     && (rules.blackjackPayout === 1.5 || rules.blackjackPayout === 1.2)
     && finite(rules.penetration);
 };
@@ -384,6 +432,8 @@ function pushJournalSession(session: JournalSession) {
       net_result: session.netResult,
       expenses: session.expenses,
       notes: session.notes ?? null,
+      // Sent only when there are details, so sessions without them sync before the column exists.
+      ...(session.details ? { details: session.details } : {}),
     });
 }
 
@@ -491,7 +541,8 @@ export const journalLibrary = {
   },
   addSession(session: Omit<JournalSession, "id" | "createdAt" | "bankrollId"> & { bankrollId?: string }, store?: StorageLike, now = new Date()) {
     if (!isJournalDate(session.date)) throw new Error("Session date must be a complete YYYY-MM-DD calendar date.");
-    const record: JournalSession = { ...session, bankrollId: session.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString(), updatedAt: now.toISOString() };
+    const { details, ...fields } = session;
+    const record: JournalSession = { ...fields, ...withDetails(details), bankrollId: session.bankrollId ?? defaultBankrollId(store), id: createId(), createdAt: now.toISOString(), updatedAt: now.toISOString() };
     const next = [record, ...this.sessions(store)];
     write(SESSIONS_KEY, next, store);
     pushJournalSession(record);
@@ -504,7 +555,8 @@ export const journalLibrary = {
     const existing = this.sessions(store).find((session) => session.id === id);
     if (!existing) return undefined;
     // bankrollId stays put unless the caller deliberately moves the session.
-    const record: JournalSession = { ...updates, id: existing.id, createdAt: existing.createdAt, updatedAt: now.toISOString(), bankrollId: updates.bankrollId ?? existing.bankrollId };
+    const { details, ...fields } = updates;
+    const record: JournalSession = { ...fields, ...withDetails(details), id: existing.id, createdAt: existing.createdAt, updatedAt: now.toISOString(), bankrollId: updates.bankrollId ?? existing.bankrollId };
     write(SESSIONS_KEY, this.sessions(store).map((session) => session.id === id ? record : session), store);
     pushJournalSession(record);
     track("journal_session_updated", { netResult: record.netResult, hours: record.hours });
@@ -632,6 +684,7 @@ export const journalLibrary = {
       doubleAfterSplit: session.rules.doubleAfterSplit,
       resplitAces: session.rules.resplitAces,
       lateSurrender: session.rules.lateSurrender,
+      earlySurrender: session.rules.earlySurrender === true,
       blackjackPayout: session.rules.blackjackPayout,
       useIndices: session.rules.useIndices,
       indexPolicy: session.rules.indexPolicy ?? "h17-pro",
@@ -639,6 +692,11 @@ export const journalLibrary = {
       netResult: session.netResult,
       expenses: session.expenses,
       notes: session.notes ?? "",
+      roundsPlayed: session.details?.roundsPlayed ?? "",
+      topBet: session.details?.topBet ?? "",
+      buyIn: session.details?.buyIn ?? "",
+      cashOut: session.details?.cashOut ?? "",
+      heat: session.details?.heat?.join(";") ?? "",
     }));
     return toCsv(rows, SESSION_CSV_COLUMNS);
   },
@@ -690,7 +748,9 @@ export const journalLibrary = {
           dealerHitsSoft17: row.dealerHitsSoft17 === "true",
           doubleAfterSplit: row.doubleAfterSplit === "true",
           resplitAces: row.resplitAces === "true",
-          lateSurrender: row.lateSurrender === "true",
+          lateSurrender: row.lateSurrender === "true" || row.earlySurrender === "true",
+          // Files from before the column have no earlySurrender value.
+          ...(row.earlySurrender === "true" ? { earlySurrender: true } : {}),
           blackjackPayout: Number(row.blackjackPayout) === 1.2 ? 1.2 : 1.5,
           useIndices: row.useIndices !== "false",
           indexPolicy: "h17-pro",
@@ -700,6 +760,14 @@ export const journalLibrary = {
         expenses,
         notes: row.notes || undefined,
         bankrollId,
+        // Blank cells (and files from before these columns) leave the details out.
+        details: cleanDetails({
+          roundsPlayed: row.roundsPlayed ? Number(row.roundsPlayed) : undefined,
+          topBet: row.topBet ? Number(row.topBet) : undefined,
+          buyIn: row.buyIn ? Number(row.buyIn) : undefined,
+          cashOut: row.cashOut ? Number(row.cashOut) : undefined,
+          heat: row.heat ? row.heat.split(";") : undefined,
+        }),
       }, store);
       imported++;
     }

@@ -1,5 +1,5 @@
 import { calculateAdvantage, recommendUnit } from "./advantage";
-import type { JournalSession } from "./journal";
+import { HEAT_KINDS, type HeatKind, type JournalSession } from "./journal";
 
 const Z95 = 1.95996398454;
 
@@ -16,17 +16,61 @@ export interface TheoreticalOutcome {
  * riskOfRuin/nZeroHours, neither of which this function returns; a realized
  * session's trip EV and SD do not depend on bankroll size.
  */
-export function theoreticalSessionOutcome(session: Pick<JournalSession, "rules" | "ramp" | "bettingUnit" | "playerHands" | "handsByTrueCount" | "handsPerHour" | "hours">): TheoreticalOutcome {
+export interface CasinoHeat {
+  location: string;
+  /** The last session there with any heat. */
+  lastDate: string;
+  /** Each kind of heat seen there: how often, and when last, most recent first. */
+  kinds: { kind: HeatKind; count: number; lastDate: string }[];
+  /** The strongest kind seen, by HEAT_KINDS order (watched … barred). */
+  worst: HeatKind;
+}
+
+/**
+ * Every casino's heat history from the sessions logged there, most recent first, so a visit can
+ * be planned around it. Casino names match ignoring case and surrounding spaces.
+ */
+export function heatByCasino(sessions: Pick<JournalSession, "location" | "date" | "details">[]): CasinoHeat[] {
+  const byCasino = new Map<string, { location: string; kinds: Map<HeatKind, { count: number; lastDate: string }> }>();
+  for (const session of sessions) {
+    const location = session.location?.trim();
+    if (!location || !session.details?.heat?.length) continue;
+    const key = location.toLocaleLowerCase();
+    const casino = byCasino.get(key) ?? { location, kinds: new Map() };
+    byCasino.set(key, casino);
+    for (const kind of session.details.heat) {
+      const seen = casino.kinds.get(kind);
+      casino.kinds.set(kind, { count: (seen?.count ?? 0) + 1, lastDate: seen && seen.lastDate > session.date ? seen.lastDate : session.date });
+    }
+  }
+  return [...byCasino.values()].map(({ location, kinds }) => {
+    const list = [...kinds.entries()].map(([kind, seen]) => ({ kind, ...seen })).sort((a, b) => b.lastDate.localeCompare(a.lastDate));
+    return {
+      location,
+      lastDate: list[0].lastDate,
+      kinds: list,
+      worst: list.reduce((worst, item) => (HEAT_KINDS.indexOf(item.kind) > HEAT_KINDS.indexOf(worst) ? item.kind : worst), list[0].kind),
+    };
+  }).sort((a, b) => b.lastDate.localeCompare(a.lastDate));
+}
+
+/** Rounds a session lasted: the count recorded at the table when there is one, else hours × pace. */
+export const sessionRounds = (session: Pick<JournalSession, "handsPerHour" | "hours" | "details">) =>
+  session.details?.roundsPlayed ?? session.handsPerHour * session.hours;
+
+export function theoreticalSessionOutcome(session: Pick<JournalSession, "rules" | "ramp" | "bettingUnit" | "playerHands" | "handsByTrueCount" | "handsPerHour" | "hours" | "details">): TheoreticalOutcome {
   // The audited coefficients are simulated for exactly H17/DAS/RSA/LS/3:2, so a
   // session logged with other rules needs a flat literature-estimated delta or
   // its edge is overstated. calculateAdvantage derives that from session.rules.
+  // A recorded round count replaces the pace estimate, as CVData prices sessions.
+  const rounds = sessionRounds(session);
   const result = calculateAdvantage({
     bankroll: 0,
     bettingUnit: session.bettingUnit,
     playerHands: session.playerHands,
     handsByTrueCount: session.handsByTrueCount,
-    handsPerHour: session.handsPerHour,
-    hours: session.hours,
+    handsPerHour: session.hours > 0 ? rounds / session.hours : session.handsPerHour,
+    hours: session.hours > 0 ? session.hours : 0,
     rules: session.rules,
     ramp: session.ramp,
   });
@@ -123,7 +167,7 @@ export function aggregateJournal(sessions: JournalSession[]): JournalAggregate {
     totalActual += session.netResult;
     totalTheoretical += outcome.tripEv;
     totalExpenses += session.expenses;
-    totalAction += outcome.averageBet * session.handsPerHour * session.hours;
+    totalAction += outcome.averageBet * sessionRounds(session);
     combinedVariance += outcome.standardDeviation ** 2;
     if (session.netResult > 0) wins += 1;
 
@@ -214,6 +258,8 @@ export function journalByVenue(sessions: JournalSession[]): JournalVenueSummary[
 
 export interface JournalCumulativePoint {
   index: number;
+  /** Hours played up to and including this session. */
+  hours: number;
   date: string;
   actual: number;
   theoretical: number;
@@ -226,15 +272,17 @@ function orderSessions(sessions: JournalSession[]) {
 }
 
 export function journalCumulativeSeries(sessions: JournalSession[]): JournalCumulativePoint[] {
-  let actual = 0, theoretical = 0, variance = 0;
+  let actual = 0, theoretical = 0, variance = 0, hours = 0;
   return orderSessions(sessions).map((session, index) => {
     const outcome = theoreticalSessionOutcome(session);
     actual += session.netResult;
     theoretical += outcome.tripEv;
     variance += outcome.standardDeviation ** 2;
+    hours += session.hours;
     const standardDeviation = Math.sqrt(variance);
     return {
       index: index + 1,
+      hours,
       date: session.date,
       actual: Math.round(actual),
       theoretical: Math.round(theoretical),

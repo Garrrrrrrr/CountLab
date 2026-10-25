@@ -194,6 +194,22 @@ describe("CSV export/import", () => {
     expect(journalLibrary.sessions(target)[0].handsByTrueCount).toEqual(handsByTrueCount);
   });
 
+  it("round-trips early surrender through CSV, and older files without the column", () => {
+    const source = new MemoryStorage();
+    const rules = { ...DEFAULT_ADVANTAGE_RULES, earlySurrender: true };
+    journalLibrary.addSession({ ...sessionInput, rules }, source, new Date("2026-08-13T12:00:00Z"));
+    const target = new MemoryStorage();
+    journalLibrary.importSessionsCsv(journalLibrary.exportSessionsCsv(source), target);
+    expect(journalLibrary.sessions(target)[0].rules).toEqual(rules);
+    const plain = new MemoryStorage();
+    journalLibrary.addSession(sessionInput, plain, new Date("2026-08-13T12:00:00Z"));
+    const oldCsv = journalLibrary.exportSessionsCsv(plain).split("\n").map((line) => line.split(",").filter((_, index) => index !== 14).join(",")).join("\n");
+    expect(oldCsv.split("\n")[0]).not.toContain("earlySurrender");
+    const oldTarget = new MemoryStorage();
+    journalLibrary.importSessionsCsv(oldCsv, oldTarget);
+    expect(journalLibrary.sessions(oldTarget)[0].rules).toEqual(DEFAULT_ADVANTAGE_RULES);
+  });
+
   it("skips malformed CSV rows instead of throwing", () => {
     const target = new MemoryStorage();
     const csv = "date,bankroll,location,hours,handsPerHour,playerHands,bettingUnit,decks,penetration,dealerHitsSoft17,doubleAfterSplit,resplitAces,lateSurrender,blackjackPayout,ramp,netResult,expenses,notes\nnot-a-date,,,,,,,,,,,,,,,,,";

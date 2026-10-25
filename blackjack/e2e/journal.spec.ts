@@ -82,7 +82,7 @@ test("a new journal explains itself and logs a first session from the empty stat
   await sheet.getByLabel("Amount won or lost").fill("200");
   await sheet.getByRole("button", { name: "Save session" }).click();
   await expect(announced(page, "Session logged.")).toBeAttached();
-  expect((await stored(page))[0]).toMatchObject({ netResult: -200, hours: 4, bettingUnit: 25 });
+  expect((await stored(page))[0]).toMatchObject({ netResult: -200, hours: 4, bettingUnit: 15 });
   await expect(page.getByText("Results vs expected")).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -333,7 +333,10 @@ test("bankroll health asks for a starting bankroll before pricing risk of ruin o
   await expect(panel).toContainText("No starting bankroll recorded");
   await expect(panel.getByText(/what this bankroll supports/)).toBeVisible();
   await panel.getByRole("button", { name: "Record starting bankroll" }).click();
-  await expect(page.getByRole("dialog", { name: "Deposit or withdrawal" }).getByLabel("Note (optional)")).toHaveValue("Starting bankroll");
+  const sheet = page.getByRole("dialog", { name: "Starting bankroll" });
+  await expect(sheet.getByLabel("Note (optional)")).toHaveValue("Starting bankroll");
+  await expect(sheet.getByRole("button", { name: "Record starting bankroll" })).toBeVisible();
+  await expect(sheet.getByRole("radio", { name: "Withdrawal" })).toHaveCount(0);
 });
 
 test("each bankroll remembers its own game, and new or moved sessions say when they leave the view", async ({ page }, testInfo) => {
@@ -590,4 +593,27 @@ test("the journal fits a 320px phone, empty and with long names", async ({ page 
   await page.goto("/journal/");
   await expect(page.getByText("Log your casino sessions")).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+});
+
+test("buy-in and cash-out fill the result, and heat builds each casino's history", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepareGuest(page);
+  await page.goto("/journal/");
+  await logButton(page).click();
+  const sheet = page.getByRole("dialog", { name: "Log session" });
+  await sheet.getByLabel("Casino (optional)").fill("Aria");
+  await sheet.getByRole("button", { name: /More details/ }).click();
+  await sheet.getByLabel("Bought in for").fill("500");
+  await sheet.getByLabel("Cashed out").fill("800");
+  await expect(sheet.getByText("That is")).toContainText("+$300");
+  await sheet.getByRole("button", { name: "Use as the result" }).click();
+  await expect(sheet.getByLabel("Amount won or lost")).toHaveValue("300");
+  await sheet.getByLabel("Rounds played").fill("310");
+  await sheet.getByRole("button", { name: "Backed off" }).click();
+  await sheet.getByRole("button", { name: "Save session" }).click();
+  await expect(sheet).toHaveCount(0);
+  await page.getByRole("tab", { name: /Venues/ }).click();
+  const heat = page.getByRole("list", { name: "Heat by casino" });
+  await expect(heat).toContainText("Aria");
+  await expect(heat).toContainText("Backed off");
 });

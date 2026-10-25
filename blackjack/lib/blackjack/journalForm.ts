@@ -5,9 +5,9 @@
  * payload can be tested directly.
  */
 import { DEFAULT_ADVANTAGE_RULES, handsAt, RAMPS, unitsAt, type AdvantageRules, type HandCountPoint, type RampPoint } from "./advantage";
-import { GAME_OPTIONS } from "./coefficients";
+import { GAME_OPTIONS, isDecks, type Decks } from "./coefficients";
 import { templateHandSchedule, type CvcxTemplateConfig } from "./cvcxLibrary";
-import { isJournalDate, type JournalSession } from "./journal";
+import { cleanDetails, isJournalDate, type JournalSession, type SessionDetails } from "./journal";
 import { money, shortDate, trueCountLabel } from "./journalFormat";
 import type { SessionSimulationConfig } from "./sessionSimulation";
 import type { VenuePreset } from "./venuePresets";
@@ -25,13 +25,15 @@ export type AmountEntry = number | null | "invalid";
 
 /** Everything about how a session was played except when, where and how long. */
 export interface GameDraft {
-  decks: 6 | 8;
+  decks: Decks;
   /** Decks dealt before the shuffle. */
   dealt: number;
   dealerHitsSoft17: boolean;
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  /** Early surrender against a ten (late against an ace); sets lateSurrender too. */
+  earlySurrender: boolean;
   blackjackPayout: 1.5 | 1.2;
   useIndices: boolean;
   bettingUnit: number;
@@ -72,6 +74,8 @@ export interface SessionDraft {
   amount: AmountEntry;
   expenses: number;
   notes: string;
+  /** Optional extras: rounds, top bet, buy-in and cash-out, heat. Empty when none are entered. */
+  details: SessionDetails;
   game: GameDraft;
   source: GameSource;
 }
@@ -95,13 +99,15 @@ export const DEFAULT_GAME: GameDraft = {
   doubleAfterSplit: true,
   resplitAces: true,
   lateSurrender: true,
+  earlySurrender: false,
   blackjackPayout: 1.5,
   useIndices: true,
-  bettingUnit: 25,
+  // The Calculator's example game, so the two tools start from the same place.
+  bettingUnit: 15,
   handsPerHour: 100,
   playerHands: 1,
-  spread: "1-8",
-  ramp: expandRamp(RAMPS["1-8"]),
+  spread: "1-12",
+  ramp: expandRamp(RAMPS["1-12"]),
   handsByCount: {},
 };
 
@@ -119,14 +125,15 @@ export function latestSession(sessions: JournalSession[]): JournalSession | unde
 }
 
 const tableFrom = (rules: AdvantageRules) => {
-  const decks: 6 | 8 = rules.decks === 8 ? 8 : 6;
+  const decks: Decks = isDecks(rules.decks) ? rules.decks : 6;
   return {
     decks,
     dealt: Number((rules.penetration * decks).toFixed(2)),
     dealerHitsSoft17: rules.dealerHitsSoft17,
     doubleAfterSplit: rules.doubleAfterSplit,
     resplitAces: rules.resplitAces,
-    lateSurrender: rules.lateSurrender,
+    lateSurrender: rules.lateSurrender || rules.earlySurrender === true,
+    earlySurrender: rules.earlySurrender === true,
     blackjackPayout: rules.blackjackPayout,
     // Sessions logged before the control existed were priced with indices on.
     useIndices: rules.useIndices !== false,
@@ -170,7 +177,8 @@ export function gameFromScenario(config: CvcxTemplateConfig, ramp: RampPoint[]):
     dealerHitsSoft17: config.dealerHitsSoft17,
     doubleAfterSplit: config.doubleAfterSplit,
     resplitAces: config.resplitAces,
-    lateSurrender: config.lateSurrender,
+    lateSurrender: config.lateSurrender || config.earlySurrender === true,
+    earlySurrender: config.earlySurrender === true,
     blackjackPayout: config.blackjackPayout,
     useIndices: config.useIndices !== false,
     bettingUnit: config.baseBet,
@@ -210,6 +218,8 @@ export function rulesOf(game: GameDraft): AdvantageRules {
     lateSurrender: game.lateSurrender,
     blackjackPayout: game.blackjackPayout,
     useIndices: game.useIndices,
+    // Stored only when on, so other sessions keep the shape they always had.
+    ...(game.earlySurrender ? { earlySurrender: true } : {}),
   };
 }
 
@@ -230,7 +240,7 @@ export function gameFields(game: GameDraft) {
 }
 
 const gameKey = (game: GameDraft) => JSON.stringify([
-  game.decks, game.dealt, game.dealerHitsSoft17, game.doubleAfterSplit, game.resplitAces, game.lateSurrender, game.blackjackPayout, game.useIndices,
+  game.decks, game.dealt, game.dealerHitsSoft17, game.doubleAfterSplit, game.resplitAces, game.lateSurrender, game.earlySurrender, game.blackjackPayout, game.useIndices,
   game.bettingUnit, game.handsPerHour, handsScheduleOf(game).map((point) => point.hands), expandRamp(game.ramp).map((point) => point.units),
 ]);
 /** Whether two games price identically (the spread's display name is ignored). */
@@ -287,7 +297,7 @@ export function rulesSummary(rules: AdvantageRules) {
     rules.dealerHitsSoft17 ? "H17" : "S17",
     rules.doubleAfterSplit ? "DAS" : "No DAS",
     rules.resplitAces ? "RSA" : "No RSA",
-    rules.lateSurrender ? "LS" : "No surrender",
+    rules.earlySurrender ? "ES10" : rules.lateSurrender ? "LS" : "No surrender",
     rules.blackjackPayout === 1.5 ? "3:2" : "6:5",
     rules.useIndices === false ? "Basic only" : "Indices",
   ].join(" · ");
@@ -339,7 +349,7 @@ export function rememberedGame(sessions: JournalSession[]): { game: GameDraft; h
 }
 
 export function newSessionDraft({ game, source, hours, bankrollId, today = localDateString() }: { game: GameDraft; source: GameSource; hours: number; bankrollId: string; today?: string }): SessionDraft {
-  return { date: today, bankrollId, location: "", hours, direction: null, amount: null, expenses: 0, notes: "", game, source };
+  return { date: today, bankrollId, location: "", hours, direction: null, amount: null, expenses: 0, notes: "", details: {}, game, source };
 }
 
 /** An existing session as an editable draft: the result splits into its direction and size. */
@@ -353,13 +363,18 @@ export function draftFromSession(session: JournalSession): SessionDraft {
     amount: Math.abs(session.netResult),
     expenses: session.expenses,
     notes: session.notes ?? "",
+    details: session.details ?? {},
     game: gameFromSession(session),
     source: { kind: "session" },
   };
 }
 
 /** Clears what differs from one session to the next, keeping the date, casino, hours and game for a run of entries. */
-export const nextEntryDraft = (draft: SessionDraft): SessionDraft => ({ ...draft, direction: null, amount: null, expenses: 0, notes: "" });
+export const nextEntryDraft = (draft: SessionDraft): SessionDraft => ({ ...draft, direction: null, amount: null, expenses: 0, notes: "", details: {} });
+
+/** The result buy-in and cash-out imply, or null until both are entered. */
+export const cashResult = (details: SessionDetails) =>
+  details.buyIn !== undefined && details.cashOut !== undefined ? details.cashOut - details.buyIn : null;
 
 export const SESSION_ERRORS = {
   date: "Enter a complete, valid date.",
@@ -389,6 +404,7 @@ export function sessionPayload(draft: SessionDraft) {
     netResult: signedResult(draft.direction, typeof draft.amount === "number" ? draft.amount : 0),
     expenses: draft.expenses,
     notes: draft.notes.trim() || undefined,
+    details: cleanDetails(draft.details),
     bankrollId: draft.bankrollId,
   };
 }
@@ -419,7 +435,7 @@ export function gameForCasino(name: string, sessions: JournalSession[], presets:
 }
 
 /** Penetration choices for a deck count, keeping an off-list value (e.g. from a CSV import) selectable. */
-export function penetrationOptions(decks: 6 | 8, current: number) {
+export function penetrationOptions(decks: Decks, current: number) {
   const options: number[] = GAME_OPTIONS[decks].map((option) => option.dealt);
   return options.includes(current) ? options : [...options, current].sort((a, b) => a - b);
 }

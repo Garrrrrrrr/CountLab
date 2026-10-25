@@ -34,6 +34,7 @@ const validRules = (value: unknown): value is AdvantageRules => {
     && typeof rules.doubleAfterSplit === "boolean"
     && typeof rules.resplitAces === "boolean"
     && typeof rules.lateSurrender === "boolean"
+    && (rules.earlySurrender === undefined || typeof rules.earlySurrender === "boolean")
     && (rules.blackjackPayout === 1.5 || rules.blackjackPayout === 1.2)
     && finite(rules.penetration);
 };

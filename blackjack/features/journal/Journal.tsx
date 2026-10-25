@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeftRight, Plus } from "lucide-react";
-import { Button, Callout, ConfirmSheet, IconButton, PageHeader, Tabs, toast } from "@/components/ui";
+import { Button, Callout, ConfirmSheet, PageHeader, Tabs, toast } from "@/components/ui";
 import { BottomDock } from "@/components/shell/BottomDock";
 import { analytics } from "@/lib/analytics";
 import { track } from "@/lib/analytics/track";
 import { journalLibrary, type BankrollTransaction, type JournalSession } from "@/lib/blackjack/journal";
-import { theoreticalSessionOutcome } from "@/lib/blackjack/journalAnalysis";
+import { heatByCasino, theoreticalSessionOutcome } from "@/lib/blackjack/journalAnalysis";
 import { applyVenue, draftFromSession, gameFromScenario, newSessionDraft, rememberedGame, type GameDraft, type GameSource, type SessionDraft } from "@/lib/blackjack/journalForm";
 import { longDate } from "@/lib/blackjack/journalFormat";
 import { neighbourId, targetBankrollId } from "@/lib/blackjack/journalView";
@@ -18,7 +18,7 @@ import { useAuth } from "@/lib/supabase/AuthProvider";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 import { BankrollsSheet } from "./BankrollsSheet";
 import { CASH_RECORD_ID, CashTab } from "./CashTab";
-import { CashMovementSheet } from "./CashMovementSheet";
+import { CashMovementSheet, STARTING_NOTE } from "./CashMovementSheet";
 import { DataTab } from "./DataTab";
 import { Filters } from "./Filters";
 import { LogSessionSheet, type SavedSession } from "./LogSessionSheet";
@@ -313,11 +313,11 @@ export function Journal() {
   const overview = !data.ready || syncingFirstPull ? (
     <OverviewSkeleton message={syncingFirstPull ? "Loading your journal from your account…" : undefined} />
   ) : emptyJournal ? (
-    <JournalEmpty onLog={() => openLog()} onStartingBankroll={() => openCash("Starting bankroll")} onImport={() => showTab("data")} />
+    <JournalEmpty onLog={() => openLog()} onStartingBankroll={() => openCash(STARTING_NOTE)} onImport={() => showTab("data")} />
   ) : (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start">
       {emptyScope && (
-        <Callout className="lg:col-span-2" tone="info" title={`Nothing in “${scopeName}” yet`} action={<Button size="sm" variant="secondary" className="h-11" icon={<ArrowLeftRight size={16} aria-hidden />} onClick={() => openCash("Starting bankroll")}>Record its starting amount</Button>}>
+        <Callout className="lg:col-span-2" tone="info" title={`Nothing in “${scopeName}” yet`} action={<Button size="sm" variant="secondary" className="h-11" icon={<ArrowLeftRight size={16} aria-hidden />} onClick={() => openCash(STARTING_NOTE)}>Record its starting amount</Button>}>
           Log a session to it, or record the money you set aside for it.
         </Callout>
       )}
@@ -330,7 +330,7 @@ export function Journal() {
         sessionCount={scoped.scopedSessions.length}
         health={scoped.health}
         onCash={() => openCash()}
-        onStartingBankroll={() => openCash("Starting bankroll")}
+        onStartingBankroll={() => openCash(STARTING_NOTE)}
       />
     </div>
   );
@@ -345,7 +345,7 @@ export function Journal() {
         onRecord={() => openCash()} onDelete={(transaction) => setOverlay({ kind: "deleteCash", transaction })} />
     ),
     venues: (
-      <VenuesTab venues={scoped.byVenue} presets={data.presets} scopePhrase={dateFilterPhrase(filters.dates)} onAdd={() => openSheet({ kind: "venue" })} onUse={logAtVenue}
+      <VenuesTab venues={scoped.byVenue} heat={heatByCasino(data.sessions)} presets={data.presets} scopePhrase={dateFilterPhrase(filters.dates)} onAdd={() => openSheet({ kind: "venue" })} onUse={logAtVenue}
         onDelete={(preset) => setOverlay({ kind: "deleteVenue", preset })} />
     ),
     data: (
@@ -404,7 +404,7 @@ export function Journal() {
           <BottomDock>
             <div role="group" aria-label="Journal actions" className="mx-auto flex max-w-xl gap-2">
               <Button block icon={<Plus size={18} aria-hidden />} onClick={() => openLog()}>Log session</Button>
-              <IconButton label="Deposit or withdrawal" variant="secondary" onClick={() => openCash()}><ArrowLeftRight size={19} aria-hidden /></IconButton>
+              <Button variant="secondary" className="shrink-0" aria-label="Deposit or withdrawal" icon={<ArrowLeftRight size={18} aria-hidden />} onClick={() => openCash()}>Cash</Button>
             </div>
           </BottomDock>
         </>
