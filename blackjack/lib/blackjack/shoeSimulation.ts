@@ -108,10 +108,13 @@ const tableRules = (rules: AdvantageRules): TableRules => ({
   decks: rules.decks,
   hitSoft17: rules.dealerHitsSoft17,
   das: rules.doubleAfterSplit,
-  surrender: rules.lateSurrender ? "late" : "none",
+  surrender: rules.earlySurrender ? "early" : rules.lateSurrender ? "late" : "none",
   doubling: "any",
   noHoleCard: false,
 });
+
+/** Early surrender is offered against a ten only; an ace still gets late surrender. */
+const earlyAgainst = (rules: AdvantageRules, upcard: Card) => rules.earlySurrender === true && calculateHandValue([upcard]) === 10;
 
 /** The count the strategy uses: the live true count with indices on, none for basic strategy. */
 type CountSource = () => number | undefined;
@@ -181,7 +184,8 @@ function playBox(
     }
 
     const canDoubleNow = pending.cards.length === 2 && (!pending.fromSplit || rules.doubleAfterSplit);
-    const canSurrender = !pending.fromSplit && pending.cards.length === 2 && rules.lateSurrender;
+    // Early surrender against a ten was already offered before the peek.
+    const canSurrender = !pending.fromSplit && pending.cards.length === 2 && (rules.lateSurrender || rules.earlySurrender === true) && !earlyAgainst(rules, dealerUpcard);
     const action = decideHand({ cards: pending.cards, upcard: dealerUpcard, rules: tableRules(rules), tc: count(), canDouble: canDoubleNow, canSplit: splitAllowed, canSurrender }).action;
 
     if (action === "P" && splitAllowed) {
@@ -196,7 +200,7 @@ function playBox(
       continue;
     }
 
-    if (action === "R" && !pending.fromSplit && rules.lateSurrender) {
+    if (action === "R" && canSurrender) {
       played.push({ cards: pending.cards, net: -bet / 2, surrendered: true });
       continue;
     }
@@ -294,16 +298,24 @@ export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: S
 
     const playedHands: SimulatedPlayerHand[] = [];
     const resolved = new Set<SimulatedPlayerHand>();
+    // Early surrender against a ten comes before the dealer checks for blackjack, so it beats a dealer natural.
+    const live = earlyAgainst(rules, dealerUpcard) ? boxes.filter((cards) => {
+      if (isBlackjack(cards)) return true;
+      const action = decideHand({ cards, upcard: dealerUpcard, rules: tableRules(rules), tc: indexed ? currentTrueCount() : undefined, canDouble: true, canSplit: canSplit(cards), canSurrender: true }).action;
+      if (action !== "R") return true;
+      playedHands.push({ cards, net: -bet / 2, surrendered: true });
+      return false;
+    }) : boxes;
     if (dealerBlackjack) {
       hiddenDealerCards -= 1;
       track(dealerHoleCard);
-      for (const cards of boxes) {
+      for (const cards of live) {
         const hand: SimulatedPlayerHand = { cards, net: settle(calculateHandValue(cards), 21, bet, rules.blackjackPayout, isBlackjack(cards), true), surrendered: false };
         playedHands.push(hand);
         resolved.add(hand);
       }
     } else {
-      for (const initialCards of boxes) {
+      for (const initialCards of live) {
         const playerBlackjack = isBlackjack(initialCards);
         if (playerBlackjack) {
           const hand: SimulatedPlayerHand = { cards: initialCards, net: settle(21, calculateHandValue(dealerCards), bet, rules.blackjackPayout, true, false), surrendered: false };

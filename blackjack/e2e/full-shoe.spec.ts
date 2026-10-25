@@ -24,7 +24,8 @@ const pick = (page: Page, group: string, option: string) =>
 
 async function open(page: Page, { mode = "Coached", checks = "off", decks, penetration }: { mode?: "Coached" | "Checkout"; checks?: string; decks?: string; penetration?: string } = {}) {
   await page.goto("/train/full-shoe/");
-  await expect(page.getByRole("heading", { name: "Full Shoe", level: 1 })).toBeVisible();
+  // Settings load after hydration, which can pass the default 5 s when many phones are emulated at once.
+  await expect(page.getByRole("heading", { name: "Full Shoe", level: 1 })).toBeVisible({ timeout: 15_000 });
   await page.getByRole("radio", { name: new RegExp(`^${mode}`) }).dispatchEvent("click");
   if (decks) await pick(page, "Decks", decks);
   if (penetration) await pick(page, "Penetration (where the cut card sits)", penetration);

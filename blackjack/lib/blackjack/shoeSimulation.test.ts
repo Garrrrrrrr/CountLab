@@ -128,4 +128,18 @@ describe("simulateShoeSession", () => {
     expect(splitRounds.some((hand) => hand.playerHands.some((box) => box.bet === hand.bet * 2))).toBe(true);
     expect(splitRounds.some((hand) => hand.playerHands.length >= 3)).toBe(true);
   });
+
+  it("surrenders early against a ten, before the dealer's blackjack, and late against an ace", async () => {
+    const tens = ["10", "J", "Q", "K"];
+    const run = async (earlySurrender: boolean) => (await simulateShoeSession(baseConfig({ handsToSimulate: 40_000, rules: { ...DEFAULT_ADVANTAGE_RULES, earlySurrender } })))
+      .shoes.flatMap((shoe) => shoe.hands);
+    const surrendered = (hands: Awaited<ReturnType<typeof run>>, beats: boolean) => hands.filter((hand) =>
+      tens.includes(hand.dealerCards[0].rank) && isBlackjack(hand.dealerCards) === beats && hand.playerHands.some((box) => box.surrendered));
+    const early = await run(true);
+    // Half the bet back even when the ten had an ace under it; late surrender never sees that hand.
+    expect(surrendered(early, true).length).toBeGreaterThan(0);
+    expect(surrendered(early, true).every((hand) => hand.playerHands.every((box) => !box.surrendered || box.net === -hand.bet / 2))).toBe(true);
+    expect(surrendered(await run(false), true)).toEqual([]);
+    expect(early.some((hand) => hand.dealerCards[0].rank === "A" && hand.playerHands.some((box) => box.surrendered))).toBe(true);
+  });
 });

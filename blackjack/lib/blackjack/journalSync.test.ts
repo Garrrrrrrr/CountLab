@@ -57,7 +57,7 @@ it("clears details on the server when an edit removes the last one", async () =>
   await vi.runAllTimersAsync();
   const last = (id: string) => remote.upsert.mock.calls.map(([row]) => row).filter((row) => row.id === id).at(-1);
   expect(last(session.id).details).toBeNull();
-  expect("details" in last(plain.id)).toBe(false);
+  expect(last(plain.id).details).toBeNull();
 });
 
 it("retries a failed deletion until the server acknowledges it", async () => {
