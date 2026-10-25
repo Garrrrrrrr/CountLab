@@ -62,6 +62,19 @@ test.describe("counting drills", () => {
     expect(typeof saved[0].metrics.meanAbsoluteDeckError).toBe("number");
   });
 
+  test("deck estimation: decks played, whole decks with no decimal key", async ({ page }) => {
+    await open(page, "/train/deck-estimation/", "Deck Estimation");
+    await choose(page.getByRole("radio", { name: "Decks played" }));
+    await page.getByRole("radio", { name: /^Full deck/ }).click();
+    await start(page, /^Start \d+ photos$/);
+    await expect(page.getByRole("heading", { name: /How many decks have been played\?/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Decimal point" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Toggle minus sign" })).toHaveCount(0);
+    await press(page, "3");
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: /played, leaving/ })).toBeVisible();
+  });
+
   test("deck estimation: an unfinished session resumes after a reload", async ({ page }) => {
     await open(page, "/train/deck-estimation/", "Deck Estimation");
     await start(page, /^Start \d+ photos$/);

@@ -5,7 +5,7 @@ import { NumberPad, TrayPhoto } from "@/components/blackjack";
 import { DownloadMisses, DrillSummary, Feedback, PlayDock, PlayFrame, ResumeBanner } from "@/components/drill/DrillKit";
 import { announce, Button, Callout, Card } from "@/components/ui";
 import { abandonActivePractice, track } from "@/lib/analytics/track";
-import { estimateBias, gradeDeckEstimate, lastDeckAccuracyFromCategories, minimumStepNote, type DeckResolution } from "@/lib/blackjack/countingTraining";
+import { estimateBias, gradeDeckEstimate, lastDeckAccuracyFromCategories, minimumStepNote, type DeckAsk, type DeckResolution } from "@/lib/blackjack/countingTraining";
 import { fitQuestionTarget, fitShoeSize, parseDeckResolutionFocus, RESOLUTION_LABEL, RESOLUTION_WORD, type FeedbackMode } from "@/lib/blackjack/countingSetup";
 import { decksLeftFor, drawTrayPhoto, trayPhotoSrc, type TrayPhoto as TrayPhotoData } from "@/lib/blackjack/deckPhotos";
 import { parseAnswer } from "@/lib/blackjack/numericAnswer";
@@ -36,9 +36,9 @@ type DeckSaved = {
   phase: "question" | "feedback"; question: number; remaining: number; photo: TrayPhotoData | LegacyPhoto | null; answer: string;
   correct: number; errors: number[]; mistakes: Mistake[]; categories: Record<string, { correct: number; total: number }>;
   message: string; totalMs: number;
-  target?: number; streak?: number; best?: number; seen?: string[]; signedErrors?: number[];
+  target?: number; streak?: number; best?: number; seen?: string[]; signedErrors?: number[]; ask?: DeckAsk;
 };
-type Memory = { decks?: number; resolution?: DeckResolution; basis?: number };
+type Memory = { decks?: number; resolution?: DeckResolution; basis?: number; ask?: DeckAsk };
 type Phase = "setup" | "question" | "feedback" | "done";
 
 const isResolution = (value: unknown): value is DeckResolution => value === 1 || value === 0.5 || value === 0.25;
@@ -78,12 +78,15 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
       resolution: saved && isResolution(saved.resolution) ? saved.resolution : handoff ?? (isResolution(remembered?.resolution) ? remembered.resolution : firstTime ? 1 : 0.5),
       feedbackMode: saved?.feedbackMode ?? settings.countingFeedback,
       target: saved?.target ?? fitQuestionTarget(settings.countingSessionQuestions),
+      ask: saved ? saved.ask ?? "left" : memory?.ask === "played" ? "played" : "left",
     };
     return { saved, setup, handoff: saved ? undefined : handoff };
   });
   const saved = init.saved;
   const [setup, setSetup] = useState<DeckSetupState>(init.setup);
-  const { decks, resolution, feedbackMode, target } = setup;
+  const { decks, resolution, feedbackMode, target, ask } = setup;
+  const played = ask === "played";
+  const noun = played ? "played" : "left";
   const [focusNote, setFocusNote] = useState(init.handoff);
 
   const [phase, setPhase] = useState<Phase>(saved?.phase ?? "setup");
@@ -112,7 +115,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
   const progress = useDrillProgress(DRILL, active && Boolean(photo) && !result, {
     decks, resolution, feedbackMode, phase: phase === "feedback" ? "feedback" : "question", question: answered, remaining, photo, answer,
     correct, errors, mistakes, categories, message: "", totalMs: totalMs.current,
-    target, streak, best, seen, signedErrors,
+    target, streak, best, seen, signedErrors, ask,
   } satisfies DeckSaved);
   const now = useNow(phase === "question");
 
@@ -122,7 +125,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
     upcoming.current = undefined;
     setPhoto(chosen); setSeen([...shown, chosen.file]);
     setAnswer(""); answerStarted.current = Date.now(); setPhase("question");
-    announce(`Photo ${count + 1} of ${target}. How many decks are left in the ${decks}-deck shoe?`);
+    announce(`Photo ${count + 1} of ${target}. How many decks ${played ? "have been played from" : "are left in"} the ${decks}-deck shoe?`);
     track("question_presented", { drill: DRILL, category: `${resolution}_deck`, scenario: decksLeftFor(chosen, decks) <= 1 ? "last_deck" : "discard_tray", attempt: count + 1 });
   };
   // Load the next photo while the reader looks at this verdict.
@@ -134,7 +137,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
   }, [phase, isLast, decks, seen]);
 
   const start = () => {
-    writeSetupMemory<Memory>(MEMORY_KEY, { decks, resolution, basis: settings.decks });
+    writeSetupMemory<Memory>(MEMORY_KEY, { decks, resolution, basis: settings.decks, ask });
     if (resolution !== init.setup.resolution) track("difficulty_changed", { drill: DRILL, from: String(init.setup.resolution), to: String(resolution) });
     setAnswered(0); setCorrect(0); setErrors([]); setSignedErrors([]); setMistakes([]); setCategories({}); setStreak(0); setBest(0); setResult(undefined);
     totalMs.current = 0;
@@ -151,6 +154,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
       lastDeckAccuracy: lastDeckAccuracyFromCategories(finalCategories),
       resolution,
       decks,
+      ask,
     }, ["real-photo"]);
     progress.cancel();
     storage.addSession(session);
@@ -173,18 +177,21 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
     if (!parsed.ok) { announce(parsed.error); return; }
     const responseTimeMs = Date.now() - answerStarted.current;
     totalMs.current += responseTimeMs;
-    const graded = gradeDeckEstimate({ remaining, resolution, value: parsed.value, decks });
+    const graded = gradeDeckEstimate({ remaining, resolution, value: parsed.value, decks, ask });
     const nextCount = answered + 1, nextCorrect = correct + Number(graded.ok), nextStreak = graded.ok ? streak + 1 : 0, nextBest = Math.max(best, nextStreak);
     const nextErrors = [...errors, graded.error];
-    const nextSigned = graded.signedError === null ? signedErrors : [...signedErrors, graded.signedError];
-    const key = `${resolution}-deck${remaining <= 1 ? ", last deck" : ""}`;
+    // The lean is always read in decks left, so an estimate of too many played counts as too few left.
+    const nextSigned = graded.signedError === null ? signedErrors : [...signedErrors, played ? -graded.signedError : graded.signedError];
+    const key = `${resolution}-deck${played ? ", played" : ""}${remaining <= 1 ? ", last deck" : ""}`;
     const previous = categories[key] ?? { correct: 0, total: 0 };
     const nextCategories = { ...categories, [key]: { correct: previous.correct + Number(graded.ok), total: previous.total + 1 } };
     const nextMistakes = graded.ok ? mistakes : [...mistakes, {
-      question: `Decks left in a ${decks}-deck shoe`,
+      question: `Decks ${noun} in a ${decks}-deck shoe`,
       userAnswer: parsed.text,
       correctAnswer: String(graded.expected),
-      explanation: `The tray holds ${photo.discarded.toFixed(2)} decks, leaving ${remaining.toFixed(2)}, which rounds to ${graded.expected} at ${RESOLUTION_WORD[resolution]}-deck precision. ${minimumStepNote(remaining, resolution)}`.trim(),
+      explanation: played
+        ? `The tray holds ${photo.discarded.toFixed(2)} decks, which rounds to ${graded.expected} at ${RESOLUTION_WORD[resolution]}-deck precision.`
+        : `The tray holds ${photo.discarded.toFixed(2)} decks, leaving ${remaining.toFixed(2)}, which rounds to ${graded.expected} at ${RESOLUTION_WORD[resolution]}-deck precision. ${minimumStepNote(remaining, resolution)}`.trim(),
       category: "deck estimate" as const,
       context: { file: photo.file, remaining, decks },
     }];
@@ -196,7 +203,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
     if (feedbackMode === "immediate") {
       feedbackShownAt.current = Date.now();
       setPhase("feedback");
-      announce(graded.ok ? `Correct. ${decksText(graded.expected)} left.` : `Not quite. ${decksText(graded.expected)} left; you said ${parsed.text}.`);
+      announce(graded.ok ? `Correct. ${decksText(graded.expected)} ${noun}.` : `Not quite. ${decksText(graded.expected)} ${noun}; you said ${parsed.text}.`);
     } else if (last) setPhase("done");
     else nextTray(nextCount, seen);
   };
@@ -247,14 +254,14 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
   }
 
   const liveMs = totalMs.current + (phase === "question" ? Math.max(0, now - answerStarted.current) : 0);
-  const graded = phase === "feedback" ? gradeDeckEstimate({ remaining, resolution, value: parseAnswer(answer, "decimal").ok ? Number(answer) : null, decks }) : undefined;
+  const graded = phase === "feedback" ? gradeDeckEstimate({ remaining, resolution, value: parseAnswer(answer, "decimal").ok ? Number(answer) : null, decks, ask }) : undefined;
 
   return (
     <PlayFrame title="Deck Estimation" onExit={endDrill} progress={{ done: answered - (phase === "feedback" ? 1 : 0), answered, total: target }} clock={liveMs} streak={feedbackMode === "immediate" ? streak : undefined}>
       <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch lg:gap-8">
         <section aria-label="Question" className="flex min-h-0 flex-1 flex-col">
           <h2 className="text-center text-lg font-semibold leading-snug sm:text-xl [@media(max-height:700px)]:text-base">
-            How many decks are left?
+            {played ? "How many decks have been played?" : "How many decks are left?"}
             <span className="block text-sm font-medium text-ink-2 [@media(max-height:700px)]:text-xs">{decks}-deck shoe · nearest {RESOLUTION_WORD[resolution]} deck</span>
           </h2>
           <FitTray
@@ -273,15 +280,15 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
           <div className="mx-auto w-full max-w-md space-y-2">
             {phase === "question" ? (
               <>
-                <PadField label="Decks left" hint={`nearest ${RESOLUTION_WORD[resolution]}`} value={answer} />
+                <PadField label={`Decks ${noun}`} hint={`nearest ${RESOLUTION_WORD[resolution]}`} value={answer} />
                 <NumberPad value={answer} onChange={setAnswer} onSubmit={submit} allowNegative={false} allowDecimal={resolution !== 1} maxLength={4} submitLabel="Check" className={COMPACT_PAD} />
               </>
             ) : graded && (
-              <Feedback ok={graded.ok} title={graded.ok ? `Correct: ${decksText(graded.expected)} left` : `${decksText(graded.expected)} left`} onContinue={continueAfterFeedback} continueLabel={isLast ? "See results" : "Next photo"}>
-                Exactly {remaining.toFixed(2)} left, with {photo.discarded.toFixed(2)} in the tray.
+              <Feedback ok={graded.ok} title={graded.ok ? `Correct: ${decksText(graded.expected)} ${noun}` : `${decksText(graded.expected)} ${noun}`} onContinue={continueAfterFeedback} continueLabel={isLast ? "See results" : "Next photo"}>
+                {played ? `Exactly ${photo.discarded.toFixed(2)} played, leaving ${remaining.toFixed(2)} in the shoe.` : `Exactly ${remaining.toFixed(2)} left, with ${photo.discarded.toFixed(2)} in the tray.`}
                 {graded.signedError !== null && graded.signedError !== 0 && ` You said ${answer}: ${Math.abs(graded.signedError).toFixed(2)} decks too ${graded.signedError > 0 ? "many" : "few"}.`}
                 {graded.signedError === 0 && " Spot on."}
-                {minimumStepNote(remaining, resolution) && <span className="block">{minimumStepNote(remaining, resolution)}</span>}
+                {!played && minimumStepNote(remaining, resolution) && <span className="block">{minimumStepNote(remaining, resolution)}</span>}
               </Feedback>
             )}
           </div>

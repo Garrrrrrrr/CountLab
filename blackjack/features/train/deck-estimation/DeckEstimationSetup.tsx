@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import { TrayPhoto } from "@/components/blackjack";
 import { DrillSetup, PresetPicker, SetupGroup } from "@/components/drill/DrillKit";
 import { Segmented } from "@/components/ui";
-import type { DeckResolution } from "@/lib/blackjack/countingTraining";
+import type { DeckAsk, DeckResolution } from "@/lib/blackjack/countingTraining";
 import { DECK_ESTIMATION_SESSION_CARDS, describeDeckEstimationSession, QUESTION_TARGETS, SHOE_SIZES, type FeedbackMode } from "@/lib/blackjack/countingSetup";
 import { TRAY_PHOTOS, trayPhotosForShoe } from "@/lib/blackjack/deckPhotos";
 import { AsideCard, ProgressAside, SessionLine } from "../counting-shared/parts";
 
-export type DeckSetupState = { decks: number; resolution: DeckResolution; feedbackMode: FeedbackMode; target: number };
+export type DeckSetupState = { decks: number; resolution: DeckResolution; feedbackMode: FeedbackMode; target: number; ask: DeckAsk };
 type ResolutionKey = "1" | "0.5" | "0.25";
 
 /** A mid-shoe photo for the "Reading the tray" card. */
@@ -26,7 +26,7 @@ export function DeckEstimationSetup({ setup, onChange, onStart, resume, notice, 
   return (
     <DrillSetup
       title="Deck Estimation"
-      intro="Each question is a real photo of a discard tray. Estimate how many decks are still in the shoe."
+      intro="Each question is a real photo of a discard tray. Estimate how many decks are still in the shoe, or how many have been played."
       onStart={onStart}
       startLabel={`Start ${setup.target} photos`}
       resume={resume}
@@ -46,6 +46,10 @@ export function DeckEstimationSetup({ setup, onChange, onStart, resume, notice, 
       }
     >
       {notice}
+      <SetupGroup title="Answer with" hint={setup.ask === "played" ? "The decks already dealt into the tray: what you read straight off it." : "The decks still in the shoe: what you divide the running count by."}>
+        <Segmented<DeckAsk> label="Answer with" hideLabel value={setup.ask} onChange={(ask) => onChange({ ask })}
+          options={[{ value: "left", label: "Decks left" }, { value: "played", label: "Decks played" }]} />
+      </SetupGroup>
       <SetupGroup title="Round your answer to the nearest">
         <PresetPicker<ResolutionKey>
           label="Precision"

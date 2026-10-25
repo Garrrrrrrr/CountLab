@@ -134,6 +134,7 @@ describe("counting training scenarios", () => {
     expect(countingCategoryLabel("negative, 0.5-deck divisor")).toBe("Negative counts · half-deck divisor");
     expect(countingCategoryLabel("0.5-deck, last deck")).toBe("Half-deck precision · last deck");
     expect(countingCategoryLabel("0.25-deck")).toBe("Quarter-deck precision");
+    expect(countingCategoryLabel("1-deck, played, last deck")).toBe("Full-deck precision · decks played · last deck");
     expect(countingCategoryLabel("positive")).toBe("Positive counts");
     expect(countingCategoryLabel("Hard totals")).toBe("Hard totals");
   });
@@ -310,6 +311,11 @@ describe("deck estimation grading", () => {
     expect(gradeDeckEstimate({ remaining: 2.35, resolution: 0.5, value: 2.5, decks: 6 })).toEqual({ expected: 2.5, ok: true, error: 0.15, signedError: 0.15 });
     expect(gradeDeckEstimate({ remaining: 2.35, resolution: 1, value: 3, decks: 6 })).toEqual({ expected: 2, ok: false, error: 0.65, signedError: 0.65 });
     expect(gradeDeckEstimate({ remaining: 2.35, resolution: 0.25, value: null, decks: 6 })).toEqual({ expected: 2.25, ok: false, error: 6, signedError: null });
+  });
+
+  it("grades decks played as plainly rounded decks dealt", () => {
+    expect(gradeDeckEstimate({ remaining: 2.35, resolution: 0.5, value: 3.5, decks: 6, ask: "played" })).toEqual({ expected: 3.5, ok: true, error: 0.15, signedError: -0.15 });
+    expect(gradeDeckEstimate({ remaining: 5.6, resolution: 1, value: 1, decks: 6, ask: "played" })).toEqual({ expected: 0, ok: false, error: 0.6, signedError: 0.6 });
   });
 
   it("reads a lean in the estimates", () => {

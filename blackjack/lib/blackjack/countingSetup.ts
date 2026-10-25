@@ -1,4 +1,4 @@
-import { COUNTING_PRESETS, type CountBias, type CountingPreset, type DeckResolution } from "./countingTraining";
+import { COUNTING_PRESETS, type CountBias, type CountingPreset, type DeckAsk, type DeckResolution } from "./countingTraining";
 import type { TrueCountRounding } from "./hiLo";
 
 /**
@@ -336,10 +336,11 @@ export function parseDeckResolutionFocus(raw?: string | null): DeckResolution | 
   return match ? (Number(match[1]) as DeckResolution) : undefined;
 }
 
-export function describeDeckEstimationSession(values: { decks: number; resolution: DeckResolution; target: number; feedbackMode: FeedbackMode }) {
+export function describeDeckEstimationSession(values: { decks: number; resolution: DeckResolution; target: number; feedbackMode: FeedbackMode; ask?: DeckAsk }) {
   return [
     `${values.target} real tray photos`,
     `${values.decks}-deck shoe`,
+    values.ask === "played" ? "you give the decks played" : "you give the decks left",
     `round to the nearest ${RESOLUTION_WORD[values.resolution]} deck`,
     values.feedbackMode === "immediate" ? "results after each photo" : "results at the end",
   ];

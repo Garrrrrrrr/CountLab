@@ -374,8 +374,8 @@ export function countingCategoryLabel(key: string) {
   if (table) return `Table rounds · ${SIGN_LABEL[table[1]]}`;
   const conversion = /^(negative|positive|zero), (1|0\.5|0\.25)-deck divisor$/.exec(key);
   if (conversion) return `${capitalise(SIGN_LABEL[conversion[1]])} · ${RESOLUTION_PRECISION[conversion[2]].toLowerCase()} divisor`;
-  const estimate = /^(1|0\.5|0\.25)-deck(, last deck)?$/.exec(key);
-  if (estimate) return `${RESOLUTION_PRECISION[estimate[1]]} precision${estimate[2] ? " · last deck" : ""}`;
+  const estimate = /^(1|0\.5|0\.25)-deck(, played)?(, last deck)?$/.exec(key);
+  if (estimate) return `${RESOLUTION_PRECISION[estimate[1]]} precision${estimate[2] ? " · decks played" : ""}${estimate[3] ? " · last deck" : ""}`;
   if (SIGN_LABEL[key]) return capitalise(SIGN_LABEL[key]);
   return key;
 }
@@ -549,14 +549,22 @@ export const divisionText = (rc: number, decks: number) => {
  * One Deck Estimation answer. `remaining` is the tray's exact decks left and
  * the answer must match it rounded to the session's resolution. A blank
  * answer counts as missing by the whole shoe, as it always has.
+ *
+ * `ask: "played"` grades the decks already dealt instead. Those round plainly:
+ * the one-step minimum is only there so a true count never divides by less.
+ * The errors are then in decks played too.
  */
-export function gradeDeckEstimate({ remaining, resolution, value, decks }: { remaining: number; resolution: DeckResolution; value: number | null; decks: number }) {
-  const expected = roundDeckEstimate(remaining, resolution);
+export function gradeDeckEstimate({ remaining, resolution, value, decks, ask = "left" }: { remaining: number; resolution: DeckResolution; value: number | null; decks: number; ask?: DeckAsk }) {
+  const actual = ask === "played" ? Number((decks - remaining).toFixed(2)) : remaining;
+  const expected = ask === "played" ? Math.round(actual / resolution) * resolution : roundDeckEstimate(remaining, resolution);
   const ok = value !== null && Math.abs(value - expected) < 0.001;
-  const signedError = value === null ? null : Number((value - remaining).toFixed(2));
-  const error = value === null ? decks : Number(Math.abs(value - remaining).toFixed(2));
+  const signedError = value === null ? null : Number((value - actual).toFixed(2));
+  const error = value === null ? decks : Number(Math.abs(value - actual).toFixed(2));
   return { expected, ok, error, signedError };
 }
+
+/** What a Deck Estimation question asks for: the decks still in the shoe, or the decks already played. */
+export type DeckAsk = "left" | "played";
 
 /**
  * Which way a reader's deck estimates lean: "over" means they see more decks
