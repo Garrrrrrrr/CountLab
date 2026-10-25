@@ -36,8 +36,10 @@ export type RunningValues = {
   deal?: RunningDeal;
   /** Player spots at the table, for table rounds. */
   spots?: number;
+  /** Now and then a quick question (a sum, small talk from the pit) stops the cards and must be answered first. */
+  distractions?: boolean;
 };
-export type RunningCardId = "starter" | CountingPreset | "table";
+export type RunningCardId = "starter" | CountingPreset | "table" | "countdown";
 
 /** Spots a table round can deal to. */
 export const TABLE_SPOTS = [1, 2, 3, 5, 7] as const;
@@ -60,6 +62,7 @@ export const RUNNING_SESSION_CARDS: ReadonlyArray<{ id: RunningCardId; title: st
   { id: "two-card-cancellation", title: "Two-card cancellation", description: "Cards arrive in pairs so you learn to cancel +1 and −1 at a glance. Checks every 10 cards.", values: runningPresetValues("two-card-cancellation") },
   { id: "six-deck-casino", title: "Six-deck casino", description: "Random groups of 1–4 cards like a real table, checked at random moments.", values: runningPresetValues("six-deck-casino") },
   { id: "recovery", title: "Interruption recovery", description: "You are interrupted halfway through and must hold the count. Checks when the count reaches or crosses zero.", values: runningPresetValues("recovery") },
+  { id: "countdown", title: "Shoe count-down", description: "Every card of the shoe as fast as you can deal them, one check at the end. Your fastest perfect run is kept.", values: { decks: 6, amount: 312, speed: SELF_PACED, group: "1", checkpoint: "final", interruption: false } },
   { id: "table", title: "Full table", description: "Real rounds at a three-spot table: players hit, split and double, then the dealer turns the hole card and draws. Checked every 3 rounds.", values: { decks: 6, amount: 156, speed: 650, group: "1", checkpoint: "3-rounds", interruption: false, deal: "table", spots: 3 } },
 ];
 
@@ -77,8 +80,14 @@ const sameRunning = (a: RunningValues, b: RunningValues) =>
  * reader's own speed, say).
  */
 export function matchRunningPreset(values: RunningValues, cards: ReadonlyArray<{ id: RunningCardId; values: RunningValues }> = RUNNING_SESSION_CARDS): RunningCardId | null {
+  if (isCountdown(values) && cards.some((card) => card.id === "countdown")) return "countdown";
   return cards.find((card) => sameRunning(card.values, values))?.id ?? null;
 }
+
+/** A count-down: a whole shoe of two decks or more, dealt one card at a time as fast as you go, checked once at the end. */
+export const isCountdown = (values: RunningValues) =>
+  dealOf(values) === "cards" && values.decks >= 2 && values.speed === SELF_PACED && values.group === "1" && values.checkpoint === "final" && !values.interruption
+  && effectiveCardCount(values.decks, values.amount) >= values.decks * 52 - 1;
 
 /** One card is burned before dealing, so a shoe gives at most decks × 52 − 1. */
 export const effectiveCardCount = (decks: number, amount: number) => Math.max(0, Math.min(amount, decks * 52 - 1));
@@ -246,6 +255,7 @@ export function normalizeRunningFocus(raw?: string | null): RunningCardId | unde
   const card = RUNNING_SESSION_CARDS.find((option) => option.id === value);
   if (card) return card.id;
   if (value === "table rounds" || value === "full table") return "table";
+  if (value === "count-down" || value === "countdown benchmark") return "countdown";
   return value.includes("running count") ? "six-deck-casino" : undefined;
 }
 

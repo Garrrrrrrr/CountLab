@@ -380,6 +380,16 @@ export function countingCategoryLabel(key: string) {
   return key;
 }
 
+/** The fastest perfect count-down of a shoe this many decks deep, in seconds; `except` leaves out the session just finished. */
+export function countdownBest(sessions: readonly Session[], decks: number, except?: string): number | undefined {
+  return sessions
+    .filter((session) => session.drill === "Running Count" && session.id !== except && session.metrics?.countdown === true && Number(session.metrics?.decks) === decks
+      && Number(session.metrics?.cardsSeen) >= decks * 52 - 1 && session.questions > 0 && session.correct === session.questions)
+    .map((session) => Number(session.metrics?.elapsedSeconds))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b)[0];
+}
+
 /** Sessions shorter than this do not count toward the True Count and Deck Estimation targets. */
 export const BENCHMARK_MIN_QUESTIONS = 10;
 

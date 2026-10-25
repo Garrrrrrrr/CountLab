@@ -39,6 +39,7 @@ export const RUNNING_CARD_COPY: Record<RunningCardId, { title: string; detail: s
   "six-deck-casino": { title: "Six-deck casino speed", detail: "Groups of 1–4 cards at table pace, checked at random." },
   table: { title: "Full table", detail: "Whole rounds at a three-spot table: players draw, then the dealer." },
   recovery: { title: "Interruption recovery", detail: "You are interrupted halfway and must hold the count." },
+  countdown: { title: "Shoe count-down", detail: "Deal yourself a whole 2-, 4- or 6-deck shoe as fast as you can; one check at the end, your best time kept." },
 };
 
 type Deal = "single" | "groups" | "table";
@@ -86,7 +87,7 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
             <HiLoValues />
             <p className="mt-3">Add each card&apos;s value as it appears. The total is the running count.</p>
           </AsideCard>
-          <ProgressAside drill="Running Count" best={{ label: "Fastest perfect deck", value: fastestPerfect ? `${fastestPerfect.toFixed(1)} s` : "None yet" }} />
+          <ProgressAside drill="Running Count" best={{ label: matched === "countdown" ? `Fastest ${setup.decks}-deck count-down` : "Fastest perfect deck", value: fastestPerfect ? `${fastestPerfect.toFixed(1)} s` : "None yet" }} />
         </>
       }
     >
@@ -133,7 +134,8 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
             </SelectField>
           </div>
           <Segmented<number> label="Decks in the shoe" value={setup.decks}
-            onChange={(decks) => onChange({ decks, amount: Math.min(setup.amount, decks * 52) })}
+            // A whole-shoe session stays a whole shoe at the new size.
+            onChange={(decks) => onChange({ decks, amount: effectiveCardCount(setup.decks, setup.amount) >= maxCards ? decks * 52 : Math.min(setup.amount, decks * 52) })}
             options={SHOE_SIZES.map((decks) => ({ value: decks, label: String(decks) }))} />
         </div>
       </SetupGroup>

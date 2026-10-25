@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BENCHMARK_MIN_QUESTIONS,
   classifyCountError,
+  countdownBest,
   countMissExplanation,
   minimumStepNote,
   countingBenchmarkDetails,
@@ -84,6 +85,18 @@ describe("counting training scenarios", () => {
     expect(classifyCountError({ expected: 6, actual: 1, previous: 4 })).toBe("lost the count");
     // A sign that crossed zero in the last group stays a zero crossing.
     expect(classifyCountError({ expected: 1, actual: 0, previous: -1 })).toBe("zero crossing");
+  });
+
+  it("keeps the fastest perfect, whole-shoe count-down per shoe size", () => {
+    const run = (id: string, decks: number, seconds: number, correct = 1, cardsSeen = decks * 52 - 1): Session => ({
+      id, drill: "Running Count", questions: 1, correct, accuracy: correct * 100, averageResponseTime: 0, bestStreak: correct, date: "2026-10-01T00:00:00Z", mistakes: [],
+      metrics: { countdown: true, decks, elapsedSeconds: seconds, cardsSeen },
+    });
+    const sessions = [run("a", 6, 300), run("b", 6, 250, 0), run("c", 6, 200, 1, 150), run("d", 2, 90), run("e", 6, 280)];
+    expect(countdownBest(sessions, 6)).toBe(280);
+    expect(countdownBest(sessions, 6, "e")).toBe(300);
+    expect(countdownBest(sessions, 2)).toBe(90);
+    expect(countdownBest(sessions, 4)).toBeUndefined();
   });
 
   it("says why an estimate under one step is graded as one step", () => {

@@ -8,6 +8,7 @@ import { cx } from "@/components/ui/cx";
 import { abandonActivePractice, track } from "@/lib/analytics/track";
 import {
   classifyCountError,
+  countdownBest,
   countMissExplanation,
   ERROR_CATEGORY_TIP,
   isPerfectDeck,
@@ -23,6 +24,7 @@ import {
   dealOf,
   effectiveCardCount,
   isCheckDue,
+  isCountdown,
   isSettingsPreset,
   matchRunningPreset,
   nextCheckText,
@@ -89,7 +91,7 @@ type FeedbackInfo = { ok: boolean; expected: number; answer: string | null; cate
 const usable = (saved: RunningSaved) => Array.isArray(saved.cards) && saved.cards.length > 0 && Number.isFinite(saved.cursor) && saved.cursor <= saved.cards.length
   && (saved.deal !== "table" || (Array.isArray(saved.rounds) && saved.rounds.length > 0));
 
-const PICKER_ORDER: RunningCardId[] = ["starter", "two-card-cancellation", "six-deck-casino", "table", "recovery", "one-deck-speed"];
+const PICKER_ORDER: RunningCardId[] = ["starter", "two-card-cancellation", "six-deck-casino", "table", "recovery", "one-deck-speed", "countdown"];
 
 /** The session cards in picker order, with the Beginner session at the reader's own card speed from Settings. */
 function sessionCards(settings: Settings) {
@@ -242,6 +244,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
       averageAnswerLatency: answerTotal.current / Math.max(1, nextChecks),
       interruptionAccuracy: interruptionUsed.current ? Number(nextMistakes.every((mistake) => mistake.category !== "interruption recovery")) * 100 : 100,
       deal: dealOf(setup), speed: setup.speed, decks: setup.decks,
+      ...(isCountdown(valuesOf(setup)) ? { countdown: true } : {}),
       ...(dealOf(setup) === "table" ? { spots: spotsOf(setup) } : {}),
     }, [preset, dealOf(setup) === "table" ? "table" : setup.group, setup.checkpoint, setup.bias]);
     progress.cancel();
@@ -525,7 +528,8 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
   }
 
   if (phase === "setup") {
-    const fastestPerfect = history.filter((session) => session.metrics?.perfectDeck).map((session) => Number(session.metrics?.elapsedSeconds)).filter(Number.isFinite).sort((a, b) => a - b)[0];
+    const fastestPerfect = matched === "countdown" ? countdownBest(history, setup.decks)
+      : history.filter((session) => session.metrics?.perfectDeck).map((session) => Number(session.metrics?.elapsedSeconds)).filter(Number.isFinite).sort((a, b) => a - b)[0];
     const resetCard = RUNNING_SESSION_CARDS.find((card) => card.id === lastPicked);
     return (
       <RunningSetup

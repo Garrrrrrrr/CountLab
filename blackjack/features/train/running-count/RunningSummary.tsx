@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { DrillSummary, formatClock } from "@/components/drill/DrillKit";
 import { announce, Button, Callout } from "@/components/ui";
+import { countdownBest } from "@/lib/blackjack/countingTraining";
+import { useSessions } from "@/lib/hooks/useSessions";
 import type { Session } from "@/lib/statistics/storage";
 import { BenchmarkNote, Breakdown, CauseCard, displayMistakes, verdict } from "../counting-shared/parts";
 
@@ -14,6 +16,11 @@ export function RunningSummary({ session, totalCards, interruptionUsed, onAgain,
   const elapsed = Number(metrics.elapsedSeconds ?? 0);
   const latency = Number(metrics.averageAnswerLatency ?? 0) / 1000;
   useEffect(() => { announce(`Session complete. ${session.correct} of ${session.questions} checks right.`); }, [session]);
+  const history = useSessions("Running Count");
+  const countdown = metrics.countdown === true;
+  const decks = Number(metrics.decks);
+  const best = countdown ? countdownBest(history, decks, session.id) : undefined;
+  const perfect = session.questions > 0 && session.correct === session.questions;
   const stats = [
     { label: "Answer time", value: `${latency.toFixed(1)} s` },
     { label: "Best streak", value: String(session.bestStreak) },
@@ -36,6 +43,11 @@ export function RunningSummary({ session, totalCards, interruptionUsed, onAgain,
         <Button variant="ghost" icon={<SlidersHorizontal size={17} aria-hidden />} onClick={onChangeSetup}>Change setup</Button>
       </div>
       {metrics.perfectDeck ? <Callout tone="pos" title={`Perfect deck in ${elapsed.toFixed(1)} s`}>Every check right across a whole deck.</Callout> : null}
+      {countdown && (perfect
+        ? <Callout tone="pos" title={best === undefined || elapsed < best ? `New best: ${decks} decks in ${elapsed.toFixed(1)} s` : `${decks} decks in ${elapsed.toFixed(1)} s`}>
+            {best === undefined ? "Your first perfect count-down at this size. Beat it next time." : elapsed < best ? `${(best - elapsed).toFixed(1)} s faster than your last best.` : `Your best is ${best.toFixed(1)} s.`}
+          </Callout>
+        : <Callout tone="info" title="No time this run: the count was off at the end">Only a right count sets a time. {best === undefined ? `No perfect ${decks}-deck run yet.` : `Your best for ${decks} decks is ${best.toFixed(1)} s.`}</Callout>)}
       <CauseCard mistakes={session.mistakes} />
       <Breakdown categories={session.categories} />
       <BenchmarkNote drill="Running Count" />

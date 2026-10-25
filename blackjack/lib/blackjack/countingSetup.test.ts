@@ -42,6 +42,15 @@ describe("running count setup", () => {
     expect(matchRunningPreset({ ...runningPresetValues("recovery"), interruption: false })).toBeNull();
   });
 
+  it("recognises a count-down of any shoe of two decks or more", () => {
+    const countdown = RUNNING_SESSION_CARDS.find((card) => card.id === "countdown")!.values;
+    expect(matchRunningPreset({ ...countdown, decks: 2, amount: 104 })).toBe("countdown");
+    expect(matchRunningPreset({ ...countdown, decks: 4, amount: 208 })).toBe("countdown");
+    expect(matchRunningPreset({ ...countdown, amount: 156 })).toBeNull();
+    expect(matchRunningPreset({ ...countdown, speed: 500 })).toBeNull();
+    expect(normalizeRunningFocus("count-down")).toBe("countdown");
+  });
+
   it("caps the dealt cards at the shoe minus the burn card", () => {
     expect(effectiveCardCount(1, 52)).toBe(51);
     expect(effectiveCardCount(1, 156)).toBe(51);
