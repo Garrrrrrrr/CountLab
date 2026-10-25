@@ -48,8 +48,8 @@ export const extraRuleAdjustment = (config: LabConfig) =>
 /** The "enter:leave" key of the simulated back-counting rule for this setup, e.g. "1:-1" or "start:0". */
 export const wongOutRule = (wongInAt: number | null, wongOutAt: number) => `${wongInAt ?? "start"}:${wongOutAt}`;
 
-/** The leave points that have simulated shares for an entry point: below the entry, from −3 to +1. */
-export const wongOutChoices = (wongInAt: number | null) => [-3, -2, -1, 0, 1].filter((exit) => wongInAt === null || exit < wongInAt);
+/** The leave points that have simulated shares for an entry point: below the entry (below 0, where a shoe starts, when playing from the top), from −3 to +1. */
+export const wongOutChoices = (wongInAt: number | null) => [-3, -2, -1, 0, 1].filter((exit) => exit < (wongInAt ?? 0));
 
 /**
  * Watched and played shares for leaving at a count, or undefined when the player stays (the

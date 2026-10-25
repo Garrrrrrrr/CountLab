@@ -41,7 +41,8 @@ EXITS = np.array([START, -3, -2, -1, 0, 1], dtype=np.int64)  # START here means 
 
 
 def rules() -> list[tuple[int, int]]:
-    return [(int(entry), int(exit_)) for entry in ENTRIES for exit_ in EXITS if exit_ == START or exit_ < entry]
+    # Leave below where you sit in; a shoe played from the top starts at 0, so it can only leave below 0.
+    return [(int(entry), int(exit_)) for entry in ENTRIES for exit_ in EXITS if exit_ == START or exit_ < (0 if entry == START else entry)]
 
 
 @njit(cache=True)

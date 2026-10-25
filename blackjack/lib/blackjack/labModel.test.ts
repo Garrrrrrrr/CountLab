@@ -13,9 +13,11 @@ import {
   extraRuleAdjustment,
   labBlocker,
   labRuleFlags,
+  countSharesFor,
   labRules,
   labScenario,
   playedRamp,
+  wongOutChoices,
   playedSpread,
   priceLab,
   priceTemplate,
@@ -382,5 +384,20 @@ describe("suggestSpreads", () => {
     const { suggestions, recommended } = suggestSpreads(withConfig({ bankroll: 500, hands: expandHands(undefined) }), { tableMinimum: 25, hourlyGoal: 10 });
     expect(suggestions.every((suggestion) => suggestion.status === "minimum-too-high")).toBe(true);
     expect(recommended).toBeUndefined();
+  });
+});
+
+describe("leaving a shoe played from the top", () => {
+  it("offers only leave points below the shoe's starting count, each with simulated shares", () => {
+    expect(wongOutChoices(null)).toEqual([-3, -2, -1]);
+    expect(wongOutChoices(2)).toEqual([-3, -2, -1, 0, 1]);
+    const rules = labRules(DEFAULT_LAB_CONFIG);
+    for (const exit of wongOutChoices(null)) expect(countSharesFor({ wongInAt: null, wongOutAt: exit }, rules), `start:${exit}`).toBeDefined();
+  });
+
+  it("drops a saved leave point that could never apply", () => {
+    const template = toTemplateConfig(DEFAULT_LAB_CONFIG);
+    expect(normalizeConfig({ ...template, wongInAt: null, wongOutAt: 1 }).wongOutAt).toBeNull();
+    expect(normalizeConfig({ ...template, wongInAt: null, wongOutAt: -1 }).wongOutAt).toBe(-1);
   });
 });

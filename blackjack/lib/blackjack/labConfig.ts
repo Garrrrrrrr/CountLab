@@ -119,6 +119,10 @@ export function snapDealt(decks: Decks, dealt: number) {
  * two cards, and a missing play mode means indices. Sparse ramps from older
  * saves are expanded so sitting out low counts masks every count correctly.
  */
+/** A leave point only applies below where play starts (0 for a shoe played from the top); older saves could hold one that doesn't. */
+const leaveAt = (wongInAt: number | null | undefined, wongOutAt: number | null | undefined) =>
+  typeof wongOutAt === "number" && wongOutAt < (wongInAt ?? 0) ? wongOutAt : null;
+
 export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
   return {
     decks: config.decks,
@@ -130,7 +134,7 @@ export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
     targetRisk: config.targetRisk,
     maxSpread: config.maxSpread,
     wongInAt: config.wongInAt ?? null,
-    wongOutAt: config.wongOutAt ?? null,
+    wongOutAt: leaveAt(config.wongInAt, config.wongOutAt),
     tableMax: config.tableMax ?? null,
     rampName: config.rampName,
     ramp: expandRamp(config.ramp),
@@ -344,7 +348,7 @@ export function parseLabDraft(raw: string | null): LabDraft | null {
     const draft = JSON.parse(raw) as Partial<LabDraft>;
     if (draft.version !== 1 || !isLabConfig(draft.config)) return null;
     const active = draft.active && typeof draft.active.id === "string" && typeof draft.active.name === "string" && typeof draft.active.snapshot === "string" ? draft.active : null;
-    return { version: 1, config: { ...draft.config, earlySurrender: draft.config.earlySurrender === true, wongOutAt: draft.config.wongOutAt ?? null, tableMax: draft.config.tableMax ?? null }, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
+    return { version: 1, config: { ...draft.config, earlySurrender: draft.config.earlySurrender === true, wongOutAt: leaveAt(draft.config.wongInAt, draft.config.wongOutAt), tableMax: draft.config.tableMax ?? null }, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
   } catch {
     return null;
   }

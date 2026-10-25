@@ -29,6 +29,41 @@ export function entryDate({ date, from }: Pick<ChangelogEntry, "date" | "from">)
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: "2026-10-25-fixes",
+    date: "2026-10-25",
+    title: "Hit-and-run pricing, saved shoes and easier reading",
+    summary: "The Calculator now prices leaving a shoe you play from the top, saved Full Shoe reports keep their pace and back-counting plan, and faint text is easier to read.",
+    tags: ["fixed", "improved"],
+    groups: [
+      {
+        title: "Calculator",
+        items: [
+          "When you play every round, leaving at −1, −2 or −3 is now priced from simulated shoes. Before, the choice changed nothing. Leaving at 0 or +1 is no longer offered there, because a fresh shoe starts at 0.",
+        ],
+      },
+      {
+        title: "Journal",
+        items: [
+          "Clearing every detail on a session now clears it on your other devices too, instead of the old values coming back.",
+          "Save stops at a details field with a typo, such as 350.5 rounds, rather than saving the session without it.",
+          "Save and log another clears the details fields along with the rest of the form.",
+          "A session's simulated shoes use the rounds you recorded, when you recorded them.",
+        ],
+      },
+      {
+        title: "Full Shoe and charts",
+        items: [
+          "A saved shoe reopened from the list shows its pace and its sit-in and leave counts.",
+          "The pocket chart prints on a single 4×6 card without cropping, and on one page of letter paper.",
+        ],
+      },
+      {
+        title: "Reading",
+        items: ["Grey labels, green and blue badges, and labels on the table felt now meet the WCAG AA contrast ratio in light and dark."],
+      },
+    ],
+  },
+  {
     id: "2026-10-25-pocket-card",
     date: "2026-10-25",
     title: "A redesigned pocket chart, and truncated true counts",
