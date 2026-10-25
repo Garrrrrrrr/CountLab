@@ -18,6 +18,23 @@ export type RawCoefficient = readonly [
   standardError: number,
 ];
 export const GAME_OPTIONS = {
+  1: [
+    { dealt: 0.5, label: "0.5 / 1 deck" },
+    { dealt: 0.625, label: "0.625 / 1 deck" },
+    { dealt: 0.75, label: "0.75 / 1 deck" },
+  ],
+  2: [
+    { dealt: 1, label: "1 / 2 decks" },
+    { dealt: 1.25, label: "1.25 / 2 decks" },
+    { dealt: 1.5, label: "1.5 / 2 decks" },
+    { dealt: 1.75, label: "1.75 / 2 decks" },
+  ],
+  4: [
+    { dealt: 2.5, label: "2.5 / 4 decks" },
+    { dealt: 3, label: "3 / 4 decks" },
+    { dealt: 3.25, label: "3.25 / 4 decks" },
+    { dealt: 3.5, label: "3.5 / 4 decks" },
+  ],
   6: [
     { dealt: 4, label: "4 / 6 decks" },
     { dealt: 4.5, label: "4.5 / 6 decks" },
@@ -32,6 +49,10 @@ export const GAME_OPTIONS = {
     { dealt: 7, label: "7 / 8 decks" },
   ],
 } as const;
+/** The 1-, 2- and 4-deck profiles come only from ../blackjack-simulator/wong.py --extra-decks; the audited run below is 6 and 8. */
+export type Decks = keyof typeof GAME_OPTIONS;
+export const DECK_COUNTS = [1, 2, 4, 6, 8] as const satisfies readonly Decks[];
+export const isDecks = (value: unknown): value is Decks => (DECK_COUNTS as readonly unknown[]).includes(value);
 '''
 
 
