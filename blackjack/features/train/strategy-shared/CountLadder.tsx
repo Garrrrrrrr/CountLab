@@ -32,8 +32,9 @@ export function CountLadder({ bands, min, max, tc, className }: { bands: readonl
   /** The centre of a count's cell, where its marker and its label sit. */
   const centre = (value: number) => ((value - min) / span) * 100 + 50 / span;
   const marker = centre(Math.max(min, Math.min(max, tc)));
-  // Narrow bands show a code ("R", "S"); the key under the bar spells each one out.
-  const coded = bands.filter((band) => band.to - band.from < 2);
+  // A band too narrow for its words shows its code ("Rs"); the key under the bar spells each one out.
+  const spelled = (band: LadderBand) => band.label.length <= (band.to - band.from + 1) * 3;
+  const coded = bands.filter((band, index) => !spelled(band) && bands.findIndex((other) => other.label === band.label && !spelled(other)) === index);
   const sentence = `${describeLadder(bands)}. The count here is ${signedCount(tc)}.`;
   return (
     <div role="img" aria-label={sentence} className={cx("min-w-0 select-none", className)}>
@@ -46,10 +47,9 @@ export function CountLadder({ bands, min, max, tc, className }: { bands: readonl
       <div className="relative flex h-8 overflow-hidden rounded-lg">
         {bands.map((band, position) => {
           const width = ((band.to - band.from + 1) / span) * 100;
-          const wide = band.to - band.from >= 2;
           return (
             <span key={band.from} className={cx("flex min-w-0 items-center justify-center overflow-hidden px-0.5 text-[0.6875rem] font-bold", position < bands.length - 1 && "border-r-2 border-surface", band.fill)} style={{ width: `${width}%` }}>
-              <span className="truncate">{wide ? band.label : band.short}</span>
+              <span className="truncate">{spelled(band) ? band.label : band.short}</span>
             </span>
           );
         })}
