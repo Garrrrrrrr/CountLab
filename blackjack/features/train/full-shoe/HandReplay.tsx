@@ -139,11 +139,11 @@ export function HistoryTable({ rounds, selected, onSelect }: { rounds: FullShoeL
               const errors = round.decisions.filter((decision) => !decision.ok).length;
               return (
                 <tr key={index} className={cx("cursor-pointer border-b border-line last:border-0 hover:bg-surface-2", index === selected && "bg-brand/10")} onClick={() => onSelect(index)}>
-                  <td className="py-2 pl-4 pr-2 sm:pl-5"><button type="button" className="font-semibold underline-offset-2 hover:underline" onClick={(event) => { event.stopPropagation(); onSelect(index); }} aria-label={`Replay round ${round.round}`}>{round.round}</button></td>
+                  <td className="p-0"><button type="button" className="flex h-11 w-full min-w-11 items-center pl-4 pr-2 font-semibold underline-offset-2 hover:underline sm:pl-5" onClick={(event) => { event.stopPropagation(); onSelect(index); }} aria-label={`Replay round ${round.round}`}>{round.round}</button></td>
                   <td className="px-2">{round.playerHands.map((hand) => cardsText(hand.cards)).join(" | ")}</td>
                   <td className="px-2">{cardsText(round.dealerCards)}</td>
                   <td className="px-2">{signed(round.trueCountBefore)}</td>
-                  <td className="px-2">{money(round.bet)}</td>
+                  <td className="px-2">{round.bet ? money(round.bet) : "Watched"}</td>
                   <td className={cx("px-2", errors ? "text-neg" : "text-ink-2")}>{round.decisions.length ? (errors ? `${errors} missed` : "all right") : "—"}</td>
                   <td className={cx("py-2 pl-2 pr-4 text-right font-semibold sm:pr-5", outcomeTone(round.netResult))}>{money(round.netResult, { sign: true })}</td>
                 </tr>

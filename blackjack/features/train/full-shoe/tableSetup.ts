@@ -23,6 +23,8 @@ export const COUNT_CHECK_OPTIONS: readonly { value: CountCheckFrequency; label: 
   { value: "5", label: "Every 5 rounds" },
   { value: "random", label: "At random (about 1 round in 3)" },
 ];
+/** Back-counting starts from a common plan: in at +2, out at −1. */
+export const DEFAULT_WONG = { enter: 2, leave: -1 } as const;
 export const SPREAD_LABEL: Record<BetSpreadPreset, string> = { flat: "Flat", "1-8": "1–8", "1-12": "1–12", custom: "Custom" };
 
 /** A fresh setup from the reader's saved table rules. */
@@ -47,6 +49,7 @@ export function setupFromSettings(settings: Settings): FullShoeSetup {
     speed: "casino",
     animations: settings.animations,
     sound: settings.sound,
+    decisionSeconds: 0,
   };
 }
 

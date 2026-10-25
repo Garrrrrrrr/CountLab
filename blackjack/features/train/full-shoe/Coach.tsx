@@ -102,14 +102,14 @@ export function CheckoutPanel({ game }: { game: FullShoeGame }) {
         <p className="eyebrow">Checkout in progress</p>
         <p className="mt-1 text-sm leading-6 text-ink-2">Results stay hidden until the cut card. Betting, plays, index plays and every count check are graded in the report.</p>
       </div>
-      <TrayButton photo={game.trayPhoto} width={180} />
+      <TrayButton photo={game.trayPhoto} cards={game.discarded} width={180} />
       <p className="text-xs text-ink-3">Round {game.roundNumber} · cut card at {Math.round(game.setup.penetration * 100)}%</p>
     </div>
   );
 }
 
-export function TableOptions({ speed, sound, animations, coached, onSpeed, onSound, onAnimations, onEnd }: {
-  speed: Speed; sound: boolean; animations: boolean; coached: boolean;
+export function TableOptions({ speed, sound, animations, coached, chips, onSpeed, onSound, onAnimations, onEnd }: {
+  speed: Speed; sound: boolean; animations: boolean; coached: boolean; chips: number;
   onSpeed: (speed: Speed) => void; onSound: (on: boolean) => void; onAnimations: (on: boolean) => void; onEnd: () => void;
 }) {
   return (
@@ -122,7 +122,7 @@ export function TableOptions({ speed, sound, animations, coached, onSpeed, onSou
       <div className="hidden [@media(hover:hover)]:block">
         <h3 className="text-sm font-semibold">Keyboard</h3>
         <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-ink-2">
-          <li><Kbd>1</Kbd>–<Kbd>7</Kbd> chips</li>
+          <li><Kbd>1</Kbd>–<Kbd>{chips}</Kbd> chips</li>
           <li><Kbd>↵</Kbd> deal</li>
           <li><Kbd>U</Kbd> undo · <Kbd>B</Kbd> repeat bet</li>
           <li><Kbd>←</Kbd> <Kbd>→</Kbd> seat</li>

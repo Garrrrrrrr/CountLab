@@ -5,6 +5,9 @@ import { PlayingCard } from "@/components/blackjack";
 import { Badge, Button, Card, ProgressBar, cx, toast } from "@/components/ui";
 import { DrillSummary, ScoreDial } from "@/components/drill/DrillKit";
 import { GRADING_CATEGORIES, type FullShoeGradingCategory, type FullShoeLiveRound, type FullShoeMode, type FullShoeReport } from "@/lib/blackjack/fullShoeSession";
+import { betJumps } from "@/lib/full-shoe/cover";
+import type { WongPlan } from "@/lib/full-shoe/grading";
+import { WONG_QUESTION, type FullShoeGame } from "@/lib/full-shoe/session";
 import { GraderStrip, HistoryTable, RoundReplay } from "./HandReplay";
 import { durationLabel, money, signed } from "./format";
 
@@ -18,6 +21,11 @@ export interface ReportData {
   startingBankroll?: number;
   endMessage?: string;
   saved?: boolean;
+  /** The table minimum, for the cover note. */
+  unit?: number;
+  /** Live shoes only: saved shoes keep neither. */
+  pace?: ReturnType<FullShoeGame["pace"]>;
+  wong?: WongPlan;
 }
 
 const CATEGORY_TITLE: Record<FullShoeGradingCategory, string> = { Betting: "Betting", "Basic Strategy": "Basic strategy", Deviations: "Index plays", "Running count": "Running count", "True count": "True count" };
@@ -38,6 +46,8 @@ const PRACTICE: Partial<Record<FullShoeGradingCategory, { href: string; label: s
 
 /** Target for a shoe that says you are ready for a real table (the Progress page uses the same 95%). */
 export const READY_AT = 95;
+
+const count = (n: number, word: string) => `${n} ${n === 1 ? word : `${word}s`}`;
 
 function categories(report: FullShoeReport) {
   return GRADING_CATEGORIES.map((category) => ({ category, stat: report.categories[category] })).filter((entry): entry is { category: FullShoeGradingCategory; stat: NonNullable<typeof entry.stat> } => Boolean(entry.stat && entry.stat.total > 0));
@@ -69,6 +79,7 @@ async function share(data: ReportData) {
 function Scorecard({ data, actions }: { data: ReportData; actions?: ReactNode }) {
   const ready = data.report.accuracy >= READY_AT && data.report.decisions > 0;
   const rows = categories(data.report);
+  const pace = data.pace;
   return (
     <Card className="space-y-4" data-testid="scorecard">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -76,7 +87,7 @@ function Scorecard({ data, actions }: { data: ReportData; actions?: ReactNode })
           <p className="eyebrow">{data.mode === "checkout" ? "Checkout" : "Coached shoe"} · {new Date(data.date).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</p>
           <p className="mt-1 text-sm text-ink-2">{data.rulesLine}</p>
         </div>
-        <Badge tone={ready ? "pos" : "warn"}>{ready ? "Table ready" : `Below the ${READY_AT}% target`}</Badge>
+        {data.report.decisions > 0 && <Badge tone={ready ? "pos" : "warn"}>{ready ? "Table ready" : `Below the ${READY_AT}% target`}</Badge>}
       </div>
       <ul className="grid gap-3 sm:grid-cols-2">
         {rows.map(({ category, stat }) => (
@@ -93,7 +104,14 @@ function Scorecard({ data, actions }: { data: ReportData; actions?: ReactNode })
       {data.startingBankroll !== undefined && (
         <p className="tnum text-sm text-ink-2">
           Bankroll {money(data.startingBankroll)} → <span className="font-semibold text-ink">{money(data.startingBankroll + data.report.netResult)}</span>{" "}
-          (<span className={data.report.netResult >= 0 ? "text-pos" : "text-neg"}>{money(data.report.netResult, { sign: true })}</span>) over {data.report.handsPlayed} rounds.
+          (<span className={data.report.netResult >= 0 ? "text-pos" : "text-neg"}>{money(data.report.netResult, { sign: true })}</span>) over {count(data.report.handsPlayed, "round")}.
+        </p>
+      )}
+      {pace?.secondsPerDecision !== undefined && (
+        <p className="tnum text-sm text-ink-2" data-testid="pace">
+          Pace: <span className="font-semibold text-ink">{pace.secondsPerDecision.toFixed(1)} s</span> a decision
+          {pace.handsPerHour !== undefined && <>, <span className="font-semibold text-ink">{Math.round(pace.handsPerHour)}</span> hands an hour</>}
+          {pace.limit ? <> · {pace.limit} s limit, <span className={pace.timedOut ? "font-semibold text-neg" : undefined}>{pace.timedOut} timed out</span></> : null}.
         </p>
       )}
       <div className="flex flex-col gap-2 sm:flex-row">
@@ -108,7 +126,8 @@ function Mistakes({ rounds, onReplay }: { rounds: FullShoeLiveRound[]; onReplay:
   const [all, setAll] = useState(false);
   const missed = rounds.flatMap((round, index) => round.decisions.filter((decision) => !decision.ok).map((decision) => ({ decision, index, round: round.round })));
   if (!missed.length) {
-    return <Card><h2 className="text-base font-semibold">Mistakes</h2><p className="mt-1 text-sm text-ink-2">None. Every graded decision in this shoe was right.</p></Card>;
+    const graded = rounds.some((round) => round.decisions.length > 0);
+    return <Card><h2 className="text-base font-semibold">Mistakes</h2><p className="mt-1 text-sm text-ink-2">{graded ? "None. Every graded decision in this shoe was right." : rounds.length ? "Nothing was graded in this shoe." : "Nothing was graded: no round was played to the end."}</p></Card>;
   }
   const shown = all ? missed : missed.slice(0, 6);
   return (
@@ -135,13 +154,64 @@ function Mistakes({ rounds, onReplay }: { rounds: FullShoeLiveRound[]; onReplay:
               </div>
             </div>
             <p className="mt-2 text-xs leading-5 text-ink-2">{decision.explanation}</p>
-            <button type="button" onClick={() => onReplay(index)} className="mt-1 inline-flex h-9 items-center gap-1 text-sm font-semibold text-brand-text">
+            <button type="button" onClick={() => onReplay(index)} className="mt-1 inline-flex h-11 items-center gap-1 text-sm font-semibold text-brand-text">
               Replay round {round} <ChevronRight size={15} aria-hidden />
             </button>
           </li>
         ))}
       </ol>
       {missed.length > shown.length && <Button variant="ghost" block className="mt-2" onClick={() => setAll(true)}>Show all {missed.length} mistakes</Button>}
+    </Card>
+  );
+}
+
+/** Back-counting: every sit-in and leave, against the plan. Shown when the shoe was back-counted. */
+function BackCounting({ rounds, plan }: { rounds: FullShoeLiveRound[]; plan?: WongPlan }) {
+  const moves = rounds.flatMap((round) => round.decisions.filter((decision) => decision.question?.startsWith(WONG_QUESTION)).map((decision) => ({ decision, round: round.round })));
+  if (!plan && !moves.length) return null;
+  const watched = rounds.filter((round) => round.bet === 0).length;
+  return (
+    <Card data-testid="back-counting">
+      <h2 className="text-base font-semibold">Back-counting</h2>
+      <p className="mt-1 text-sm leading-6 text-ink-2">
+        {plan && <>Sit in at {signed(plan.enter)} or higher, leave at {signed(plan.leave)} or lower. </>}
+        You watched {watched} of {count(rounds.length, "round")}. {moves.length ? `${moves.filter(({ decision }) => decision.ok).length} of ${count(moves.length, "move")} right.` : "No move was due."}
+      </p>
+      {moves.length > 0 && (
+        <ul className="mt-2 divide-y divide-line text-sm">
+          {moves.map(({ decision, round }, i) => (
+            <li key={i} className="tnum flex items-center justify-between gap-3 py-2">
+              <span>Before round {round} · TC {signed(decision.trueCount)}</span>
+              <span className={cx("font-semibold", decision.ok ? "text-pos" : "text-neg")}>{decision.ok ? decision.chosen : `${decision.correct}, not ${decision.chosen.toLowerCase()}`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+/** Cover: bet jumps a pit boss would notice. Not graded, and separate from whether the bet fit the count. */
+function Cover({ rounds, unit }: { rounds: FullShoeLiveRound[]; unit?: number }) {
+  if (unit === undefined || !rounds.some((round) => round.bet > 0)) return null;
+  const jumps = betJumps(rounds, unit);
+  return (
+    <Card data-testid="cover">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-semibold">Cover</h2>
+        <Badge tone="neutral">Not graded</Badge>
+      </div>
+      <p className="mt-1 text-sm leading-6 text-ink-2">What the pit would notice, right for the count or not: a total bet more than double the round before, or more than double the {money(unit)} minimum as you sit down.</p>
+      {jumps.length ? (
+        <ul className="mt-2 divide-y divide-line text-sm">
+          {jumps.map((jump) => (
+            <li key={jump.round} className="tnum flex items-center justify-between gap-3 py-2">
+              <span>Round {jump.round}{jump.entered ? " · sitting down" : ""}</span>
+              <span className="font-semibold">{money(jump.from)} → {money(jump.to)} <span className="font-normal text-ink-3">({Math.round((jump.to / jump.from) * 10) / 10}×)</span></span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="mt-2 text-sm font-medium">No bet more than doubled.</p>}
     </Card>
   );
 }
@@ -158,6 +228,8 @@ function ReportBody({ data, scorecardActions }: { data: ReportData; scorecardAct
     <>
       <Scorecard data={data} actions={scorecardActions} />
       <Mistakes rounds={data.rounds} onReplay={jump} />
+      <BackCounting rounds={data.rounds} plan={data.wong} />
+      <Cover rounds={data.rounds} unit={data.unit} />
       {data.rounds.length > 0 && (
         <Card className="scroll-mt-4">
           <h2 className="text-base font-semibold">Hand-by-hand replay</h2>
@@ -181,7 +253,7 @@ export function ShoeReport({ data, onAgain, onSetup }: { data: ReportData; onAga
       title={title}
       score={data.report.accuracy}
       scoreLabel="Overall accuracy"
-      scoreSub={<>{data.report.decisions} graded decisions. {data.endMessage}{data.saved ? " Saved to your shoes." : ""}</>}
+      scoreSub={<>{data.report.decisions ? `${count(data.report.decisions, "graded decision")}.` : "Nothing was graded."} {data.endMessage}{data.saved ? " Saved to your shoes." : ""}</>}
       stats={[
         { label: "Rounds", value: data.report.handsPlayed },
         { label: "Decisions", value: data.report.decisions },
@@ -202,14 +274,14 @@ export function SavedShoeReport({ data, title, onBack }: { data: ReportData; tit
   return (
     <div className="space-y-5">
       <div>
-        <button type="button" onClick={onBack} className="-ml-1 mb-3 inline-flex h-8 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
+        <button type="button" onClick={onBack} className="-ml-1 mb-3 inline-flex h-11 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
           <ChevronRight size={16} className="rotate-180" aria-hidden /> Back to setup
         </button>
         <p className="eyebrow">Saved {data.mode === "checkout" ? "checkout" : "coached shoe"}</p>
         <h1 className="mt-1 text-[1.625rem] leading-tight sm:text-3xl">{title}</h1>
       </div>
       <Card>
-        <ScoreDial value={data.report.accuracy} label="Overall accuracy" sub={<>{data.report.decisions} graded decisions over {data.report.handsPlayed} rounds · {durationLabel(data.report.durationMs)} · <span className={data.report.netResult >= 0 ? "text-pos" : "text-neg"}>{money(data.report.netResult, { sign: true })}</span></>} />
+        <ScoreDial value={data.report.accuracy} label="Overall accuracy" sub={<>{count(data.report.decisions, "graded decision")} over {count(data.report.handsPlayed, "round")} · {durationLabel(data.report.durationMs)} · <span className={data.report.netResult >= 0 ? "text-pos" : "text-neg"}>{money(data.report.netResult, { sign: true })}</span></>} />
       </Card>
       <ReportBody data={data} />
     </div>

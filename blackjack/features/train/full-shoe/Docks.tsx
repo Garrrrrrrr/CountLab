@@ -1,16 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calculator, Check, LoaderCircle, RotateCcw, Undo2, X } from "lucide-react";
 import { ActionPad, NumberPad, TrayPhoto } from "@/components/blackjack";
 import { Button, Kbd, cx } from "@/components/ui";
 import { Feedback } from "@/components/drill/DrillKit";
-import { chipOptions, chipLabel } from "@/lib/blackjack/chips";
+import { chipLabel } from "@/lib/blackjack/chips";
 import type { Action } from "@/lib/blackjack/types";
 import type { InsuranceOffer } from "@/lib/full-shoe/round";
 import { handTotalLabel } from "@/lib/full-shoe/round";
 import { RESOLUTION_PHRASE, ROUNDING_PHRASE } from "@/lib/full-shoe/grading";
 import type { CoachNote, FullShoeGame, InsuranceChoice } from "@/lib/full-shoe/session";
-import { ChipFace } from "./Felt";
+import { ChipFace, EmptyTray } from "./Felt";
 import { decksLabel, money, signed } from "./format";
 
 const hoverOnly = "hidden [@media(hover:hover)]:inline-flex";
@@ -19,28 +19,36 @@ const hoverOnly = "hidden [@media(hover:hover)]:inline-flex";
 /* Betting                                                             */
 /* ------------------------------------------------------------------ */
 
-export function BetDock({ game, busy, onChip, onUndo, onClear, onRepeat, onDeal, onOwner }: {
-  game: FullShoeGame; busy: boolean; onChip: (value: number) => void; onUndo: () => void; onClear: () => void; onRepeat: () => void; onDeal: () => void; onOwner: () => void;
+const dockButton = "h-11 shrink-0 rounded-lg border border-line bg-surface-2 px-2.5 text-xs font-semibold text-ink hover:bg-surface-3 sm:h-9";
+
+export function BetDock({ game, busy, onChip, onUndo, onClear, onRepeat, onDeal, onOwner, onSitOut }: {
+  game: FullShoeGame; busy: boolean; onChip: (value: number) => void; onUndo: () => void; onClear: () => void; onRepeat: () => void; onDeal: () => void; onOwner: () => void; onSitOut: () => void;
 }) {
   const seat = game.selectedSeat;
   const players = game.setup.players;
   const seatsWithBets = game.bets.filter(Boolean).length;
+  const short = game.underMinimum;
   return (
     <div className="space-y-2">
       <div className="flex min-h-9 items-center justify-between gap-2 px-0.5 text-sm">
         <span className="flex min-w-0 items-center gap-1.5 text-ink-2">
           <span className="truncate">Seat {seat + 1}</span>
           {players > 1 && (
-            <button type="button" onClick={onOwner} className="h-9 rounded-lg border border-line bg-surface-2 px-2.5 text-xs font-semibold text-ink hover:bg-surface-3" aria-label={`Seat ${seat + 1} belongs to player ${game.owners[seat] + 1}. Change player`}>
+            <button type="button" onClick={onOwner} className={dockButton} aria-label={`Seat ${seat + 1} belongs to player ${game.owners[seat] + 1}. Change player`}>
               Player {game.owners[seat] + 1}
             </button>
           )}
+          {game.setup.wong && <button type="button" onClick={onSitOut} disabled={busy} className={dockButton}>Sit out</button>}
         </span>
-        <span className="tnum whitespace-nowrap font-semibold">{money(game.totalBet)} <span className="font-normal text-ink-3">bet{seatsWithBets > 1 ? ` on ${seatsWithBets} seats` : ""}</span></span>
+        {short !== undefined ? (
+          <span role="status" className="whitespace-nowrap text-xs font-semibold text-warn">Seat {short + 1}: {money(game.tableMin)} minimum</span>
+        ) : (
+          <span className="tnum whitespace-nowrap font-semibold">{money(game.totalBet)} <span className="font-normal text-ink-3">bet{seatsWithBets > 1 ? ` on ${seatsWithBets} seats` : ""}</span></span>
+        )}
       </div>
-      {/* Seven equal columns: every chip stays in view, up to 44px each, on the narrowest dock. */}
-      <div role="group" aria-label="Chips" className="grid grid-cols-7 justify-items-center gap-1 py-0.5">
-        {chipOptions.map((value, index) => (
+      {/* Equal columns: every chip stays in view, up to 44px each, on the narrowest dock. */}
+      <div role="group" aria-label="Chips" className="grid justify-items-center gap-1 py-0.5" style={{ gridTemplateColumns: `repeat(${game.chips.length}, minmax(0, 1fr))` }}>
+        {game.chips.map((value, index) => (
           <button key={value} type="button" disabled={busy || !game.canAdd(value)} onClick={() => onChip(value)} aria-label={`Add a ${chipLabel(value)} chip`} aria-keyshortcuts={String(index + 1)}
             className="relative grid aspect-square w-full max-w-11 place-items-center rounded-full transition active:scale-95 disabled:opacity-30">
             <ChipFace value={value} className="h-full w-full text-[0.625rem]" />
@@ -53,6 +61,45 @@ export function BetDock({ game, busy, onChip, onUndo, onClear, onRepeat, onDeal,
         <Button variant="secondary" size="md" className="px-1 text-sm" disabled={busy || !game.canRepeat} onClick={onRepeat} icon={<RotateCcw size={16} aria-hidden />}>Repeat</Button>
         <Button size="md" disabled={busy || !game.canDeal} onClick={onDeal} trailing={<span className={hoverOnly}><Kbd>↵</Kbd></span>}>Deal</Button>
       </div>
+    </div>
+  );
+}
+
+/** Back-counting, between rounds while you watch: deal the others another round, or sit in. */
+export function WatchDock({ game, busy, onWatch, onSitIn }: { game: FullShoeGame; busy: boolean; onWatch: () => void; onSitIn: () => void }) {
+  return (
+    <div className="space-y-2" data-testid="watch-dock">
+      <p className="min-h-9 px-0.5 text-sm leading-5 text-ink-2">
+        <span className="font-semibold text-ink">Watching.</span> Keep the count; sit in at a true count of {signed(game.setup.wong!.enter)} or higher.
+      </p>
+      <div className="grid grid-cols-2 gap-1.5">
+        <Button variant="secondary" size="lg" className="px-2 text-[0.9375rem]" disabled={busy} onClick={onWatch} trailing={<span className={hoverOnly}><Kbd>↵</Kbd></span>}>Watch a round</Button>
+        <Button size="lg" className="px-2 text-[0.9375rem]" disabled={busy} onClick={onSitIn}>Sit in</Button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Casino pace                                                         */
+/* ------------------------------------------------------------------ */
+
+/** The time left for the decision on screen. Kept in the layout between decisions (empty), so the felt never jumps. */
+export function Countdown({ endsAt, seconds }: { endsAt?: number; seconds: number }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (endsAt === undefined) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [endsAt]);
+  const left = endsAt === undefined ? 0 : Math.min(seconds * 1000, Math.max(0, endsAt - now));
+  const share = left / (seconds * 1000);
+  return (
+    <div className="mb-1.5 flex h-4 items-center gap-2 px-0.5" role="timer" aria-label="Time left for this decision">
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-3">
+        <div className={cx("h-full rounded-full", share > 1 / 3 ? "bg-brand" : "bg-neg")} style={{ width: `${share * 100}%` }} />
+      </div>
+      <span className={cx("tnum w-9 text-right text-xs font-semibold", endsAt === undefined ? "text-ink-3" : share > 1 / 3 ? "text-ink" : "text-neg")}>{endsAt === undefined ? `${seconds} s` : `${Math.ceil(left / 1000)} s`}</span>
     </div>
   );
 }
@@ -107,7 +154,7 @@ export function PlayActions({ game, busy, status, ev, onAct, onEv }: {
   const waitForEv = Boolean(ev?.required && !ev.ready && !ev.error);
   return (
     <div className="space-y-2">
-      <div className="flex min-h-9 items-center justify-between gap-2 px-0.5 text-sm" aria-live="polite">
+      <div className="flex min-h-11 items-center justify-between gap-2 px-0.5 text-sm sm:min-h-9" aria-live="polite">
         {playing && hand ? (
           <span className="min-w-0 truncate">
             <span className="text-ink-2">{game.setup.players > 1 ? `P${hand.owner + 1} · ` : ""}{round!.hands.length > 1 || game.setup.players > 1 ? `Seat ${hand.seat + 1}` : "Your hand"}{seatHands.length > 1 ? ` · hand ${seatHands.indexOf(hand) + 1} of ${seatHands.length}` : ""} · </span>
@@ -117,7 +164,7 @@ export function PlayActions({ game, busy, status, ev, onAct, onEv }: {
           <span className="flex items-center gap-2 text-ink-2">{busy && <LoaderCircle size={15} className="animate-spin" aria-hidden />}{status}</span>
         )}
         {onEv && playing && (
-          <Button variant="ghost" size="sm" className="-mr-1 h-9 shrink-0" disabled={busy || ev?.loading} onClick={onEv} icon={ev?.loading ? <LoaderCircle size={15} className="animate-spin" aria-hidden /> : <Calculator size={15} aria-hidden />}>
+          <Button variant="ghost" size="sm" className="-mr-1 h-11 shrink-0 sm:h-9" disabled={busy || ev?.loading} onClick={onEv} icon={ev?.loading ? <LoaderCircle size={15} className="animate-spin" aria-hidden /> : <Calculator size={15} aria-hidden />}>
             {ev?.loading ? "EV…" : "EV"}
           </Button>
         )}
@@ -196,7 +243,9 @@ export function CountTray({ game }: { game: FullShoeGame }) {
   return (
     <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 p-3">
       <div className="flex min-h-0 flex-1 items-center justify-center">
-        <TrayPhoto photo={game.trayPhoto} className="h-full max-h-[22rem] [&>div]:h-full [&>div]:w-auto" zoomable priority label="Discard tray" />
+        {game.trayPhoto
+          ? <TrayPhoto photo={game.trayPhoto} className="h-full max-h-[22rem] [&>div]:h-full [&>div]:w-auto" zoomable priority label="Discard tray" />
+          : <EmptyTray cards={game.discarded} long className="h-full max-h-[22rem]" />}
       </div>
       <p className="text-center text-xs font-medium text-white/75">{decksLabel(game.setup.rules.decks)} in the shoe at the start · cut card at {Math.round(game.setup.penetration * 100)}%</p>
     </div>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BET_SPREAD_PRESETS } from "@/lib/blackjack/fullShoeSession";
 import type { Card, Rank } from "@/lib/blackjack/types";
 import { DEFAULT_TABLE_RULES, type TableRules } from "@/lib/strategy";
-import { carriedTrueCount, countCheckDue, divisorFor, gradeBet, gradeCountCheck, gradeInsurance, gradePlay, liveTrueCount } from "./grading";
+import { carriedTrueCount, countCheckDue, divisorFor, gradeBet, gradeCountCheck, gradeInsurance, gradePlay, gradeWong, liveTrueCount } from "./grading";
 
 const card = (rank: Rank): Card => ({ rank, suit: "hearts" });
 const cards = (...ranks: Rank[]) => ranks.map(card);
@@ -38,10 +38,34 @@ describe("bet grading by the ramp", () => {
     expect(gradeBet({ bets: [35], unit: 10, ramp, tc: 4, bankroll: 35 })).toMatchObject({ ok: true, expected: 35 });
   });
 
+  it("stops at the table maximum, and bets a short bankroll down to the smallest chip", () => {
+    expect(gradeBet({ bets: [50], unit: 10, ramp, tc: 4, bankroll: 1000, max: 50 })).toMatchObject({ ok: true, expected: 50 });
+    expect(gradeBet({ bets: [80], unit: 10, ramp, tc: 4, bankroll: 1000, max: 50 }).explanation).toContain("table maximum is $50");
+    expect(gradeBet({ bets: [35], unit: 10, ramp, tc: 4, bankroll: 37.5, chip: 5 })).toMatchObject({ ok: true, expected: 35 });
+  });
+
   it("credits a bet that is right for the count the player last reported", () => {
     const grade = gradeBet({ bets: [20], unit: 10, ramp, tc: 3, bankroll: 1000, playerTc: 1 });
     expect(grade).toMatchObject({ ok: true, credited: true });
     expect(gradeBet({ bets: [20], unit: 10, ramp, tc: 3, bankroll: 1000 }).ok).toBe(false);
+  });
+});
+
+describe("back-counting", () => {
+  const plan = { enter: 2, leave: -1 };
+  it("grades every move, and holding still only when the count called for a move", () => {
+    expect(gradeWong({ wasIn: false, isIn: true, tc: 2, plan })).toMatchObject({ ok: true, chosen: "Sit in" });
+    expect(gradeWong({ wasIn: false, isIn: true, tc: 1, plan })).toMatchObject({ ok: false, chosen: "Sit in", correct: "Keep watching" });
+    expect(gradeWong({ wasIn: false, isIn: false, tc: 1, plan })).toBeUndefined();
+    expect(gradeWong({ wasIn: false, isIn: false, tc: 3, plan })).toMatchObject({ ok: false, chosen: "Keep watching", correct: "Sit in" });
+    expect(gradeWong({ wasIn: true, isIn: true, tc: 0, plan })).toBeUndefined();
+    expect(gradeWong({ wasIn: true, isIn: true, tc: -1, plan })).toMatchObject({ ok: false, chosen: "Stay in", correct: "Leave" });
+    expect(gradeWong({ wasIn: true, isIn: false, tc: -2, plan })).toMatchObject({ ok: true, chosen: "Leave" });
+    expect(gradeWong({ wasIn: true, isIn: false, tc: 1, plan })).toMatchObject({ ok: false, correct: "Stay in" });
+  });
+
+  it("credits a move that is right for the count the player reported", () => {
+    expect(gradeWong({ wasIn: false, isIn: true, tc: 1, plan, playerTc: 2 })).toMatchObject({ ok: true, credited: true });
   });
 });
 

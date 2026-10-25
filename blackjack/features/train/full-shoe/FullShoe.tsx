@@ -82,6 +82,9 @@ function save(game: FullShoeGame): ReportData {
     startingBankroll: setup.bankroll,
     endMessage: game.endMessage,
     saved,
+    unit: setup.unit,
+    pace: game.pace(),
+    wong: setup.wong,
   };
 }
 
@@ -102,7 +105,7 @@ export function FullShoe() {
     const game = newGame(chosen);
     const { rules } = chosen;
     track("drill_started", { drill: "Full Shoe", mode: chosen.mode, decks: rules.decks, penetration: chosen.penetration, dealerRule: rules.hitSoft17 ? "H17" : "S17", das: rules.das, rsa: chosen.resplitAces, surrender: rules.surrender, rulesPreset: rulesSummary(rules) });
-    track("full_shoe_started", { decks: rules.decks, penetration: chosen.penetration, deckResolution: chosen.resolution, spread: chosen.spread, blackjackPayout: chosen.blackjackPayout, startingBankroll: chosen.bankroll, mode: chosen.mode, stacked: chosen.stacked });
+    track("full_shoe_started", { decks: rules.decks, decisionSeconds: chosen.decisionSeconds, backCount: Boolean(chosen.wong), penetration: chosen.penetration, deckResolution: chosen.resolution, spread: chosen.spread, blackjackPayout: chosen.blackjackPayout, startingBankroll: chosen.bankroll, mode: chosen.mode, stacked: chosen.stacked });
     setScreen({ name: "play", game });
   };
 
@@ -136,7 +139,7 @@ export function FullShoe() {
     if (!rounds) {
       return (
         <div className="space-y-4">
-          <button type="button" onClick={() => setScreen({ name: "setup" })} className="-ml-1 inline-flex h-8 items-center rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">‹ Back to setup</button>
+          <button type="button" onClick={() => setScreen({ name: "setup" })} className="-ml-1 inline-flex h-11 items-center rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">‹ Back to setup</button>
           <h1 className="text-[1.625rem] leading-tight">{savedTitle(shoe)}</h1>
           {loading ? <Skeleton className="h-64" /> : <p className="text-sm leading-6 text-ink-2">This shoe&rsquo;s hands are not stored on this device. Sign in on the device that played it to see them.</p>}
         </div>
@@ -150,6 +153,7 @@ export function FullShoe() {
       rulesLine: savedRules(shoe),
       date: shoe.savedAt,
       startingBankroll: shoe.table.startingBankroll,
+      unit: shoe.table.unit,
     };
     return <SavedShoeReport data={data} title={savedTitle(shoe)} onBack={() => setScreen({ name: "setup" })} />;
   }

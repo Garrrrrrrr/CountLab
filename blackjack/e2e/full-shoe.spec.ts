@@ -41,6 +41,23 @@ const action = (page: Page, name: string) => page.getByRole("group", { name: "Ch
 const ready = (page: Page, name: string) => page.getByRole("group", { name: "Choose an action" }).locator("button:not([disabled])", { hasText: new RegExp(`^${name}`) });
 const visible = (locator: ReturnType<Page["locator"]>) => locator.isVisible().catch(() => false);
 
+/** Stands and declines until the round is paid and the next bet (or the watch dock) is up. */
+async function finishRound(page: Page) {
+  const between = page.getByRole("button", { name: /^(Deal|Watch a round)/ });
+  for (let i = 0; i < 200 && !(await visible(between)); i++) {
+    const decline = page.locator("button:not([disabled])", { hasText: /^(No insurance|No, play it)/ });
+    if (await visible(decline)) await decline.click();
+    else if (await visible(ready(page, "Stand"))) await ready(page, "Stand").click();
+    else await page.waitForTimeout(60);
+  }
+  await expect(between).toBeVisible();
+}
+
+async function endShoe(page: Page) {
+  await page.getByRole("button", { name: "End drill" }).click();
+  await page.getByRole("button", { name: "End and see the report" }).click();
+}
+
 test("the Train hub opens the mode it names", async ({ page }) => {
   await prepareGuest(page);
   await page.goto("/train/full-shoe/?mode=checkout");
@@ -60,8 +77,8 @@ test("a checkout stays silent, finishes the shoe, and files its report", async (
   await expect(page.getByRole("button", { name: "Coach" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^EV/ })).toHaveCount(0);
 
-  // Underbet the first round on purpose: a checkout must not say so.
-  await fiveChip(page).click();
+  // Overbet the first round on purpose: a checkout must not say so.
+  await page.getByRole("button", { name: "Add a $25 chip" }).click();
   await deal(page);
   await expect(page.getByText("Bet off the ramp")).toHaveCount(0);
 
@@ -89,7 +106,7 @@ test("a checkout stays silent, finishes the shoe, and files its report", async (
 
   await expect(page.getByRole("heading", { name: "Checkout report" })).toBeVisible();
   for (const category of ["Betting", "Basic strategy", "Running count", "True count"]) await expect(page.getByTestId("scorecard").getByText(category, { exact: true })).toBeVisible();
-  // The underbet is the first mistake: "You: $5 · Right: 1 × $10".
+  // The overbet is the first mistake: "You: $25 · Right: 1 × $10".
   await expect(page.getByText("1 × $10").first()).toBeVisible();
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:sessions") || "[]"));
@@ -154,14 +171,102 @@ test("a custom ramp grades and persists when the shoe ends early", async ({ page
   await page.getByLabel("One unit").blur();
   await expect(page.getByLabel("+1", { exact: true })).toHaveValue("37");
   await start(page, "Checkout");
-  await fiveChip(page).click();
+  // $15 on a $12.50 unit: off the ramp, and above the table minimum.
+  for (let i = 0; i < 3; i++) await fiveChip(page).click();
   await deal(page);
-  await page.getByRole("button", { name: "End drill" }).click();
-  await page.getByRole("button", { name: "End and see the report" }).click();
+  await finishRound(page);
+  await endShoe(page);
   await expect(page.getByRole("heading", { name: "Shoe ended early" })).toBeVisible();
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("countlab:account:guest:hilo:sessions") || "[]"));
-  expect(saved[0]).toMatchObject({ drill: "Full Shoe", questions: 1, correct: 0, metrics: { completionReason: "ended", mode: "checkout", rampTc1: 37, rampTc6Plus: 80 } });
+  expect(saved[0]).toMatchObject({ drill: "Full Shoe", categories: { Betting: { correct: 0, total: 1 } }, metrics: { completionReason: "ended", mode: "checkout", rampTc1: 37, rampTc6Plus: 80 } });
+});
+
+test("the table takes bets between its limits, from chips that fit the unit", async ({ page }) => {
+  await prepareGuest(page);
+  await open(page);
+  await start(page);
+  await expect(page.getByRole("button", { name: "Add a 50¢ chip" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Add a $1 chip" })).toHaveCount(0);
+  await fiveChip(page).click();
+  await expect(page.getByRole("status").filter({ hasText: "Seat 3: $10 minimum" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Deal/ })).toBeDisabled();
+  await fiveChip(page).click();
+  await expect(page.getByRole("button", { name: /^Deal/ })).toBeEnabled();
+});
+
+test("ending mid-round grades nothing the round did not finish", async ({ page }) => {
+  await prepareGuest(page);
+  await open(page, { mode: "Checkout" });
+  await seed(page, 4612); // 8,8 against a 6: the round waits for a decision
+  await start(page, "Checkout");
+  await page.getByRole("button", { name: "Add a $25 chip" }).click();
+  await deal(page);
+  await expect(ready(page, "Split")).toBeVisible();
+  await endShoe(page);
+  await expect(page.getByRole("heading", { name: "Shoe ended early" })).toBeVisible();
+  await expect(page.getByText("Nothing was graded", { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(/Below the \d+% target/)).toHaveCount(0);
+});
+
+test("casino pace counts a decision the clock ran out on as a mistake", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "One desktop check is enough.");
+  await prepareGuest(page);
+  await open(page);
+  await pick(page, "Time for each decision", "3 s");
+  await seed(page, 4612); // 8,8 against a 6: a decision on the first hand
+  await start(page);
+  await fiveChip(page).click();
+  await fiveChip(page).click();
+  await deal(page);
+  await expect(page.getByRole("timer")).toContainText(/[123] s/);
+  // Touch nothing: the clock runs out, the hand stands, and the coach says why.
+  await expect(page.getByText("Time ran out (3 s)").first()).toBeVisible({ timeout: 6_000 });
+  await finishRound(page);
+  await endShoe(page);
+  await expect(page.getByTestId("pace")).toContainText("3 s limit, 1 timed out");
+  await expect(page.getByText("No decision (time ran out)").first()).toBeVisible();
+});
+
+test("back-counting watches the other seats, then grades sitting in", async ({ page }) => {
+  await prepareGuest(page);
+  await open(page);
+  await page.getByRole("switch", { name: /Watch before you bet/ }).evaluate((input: HTMLInputElement) => input.click());
+  await start(page);
+  await expect(page.getByTestId("watch-dock")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add a $5 chip" })).toHaveCount(0);
+  await page.getByRole("button", { name: /^Watch a round/ }).click();
+  // The other four seats play; the bankroll does not move.
+  await expect(page.getByTestId("full-shoe-player-hand")).toHaveCount(4);
+  await expect(page.getByTestId("watch-dock")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("p", { hasText: /^Bankroll$/ }).locator("xpath=..")).toContainText("$1,000");
+  // Sitting in at the shoe's opening count is below +2: a graded mistake.
+  await page.getByRole("button", { name: "Sit in" }).click();
+  await fiveChip(page).click();
+  await fiveChip(page).click();
+  await deal(page);
+  await finishRound(page);
+  await endShoe(page);
+  const card = page.getByTestId("back-counting");
+  await expect(card).toContainText("You watched 1 of 2 rounds");
+  await expect(card).toContainText("Keep watching, not sit in");
+  await expect(page.getByTestId("cover")).toBeVisible();
+});
+
+test("report buttons are thumb-sized on a phone", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop-chromium", "Phones only.");
+  await prepareGuest(page);
+  await open(page, { mode: "Checkout" });
+  await start(page, "Checkout");
+  await page.getByRole("button", { name: "Add a $25 chip" }).click();
+  await deal(page);
+  await finishRound(page);
+  await endShoe(page);
+  for (const button of [page.getByRole("button", { name: /^Replay round 1/ }).first(), page.getByRole("button", { name: "Replay round 1", exact: true }).last()]) {
+    const box = (await button.boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.width).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test("the table fits the phone screen without scrolling", async ({ page }, testInfo) => {

@@ -63,8 +63,23 @@ const topChip = (amount: number) => [1000, 500, 100, 25, 5, 1, 0.5].find((chip) 
 /* The discard tray                                                    */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The tray before its first photo (under a quarter deck), saying what it
+ * holds: TrayPhoto's own placeholder reads "still empty" even after rounds.
+ * Count checks accept reading it as a full shoe.
+ */
+export function EmptyTray({ cards, width, long = false, className }: { cards: number; width?: number; long?: boolean; className?: string }) {
+  const text = cards ? (long ? "Under a quarter deck in the tray: the shoe is still about full." : "Under ¼ deck") : long ? "The tray is empty: the shoe is full." : "Empty";
+  return (
+    <div role="img" aria-label={`Discard tray: ${cards ? "under a quarter deck" : "empty"}`} style={width ? { width, height: Math.round((width * 848) / 629) } : { aspectRatio: "629 / 848" }}
+      className={cx("grid shrink-0 place-items-center rounded-2xl border border-line bg-[linear-gradient(180deg,#2a2f37,#1a1d23)] text-center font-medium leading-tight text-white/70", long ? "p-4 text-sm" : "p-1.5 text-[0.625rem]", className)}>
+      {text}
+    </div>
+  );
+}
+
 /** The real tray photo for the cards discarded so far. Tap for a big view: estimating decks left from it is the skill. */
-export function TrayButton({ photo, width, label = "Discard tray", hotkey = false }: { photo: TrayPhotoData | undefined; width: number; label?: string; hotkey?: boolean }) {
+export function TrayButton({ photo, cards, width, label = "Discard tray", hotkey = false }: { photo: TrayPhotoData | undefined; cards: number; width: number; label?: string; hotkey?: boolean }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!hotkey) return;
@@ -79,12 +94,12 @@ export function TrayButton({ photo, width, label = "Discard tray", hotkey = fals
     <>
       {/* The whole photo is the tap target; the button sits over it so the figure stays valid HTML. */}
       <div className="group relative shrink-0" style={{ width }} data-testid={photo ? "full-shoe-discard-photo" : "full-shoe-empty-tray"}>
-        <TrayPhoto photo={photo} width={width} zoomable={false} priority label={label} />
+        {photo ? <TrayPhoto photo={photo} width={width} zoomable={false} priority label={label} /> : <EmptyTray cards={cards} width={width} />}
         {photo && <span aria-hidden className="pointer-events-none absolute bottom-1 right-1 grid h-6 w-6 place-items-center rounded-md bg-black/50 text-white group-hover:bg-black/70"><Expand size={13} /></span>}
         <button type="button" onClick={() => setOpen(true)} aria-label={`${label}: enlarge the photo`} className="absolute inset-0 rounded-2xl outline-offset-2" />
       </div>
       <Sheet open={open} onClose={() => setOpen(false)} title="Discard tray" description="Every card played so far. Decks left in the shoe = shoe size − decks in the tray.">
-        {photo ? <TrayPhoto photo={photo} zoomable={false} className="mx-auto max-w-sm" priority label={label} /> : <p className="py-6 text-center text-sm text-ink-2">The tray is still empty: under half a deck has been played.</p>}
+        {photo ? <TrayPhoto photo={photo} zoomable={false} className="mx-auto max-w-sm" priority label={label} /> : <EmptyTray cards={cards} long className="mx-auto max-w-[14rem]" />}
       </Sheet>
     </>
   );
@@ -204,7 +219,7 @@ export function Felt({ game, dealing, stagger, animate, coached, note, onSeat, o
       <div aria-hidden className="pointer-events-none absolute inset-2 rounded-[1.4rem] border border-white/10" />
       {/* The discard tray sits in the corner, as on a real table. */}
       <div className="absolute left-2.5 top-2.5 z-10">
-        <TrayButton photo={game.trayPhoto} width={trayWidth} hotkey />
+        <TrayButton photo={game.trayPhoto} cards={game.discarded} width={trayWidth} hotkey />
       </div>
       <div className="relative flex h-full flex-col items-center px-2 pb-2 pt-2.5">
         {/* Dealer */}
@@ -224,11 +239,13 @@ export function Felt({ game, dealing, stagger, animate, coached, note, onSeat, o
         <div className="flex w-full flex-1 flex-col items-center justify-center py-1 text-center" style={{ minHeight: coached ? NOTE_BAND : 8 }}>
           {note ?? (game.phase === "betting" && game.lastResult ? (
             <button type="button" onClick={onClearTable} className="h-11 rounded-full bg-black/25 px-4 text-sm font-semibold text-white/85 hover:bg-black/40">Clear the table</button>
+          ) : game.watchedRound || (betting && game.watching) ? (
+            <p className="rounded-full bg-black/25 px-3 py-1 text-xs font-semibold text-white/85">You are watching: count every card</p>
           ) : !compact || coached ? (
             <div aria-hidden className="select-none">
               <p className="text-[0.75rem] font-bold uppercase tracking-[0.22em] text-brand/70">Blackjack pays {game.setup.blackjackPayout === 1.5 ? "3 to 2" : "6 to 5"}</p>
               <p className="mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-white/40">Dealer {rules.hitSoft17 ? "hits" : "stands on"} soft 17<span className="hidden xs:inline"> · Insurance pays 2 to 1</span></p>
-              {!compact && <p className="tnum mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-white/30">Table limits {money(game.setup.unit)} to {money(game.setup.unit * 100)}</p>}
+              {!compact && <p className="tnum mt-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-white/30">Table limits {money(game.tableMin)} to {money(game.tableMax)}</p>}
             </div>
           ) : null)}
         </div>
@@ -239,14 +256,14 @@ export function Felt({ game, dealing, stagger, animate, coached, note, onSeat, o
             {Array.from({ length: SEATS }, (_, seat) => {
               const amount = game.bets[seat];
               const hint = rampBet !== undefined && amount > 0 ? (Math.abs(amount - rampBet) < 0.005 ? { ok: true, text: "On the ramp" } : { ok: false, text: `Ramp ${money(rampBet)}` }) : undefined;
-              return <BetCircle key={seat} seat={seat} amount={amount} selected={game.selectedSeat === seat} owner={game.owners[seat]} players={game.setup.players} rampHint={hint} disabled={false} onSelect={() => onSeat(seat)} />;
+              return <BetCircle key={seat} seat={seat} amount={amount} selected={game.selectedSeat === seat} owner={game.owners[seat]} players={game.setup.players} rampHint={hint} disabled={game.watching} onSelect={() => onSeat(seat)} />;
             })}
           </div>
         ) : (
           <SeatsRail activeId={game.activeHand?.id}>
             {seatGroups.map((group, seatIndex) => (
               <div key={group.seat} data-table-spot={group.seat} className="flex shrink-0 flex-col items-center">
-                {multiSeat && <p className="mb-0.5 text-[0.625rem] font-semibold uppercase tracking-wider text-white/55">{game.setup.players > 1 ? `P${group.owner + 1} · ` : ""}Seat {group.seat + 1}</p>}
+                {multiSeat && <p className="mb-0.5 text-[0.625rem] font-semibold uppercase tracking-wider text-white/55">{game.setup.players > 1 && group.owner >= 0 ? `P${group.owner + 1} · ` : ""}Seat {group.seat + 1}</p>}
                 <div data-testid="full-shoe-spot-hands" className="flex items-end gap-2">
                   {group.hands.map((hand) => {
                     const index = round!.hands.indexOf(hand);

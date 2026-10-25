@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GraduationCap, Settings2 } from "lucide-react";
 import { Card, ConfirmSheet, IconButton, Sheet, announce, cx } from "@/components/ui";
 import { PlayFrame } from "@/components/drill/DrillKit";
-import { chipOptions } from "@/lib/blackjack/chips";
 import { trayPhotoFor, trayPhotoSrc } from "@/lib/blackjack/deckPhotos";
 import type { LiveEvResult } from "@/lib/blackjack/liveEv";
 import type { Action } from "@/lib/blackjack/types";
@@ -13,7 +12,7 @@ import { ACTION_NAMES, toBlackjackRules } from "@/lib/strategy";
 import { track } from "@/lib/analytics/track";
 import { useCalculationWorker } from "@/lib/useCalculationWorker";
 import { CheckoutPanel, CoachPanel, TableOptions } from "./Coach";
-import { BetDock, CountCheckDock, CountResult, CountTray, InsuranceDock, NoteBand, PlayActions } from "./Docks";
+import { BetDock, CountCheckDock, CountResult, CountTray, Countdown, InsuranceDock, NoteBand, PlayActions, WatchDock } from "./Docks";
 import { Felt } from "./Felt";
 import { money, typing } from "./format";
 import { SPEED_MS } from "./tableSetup";
@@ -94,7 +93,14 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
     window.setTimeout(() => (started === generation.current ? resolve() : reject(new Cancelled())), ms);
   });
   const sfx = (kind: Blip) => blip(kind, prefs.current.sound);
-  const tone = () => { if (coached && game.note) sfx(game.note.ok ? "good" : "bad"); };
+  // A watched round can deal without a new grade: only a new note gets a tone.
+  const toned = useRef(0);
+  const tone = () => {
+    if (!coached || !game.note || game.note.id === toned.current) return;
+    toned.current = game.note.id;
+    sfx(game.note.ok ? "good" : "bad");
+  };
+  const limit = game.setup.decisionSeconds;
 
   const run = async (task: () => Promise<void>) => {
     if (busyRef.current) return;
@@ -132,7 +138,12 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
     } else commit();
   };
   const continueRound = async () => {
-    while (game.phase === "playing" && game.waitingForSplitCard) { await pause(timing().step * 0.7); game.dealSplitCard(); commit(); sfx("deal"); }
+    // Split hands get their second card; in a watched round the other players play, one action at a time.
+    while (game.phase === "playing" && (game.waitingForSplitCard || game.othersToAct)) {
+      await pause(timing().step * (game.waitingForSplitCard ? 0.7 : 1));
+      if (game.waitingForSplitCard) game.dealSplitCard(); else game.othersAct();
+      commit(); sfx("deal");
+    }
     if (game.phase === "dealer") await playDealer();
   };
 
@@ -196,6 +207,11 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
     await pause(timing().step * 0.7);
     await continueRound();
   });
+  const timeOut = () => run(async () => {
+    if (!game.timeOut()) return;
+    commit(); tone(); sfx("deal");
+    await continueRound();
+  });
   const chip = (value: number) => { if (game.placeChip(value)) sfx("chip"); commit(); };
   const submitCount = (value: number) => {
     game.submitCount(value);
@@ -218,7 +234,7 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
       if (coached && key === "c") { event.preventDefault(); setCoachOpen(true); return; }
       if (game.phase === "betting" && !busyRef.current) {
         const index = Number(key) - 1;
-        if (index >= 0 && index < chipOptions.length) { event.preventDefault(); chip(chipOptions[index]); return; }
+        if (index >= 0 && index < game.chips.length) { event.preventDefault(); chip(game.chips[index]); return; }
         if ((key === "enter" || key === " ") && !onButton) { event.preventDefault(); void deal(); return; }
         if (key === "u" || key === "backspace") { event.preventDefault(); game.undoChip(); commit(); return; }
         if (key === "b") { event.preventDefault(); game.repeatBets(); commit(); return; }
@@ -252,24 +268,47 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
     return () => window.clearTimeout(timer);
   }, [note]);
 
+  /* ---------------- Casino pace ---------------- */
+  // The clock starts once the decision can be made: after the deal, and after any EV the shown hole card needs.
+  const waitForEv = holeShown && !currentEv?.result && !currentEv?.error;
+  const clockKey = busy || holding ? "" : game.insurance ? `${game.roundNumber}:insurance` : decisionKey && !waitForEv ? decisionKey : "";
+  useEffect(() => {
+    if (!clockKey) return;
+    game.startClock();
+    commit();
+    const endsAt = game.clockEndsAt;
+    if (endsAt === undefined) return;
+    const timer = window.setTimeout(() => void timeOut(), Math.max(0, endsAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [clockKey]); // eslint-disable-line react-hooks/exhaustive-deps -- one clock per decision
+
   const counting = game.phase === "count-check" && !holding;
   const status = holding ? (game.phase === "over" ? "That was the last round." : "Count check next…")
-    : game.phase === "dealing" ? "Dealing…" : game.phase === "dealer" ? "Dealer's turn…" : game.phase === "playing" && game.waitingForSplitCard ? "Dealing to the split hand…" : "";
+    : game.phase === "dealing" ? "Dealing…" : game.phase === "dealer" ? "Dealer's turn…" : game.phase === "playing" && game.waitingForSplitCard ? "Dealing to the split hand…"
+      : game.othersToAct ? "The other players are playing…" : "";
   const evLine = currentEv?.result && game.phase === "playing"
     ? game.legal.map((action) => `${ACTION_NAMES[action]} ${(currentEv.result!.evs[action] ?? 0) >= 0 ? "+" : "−"}${Math.abs(currentEv.result!.evs[action] ?? 0).toFixed(2)}`).join(" · ")
     : undefined;
 
   let dock: React.ReactNode;
   if (counting && game.countCheck) dock = game.countCheck.step === "result" ? <CountResult game={game} onContinue={() => { game.closeCountCheck(); commit(); }} /> : <CountCheckDock game={game} onSubmit={submitCount} />;
+  else if (game.phase === "betting" && !holding && game.watching) dock = <WatchDock game={game} busy={busy} onWatch={() => void deal()} onSitIn={() => { game.sitIn(); commit(); }} />;
   else if (game.phase === "betting" && !holding) dock = (
     <BetDock game={game} busy={busy} onChip={chip} onDeal={() => void deal()}
       onUndo={() => { game.undoChip(); commit(); }} onClear={() => { game.clearBets(); commit(); }}
       onRepeat={() => { game.repeatBets(); sfx("chip"); commit(); }}
-      onOwner={() => { game.setOwner(game.selectedSeat, (game.owners[game.selectedSeat] + 1) % game.setup.players); commit(); }} />
+      onOwner={() => { game.setOwner(game.selectedSeat, (game.owners[game.selectedSeat] + 1) % game.setup.players); commit(); }}
+      onSitOut={() => { game.sitOut(); commit(); }} />
   );
-  else if (game.phase === "insurance" && game.insurance) dock = <InsuranceDock offer={game.insurance} cash={game.cash} busy={busy} onChoose={(choice) => void insure(choice)} />;
+  else if (game.phase === "insurance" && game.insurance) dock = (
+    <>
+      {limit > 0 && <Countdown endsAt={game.clockEndsAt} seconds={limit} />}
+      <InsuranceDock offer={game.insurance} cash={game.cash} busy={busy} onChoose={(choice) => void insure(choice)} />
+    </>
+  );
   else dock = (
     <>
+      {limit > 0 && <Countdown endsAt={game.clockEndsAt} seconds={limit} />}
       {evLine && <p className="tnum mb-1 truncate px-0.5 text-center text-xs font-medium text-ink-2" aria-live="polite">EV {evLine}</p>}
       <PlayActions game={game} busy={busy || sheetOpen} status={status} onAct={(action) => void act(action)} onEv={coached ? requestEv : undefined}
         ev={coached ? { loading: Boolean(currentEv?.loading), ready: Boolean(currentEv?.result), error: currentEv?.error, required: holeShown } : undefined} />
@@ -311,7 +350,7 @@ export function Table({ game, onFinish }: { game: FullShoeGame; onFinish: () => 
         <CoachPanel game={game} ev={currentEv?.result} />
       </Sheet>
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Table options">
-        <TableOptions speed={speed} sound={sound} animations={animations} coached={coached}
+        <TableOptions speed={speed} sound={sound} animations={animations} coached={coached} chips={game.chips.length}
           onSpeed={setSpeed} onSound={setSound} onAnimations={setAnimations}
           onEnd={() => { setMenuOpen(false); setConfirmEnd(true); }} />
       </Sheet>

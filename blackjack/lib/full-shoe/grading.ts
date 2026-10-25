@@ -77,31 +77,62 @@ export interface BetGrade {
 const near = (a: number, b: number) => Math.abs(a - b) < 0.005;
 
 /**
- * Every seat with a bet should carry the ramp's bet for the count. A ramp bet
- * the bankroll cannot cover is satisfied by betting everything left.
+ * Every seat with a bet should carry the ramp's bet for the count, up to the
+ * table maximum. A ramp bet the bankroll cannot cover is satisfied by betting
+ * everything left, down to the smallest chip on the rack.
  */
-export function gradeBet({ bets, unit, ramp, tc, bankroll, playerTc }: {
+export function gradeBet({ bets, unit, ramp, tc, bankroll, playerTc, max = Infinity, chip = 0.01 }: {
   bets: readonly number[]; unit: number; ramp: BetRamp; tc: number; bankroll: number; playerTc?: number;
+  /** The table maximum per seat, and the smallest chip the rack offers. */
+  max?: number; chip?: number;
 }): BetGrade {
   const units = betUnitsAt(ramp, tc);
   const ideal = Math.round(unit * units * 100) / 100;
-  const perSeatCap = bankroll / Math.max(1, bets.length);
-  const expected = Math.min(ideal, Math.floor(perSeatCap * 100) / 100);
-  const matches = (target: number) => bets.length > 0 && bets.every((bet) => near(bet, target));
+  const capCents = Math.floor((bankroll / Math.max(1, bets.length)) * 100 + 1e-6);
+  const affordable = (capCents - (capCents % Math.round(chip * 100))) / 100;
+  const target = (count: number) => Math.min(Math.round(unit * betUnitsAt(ramp, count) * 100) / 100, max, affordable);
+  const expected = target(tc);
+  const matches = (amount: number) => bets.length > 0 && bets.every((bet) => near(bet, amount));
   let ok = matches(expected);
   let credited = false;
-  if (!ok && playerTc !== undefined && playerTc !== tc) {
-    const theirs = Math.min(Math.round(unit * betUnitsAt(ramp, playerTc) * 100) / 100, Math.floor(perSeatCap * 100) / 100);
-    if (matches(theirs)) { ok = true; credited = true; }
-  }
+  if (!ok && playerTc !== undefined && playerTc !== tc && matches(target(playerTc))) { ok = true; credited = true; }
   const chosen = bets.map(money).join(" + ");
   const correct = `${bets.length} × ${money(expected)}`;
   const rampWords = units === 1 ? "one unit" : `${units} units`;
-  const capped = expected < ideal ? ` The ramp's ${money(ideal)} is more than the bankroll covers, so the whole bankroll is right.` : "";
+  const capped = expected < Math.min(ideal, max) ? ` The ramp's ${money(ideal)} is more than the bankroll covers, so the whole bankroll is right.`
+    : ideal > max ? ` The table maximum is ${money(max)}, so that is the bet.` : "";
   const explanation = credited
     ? `Right for the count you reported (true count ${signedCount(playerTc!)}). The real true count was ${signedCount(tc)}, where the ramp bets ${money(expected)}.`
     : `At a true count of ${signedCount(tc)} the ramp bets ${rampWords} (${money(expected)}) on each seat.${tc <= 0 ? " Zero or lower always bets one unit." : ""}${capped}`;
   return { ok, credited, expected, units, chosen, correct, explanation };
+}
+
+/* ------------------------------------------------------------------ */
+/* Back-counting                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Sit in at a true count of `enter` or more; leave at `leave` or less. */
+export interface WongPlan { enter: number; leave: number }
+
+/**
+ * Grades sitting in or out, at the deal. Moving is always a decision. Holding
+ * still is one only when the count called for a move (still watching at the
+ * entry count, still playing at the exit count), and then it is a mistake;
+ * otherwise it is not graded, so a long watch does not pad the score.
+ * Undefined when there is nothing to grade.
+ */
+export function gradeWong({ wasIn, isIn, tc, plan, playerTc }: { wasIn: boolean; isIn: boolean; tc: number; plan: WongPlan; playerTc?: number }) {
+  const shouldBeIn = (count: number) => (wasIn ? count > plan.leave : count >= plan.enter);
+  if (wasIn === isIn && shouldBeIn(tc) === isIn) return undefined;
+  let ok = shouldBeIn(tc) === isIn;
+  let credited = false;
+  if (!ok && playerTc !== undefined && playerTc !== tc && shouldBeIn(playerTc) === isIn) { ok = true; credited = true; }
+  const label = (sitting: boolean) => (wasIn ? (sitting ? "Stay in" : "Leave") : sitting ? "Sit in" : "Keep watching");
+  const rule = `Sit in at a true count of ${signedCount(plan.enter)} or higher; leave at ${signedCount(plan.leave)} or lower.`;
+  const explanation = credited
+    ? `Right for the count you reported (${signedCount(playerTc!)}). The real true count was ${signedCount(tc)}. ${rule}`
+    : `${rule} The true count was ${signedCount(tc)}.`;
+  return { ok, credited, chosen: label(isIn), correct: label(shouldBeIn(tc)), explanation };
 }
 
 /* ------------------------------------------------------------------ */

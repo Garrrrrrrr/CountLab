@@ -7,11 +7,11 @@ import { DrillSetup, PresetPicker, SetupGroup } from "@/components/drill/DrillKi
 import { BET_SPREAD_PRESETS, POSITIVE_TRUE_COUNTS, type BetSpreadPreset } from "@/lib/blackjack/fullShoeSession";
 import { shoeLibrary, type SavedShoe } from "@/lib/blackjack/shoeLibrary";
 import { RESOLUTION_PHRASE, ROUNDING_PHRASE, type CountCheckFrequency } from "@/lib/full-shoe/grading";
-import type { FullShoeSetup, Speed } from "@/lib/full-shoe/session";
+import { TABLE_MAX_UNITS, type FullShoeSetup, type Speed } from "@/lib/full-shoe/session";
 import { DECK_OPTIONS, SURRENDER_SHORT, type TableRules } from "@/lib/strategy";
 import { track } from "@/lib/analytics/track";
-import { COUNT_CHECK_OPTIONS, PENETRATIONS, penetrationLabel, rampDollars, SPREAD_LABEL } from "./tableSetup";
-import { money } from "./format";
+import { COUNT_CHECK_OPTIONS, DEFAULT_WONG, PENETRATIONS, penetrationLabel, rampDollars, SPREAD_LABEL } from "./tableSetup";
+import { money, signed } from "./format";
 
 const SURRENDER_OPTIONS = [
   { value: "none", label: "None" },
@@ -116,6 +116,7 @@ export function Setup({ setup, onChange, onStart, onReview }: {
   const setRules = (patch: Partial<TableRules>) => set({ rules: { ...setup.rules, ...patch } });
   const coached = setup.mode === "coached";
   const dollars = rampDollars(setup.ramp, setup.unit);
+  const wong = setup.wong;
 
   const changeUnit = (unit: number) => {
     // A custom ramp keeps its dollar amounts when the unit changes; a preset keeps its shape.
@@ -189,7 +190,7 @@ export function Setup({ setup, onChange, onStart, onReview }: {
         </div>
       </SetupGroup>
 
-      <SetupGroup title="Bankroll and bets" hint="Players share one bankroll. A true count of zero or lower bets one unit; +6 covers everything above it.">
+      <SetupGroup title="Bankroll and bets" hint={`Players share one bankroll. A true count of zero or lower bets one unit; +6 covers everything above it. The table takes ${money(setup.unit)} to ${money(setup.unit * TABLE_MAX_UNITS)} a seat.`}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <MoneyField label="Buy-in" value={setup.bankroll} min={1} onChange={(bankroll) => set({ bankroll })} />
@@ -216,6 +217,24 @@ export function Setup({ setup, onChange, onStart, onReview }: {
         </div>
       </SetupGroup>
 
+      <SetupGroup title="Back-counting">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <Toggle label="Watch before you bet" description="Count from behind the table while the other seats play. Sit in when the true count reaches your entry count, leave at your exit count; each move is graded." checked={Boolean(wong)} onChange={(on) => set({ wong: on ? { ...DEFAULT_WONG } : undefined })} />
+          </div>
+          {wong && (
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField label="Sit in at" value={wong.enter} onChange={(event) => { const enter = Number(event.target.value); set({ wong: { enter, leave: Math.min(wong.leave, enter - 1) } }); }}>
+                {[1, 2, 3, 4].map((tc) => <option key={tc} value={tc}>{signed(tc)} or higher</option>)}
+              </SelectField>
+              <SelectField label="Leave at" value={wong.leave} onChange={(event) => set({ wong: { ...wong, leave: Number(event.target.value) } })}>
+                {Array.from({ length: wong.enter + 3 }, (_, index) => wong.enter - 1 - index).map((tc) => <option key={tc} value={tc}>{signed(tc)} or lower</option>)}
+              </SelectField>
+            </div>
+          )}
+        </div>
+      </SetupGroup>
+
       <SetupGroup title="Table">
         <div className="space-y-4">
           <Segmented label="Dealer hole card" value={setup.holeCard} onChange={(holeCard) => set({ holeCard })}
@@ -224,6 +243,13 @@ export function Setup({ setup, onChange, onStart, onReview }: {
             <Callout tone="info">With the hole card showing, plays are graded by the EV of each play for that exact hole card and the cards left, worked out as you play.</Callout>
           )}
           <Segmented<Speed> label="Dealing speed" value={setup.speed} onChange={(speed) => set({ speed })} options={[{ value: "relaxed", label: "Relaxed" }, { value: "casino", label: "Casino" }, { value: "fast", label: "Fast" }]} />
+          <div>
+            <Segmented label="Time for each decision" value={setup.decisionSeconds} onChange={(decisionSeconds) => set({ decisionSeconds })}
+              options={[{ value: 0, label: "No limit" }, { value: 8, label: "8 s" }, { value: 5, label: "5 s" }, { value: 3, label: "3 s" }]} />
+            <p className="mt-1.5 text-xs leading-5 text-ink-3">
+              {setup.decisionSeconds ? `Casino pace: a countdown on every play and insurance decision. When it runs out the hand stands (or insurance is declined), graded as a mistake.` : "The report shows your pace either way: seconds a decision and hands an hour."}
+            </p>
+          </div>
           <div className="space-y-3 rounded-2xl border border-line bg-surface p-4">
             <Toggle label="Hot shoe" description="The same cards, arranged so the true count climbs to +6 about halfway through. Good for practising big bets and index plays." checked={setup.stacked} onChange={(stacked) => set({ stacked })} />
             <Toggle label="Card animations" checked={setup.animations} onChange={(animations) => set({ animations })} />
