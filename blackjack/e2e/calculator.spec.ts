@@ -246,7 +246,10 @@ test("a scenario saves, updates in place, copies, renames and deletes", async ({
 test("saved scenarios compare side by side with the current setup", async ({ page }) => {
   await prepare(page);
   await open(page);
-  await (await saveScenario(page, "Six deck")).getByRole("button", { name: "Done" }).click();
+  await saveScenario(page, "Six deck");
+  // The saved count badge once pushed the header past a 320px screen, which zoomed the page out and misplaced taps.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await page.getByRole("dialog", { name: "Save scenario" }).getByRole("button", { name: "Done" }).click();
   await show(page, "Game");
   await choose(page, "Decks", "8");
   await show(page, "Results");

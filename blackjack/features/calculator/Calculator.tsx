@@ -179,7 +179,7 @@ export function Calculator() {
               Scenarios
               {calc.templates.length > 0 && <span className="tnum rounded-full bg-surface-3 px-1.5 text-xs text-ink-2"><span aria-hidden>{calc.templates.length}</span><span className="sr-only">, {calc.templates.length} saved</span></span>}
             </Button>
-            <Button variant="secondary" onClick={() => setSaveOpen(true)} aria-haspopup="dialog" aria-label="Save scenario" icon={<Save size={17} aria-hidden />}>Save</Button>
+            <Button variant="secondary" onClick={() => setSaveOpen(true)} aria-haspopup="dialog" aria-label="Save scenario" icon={<Save size={17} aria-hidden />}><span className="hidden sm:inline">Save</span></Button>
             <Button variant="secondary" onClick={calc.shareLink} aria-label="Share a link to this setup" icon={<Share2 size={17} aria-hidden />}><span className="hidden sm:inline">Share</span></Button>
           </div>
         }

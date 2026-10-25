@@ -41,7 +41,7 @@ export function PageHeader({ title, sub, eyebrow, back, actions, className }: {
           <h1 className="text-[1.625rem] leading-tight sm:text-3xl">{title}</h1>
           {sub && <p className="mt-1.5 max-w-2xl text-[0.9375rem] leading-6 text-ink-2">{sub}</p>}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+        {actions && <div className="flex max-w-full flex-wrap items-center gap-2">{actions}</div>}
       </div>
     </header>
   );
