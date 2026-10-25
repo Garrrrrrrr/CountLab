@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { Check, Grid3x3, X } from "lucide-react";
-import { Card, ConfirmSheet, cx, Segmented } from "@/components/ui";
+import { CalendarClock, Check, Grid3x3, X } from "lucide-react";
+import { Button, Card, ConfirmSheet, cx, Segmented } from "@/components/ui";
+import { REVIEW_LIMIT } from "@/lib/strategy-drills/review";
 import { ROUND_LENGTHS, relativeTime, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
 import type { Session } from "@/lib/statistics/storage";
 import { SURRENDER_SHORT, type TableRules } from "@/lib/strategy";
@@ -63,6 +64,24 @@ export function ReplaceRoundSheet({ open, detail, onConfirm, onClose }: { open: 
     <ConfirmSheet open={open} onClose={onClose} onConfirm={onConfirm} title="Start over?" confirmLabel="Discard and start">
       {detail} Starting a new one discards it.
     </ConfirmSheet>
+  );
+}
+
+/**
+ * Missed items whose review has come round: a miss comes back at once, then
+ * after 1, 3, 7 and 16 days of right answers. Nothing shows when none are due.
+ */
+export function ReviewDue({ count, unit, onStart }: { count: number; unit: [string, string]; onStart: () => void }) {
+  if (!count) return null;
+  const noun = count === 1 ? unit[0] : unit[1];
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/10 p-4 sm:flex-row sm:items-center">
+      <p className="flex min-w-0 flex-1 items-start gap-2.5 text-sm leading-6">
+        <CalendarClock size={18} aria-hidden className="mt-0.5 shrink-0 text-brand-text" />
+        <span><span className="font-semibold">Review due: <span className="tnum">{count}</span> {noun}.</span> Ones you missed before come back on later days until they stick.</span>
+      </p>
+      <Button onClick={onStart} className="shrink-0">Review {count > REVIEW_LIMIT ? REVIEW_LIMIT : count}</Button>
+    </div>
   );
 }
 

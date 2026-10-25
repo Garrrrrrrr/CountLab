@@ -70,6 +70,29 @@ test.describe("Basic Strategy", () => {
     expect(text).toMatch(/,Hit,/);
   });
 
+  test("schedules missed hands for review and counts them on the hub", async ({ page }) => {
+    await page.goto("/train/basic-strategy/");
+    await page.getByRole("radio", { name: "10" }).evaluate((element: HTMLElement) => element.click());
+    await page.getByRole("radio", { name: "Never" }).evaluate((element: HTMLElement) => element.click());
+    await visible(page, /Start 10 hands/).click();
+    for (let hand = 0; hand < 10; hand += 1) {
+      await expect(page.getByLabel(new RegExp(`Question ${hand + 1} of 10`))).toBeVisible();
+      await page.keyboard.press("h");
+    }
+    // One per chart cell missed: the same cell missed twice is one item to review.
+    const misses = await page.getByRole("listitem").filter({ hasText: /You said Hit/ }).count();
+    await page.getByRole("button", { name: "Change setup" }).click();
+    const banner = page.getByText(/Review due: \d+ hands?/);
+    await expect(banner).toBeVisible();
+    const due = Number((await banner.textContent())!.match(/\d+/)![0]);
+    expect(due).toBeGreaterThan(0);
+    expect(due).toBeLessThanOrEqual(misses);
+    await page.getByRole("button", { name: `Review ${due}` }).click();
+    await expect(page.getByLabel(new RegExp(`Question 1 of ${due}$`))).toBeVisible();
+    await page.goto("/train/");
+    await expect(page.getByText(`${due} due for review`)).toBeVisible();
+  });
+
   test("resumes an unfinished round after a reload", async ({ page }) => {
     await page.goto("/train/basic-strategy/");
     await page.getByRole("radio", { name: "Never" }).evaluate((element: HTMLElement) => element.click());

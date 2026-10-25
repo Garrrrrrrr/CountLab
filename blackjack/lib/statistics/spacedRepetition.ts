@@ -1,5 +1,5 @@
 import { accountStorage } from "@/lib/supabase/accountStorage";
-import { DrillType } from "./storage";
+import { storage, type DrillType } from "./storage";
 
 export type LeitnerBox = 1 | 2 | 3 | 4 | 5;
 
@@ -7,7 +7,10 @@ export interface LeitnerState {
   itemKey: string;
   box: LeitnerBox;
   dueAt: string;
-  lastSeenAt: string;
+  /** Not kept since schedules started syncing; older saves still carry it. */
+  lastSeenAt?: string;
+  /** Times answered wrong, ever. Older saves lack it; box 1 there means the last answer was a miss. */
+  misses?: number;
 }
 
 interface StorageLike {
@@ -15,41 +18,68 @@ interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-/** box -> ms until due again after a correct answer moves an item into that box. Fixed, no configurability for MVP. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** box -> ms until due again after a correct answer moves an item into that box: a miss is due at once, then 1, 3, 7 and 16 days. */
 const BOX_INTERVAL_MS: Record<LeitnerBox, number> = {
   1: 0,
-  2: 60 * 60 * 1000,
-  3: 24 * 60 * 60 * 1000,
-  4: 3 * 24 * 60 * 60 * 1000,
-  5: 7 * 24 * 60 * 60 * 1000,
+  2: DAY_MS,
+  3: 3 * DAY_MS,
+  4: 7 * DAY_MS,
+  5: 16 * DAY_MS,
 };
 
 const keyFor = (drill: DrillType) => `hilo:leitner:${drill}`;
-const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
+/** The drill-progress name a schedule syncs under: one row per drill, next to its unfinished session. */
+export const reviewProgressName = (drill: DrillType) => `Review: ${drill}` as DrillType;
+
+/**
+ * Schedules ride the drill-progress rows, so they reach every device the
+ * account signs in on. A schedule saved before that, on this device only, is
+ * read until the first answer writes the synced copy.
+ */
+const syncedStore: StorageLike = {
+  getItem: (key) => {
+    const drill = key.slice("hilo:leitner:".length) as DrillType;
+    const synced = storage.progress(reviewProgressName(drill));
+    return synced ? JSON.stringify(synced.state) : accountStorage.getItem(key);
+  },
+  setItem: (key, value) => storage.saveProgress(reviewProgressName(key.slice("hilo:leitner:".length) as DrillType), JSON.parse(value)),
+};
+const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : syncedStore;
+
+/** Stored compactly, `[box, dueAt ms, misses]` per item, to stay well inside a progress row for a few hundred hands. */
+type Packed = { v: 2; items: Record<string, [number, number, number]> };
 
 function readState(drill: DrillType, store = availableStorage()): Record<string, LeitnerState> {
   if (!store) return {};
   try {
-    return JSON.parse(store.getItem(keyFor(drill)) || "{}") as Record<string, LeitnerState>;
+    const raw = JSON.parse(store.getItem(keyFor(drill)) || "{}") as Packed | Record<string, LeitnerState>;
+    if (raw && (raw as Packed).v === 2) {
+      return Object.fromEntries(Object.entries((raw as Packed).items).map(([itemKey, [box, due, misses]]) => [itemKey, { itemKey, box: box as LeitnerBox, dueAt: new Date(due).toISOString(), misses }]));
+    }
+    return raw as Record<string, LeitnerState>;
   } catch {
     return {};
   }
 }
 
 function writeState(drill: DrillType, state: Record<string, LeitnerState>, store = availableStorage()) {
-  store?.setItem(keyFor(drill), JSON.stringify(state));
+  const items = Object.fromEntries(Object.values(state).map((entry) => [entry.itemKey, [entry.box, new Date(entry.dueAt).getTime(), missesOf(entry)] as [number, number, number]]));
+  store?.setItem(keyFor(drill), JSON.stringify({ v: 2, items } satisfies Packed));
 }
+
+const missesOf = (entry: LeitnerState) => entry.misses ?? (entry.box === 1 ? 1 : 0);
 
 /** Correct answers move an item up a box (longer interval); incorrect resets it to box 1 (due immediately). */
 export function recordAnswer(drill: DrillType, itemKey: string, correct: boolean, now = new Date(), store?: StorageLike): LeitnerState {
   const state = readState(drill, store);
-  const previousBox = state[itemKey]?.box ?? 1;
-  const nextBox = (correct ? Math.min(5, previousBox + 1) : 1) as LeitnerBox;
+  const previous = state[itemKey];
+  const nextBox = (correct ? Math.min(5, (previous?.box ?? 1) + 1) : 1) as LeitnerBox;
   const entry: LeitnerState = {
     itemKey,
     box: nextBox,
     dueAt: new Date(now.getTime() + BOX_INTERVAL_MS[nextBox]).toISOString(),
-    lastSeenAt: now.toISOString(),
+    misses: (previous ? missesOf(previous) : 0) + (correct ? 0 : 1),
   };
   state[itemKey] = entry;
   writeState(drill, state, store);
@@ -59,6 +89,20 @@ export function recordAnswer(drill: DrillType, itemKey: string, correct: boolean
 /** Every item CountLab has scheduling state for, keyed by item key. */
 export function leitnerStates(drill: DrillType, store?: StorageLike): Record<string, LeitnerState> {
   return readState(drill, store);
+}
+
+/**
+ * "Review due": items missed at least once whose next review has come,
+ * most overdue first. A miss is due at once; each right answer puts the
+ * next review further out (1, 3, 7, then 16 days), so a missed hand keeps
+ * coming back on later days until it sticks. `valid` drops keys the
+ * current rules no longer deal.
+ */
+export function reviewDueKeys(drill: DrillType, now = new Date(), store?: StorageLike, valid: (key: string) => boolean = () => true): string[] {
+  return Object.values(readState(drill, store))
+    .filter((entry) => missesOf(entry) > 0 && new Date(entry.dueAt).getTime() <= now.getTime() && valid(entry.itemKey))
+    .sort((a, b) => a.dueAt.localeCompare(b.dueAt))
+    .map((entry) => entry.itemKey);
 }
 
 /**
@@ -81,13 +125,6 @@ export function dueItemKeys(drill: DrillType, candidateKeys: string[], now = new
   }
   seenDue.sort((a, b) => b[1] - a[1]);
   return [...seenDue.map(([key]) => key), ...unseen];
-}
-
-/** Marks an item as due right now (box reset to 1), so the next `dueItemKeys` call surfaces it first. Used by click-to-practice. */
-export function forceDue(drill: DrillType, itemKey: string, store?: StorageLike) {
-  const state = readState(drill, store);
-  state[itemKey] = { itemKey, box: 1, dueAt: new Date(0).toISOString(), lastSeenAt: state[itemKey]?.lastSeenAt ?? new Date(0).toISOString() };
-  writeState(drill, state, store);
 }
 
 const PRACTICE_FOCUS_KEY = "countlab:practice-focus";

@@ -9,7 +9,8 @@ import type { Action } from "@/lib/blackjack/types";
 import { useSessions } from "@/lib/hooks/useSessions";
 import { useSettings } from "@/lib/hooks/useSettings";
 import { explainModeOf, historyTotals, relativeTime, roundLengthOf, type ExplainMode, type RoundLength } from "@/lib/statistics/drillRound";
-import { consumePracticeFocus, peekPracticeFocus } from "@/lib/statistics/spacedRepetition";
+import { consumePracticeFocus, peekPracticeFocus, recordAnswer } from "@/lib/statistics/spacedRepetition";
+import { indexReviewDue, indexReviewQuestions } from "@/lib/strategy-drills/review";
 import { storage } from "@/lib/statistics/storage";
 import { indexList, rulesFromSettings, rulesSummary, signedCount, SOURCE_NAME, type TableRules } from "@/lib/strategy";
 import { totalLabel } from "@/lib/strategy-drills/cards";
@@ -17,7 +18,7 @@ import { answerName, dealIndex, entryLabel, explainIndex, focusQuestions, indexM
 import { handLadder, insuranceLadder, ladderDomain } from "@/lib/strategy-drills/ladder";
 import { CountLadder, type LadderBand } from "../strategy-shared/CountLadder";
 import { HandStage } from "../strategy-shared/HandStage";
-import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
+import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, ReviewDue, startedRules } from "../strategy-shared/parts";
 import { RoundSummary, slowAnswers } from "../strategy-shared/RoundSummary";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
@@ -45,10 +46,14 @@ function adapterFor(): RoundAdapter<IndexQuestion, IndexHand, Options> {
     resolve: (question, rules) => resolveIndex(question, rules),
     question: ({ id, tc, side, cards, upcard }) => ({ id, tc, side, cards, upcard }),
     grade: (hand, chosen, rules) => ({ ok: chosen === hand.correct, category: hand.category, mistake: indexMistake(hand, chosen as IndexAnswer, rules) }),
-    answered: ({ hand, chosen, ok, ms, number }, _plan, tally) => track("deviation_answered", {
-      ok, chosen, correct: hand.correct, category: hand.category, hand: hand.entry.ref?.row ?? "Insurance", dealer: hand.entry.ref?.dealer ?? "A",
-      tc: hand.tc, responseTimeMs: ms, attempt: number, streak: tally.streak, isDeviation: hand.side === "index",
-    }),
+    answered: ({ hand, chosen, ok, ms, number }, plan, tally) => {
+      // Retries come seconds after the answer was shown, so they would teach the schedule nothing.
+      if (!plan.retry) recordAnswer(DRILL, hand.id, ok);
+      track("deviation_answered", {
+        ok, chosen, correct: hand.correct, category: hand.category, hand: hand.entry.ref?.row ?? "Insurance", dealer: hand.entry.ref?.dealer ?? "A",
+        tc: hand.tc, responseTimeMs: ms, attempt: number, streak: tally.streak, isDeviation: hand.side === "index",
+      });
+    },
     presented: (hand, number) => track("question_presented", { drill: DRILL, category: hand.category, scenario: `${hand.entry.ref?.row ?? "Insurance"}_v_${hand.entry.ref?.dealer ?? "A"}`, attempt: number }),
     started: (plan) => ({ drill: DRILL, mode: plan.options.set, questionTarget: plan.length, ...startedRules(plan.rules) }),
     spoken: spokenIndexHand,
@@ -84,15 +89,24 @@ export function IndexPlaysDrill() {
   const set: IndexSet = pref.set === "fab4" && !fab4.length ? "core" : pref.set;
   const plan = (patch: Partial<RoundPlan<IndexQuestion, Options>> = {}): RoundPlan<IndexQuestion, Options> =>
     ({ length: pref.length, explain: pref.explain, retry: false, rules, options: { ...cleanOptions(pref), set }, ...patch });
-  const [replacing, setReplacing] = useState(false);
-  const startFresh = () => (restored ? setReplacing(true) : begin());
+  // Starting over discards a saved round, so ask first; `replacing` is the start waiting on the answer.
+  const [replacing, setReplacing] = useState<(() => void) | null>(null);
+  const startFresh = () => (restored ? setReplacing(() => begin) : begin());
   const begin = () => {
-    setReplacing(false);
+    setReplacing(null);
     setSaved(null);
     const queue = focusEntry ? focusQuestions(focusEntry, rules) : undefined;
     setFocusLabel(undefined);
     round.start(plan({ queue }));
   };
+  const due = indexReviewDue(rules);
+  const review = () => {
+    setReplacing(null);
+    setSaved(null);
+    const queue = indexReviewQuestions(due, rules);
+    round.start(plan({ queue, length: queue.length, options: { ...cleanOptions(pref), set: "all" } }));
+  };
+  const startReview = () => (restored ? setReplacing(() => review) : review());
 
   if (round.phase === "play" && round.plan && round.hand) return <IndexPlay round={round} hand={round.hand} rules={round.plan.rules} />;
 
@@ -130,7 +144,8 @@ export function IndexPlaysDrill() {
       aside={<RecentRounds sessions={sessions} chartHref="/charts/indices" chartLabel="Open the index list" />}
     >
       {focusEntry && <Callout tone="info" title={`Focusing on ${entryLabel(focusEntry)}`}>The round opens with this play just either side of its index, then mixes in the rest.</Callout>}
-      <ReplaceRoundSheet open={replacing} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={begin} onClose={() => setReplacing(false)} />
+      <ReplaceRoundSheet open={Boolean(replacing)} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={() => replacing?.()} onClose={() => setReplacing(null)} />
+      <ReviewDue count={due.length} unit={["index", "indices"]} onStart={startReview} />
       <RulesBar settings={settings} update={update} note={`${pool.length} index plays for these rules${surrenders ? `, ${surrenders} of them surrender decisions` : ""}.`} />
       <SetupGroup title="Which indices">
         <PresetPicker label="Which indices" value={set} onChange={(next) => remember({ set: next })} options={[

@@ -88,7 +88,8 @@ export function restoreRound<Q, O>(adapter: Pick<RoundAdapter<Q, unknown, O>, "i
   const tally = tallyFromProgress(state);
   const queue = Array.isArray(state.queue) ? state.queue.filter((item) => adapter.isQuestion(item)) : [];
   const retry = state.retry === true && queue.length > 0;
-  const length = retry ? queue.length : roundLengthOf(state.length);
+  // A retry or review round is exactly as long as its queue.
+  const length = retry || (queue.length > 0 && queue.length === state.length) ? queue.length : roundLengthOf(state.length);
   if (tally.answered === 0 && !retry) return undefined;
   if (tally.answered >= length) return undefined;
   const plan: RoundPlan<Q, O> = { length, explain: explainModeOf(state.explain), retry, queue: queue.length ? queue : undefined, rules: validRules(state.rules) ?? fallbackRules, options: adapter.cleanOptions(state.options) };

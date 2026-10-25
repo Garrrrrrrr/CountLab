@@ -15,7 +15,8 @@ import { BASIC_CATEGORIES, basicFocusOf, basicMistake, basicScenario, explainBas
 import { ranksText, totalLabel } from "@/lib/strategy-drills/cards";
 import { ChartRow } from "../strategy-shared/ChartRow";
 import { HandStage } from "../strategy-shared/HandStage";
-import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
+import { EndRoundSheet, ExplainPicker, LastAnswer, LengthPicker, RecentRounds, ReplaceRoundSheet, ReviewDue, startedRules } from "../strategy-shared/parts";
+import { basicReviewDue, basicReviewQuestions } from "@/lib/strategy-drills/review";
 import { RoundSummary, slowAnswers } from "../strategy-shared/RoundSummary";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
@@ -84,9 +85,14 @@ export function BasicStrategyDrill() {
   const focus: BasicFocus = pref.focus === "surrender" && !surrender ? "mixed" : pref.focus;
   const plan = (patch: Partial<RoundPlan<BasicQuestion, Options>> = {}): RoundPlan<BasicQuestion, Options> =>
     ({ length: pref.length, explain: pref.explain, retry: false, rules, options: { focus }, ...patch });
-  const [replacing, setReplacing] = useState(false);
-  const begin = () => { setReplacing(false); setSaved(null); round.start(plan()); };
-  const startFresh = () => (restored ? setReplacing(true) : begin());
+  // Starting over discards a saved round, so ask first; `replacing` is the start waiting on the answer.
+  const [replacing, setReplacing] = useState<(() => void) | null>(null);
+  const confirmed = (go: () => void) => () => { setReplacing(null); setSaved(null); go(); };
+  const begin = confirmed(() => round.start(plan()));
+  const startFresh = () => (restored ? setReplacing(() => begin) : begin());
+  const due = basicReviewDue(rules);
+  const review = confirmed(() => { const queue = basicReviewQuestions(due, rules); round.start(plan({ queue, length: queue.length })); });
+  const startReview = () => (restored ? setReplacing(() => review) : review());
 
   if (round.phase === "play" && round.plan && round.hand) return <BasicPlay round={round} hand={round.hand} rules={round.plan.rules} />;
 
@@ -124,7 +130,8 @@ export function BasicStrategyDrill() {
       )}
       aside={<RecentRounds sessions={sessions} />}
     >
-      <ReplaceRoundSheet open={replacing} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={begin} onClose={() => setReplacing(false)} />
+      <ReplaceRoundSheet open={Boolean(replacing)} detail={`Your unfinished round has ${restored?.tally.answered ?? 0} answered.`} onConfirm={() => replacing?.()} onClose={() => setReplacing(null)} />
+      <ReviewDue count={due.length} unit={["hand", "hands"]} onStart={startReview} />
       <RulesBar settings={settings} update={update} />
       <SetupGroup title="Hands to practise" hint={!surrender ? "Surrender hands are off: your table rules have no surrender." : undefined}>
         <PresetPicker label="Hands to practise" value={focus} onChange={(value) => remember({ focus: value })}

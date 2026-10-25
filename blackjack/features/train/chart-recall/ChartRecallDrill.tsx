@@ -14,7 +14,9 @@ import {
   availableTables, BASE_NAME, bestRunAcross, cellMistake, cleanEntries, explainCell, filledIn, formatEntry, gradeTable, recallLevelOf, recallTables,
   RECALL_TABLE_IDS, TABLE_TITLE, type CellEntry, type CellGrade, type Deviation, type RecallLevel, type RecallTable, type RecallTableId, type TableGrade,
 } from "@/lib/strategy-drills/chartRecall";
-import { RecentRounds, ReplaceRoundSheet, startedRules } from "../strategy-shared/parts";
+import { RecentRounds, ReplaceRoundSheet, ReviewDue, startedRules } from "../strategy-shared/parts";
+import { recordAnswer } from "@/lib/statistics/spacedRepetition";
+import { chartReviewDue, chartReviewKey, chartReviewScope } from "@/lib/strategy-drills/review";
 import { RulesBar } from "../strategy-shared/RulesBar";
 import { useSetupPref } from "../strategy-shared/useSetupPref";
 import { RecallGrid, type GridView } from "./RecallGrid";
@@ -30,7 +32,8 @@ type Pref = { level: RecallLevel; scope: Scope };
 const cleanPref = (raw: Partial<Pref>): Pref => ({ level: recallLevelOf(raw.level), scope: raw.scope === "all" || RECALL_TABLE_IDS.includes(raw.scope as RecallTableId) ? (raw.scope as Scope) : "all" });
 
 /** One chart attempt: fixed when it starts, so a rules change elsewhere never re-grades it. */
-interface Game { rules: TableRules; level: RecallLevel; ids: RecallTableId[]; only?: string[] }
+/** `only` narrows a retry or a review chart to some cells; a review chart's answers update the schedule, a retry's do not. */
+interface Game { rules: TableRules; level: RecallLevel; ids: RecallTableId[]; only?: string[]; review?: boolean }
 type Phase = "setup" | "fill" | "review" | "summary";
 
 interface RecallSaved extends Game { v: 2; index: number; phase: "fill" | "review"; entries: Record<string, CellEntry>; graded: RecallTableId[]; activeMs: number }
@@ -47,7 +50,7 @@ function readSaved(raw: unknown): RecallSaved | undefined {
   if (!Object.keys(entries).length && !graded.length) return undefined;
   const index = Math.min(ids.length - 1, Math.max(0, Number.isInteger(state.index) ? state.index! : 0));
   const only = Array.isArray(state.only) ? state.only.filter((key): key is string => typeof key === "string") : undefined;
-  return { v: 2, rules, level: recallLevelOf(state.level), ids, only: only?.length ? only : undefined, index, phase: state.phase === "review" && graded.includes(ids[index]) ? "review" : "fill", entries, graded, activeMs: typeof state.activeMs === "number" && state.activeMs >= 0 ? state.activeMs : 0 };
+  return { v: 2, rules, level: recallLevelOf(state.level), ids, only: only?.length ? only : undefined, review: state.review === true || undefined, index, phase: state.phase === "review" && graded.includes(ids[index]) ? "review" : "fill", entries, graded, activeMs: typeof state.activeMs === "number" && state.activeMs >= 0 ? state.activeMs : 0 };
 }
 
 /** The tables as asked: a retry chart narrows each table to the cells that were wrong. */
@@ -200,17 +203,19 @@ export function ChartRecallDrill() {
     select(firstBlank.key);
     track("drill_started", { drill: DRILL, mode: next.level, questionTarget: list.reduce((sum, item) => sum + item.cells.length, 0), ...startedRules(next.rules) });
   };
-  const [replacing, setReplacing] = useState(false);
-  const startFresh = () => (saved ? setReplacing(true) : beginFresh());
-  const beginFresh = () => {
-    setReplacing(false);
+  // Starting over discards a saved chart, so ask first; `replacing` is the start waiting on the answer.
+  const [replacing, setReplacing] = useState<(() => void) | null>(null);
+  const startFresh = () => (saved ? setReplacing(() => beginFresh) : beginFresh());
+  const beginFresh = (review?: { ids: RecallTableId[]; only: string[] }) => {
+    setReplacing(null);
     const rules = rulesFromSettings(settings);
     const allowed = availableTables(rules);
     const ids = pref.scope === "all" || !allowed.includes(pref.scope) ? allowed : [pref.scope];
     storage.clearProgress(DRILL);
     setSaved(undefined);
-    begin({ rules, level: pref.level, ids });
+    begin(review ? { rules, level: pref.level, ...review, review: true } : { rules, level: pref.level, ids });
   };
+  const startReview = (scope: { ids: RecallTableId[]; only: string[] }) => (saved ? setReplacing(() => () => beginFresh(scope)) : beginFresh(scope));
 
   const gradeNow = () => {
     if (!table) return;
@@ -220,6 +225,7 @@ export function ChartRecallDrill() {
     setPhase("review");
     setView("chart");
     const result = gradeOf(table);
+    if (game && (!game.only || game.review)) for (const cell of result.cells) recordAnswer(DRILL, chartReviewKey(game.level, cell.cell.key), cell.ok);
     const firstMiss = result.cells.find((item) => !item.ok);
     setSelected(firstMiss?.cell.key);
     announce(`${table.title} graded: ${result.correct} of ${result.total} right${result.blank ? `, ${result.blank} blank` : ""}.`);
@@ -242,7 +248,7 @@ export function ChartRecallDrill() {
     const categories = Object.fromEntries(results.map(({ grade }) => [grade.title, { correct: grade.correct, total: grade.total }]));
     const ms = clock.read();
     const made = makeSession(DRILL, total, correct, ms, bestRunAcross(results.map((item) => item.grade)), mistakes, categories,
-      { level: game.level, tables: done.map((item) => item.id).join(" "), blank, elapsedSeconds: Math.round(ms / 1000), chartRules: rulesSummary(game.rules) }, game.only ? ["retry"] : undefined);
+      { level: game.level, tables: done.map((item) => item.id).join(" "), blank, elapsedSeconds: Math.round(ms / 1000), chartRules: rulesSummary(game.rules) }, game.review ? ["review"] : game.only ? ["retry"] : undefined);
     storage.addSession(made);
     progress.cancel();
     storage.clearProgress(DRILL);
@@ -280,7 +286,7 @@ export function ChartRecallDrill() {
         <div className="mb-3 flex items-end justify-between gap-3">
           <div className="min-w-0">
             <p className="eyebrow truncate">{tables.length > 1 && `Table ${index + 1} of ${tables.length} · `}<span className="tnum normal-case tracking-normal">{rulesSummary(game.rules)}</span></p>
-            <h2 className="mt-0.5 text-xl font-semibold">{table.title}{game.only && <span className="ml-2 align-middle"><Badge tone="info">Retry</Badge></span>}</h2>
+            <h2 className="mt-0.5 text-xl font-semibold">{table.title}{game.only && <span className="ml-2 align-middle"><Badge tone="info">{game.review ? "Review" : "Retry"}</Badge></span>}</h2>
           </div>
           {phase === "fill" ? (
             <Button variant="secondary" onClick={requestGrade} disabled={filled === 0}>Grade</Button>
@@ -347,7 +353,7 @@ export function ChartRecallDrill() {
     const blank = results.reduce((sum, item) => sum + item.grade.blank, 0);
     return (
       <DrillSummary
-        title={game.only ? "Chart Recall: retry done" : "Chart Recall"}
+        title={game.review ? "Chart Recall: review done" : game.only ? "Chart Recall: retry done" : "Chart Recall"}
         score={session.accuracy}
         scoreLabel="Cells right"
         scoreSub={<><span className="tnum font-semibold text-ink">{session.correct} of {session.questions}</span> cells · {game.level === "indices" ? "with indices" : "basic plays"} · {rulesSummary(game.rules)}</>}
@@ -377,6 +383,7 @@ export function ChartRecallDrill() {
   const allowed = availableTables(rules);
   const scope: Scope = pref.scope === "all" || allowed.includes(pref.scope) ? pref.scope : "all";
   const count = recallTables(rules, pref.level, scope === "all" ? allowed : [scope]).reduce((sum, item) => sum + item.cells.length, 0);
+  const reviewScope = chartReviewScope(chartReviewDue(rules, pref.level), pref.level);
   return (
     <DrillSetup
       title="Chart Recall"
@@ -392,7 +399,8 @@ export function ChartRecallDrill() {
       )}
       aside={<RecentRounds sessions={sessions} unit="cells" />}
     >
-      <ReplaceRoundSheet open={replacing} detail={`Your unfinished chart has ${saved ? Object.values(saved.state.entries).filter((entry) => entry.base).length : 0} cells filled.`} onConfirm={beginFresh} onClose={() => setReplacing(false)} />
+      <ReplaceRoundSheet open={Boolean(replacing)} detail={`Your unfinished chart has ${saved ? Object.values(saved.state.entries).filter((entry) => entry.base).length : 0} cells filled.`} onConfirm={() => replacing?.()} onClose={() => setReplacing(null)} />
+      <ReviewDue count={reviewScope.only.length} unit={[`${pref.level === "indices" ? "cell with indices" : "cell"}`, `${pref.level === "indices" ? "cells with indices" : "cells"}`]} onStart={() => startReview(reviewScope)} />
       <RulesBar settings={settings} update={update} note={rules.surrender === "none" ? "No surrender table: your rules have no surrender." : undefined} />
       <SetupGroup title="Difficulty">
         <PresetPicker label="Difficulty" value={pref.level} onChange={(value) => remember({ level: value })} options={LEVELS} />

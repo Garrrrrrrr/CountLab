@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordAnswer, leitnerStates, dueItemKeys } from "./spacedRepetition";
+import { recordAnswer, leitnerStates, dueItemKeys, reviewDueKeys } from "./spacedRepetition";
 
 class MemoryStorage {
   private values = new Map<string, string>();
@@ -46,6 +46,32 @@ describe("spacedRepetition (Leitner boxes)", () => {
     recordAnswer("Basic Strategy", "Pairs", true, new Date("2026-08-01T02:00:00Z"), store);
     const due = dueItemKeys("Basic Strategy", ["Hard totals", "Pairs", "Soft totals"], new Date("2026-08-03T00:00:00Z"), store);
     expect(due).toEqual(["Hard totals", "Pairs", "Soft totals"]);
+  });
+
+  it("brings a missed item back now, then on later days as it is answered right", () => {
+    const store = new MemoryStorage();
+    const day = (n: number) => new Date(Date.UTC(2026, 7, 1 + n, 9));
+    recordAnswer("Basic Strategy", "hard:16v10", false, day(0), store);
+    recordAnswer("Basic Strategy", "hard:12v4", true, day(0), store);
+    expect(reviewDueKeys("Basic Strategy", day(0), store)).toEqual(["hard:16v10"]);
+    const right = recordAnswer("Basic Strategy", "hard:16v10", true, day(0), store);
+    expect(right).toMatchObject({ box: 2, misses: 1 });
+    expect(reviewDueKeys("Basic Strategy", day(0), store)).toEqual([]);
+    expect(reviewDueKeys("Basic Strategy", day(1), store)).toEqual(["hard:16v10"]);
+    recordAnswer("Basic Strategy", "hard:16v10", true, day(1), store);
+    expect(reviewDueKeys("Basic Strategy", day(3), store)).toEqual([]);
+    expect(reviewDueKeys("Basic Strategy", day(4), store)).toEqual(["hard:16v10"]);
+    // Never missed: it is never "due for review", however long ago it was seen.
+    expect(reviewDueKeys("Basic Strategy", day(60), store)).not.toContain("hard:12v4");
+    expect(reviewDueKeys("Basic Strategy", day(60), store, (key) => key !== "hard:16v10")).toEqual([]);
+  });
+
+  it("reads schedules saved before misses were counted, and writes them compactly", () => {
+    const store = new MemoryStorage();
+    store.setItem("hilo:leitner:Deviations", JSON.stringify({ insurance: { itemKey: "insurance", box: 1, dueAt: "2026-08-01T00:00:00.000Z", lastSeenAt: "2026-08-01T00:00:00.000Z" } }));
+    expect(reviewDueKeys("Deviations", new Date("2026-08-02T00:00:00Z"), store)).toEqual(["insurance"]);
+    recordAnswer("Deviations", "insurance", false, new Date("2026-08-02T00:00:00Z"), store);
+    expect(JSON.parse(store.getItem("hilo:leitner:Deviations")!)).toEqual({ v: 2, items: { insurance: [1, Date.parse("2026-08-02T00:00:00Z"), 2] } });
   });
 
   it("persists state per drill independently", () => {

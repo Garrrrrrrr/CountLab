@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Camera, CircleCheck, Play } from "lucide-react";
+import { ArrowRight, CalendarClock, Camera, CircleCheck, Play } from "lucide-react";
 import { ButtonLink, PageHeader } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { useSessions } from "@/lib/hooks/useSessions";
 import { useSettings } from "@/lib/hooks/useSettings";
 import { DRILLS } from "@/lib/routes";
 import { storage } from "@/lib/statistics/storage";
-import { rulesFromSettings, rulesSummary } from "@/lib/strategy";
+import { rulesFromSettings, rulesSummary, type TableRules } from "@/lib/strategy";
+import { reviewDueCounts } from "@/lib/strategy-drills/review";
 import { DRILL_ICON, DRILL_TYPE, READY_AT, drillStats, suggestNext, timeAgo, type DrillStats } from "./drillMeta";
 
 const GROUPS = [
@@ -29,9 +30,23 @@ function useUnfinished() {
   return unfinished;
 }
 
+/** Missed hands, indices and chart cells due for review, by drill slug. Read after mount: the schedule lives in this browser's storage. */
+function useReviewDue(rules: TableRules, sessions: unknown) {
+  const [due, setDue] = useState<Partial<Record<string, number>>>({});
+  const rulesKey = JSON.stringify(rules);
+  useEffect(() => {
+    const refresh = () => setDue(reviewDueCounts(JSON.parse(rulesKey) as TableRules));
+    refresh();
+    window.addEventListener("hilo-storage", refresh);
+    return () => window.removeEventListener("hilo-storage", refresh);
+  }, [rulesKey, sessions]);
+  return due;
+}
+
 export function TrainHub() {
   const sessions = useSessions();
   const { settings } = useSettings();
+  const due = useReviewDue(rulesFromSettings(settings), sessions);
   const stats = useMemo(() => drillStats(sessions), [sessions]);
   const unfinished = useUnfinished();
   const resume = unfinished[0] && DRILLS.find((drill) => drill.slug === unfinished[0].slug);
@@ -59,7 +74,7 @@ export function TrainHub() {
             <h2 id={`group-${group.skill}`} className="text-lg font-semibold">{group.title}</h2>
             <p className="mt-0.5 text-sm text-ink-3">{group.sub}</p>
             <ul className="mt-3 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-              {stats.filter((entry) => entry.drill.skill === group.skill).map((entry) => <li key={entry.drill.slug}><DrillCard stats={entry} /></li>)}
+              {stats.filter((entry) => entry.drill.skill === group.skill).map((entry) => <li key={entry.drill.slug}><DrillCard stats={entry} due={due[entry.drill.slug]} /></li>)}
             </ul>
           </section>
         ))}
@@ -90,7 +105,7 @@ function FocusCard({ eyebrow, title, detail, href, action, slug }: { eyebrow: st
   );
 }
 
-function DrillCard({ stats }: { stats: DrillStats }) {
+function DrillCard({ stats, due }: { stats: DrillStats; due?: number }) {
   const { drill, recent, last, ready } = stats;
   const Icon = DRILL_ICON[drill.slug];
   return (
@@ -105,6 +120,7 @@ function DrillCard({ stats }: { stats: DrillStats }) {
         <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-3">
           {last ? <span className="tnum">{recent}% recently · {timeAgo(last.date)}</span> : <span>Not tried yet</span>}
           {drill.usesTrayPhotos && <span className="inline-flex items-center gap-1"><Camera size={13} aria-hidden /> Real tray photos</span>}
+          {Boolean(due) && <span className="inline-flex items-center gap-1 font-semibold text-brand-text"><CalendarClock size={13} aria-hidden /> {due} due for review</span>}
         </span>
       </span>
     </Link>
