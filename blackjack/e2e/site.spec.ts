@@ -30,7 +30,7 @@ const collectErrors = (page: Page) => {
 };
 
 test.describe("pages", () => {
-  for (const path of ["/", "/train/", "/charts/", "/charts/indices/", "/charts/pocket/", "/progress/", "/settings/", "/signin/", "/terms/", "/privacy/", "/calculator/", "/journal/"]) {
+  for (const path of ["/", "/train/", "/charts/", "/charts/indices/", "/charts/pocket/", "/progress/", "/settings/", "/signin/", "/terms/", "/privacy/", "/changelog/", "/calculator/", "/journal/"]) {
     test(`${path} renders without errors or sideways scroll`, async ({ page }) => {
       const errors = collectErrors(page);
       await page.goto(path);
@@ -40,6 +40,18 @@ test.describe("pages", () => {
       expect(errors).toEqual([]);
     });
   }
+
+  test("what's new is reachable from Settings and its screenshots load", async ({ page }) => {
+    await page.goto("/settings/");
+    await page.getByRole("main").getByRole("link", { name: "What's new" }).click();
+    await expect(page.getByRole("heading", { name: "What's new", level: 1 })).toBeVisible();
+    const images = page.locator("main img");
+    expect(await images.count()).toBeGreaterThan(5);
+    for (const image of await images.all()) {
+      await image.scrollIntoViewIfNeeded();
+      await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
+    }
+  });
 
   test("unknown addresses get the not-found page", async ({ page }) => {
     await page.goto("/no-such-page/");

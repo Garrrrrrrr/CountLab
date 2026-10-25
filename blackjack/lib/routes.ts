@@ -49,6 +49,7 @@ export const PAGES: Record<string, PageInfo> = {
   "/progress": { title: "Progress", description: "Accuracy, speed and readiness across every drill, and what to practise next." },
   "/settings": { title: "Settings", description: "Theme, table rules, counting defaults, account, backups and privacy." },
   "/signin": { title: "Sign in", description: "Sign in to back up and sync your training, journal and settings across devices.", public: true },
+  "/changelog": { title: "What's new", description: "Every CountLab release, newest first: new drills, chart and calculator changes, fixes, with screenshots.", public: true },
   "/terms": { title: "Terms of Service", description: "The terms that apply when you use CountLab.", public: true },
   "/privacy": { title: "Privacy Policy", description: "What CountLab stores, what its privacy-minimized analytics record, and how to delete it.", public: true },
   "/admin": { title: "Product analytics", description: "Aggregate product analytics for administrators." },

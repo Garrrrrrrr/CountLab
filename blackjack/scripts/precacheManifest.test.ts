@@ -9,7 +9,7 @@ describe("toPrecacheUrls", () => {
     expect(toPrecacheUrls(["_next/static/chunks/a.js", "404.html"])).toEqual(["/404.html", "/_next/static/chunks/a.js"]);
   });
   it("omits files not useful for offline views", () => {
-    expect(toPrecacheUrls(["sw.js", "sitemap.xml", "robots.txt", ".nojekyll", "opengraph-image.png", "deck-estimation/images/tray.jpg"])).toEqual([]);
+    expect(toPrecacheUrls(["sw.js", "sitemap.xml", "robots.txt", ".nojekyll", "opengraph-image.png", "deck-estimation/images/tray.jpg", "changelog-shots/home.jpg"])).toEqual([]);
   });
   it("keeps small drill metadata and install assets", () => {
     expect(toPrecacheUrls(["deck-estimation/manifest.json", "offline.html", "icon.svg", "manifest.webmanifest", "apple-touch-icon.png"])).toEqual(["/apple-touch-icon.png", "/deck-estimation/manifest.json", "/icon.svg", "/manifest.webmanifest", "/offline.html"]);

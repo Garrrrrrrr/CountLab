@@ -1,6 +1,7 @@
 /** Map static-export paths to the browser request URLs a worker must cache. */
 const EXCLUDED_EXACT = new Set(["sw.js", "sitemap.xml", "robots.txt", ".nojekyll"]);
-const EXCLUDED_PREFIXES = ["opengraph-image"];
+// What's new screenshots are large and only useful online.
+const EXCLUDED_PREFIXES = ["opengraph-image", "changelog-shots/"];
 /**
  * Discard-tray photos are bulky (~4 MB) but their filenames are stable across
  * deploys, so the worker keeps them in a cache that is not version-stamped.

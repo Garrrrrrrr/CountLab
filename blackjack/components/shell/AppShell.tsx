@@ -205,6 +205,7 @@ function Footer() {
     <footer className="no-print mx-auto hidden max-w-6xl px-4 pb-8 pt-4 text-xs text-ink-3 sm:px-6 lg:block lg:px-10">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-5">
         <span className="inline-flex items-center gap-2"><LogoMark size={18} /> CountLab</span>
+        <Link href="/changelog" className="hover:text-ink">What&apos;s new</Link>
         <Link href="/terms" className="hover:text-ink">Terms</Link>
         <Link href="/privacy" className="hover:text-ink">Privacy</Link>
         <a href="mailto:privacy@countlab.ca" className="hover:text-ink">Contact</a>

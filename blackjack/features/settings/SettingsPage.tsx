@@ -113,6 +113,7 @@ export function SettingsPage() {
         <Group title="About">
           <Row>
             <div className="-my-2.5 flex flex-wrap gap-x-5 text-sm">
+              <Link href="/changelog" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">What&apos;s new</Link>
               <Link href="/terms" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Terms of Service</Link>
               <Link href="/privacy" className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Privacy Policy</Link>
               <a href={`mailto:${CONTACT_EMAIL}`} className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">Contact</a>
