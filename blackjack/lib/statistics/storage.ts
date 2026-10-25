@@ -100,7 +100,8 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   theme: "system",
   decks: 6,
-  rounding: "floor",
+  // Wong's indices, which the charts and drills use, assume a truncated true count.
+  rounding: "truncate",
   speed: 1000,
   sound: false,
   animations: true,

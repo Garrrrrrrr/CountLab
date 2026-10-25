@@ -7,7 +7,7 @@ export function hiLoValue(card: Card | Rank): number {
   return 0;
 }
 export const runningCount = (cards: Card[]) => cards.reduce((sum, card) => sum + hiLoValue(card), 0);
-export function trueCount(rc: number, decksRemaining: number, rounding: TrueCountRounding = "floor") {
+export function trueCount(rc: number, decksRemaining: number, rounding: TrueCountRounding = "truncate") {
   if (decksRemaining <= 0) return rc;
   const value = rc / decksRemaining;
   if (rounding === "truncate") return Math.trunc(value);

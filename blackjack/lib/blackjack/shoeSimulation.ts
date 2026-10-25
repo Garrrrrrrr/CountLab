@@ -215,7 +215,7 @@ function playBox(
 }
 
 export async function simulateShoeSession(config: ShoeSimulationConfig, hooks: SimulationHooks = {}): Promise<ShoeSimulationResult> {
-  const { rules, ramp, bettingUnit, playerHands, handsToSimulate, highSpeed, deviationGroups, rounding = "floor" } = config;
+  const { rules, ramp, bettingUnit, playerHands, handsToSimulate, highSpeed, deviationGroups, rounding = "truncate" } = config;
   const random = mulberry32(config.seed);
   const shoe = new BlackjackShoe(rules.decks, random);
   const cutCardAt = rules.decks * 52 * (1 - rules.penetration);

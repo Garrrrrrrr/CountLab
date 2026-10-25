@@ -78,8 +78,8 @@ export function SettingsPage() {
         <Group title="Counting">
           <Row>
             <Segmented label="True count rounding" value={settings.rounding} onChange={(value) => set("rounding", value)}
-              options={[{ value: "floor", label: "Floor" }, { value: "truncate", label: "Truncate" }, { value: "nearest", label: "Nearest" }]} />
-            <p className="mt-2 text-xs leading-5 text-ink-3">Floor rounds down: −1.2 becomes −2 and +2.8 becomes +2. Truncate drops the fraction: −1.2 becomes −1. Use the method your indices were built for: the charts use Wong&rsquo;s, which assume truncate.</p>
+              options={[{ value: "truncate", label: "Truncate" }, { value: "floor", label: "Floor" }, { value: "nearest", label: "Nearest" }]} />
+            <p className="mt-2 text-xs leading-5 text-ink-3">Truncate drops the fraction: +2.8 becomes +2 and −1.2 becomes −1. Floor rounds down: −1.2 becomes −2. Use the method your indices were built for: the charts use Wong&rsquo;s, which assume truncate.</p>
           </Row>
           <Row>
             <SelectField label="Card speed" value={settings.speed} onChange={(event) => set("speed", Number(event.target.value))}>
