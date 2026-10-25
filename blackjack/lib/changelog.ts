@@ -29,6 +29,36 @@ export function entryDate({ date, from }: Pick<ChangelogEntry, "date" | "from">)
 
 export const CHANGELOG: readonly ChangelogEntry[] = [
   {
+    id: "2026-10-25-pocket-card",
+    date: "2026-10-25",
+    title: "A redesigned pocket chart, and truncated true counts",
+    summary: "The pocket chart has a new layout and comes in light or dark, and new settings now truncate the true count, which is what Wong's indices assume.",
+    tags: ["new", "improved", "fixed"],
+    shots: [{ src: "/changelog-shots/pocket-dark.jpg", alt: "The redesigned pocket chart in dark colours, with hard, soft, pair and surrender panels and a key", caption: "The new pocket chart in dark colours, for six decks with early surrender." }],
+    groups: [
+      {
+        title: "Pocket chart",
+        items: [
+          "A new layout: a header with your rules and the insurance count, a rounded panel for each table with a shaded dealer row, and three columns sized to print across a 6×4 card.",
+          "Light or dark colours. Your choice is remembered on this device and Download chart on the charts page uses it too. Dark images get “-dark” in the file name, and printing always uses light.",
+          "A How to read it panel explains the colours, the index strips, the purple surrender corner, and the dash a surrender cell shows when you surrender only at a high enough count.",
+          "A Notes panel gives the insurance count, the always-hit and always-stand totals, that indices assume a truncated true count, and any footnotes for your rules.",
+        ],
+      },
+      {
+        title: "True count",
+        items: [
+          "New settings truncate the true count (−1.6 counts as −1, +2.8 as +2), as Wong's indices assume. Truncate is now listed first in Settings.",
+          "If you have saved settings before, they keep the rounding they had; you can switch it in Settings → Counting.",
+        ],
+      },
+      {
+        title: "Fixes",
+        items: ["On screens 1280–1360px wide, the Calculator's bet ramp steps stay inside their card."],
+      },
+    ],
+  },
+  {
     id: "2026-10-24-drills",
     date: "2026-10-24",
     title: "New drills and a full UI audit",
