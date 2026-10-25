@@ -48,9 +48,6 @@ export const extraRuleAdjustment = (config: LabConfig) =>
 /** The "enter:leave" key of the simulated back-counting rule for this setup, e.g. "1:-1" or "start:0". */
 export const wongOutRule = (wongInAt: number | null, wongOutAt: number) => `${wongInAt ?? "start"}:${wongOutAt}`;
 
-/** Minutes a player who leaves a shoe played from the top spends finding a fresh one; shortcut: a fixed guess, make it a setting if players ask. */
-export const SHOE_MOVE_MINUTES = 5;
-
 /** The leave points that have simulated shares for an entry point: below the entry (below 0, where a shoe starts, when playing from the top), from −3 to +1. */
 export const wongOutChoices = (wongInAt: number | null) => [-3, -2, -1, 0, 1].filter((exit) => exit < (wongInAt ?? 0));
 
@@ -58,11 +55,11 @@ export const wongOutChoices = (wongInAt: number | null) => [-3, -2, -1, 0, 1].fi
  * Watched and played shares for leaving at a count, or undefined when the player stays (the
  * simple sit-out ramp prices that) or the rule has no simulated shares.
  */
-export function countSharesFor(config: Pick<LabConfig, "wongInAt" | "wongOutAt" | "handsPerHour">, rules: AdvantageRules): CountShares | undefined {
+export function countSharesFor(config: Pick<LabConfig, "wongInAt" | "wongOutAt" | "handsPerHour" | "shoeMoveMinutes">, rules: AdvantageRules): CountShares | undefined {
   if (config.wongOutAt === null) return undefined;
   const shares = WONG_OUT_SHARES[profileKey(rules)]?.[wongOutRule(config.wongInAt, config.wongOutAt)];
-  // Each move to a fresh shoe is time that deals nothing: SHOE_MOVE_MINUTES of rounds not played.
-  return shares && { ...shares, idle: shares.moves * config.handsPerHour * SHOE_MOVE_MINUTES / 60 };
+  // Each move to a fresh shoe is time that deals nothing: shoeMoveMinutes of rounds not played.
+  return shares && { ...shares, idle: shares.moves * config.handsPerHour * config.shoeMoveMinutes / 60 };
 }
 
 /** Rounds played in each shoe before leaving it for a fresh one, when the rule moves at all. */

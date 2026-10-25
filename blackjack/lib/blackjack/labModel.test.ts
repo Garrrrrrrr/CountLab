@@ -393,12 +393,12 @@ describe("leaving a shoe played from the top", () => {
     expect(wongOutChoices(null)).toEqual([-3, -2, -1]);
     expect(wongOutChoices(2)).toEqual([-3, -2, -1, 0, 1]);
     const rules = labRules(DEFAULT_LAB_CONFIG);
-    for (const exit of wongOutChoices(null)) expect(countSharesFor({ wongInAt: null, wongOutAt: exit, handsPerHour: 100 }, rules), `start:${exit}`).toBeDefined();
+    for (const exit of wongOutChoices(null)) expect(countSharesFor({ wongInAt: null, wongOutAt: exit, handsPerHour: 100, shoeMoveMinutes: 5 }, rules), `start:${exit}`).toBeDefined();
   });
 
   it("charges each move to a fresh shoe as time without play", () => {
     const rules = labRules(DEFAULT_LAB_CONFIG);
-    const shares = countSharesFor({ wongInAt: null, wongOutAt: -1, handsPerHour: 120 }, rules)!;
+    const shares = countSharesFor({ wongInAt: null, wongOutAt: -1, handsPerHour: 120, shoeMoveMinutes: 5 }, rules)!;
     const perShoe = roundsPerShoe({ wongInAt: null, wongOutAt: -1 }, rules)!;
     // Five minutes at 120 rounds an hour is ten rounds of time for every shoe left.
     expect(shares.idle! / shares.played.reduce((sum, share) => sum + share, 0)).toBeCloseTo(10 / perShoe, 6);
@@ -409,7 +409,18 @@ describe("leaving a shoe played from the top", () => {
     expect(charged.hourlyEv / free.hourlyEv).toBeCloseTo(perShoe / (perShoe + 10), 3);
     expect(charged.evPerRound * (perShoe + 10)).toBeCloseTo(free.evPerRound * perShoe, 6);
     // Back-counters stay to watch, so they never move.
-    expect(countSharesFor({ wongInAt: 2, wongOutAt: -1, handsPerHour: 120 }, rules)!.idle).toBe(0);
+    expect(countSharesFor({ wongInAt: 2, wongOutAt: -1, handsPerHour: 120, shoeMoveMinutes: 5 }, rules)!.idle).toBe(0);
+  });
+
+  it("takes the player's own minutes between shoes, and saves them only when changed", () => {
+    const rules = labRules(DEFAULT_LAB_CONFIG);
+    const idle = (shoeMoveMinutes: number) => countSharesFor({ wongInAt: null, wongOutAt: -1, handsPerHour: 120, shoeMoveMinutes }, rules)!.idle!;
+    expect(idle(10)).toBeCloseTo(2 * idle(5), 12);
+    expect(idle(0)).toBe(0);
+    expect(toTemplateConfig(DEFAULT_LAB_CONFIG)).not.toHaveProperty("shoeMoveMinutes");
+    const saved = toTemplateConfig({ ...DEFAULT_LAB_CONFIG, shoeMoveMinutes: 2 });
+    expect(normalizeConfig(saved).shoeMoveMinutes).toBe(2);
+    expect(normalizeConfig({ ...saved, shoeMoveMinutes: -3 }).shoeMoveMinutes).toBe(DEFAULT_LAB_CONFIG.shoeMoveMinutes);
   });
 
   it("drops a saved leave point that could never apply", () => {

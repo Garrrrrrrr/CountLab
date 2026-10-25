@@ -34,6 +34,8 @@ export interface CvcxTemplateConfig {
   wongOutAt?: number | null;
   /** The table's largest bet per hand; absent when there is no limit. */
   tableMax?: number | null;
+  /** Minutes to find a fresh shoe after leaving one; absent at the default. */
+  shoeMoveMinutes?: number;
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
   /** Which audited curve to price against. Absent on saves that predate the control. */
@@ -95,6 +97,7 @@ export const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && (config.earlySurrender === undefined || typeof config.earlySurrender === "boolean")
     && (config.wongOutAt === undefined || config.wongOutAt === null || finite(config.wongOutAt))
     && (config.tableMax === undefined || config.tableMax === null || finite(config.tableMax))
+    && (config.shoeMoveMinutes === undefined || finite(config.shoeMoveMinutes))
     && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2);
 };
 const validTemplate = (value: unknown): value is CvcxTemplate => {

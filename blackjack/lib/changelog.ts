@@ -39,7 +39,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
         title: "Calculator",
         items: [
           "When you play every round, leaving at −1, −2 or −3 is now priced from simulated shoes. Before, the choice changed nothing. Leaving at 0 or +1 is no longer offered there, because a fresh shoe starts at 0.",
-          "Each move to a fresh shoe counts as 5 minutes without play, and the note under the ramp says how many rounds you play in each shoe.",
+          "Each move to a fresh shoe counts as time without play: 5 minutes unless you set your own under Time to find a fresh shoe. The note under the ramp says how many rounds you play in each shoe.",
         ],
       },
       {

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 import { CUSTOM_RAMP_NAME, isPresetName, OPTIMAL_RAMP_NAME, PRESET_NAMES } from "@/lib/blackjack/labConfig";
 import { money, percent } from "@/lib/blackjack/labFormat";
-import { labRules, playedSpread, roundsPerShoe, SHOE_MOVE_MINUTES, wongOutChoices } from "@/lib/blackjack/labModel";
+import { labRules, playedSpread, roundsPerShoe, wongOutChoices } from "@/lib/blackjack/labModel";
 import { handsSummary, stepsSummary, tcLabel, toSteps, unitLabel } from "@/lib/blackjack/rampSteps";
 import { Badge, Button, Callout, Segmented, SelectField } from "@/components/ui";
 import { CountTable } from "./CountTable";
@@ -112,6 +112,19 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
             <option value="stay">{config.wongInAt === null ? "Never: play the whole shoe" : "As soon as it is below your entry"}</option>
             {wongOutChoices(config.wongInAt).map((exit) => <option key={exit} value={exit}>At {tcLabel(exit)} or lower</option>)}
           </SelectField>
+          {perShoe !== undefined && (
+            <NumberField
+              label="Time to find a fresh shoe"
+              value={config.shoeMoveMinutes}
+              min={0}
+              max={60}
+              step="any"
+              suffix="min"
+              field="shoe_move_minutes"
+              hint="Walking to another table and waiting for its shuffle or a seat. Counted as time without play."
+              onChange={(shoeMoveMinutes) => edit({ shoeMoveMinutes })}
+            />
+          )}
           <NumberField
             label="Table maximum"
             value={config.tableMax ?? 0}
@@ -125,7 +138,7 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
         {config.wongOutAt !== null && (
           <Note>
             Leaving at a count is priced from simulated shoes: how often each count is watched and played under this rule. Rounds per hour count every round you watch.
-            {perShoe !== undefined && <> You play about {perShoe < 10 ? perShoe.toFixed(1) : Math.round(perShoe)} rounds a shoe, and each move to a fresh shoe counts as {SHOE_MOVE_MINUTES} minutes without play.</>}
+            {perShoe !== undefined && <> You play about {perShoe < 10 ? perShoe.toFixed(1) : Math.round(perShoe)} rounds a shoe, and each move to a fresh shoe counts as {config.shoeMoveMinutes.toLocaleString("en-US", { maximumFractionDigits: 1 })} {config.shoeMoveMinutes === 1 ? "minute" : "minutes"} without play.</>}
           </Note>
         )}
 

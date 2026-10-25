@@ -4,6 +4,13 @@ import { templateHandSchedule, validConfig, type CvcxTemplateConfig } from "./cv
 import { expandHands, expandRamp, TRUE_COUNTS } from "./rampSteps";
 import type { VenuePreset } from "./venuePresets";
 
+/**
+ * Minutes a player who leaves a shoe played from the top spends finding a fresh one: a walk to
+ * another table and, most of the time, a wait for its shuffle or for a seat. A judgment call; the
+ * Calculator lets the player set their own.
+ */
+export const DEFAULT_SHOE_MOVE_MINUTES = 5;
+
 export type DoubleRule = "any2" | "9to11" | "10to11";
 
 /**
@@ -25,6 +32,8 @@ export interface LabConfig {
   wongOutAt: number | null;
   /** The table's largest bet per hand, in dollars (null: no limit). */
   tableMax: number | null;
+  /** Minutes without play each time a player who leaves a shoe played from the top finds a fresh one. */
+  shoeMoveMinutes: number;
   rampName: string;
   ramp: RampPoint[];
   chipIncrement: number;
@@ -82,6 +91,7 @@ export const DEFAULT_LAB_CONFIG: LabConfig = {
   wongInAt: null,
   wongOutAt: null,
   tableMax: null,
+  shoeMoveMinutes: DEFAULT_SHOE_MOVE_MINUTES,
   rampName: "1-12",
   ramp: presetRamp("1-12"),
   chipIncrement: 0.5,
@@ -113,16 +123,18 @@ export function snapDealt(decks: Decks, dealt: number) {
   return GAME_OPTIONS[decks].find((option) => Math.abs(option.dealt - dealt) < 1e-6)?.dealt ?? dealt;
 }
 
+/** A leave point only applies below where play starts (0 for a shoe played from the top); older saves could hold one that doesn't. */
+const leaveAt = (wongInAt: number | null | undefined, wongOutAt: number | null | undefined) =>
+  typeof wongOutAt === "number" && wongOutAt < (wongInAt ?? 0) ? wongOutAt : null;
+/** Minutes to find a fresh shoe; a saved value that isn't a usable number falls back to the default. */
+const moveMinutes = (minutes: unknown) => (typeof minutes === "number" && Number.isFinite(minutes) && minutes >= 0 ? minutes : DEFAULT_SHOE_MOVE_MINUTES);
+
 /**
  * Reads a saved scenario the way the Lab has always loaded one: older hand
  * settings migrate to a per-count schedule, a missing doubling rule means any
  * two cards, and a missing play mode means indices. Sparse ramps from older
  * saves are expanded so sitting out low counts masks every count correctly.
  */
-/** A leave point only applies below where play starts (0 for a shoe played from the top); older saves could hold one that doesn't. */
-const leaveAt = (wongInAt: number | null | undefined, wongOutAt: number | null | undefined) =>
-  typeof wongOutAt === "number" && wongOutAt < (wongInAt ?? 0) ? wongOutAt : null;
-
 export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
   return {
     decks: config.decks,
@@ -136,6 +148,7 @@ export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
     wongInAt: config.wongInAt ?? null,
     wongOutAt: leaveAt(config.wongInAt, config.wongOutAt),
     tableMax: config.tableMax ?? null,
+    shoeMoveMinutes: moveMinutes(config.shoeMoveMinutes),
     rampName: config.rampName,
     ramp: expandRamp(config.ramp),
     chipIncrement: config.chipIncrement,
@@ -181,6 +194,7 @@ export function toTemplateConfig(config: LabConfig): CvcxTemplateConfig {
     ...(config.earlySurrender ? { earlySurrender: true } : {}),
     ...(config.wongOutAt !== null ? { wongOutAt: config.wongOutAt } : {}),
     ...(config.tableMax !== null ? { tableMax: config.tableMax } : {}),
+    ...(config.shoeMoveMinutes !== DEFAULT_SHOE_MOVE_MINUTES ? { shoeMoveMinutes: config.shoeMoveMinutes } : {}),
   };
 }
 
@@ -337,6 +351,7 @@ export function isLabConfig(value: unknown): value is LabConfig {
     && (config.earlySurrender === undefined || bool(config.earlySurrender))
     && (config.wongOutAt === undefined || config.wongOutAt === null || finite(config.wongOutAt))
     && (config.tableMax === undefined || config.tableMax === null || finite(config.tableMax))
+    && (config.shoeMoveMinutes === undefined || finite(config.shoeMoveMinutes))
     && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2)
     && (config.doubleRule === "any2" || config.doubleRule === "9to11" || config.doubleRule === "10to11");
 }
@@ -348,7 +363,7 @@ export function parseLabDraft(raw: string | null): LabDraft | null {
     const draft = JSON.parse(raw) as Partial<LabDraft>;
     if (draft.version !== 1 || !isLabConfig(draft.config)) return null;
     const active = draft.active && typeof draft.active.id === "string" && typeof draft.active.name === "string" && typeof draft.active.snapshot === "string" ? draft.active : null;
-    return { version: 1, config: { ...draft.config, earlySurrender: draft.config.earlySurrender === true, wongOutAt: leaveAt(draft.config.wongInAt, draft.config.wongOutAt), tableMax: draft.config.tableMax ?? null }, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
+    return { version: 1, config: { ...draft.config, earlySurrender: draft.config.earlySurrender === true, wongOutAt: leaveAt(draft.config.wongInAt, draft.config.wongOutAt), tableMax: draft.config.tableMax ?? null, shoeMoveMinutes: moveMinutes(draft.config.shoeMoveMinutes) }, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
   } catch {
     return null;
   }

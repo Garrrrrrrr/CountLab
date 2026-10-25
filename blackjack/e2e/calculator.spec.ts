@@ -513,3 +513,30 @@ test("Compare ranks one-rule changes to the current game", async ({ page }, test
   await page.getByText("Change rules", { exact: true }).click();
   await expect(page.getByRole("radio", { name: "Early vs 10" })).toBeChecked();
 });
+
+test("leaving a shoe played from the top charges the player's own time between shoes", async ({ page }) => {
+  await prepare(page);
+  await open(page);
+  await show(page, "Ramp");
+  const minutes = page.getByLabel("Time to find a fresh shoe");
+  await expect(minutes).toHaveCount(0);
+  await page.getByLabel("When you leave").selectOption("-1");
+  await expect(minutes).toHaveValue("5");
+  await expect(page.getByText(/You play about [\d.]+ rounds a shoe, and each move to a fresh shoe counts as 5 minutes/)).toBeVisible();
+  await show(page, "Results");
+  const trip = page.locator("#trip");
+  const charged = await trip.textContent();
+  await show(page, "Ramp");
+  await minutes.fill("0");
+  await expect(page.getByText(/counts as 0 minutes without play/)).toBeVisible();
+  await show(page, "Results");
+  await expect(trip).not.toHaveText(charged!);
+  // Kept with the working draft, and hidden for a back-counter, who stays to watch.
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Calculator", level: 1 })).toBeVisible();
+  await show(page, "Ramp");
+  await expect(minutes).toHaveValue("0");
+  await page.getByLabel("When you play").selectOption("2");
+  await expect(minutes).toHaveCount(0);
+});
