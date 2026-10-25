@@ -162,6 +162,17 @@ test.describe("strategy charts", () => {
     await expect(page.getByRole("link", { name: "Pocket chart" }).filter({ visible: true }).first()).toBeVisible();
   });
 
+  test("pocket chart colours are remembered and name the download", async ({ page, hasTouch }) => {
+    test.skip(hasTouch, "Phones save through the share sheet, covered below.");
+    await page.goto("/charts/pocket/?decks=6&soft17=h17&das=1&surrender=late");
+    await choose(page.getByRole("radio", { name: "Dark" }));
+    const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save image" }).click()]);
+    expect(download.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark.png");
+    await page.goto("/charts/?decks=6&soft17=h17&das=1&surrender=late");
+    const [fromCharts] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download chart" }).filter({ visible: true }).click()]);
+    expect(fromCharts.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark.png");
+  });
+
   test("download the chart from the charts page on any screen size", async ({ page, hasTouch }) => {
     // Phones get the share sheet (its "Save Image" reaches the photo library); stand in for it.
     await page.addInitScript(() => {

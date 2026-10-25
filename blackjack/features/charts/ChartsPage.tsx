@@ -9,7 +9,7 @@ import { cx } from "@/components/ui/cx";
 import { basicNeverWithCount, buildChart, cellKey, cellShortName, conflictNotes, effectiveSurrender, rulesSummary, signedCount, type CellRef, type PlayTable } from "@/lib/strategy";
 import { RulesControl } from "./RulesControl";
 import { CellSheet } from "./CellSheet";
-import { PocketChartSvg, pocketFileName, savePng, usePocketStrips } from "./PocketChart";
+import { PocketChartSvg, pocketFileName, savePng, usePocketStrips, usePocketTheme } from "./PocketChart";
 import { PlayTableView, SurrenderTableView, TableFrame, type ChartMode } from "./StrategyTable";
 import { useChartRules } from "./useChartRules";
 
@@ -41,10 +41,11 @@ export function ChartsPage() {
     { id: "insurance", label: "Insurance" },
   ];
   const tableProps = { rules, mode, tc, selected: selected?.key };
-  // The download saves the pocket card with the strips chosen on the pocket chart page.
+  // The download saves the pocket card with the strips and colours chosen on the pocket chart page.
   const [strips] = usePocketStrips();
+  const [theme] = usePocketTheme();
   const pocket = useRef<SVGSVGElement>(null);
-  const download = () => pocket.current && savePng(pocket.current, pocketFileName(rules, strips)).catch(() => toast("Couldn’t make the image. Try Print instead."));
+  const download = () => pocket.current && savePng(pocket.current, pocketFileName(rules, strips, theme)).catch(() => toast("Couldn’t make the image. Try Print instead."));
   const downloadButton = (className?: string) => <Button size="sm" className={className} icon={<Download size={16} aria-hidden />} onClick={download}>Download chart</Button>;
 
   return (
@@ -145,7 +146,7 @@ export function ChartsPage() {
       </div>
 
       {/* The one-card chart the download button saves. */}
-      <div hidden><PocketChartSvg rules={rules} strips={strips} svgRef={pocket} /></div>
+      <div hidden><PocketChartSvg rules={rules} strips={strips} theme={theme} svgRef={pocket} /></div>
       <CellSheet rules={rules} cell={selected?.ref ?? null} open={Boolean(selected)} onClose={() => setSelected(null)} tc={mode === "count" ? tc : undefined} />
     </div>
   );
