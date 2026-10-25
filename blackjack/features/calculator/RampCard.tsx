@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 import { CUSTOM_RAMP_NAME, isPresetName, OPTIMAL_RAMP_NAME, PRESET_NAMES } from "@/lib/blackjack/labConfig";
 import { money, percent } from "@/lib/blackjack/labFormat";
-import { playedSpread, wongOutChoices } from "@/lib/blackjack/labModel";
+import { labRules, playedSpread, roundsPerShoe, SHOE_MOVE_MINUTES, wongOutChoices } from "@/lib/blackjack/labModel";
 import { handsSummary, stepsSummary, tcLabel, toSteps, unitLabel } from "@/lib/blackjack/rampSteps";
 import { Badge, Button, Callout, Segmented, SelectField } from "@/components/ui";
 import { CountTable } from "./CountTable";
@@ -32,6 +32,7 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
   const start = config.wongInAt ?? -8;
   // With a leave point, counts below the entry are played some of the time, so none are shown as sat out.
   const sitOutBelow = config.wongOutAt === null ? config.wongInAt : null;
+  const perShoe = roundsPerShoe(config, labRules(config));
   const steps = useMemo(() => toSteps(config.ramp, config.hands, { start, boundaries: calc.stepBoundaries ?? [] }), [config.ramp, config.hands, start, calc.stepBoundaries]);
   const spread = playedSpread(pricing.activeRamp);
   const name = isPresetName(config.rampName) ? `${presetLabel(config.rampName)} spread`
@@ -122,7 +123,10 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
           />
         </div>
         {config.wongOutAt !== null && (
-          <Note>Leaving at a count is priced from simulated shoes: how often each count is watched and played under this rule. Rounds per hour count every round you watch.</Note>
+          <Note>
+            Leaving at a count is priced from simulated shoes: how often each count is watched and played under this rule. Rounds per hour count every round you watch.
+            {perShoe !== undefined && <> You play about {perShoe < 10 ? perShoe.toFixed(1) : Math.round(perShoe)} rounds a shoe, and each move to a fresh shoe counts as {SHOE_MOVE_MINUTES} minutes without play.</>}
+          </Note>
         )}
 
         <RampChart rows={pricing.result.rows} unit={config.baseBet} sittingOutBelow={sitOutBelow} summary={stepsSummary(steps, config.wongInAt)} onSelect={selectCount} />

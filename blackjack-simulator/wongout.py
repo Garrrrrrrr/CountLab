@@ -13,7 +13,8 @@ Rules, decided before each round on the floored true count the Calculator bucket
   a back-counter stays to watch and sits down again at X.
 
 For every profile and rule this writes, per true-count bucket, the share of all dealt rounds that
-were watched (time at the table) and that were played. It imports wong.py and simulate.py without
+were watched (time at the table) and that were played, and how many moves to a fresh shoe the
+rule makes per dealt round (the Calculator charges each move as time without play). It imports wong.py and simulate.py without
 editing them, so their recorded checksums stay valid.
 """
 
@@ -65,6 +66,7 @@ def policy_task(decks: int, dealt_decks: float, shoes: int, seed: int, entries: 
     watched = np.zeros((count, BUCKETS), dtype=np.int64)
     played = np.zeros((count, BUCKETS), dtype=np.int64)
     dealt = np.zeros(BUCKETS, dtype=np.int64)
+    moves = np.zeros(count, dtype=np.int64)
     seated = np.zeros(count, dtype=np.bool_)
     present = np.zeros(count, dtype=np.bool_)
     for _ in range(shoes):
@@ -86,6 +88,7 @@ def policy_task(decks: int, dealt_decks: float, shoes: int, seed: int, entries: 
                     # Played from the top: leave for a fresh shoe. Back-counting: stay and watch.
                     if entries[rule] == -99:
                         present[rule] = False
+                        moves[rule] += 1
                         continue
                 if not seated[rule] and entries[rule] != -99 and tc >= entries[rule]:
                     seated[rule] = True
@@ -115,7 +118,7 @@ def policy_task(decks: int, dealt_decks: float, shoes: int, seed: int, entries: 
                     dealer_cards[dealer_count] = card; dealer_count += 1
                     running_count += hilo(card)
                     dealer_total, dealer_soft = hand_value(dealer_cards, dealer_count)
-    return watched, played, dealt
+    return watched, played, dealt, moves
 
 
 @njit(parallel=True, cache=True)
@@ -126,10 +129,11 @@ def policy_parallel(decks: int, dealt_decks: float, task_shoes: np.ndarray, seed
     watched = np.zeros((tasks, count, BUCKETS), dtype=np.int64)
     played = np.zeros((tasks, count, BUCKETS), dtype=np.int64)
     dealt = np.zeros((tasks, BUCKETS), dtype=np.int64)
+    moves = np.zeros((tasks, count), dtype=np.int64)
     for task in prange(tasks):
-        w, p, d = policy_task(decks, dealt_decks, int(task_shoes[task]), int(seeds[task]), entries, exits, hard, soft, pairs)
-        watched[task], played[task], dealt[task] = w, p, d
-    return watched, played, dealt
+        w, p, d, m = policy_task(decks, dealt_decks, int(task_shoes[task]), int(seeds[task]), entries, exits, hard, soft, pairs)
+        watched[task], played[task], dealt[task], moves[task] = w, p, d, m
+    return watched, played, dealt, moves
 
 
 def main() -> None:
@@ -152,8 +156,8 @@ def main() -> None:
             shoes = args.shoes * (4 if decks < 6 else 1)
             task_shoes, seeds = task_layout(shoes, args.tasks, args.seed, decks * 1000 + int(round(dealt * 100)) + 5_000_000)
             started = time.perf_counter()
-            watched, played, dealt_rounds = policy_parallel(decks, dealt, task_shoes, seeds, entries, exits, hard, soft, pairs)
-            watched, played, dealt_rounds = watched.sum(axis=0), played.sum(axis=0), dealt_rounds.sum(axis=0)
+            watched, played, dealt_rounds, moves = policy_parallel(decks, dealt, task_shoes, seeds, entries, exits, hard, soft, pairs)
+            watched, played, dealt_rounds, moves = watched.sum(axis=0), played.sum(axis=0), dealt_rounds.sum(axis=0), moves.sum(axis=0)
             total = int(dealt_rounds.sum())
             profiles[key] = {
                 "shoes": int(task_shoes.sum()), "rounds": total, "runtime_seconds": time.perf_counter() - started,
@@ -161,6 +165,7 @@ def main() -> None:
                     f"{'start' if entry == START else entry}:{'never' if exit_ == START else exit_}": {
                         "watched": [int(value) / total for value in watched[index]],
                         "played": [int(value) / total for value in played[index]],
+                        "moves": int(moves[index]) / total,
                     }
                     for index, (entry, exit_) in enumerate(pairs_list)
                 },
@@ -171,26 +176,26 @@ def main() -> None:
             "created_utc": datetime.now(timezone.utc).isoformat(), "source_sha256": normalized_sha256(Path(__file__)),
             "git": git_metadata(), "python": platform.python_version(), "numpy": np.__version__, "numba": numba.__version__,
             "seed": args.seed, "shoes_per_shoe_game": args.shoes,
-            "model": "shares of all dealt rounds watched and played, by floored true count, per entry:exit rule; one spot, Wong LS plays",
+            "model": "shares of all dealt rounds watched and played, by floored true count, and moves to a fresh shoe per dealt round, per entry:exit rule; one spot, Wong LS plays",
         },
         "profiles": profiles,
     }
     args.output.write_text(json.dumps(payload) + "\n", encoding="utf-8")
     lines = [
         "// Generated by ../blackjack-simulator/wongout.py. Do not edit by hand.",
-        "/** Per profile, per \"enter:leave\" rule: shares of all dealt rounds watched and played, by true count −8…+8. */",
+        "/** Per profile, per \"enter:leave\" rule: shares of all dealt rounds watched and played, by true count −8…+8, and moves to a fresh shoe per dealt round. */",
         "export const WONG_OUT_METADATA = {",
         f'  generatedUtc: "{payload["metadata"]["created_utc"]}",',
         f'  sourceSha256: "{payload["metadata"]["source_sha256"]}",',
         f"  seed: {args.seed},",
         f"  totalRounds: {sum(profile['rounds'] for profile in profiles.values())},",
         "} as const;",
-        "export const WONG_OUT_SHARES: Record<string, Record<string, { watched: readonly number[]; played: readonly number[] }>> = {",
+        "export const WONG_OUT_SHARES: Record<string, Record<string, { watched: readonly number[]; played: readonly number[]; moves: number }>> = {",
     ]
     for key, profile in profiles.items():
         lines.append(f'  "{key}": {{')
         for rule, shares in profile["rules"].items():
-            lines.append(f'    "{rule}": {{ watched: [{", ".join(format(v, ".6g") for v in shares["watched"])}], played: [{", ".join(format(v, ".6g") for v in shares["played"])}] }},')
+            lines.append(f'    "{rule}": {{ watched: [{", ".join(format(v, ".6g") for v in shares["watched"])}], played: [{", ".join(format(v, ".6g") for v in shares["played"])}], moves: {format(shares["moves"], ".6g")} }},')
         lines.append("  },")
     lines.extend(["};", ""])
     args.typescript.write_text("\n".join(lines), encoding="utf-8")

@@ -39,6 +39,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
         title: "Calculator",
         items: [
           "When you play every round, leaving at −1, −2 or −3 is now priced from simulated shoes. Before, the choice changed nothing. Leaving at 0 or +1 is no longer offered there, because a fresh shoe starts at 0.",
+          "Each move to a fresh shoe counts as 5 minutes without play, and the note under the ramp says how many rounds you play in each shoe.",
         ],
       },
       {
@@ -47,7 +48,7 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
           "Clearing every detail on a session now clears it on your other devices too, instead of the old values coming back.",
           "Save stops at a details field with a typo, such as 350.5 rounds, rather than saving the session without it.",
           "Save and log another clears the details fields along with the rest of the form.",
-          "A session's simulated shoes use the rounds you recorded, when you recorded them.",
+          "A session's simulated shoes use the rounds you recorded, when you recorded them, and surrender early against a ten when the session was logged with early surrender.",
         ],
       },
       {

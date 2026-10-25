@@ -54,6 +54,8 @@ export interface AdvantageInput {
 export interface CountShares {
   watched: readonly number[];
   played: readonly number[];
+  /** Time away from any table (moving to a fresh shoe), in the same units: it counts toward the hours but deals nothing. */
+  idle?: number;
 }
 export interface CountRow {
   trueCount: number;
@@ -251,7 +253,7 @@ export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   const ruleAdjustment = effectiveRuleAdjustment(input.rules, input.ruleAdjustment);
   const shares = input.countShares;
-  const watchedTotal = shares ? shares.watched.reduce((sum, share) => sum + share, 0) : 1;
+  const watchedTotal = shares ? shares.watched.reduce((sum, share) => sum + share, shares.idle ?? 0) : 1;
   return getCountProfile(input.rules).map((row, position) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(

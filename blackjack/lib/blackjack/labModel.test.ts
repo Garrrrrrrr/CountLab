@@ -14,6 +14,7 @@ import {
   labBlocker,
   labRuleFlags,
   countSharesFor,
+  roundsPerShoe,
   labRules,
   labScenario,
   playedRamp,
@@ -392,7 +393,23 @@ describe("leaving a shoe played from the top", () => {
     expect(wongOutChoices(null)).toEqual([-3, -2, -1]);
     expect(wongOutChoices(2)).toEqual([-3, -2, -1, 0, 1]);
     const rules = labRules(DEFAULT_LAB_CONFIG);
-    for (const exit of wongOutChoices(null)) expect(countSharesFor({ wongInAt: null, wongOutAt: exit }, rules), `start:${exit}`).toBeDefined();
+    for (const exit of wongOutChoices(null)) expect(countSharesFor({ wongInAt: null, wongOutAt: exit, handsPerHour: 100 }, rules), `start:${exit}`).toBeDefined();
+  });
+
+  it("charges each move to a fresh shoe as time without play", () => {
+    const rules = labRules(DEFAULT_LAB_CONFIG);
+    const shares = countSharesFor({ wongInAt: null, wongOutAt: -1, handsPerHour: 120 }, rules)!;
+    const perShoe = roundsPerShoe({ wongInAt: null, wongOutAt: -1 }, rules)!;
+    // Five minutes at 120 rounds an hour is ten rounds of time for every shoe left.
+    expect(shares.idle! / shares.played.reduce((sum, share) => sum + share, 0)).toBeCloseTo(10 / perShoe, 6);
+    const config = { ...DEFAULT_LAB_CONFIG, handsPerHour: 120, wongOutAt: -1 };
+    const charged = analyzeCvcx(labScenario(config), config.ramp, 1);
+    const free = analyzeCvcx({ ...labScenario(config), countShares: { ...shares, idle: 0 } }, config.ramp, 1);
+    // The time between shoes scales the hour down and leaves each played round alone.
+    expect(charged.hourlyEv / free.hourlyEv).toBeCloseTo(perShoe / (perShoe + 10), 3);
+    expect(charged.evPerRound * (perShoe + 10)).toBeCloseTo(free.evPerRound * perShoe, 6);
+    // Back-counters stay to watch, so they never move.
+    expect(countSharesFor({ wongInAt: 2, wongOutAt: -1, handsPerHour: 120 }, rules)!.idle).toBe(0);
   });
 
   it("drops a saved leave point that could never apply", () => {
