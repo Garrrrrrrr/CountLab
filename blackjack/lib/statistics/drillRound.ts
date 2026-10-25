@@ -1,3 +1,4 @@
+import { toCsv } from "@/lib/blackjack/csv";
 import type { DrillType, Mistake, Session } from "./storage";
 
 /**
@@ -127,6 +128,12 @@ export function spokenDuration(ms: number): string {
   if (hours) return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minute${minutes === 1 ? "" : "s"}`;
   if (minutes) return `${minutes} minute${minutes === 1 ? "" : "s"} ${seconds} second${seconds === 1 ? "" : "s"}`;
   return `${seconds} second${seconds === 1 ? "" : "s"}`;
+}
+
+/** A session's misses as CSV, one row each with the right answer, to keep or print after the drill. */
+export function mistakesCsv(mistakes: readonly Mistake[]): string {
+  const rows = mistakes.map((mistake) => ({ question: mistake.question, yourAnswer: mistake.userAnswer, correctAnswer: mistake.correctAnswer, why: mistake.explanation }));
+  return toCsv(rows, ["question", "yourAnswer", "correctAnswer", "why"]);
 }
 
 /** "m:ss", or "h:mm:ss" past an hour, so a long chart never reads "75:12". */

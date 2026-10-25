@@ -50,6 +50,26 @@ test.describe("Basic Strategy", () => {
     expect(sessions[0]).toMatchObject({ drill: "Basic Strategy", questions: 10 });
   });
 
+  test("downloads the misses with their right answers as CSV", async ({ page }) => {
+    await page.goto("/train/basic-strategy/");
+    await page.getByRole("radio", { name: "10" }).evaluate((element: HTMLElement) => element.click());
+    await page.getByRole("radio", { name: "Never" }).evaluate((element: HTMLElement) => element.click());
+    await visible(page, /Start 10 hands/).click();
+    // Hit every hand: some of ten are always wrong.
+    for (let hand = 0; hand < 10; hand += 1) {
+      await expect(page.getByLabel(new RegExp(`Question ${hand + 1} of 10`))).toBeVisible();
+      await page.keyboard.press("h");
+    }
+    await expect(page.getByRole("heading", { name: "Review your misses" })).toBeVisible();
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Save CSV" }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toMatch(/^basic-strategy-misses-\d{4}-\d{2}-\d{2}\.csv$/);
+    const text = await (await import("node:fs")).promises.readFile((await file.path())!, "utf8");
+    expect(text.split("\r\n")[0]).toBe("question,yourAnswer,correctAnswer,why");
+    expect(text).toMatch(/,Hit,/);
+  });
+
   test("resumes an unfinished round after a reload", async ({ page }) => {
     await page.goto("/train/basic-strategy/");
     await page.getByRole("radio", { name: "Never" }).evaluate((element: HTMLElement) => element.click());

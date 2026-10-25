@@ -6,6 +6,7 @@ import {
   EMPTY_TALLY,
   explainModeOf,
   historyTotals,
+  mistakesCsv,
   pausesOn,
   relativeTime,
   roundLengthOf,
@@ -99,5 +100,12 @@ describe("formatting", () => {
 
   it("shuffles without losing items", () => {
     expect(shuffled([1, 2, 3, 4, 5]).sort()).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe("miss export", () => {
+  it("writes one row per miss with the right answer, quoting commas", () => {
+    const csv = mistakesCsv([{ question: "16 vs 10, two cards", userAnswer: "Hit", correctAnswer: "Surrender", explanation: "Give it up." }]);
+    expect(csv.split("\r\n")).toEqual(["question,yourAnswer,correctAnswer,why", "\"16 vs 10, two cards\",Hit,Surrender,Give it up."]);
   });
 });

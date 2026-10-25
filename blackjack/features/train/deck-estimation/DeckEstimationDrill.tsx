@@ -2,7 +2,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { NumberPad, TrayPhoto } from "@/components/blackjack";
-import { DrillSummary, Feedback, PlayDock, PlayFrame, ResumeBanner } from "@/components/drill/DrillKit";
+import { DownloadMisses, DrillSummary, Feedback, PlayDock, PlayFrame, ResumeBanner } from "@/components/drill/DrillKit";
 import { announce, Button, Callout, Card } from "@/components/ui";
 import { abandonActivePractice, track } from "@/lib/analytics/track";
 import { estimateBias, gradeDeckEstimate, lastDeckAccuracyFromCategories, minimumStepNote, type DeckResolution } from "@/lib/blackjack/countingTraining";
@@ -336,7 +336,10 @@ function PhotoMisses({ mistakes }: { mistakes: readonly Mistake[] }) {
   if (!mistakes.length) return null;
   return (
     <Card>
-      <h2 className="mb-3 text-base font-semibold">Look again at your misses</h2>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold">Look again at your misses</h2>
+        <DownloadMisses mistakes={mistakes} name="Deck Estimation" />
+      </div>
       <ol className="divide-y divide-line">
         {mistakes.map((mistake, index) => {
           const file = typeof mistake.context?.file === "string" ? mistake.context.file : undefined;

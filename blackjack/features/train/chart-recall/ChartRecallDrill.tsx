@@ -359,6 +359,7 @@ export function ChartRecallDrill() {
         ]}
         // The graded grids below show every miss; the list reads the first few with their reasons.
         mistakes={session.mistakes.slice(0, 10)}
+        exportMistakes={session.mistakes}
         onAgain={() => begin({ rules: game.rules, level: game.level, ids: game.ids })}
         againLabel="New chart"
         next={{ href: "/charts", label: "Open the chart" }}

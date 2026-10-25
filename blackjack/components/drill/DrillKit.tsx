@@ -12,11 +12,12 @@
  */
 import Link from "next/link";
 import { useEffect, useRef, type ReactNode } from "react";
-import { Check, ChevronRight, Flame, RotateCcw, Timer, X } from "lucide-react";
+import { Check, ChevronRight, Download, Flame, RotateCcw, Timer, X } from "lucide-react";
 import { Button, ButtonLink, Card, Kbd } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
 import { useFocusMode } from "@/components/shell/FocusMode";
 import { BottomDock } from "@/components/shell/BottomDock";
+import { mistakesCsv } from "@/lib/statistics/drillRound";
 import type { Mistake } from "@/lib/statistics/storage";
 import { useMediaQuery } from "@/lib/useMediaQuery";
 
@@ -211,13 +212,15 @@ export function ScoreDial({ value, label, sub }: { value: number; label: string;
   );
 }
 
-export function DrillSummary({ title, score, scoreLabel = "Accuracy", scoreSub, stats, mistakes, onAgain, againLabel = "Go again", next, children }: {
+export function DrillSummary({ title, score, scoreLabel = "Accuracy", scoreSub, stats, mistakes, exportMistakes, onAgain, againLabel = "Go again", next, children }: {
   title: string;
   score: number;
   scoreLabel?: string;
   scoreSub?: ReactNode;
   stats?: readonly { label: string; value: ReactNode }[];
   mistakes?: readonly Mistake[];
+  /** Every miss for the CSV download, when `mistakes` lists only the first few. */
+  exportMistakes?: readonly Mistake[];
   onAgain: () => void;
   againLabel?: string;
   /** A suggested next step, e.g. { href: "/train/true-count", label: "Try True Count" }. */
@@ -252,15 +255,36 @@ export function DrillSummary({ title, score, scoreLabel = "Accuracy", scoreSub, 
         </div>
       </Card>
       {children}
-      {mistakes && mistakes.length > 0 && <MistakeList mistakes={mistakes} />}
+      {mistakes && mistakes.length > 0 && <MistakeList mistakes={mistakes} exportName={title} exportMistakes={exportMistakes} />}
     </div>
   );
 }
 
-export function MistakeList({ mistakes, title = "Review your misses" }: { mistakes: readonly Mistake[]; title?: string }) {
+/** Saves the session's misses, with the right answers, as a CSV file to keep, print or study. */
+export function DownloadMisses({ mistakes, name }: { mistakes: readonly Mistake[]; name: string }) {
+  const save = () => {
+    const url = URL.createObjectURL(new Blob([mistakesCsv(mistakes)], { type: "text/csv" }));
+    const link = Object.assign(document.createElement("a"), { href: url, download: `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-misses-${new Date().toISOString().slice(0, 10)}.csv` });
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return <Button variant="ghost" className="-mr-2 -mt-2 shrink-0" onClick={save} icon={<Download size={17} aria-hidden />}>Save CSV</Button>;
+}
+
+export function MistakeList({ mistakes, title = "Review your misses", exportName, exportMistakes = mistakes }: {
+  mistakes: readonly Mistake[];
+  title?: string;
+  /** Names the downloaded file; without it there is no download. */
+  exportName?: string;
+  /** Every miss, when the list shows only some of them. */
+  exportMistakes?: readonly Mistake[];
+}) {
   return (
     <Card>
-      <h2 className="mb-3 text-base font-semibold">{title}</h2>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold">{title}</h2>
+        {exportName && <DownloadMisses mistakes={exportMistakes} name={exportName} />}
+      </div>
       <ol className="divide-y divide-line">
         {mistakes.map((mistake, index) => (
           <li key={index} className="py-3 first:pt-0 last:pb-0">
