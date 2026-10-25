@@ -114,6 +114,25 @@ test.describe("counting drills", () => {
     await expect(page.getByRole("list", { name: "Cards on the table" })).toBeVisible({ timeout: 5000 });
   });
 
+  test("bet ramp: the preset ramp, a bet, leaving the table, a saved session", async ({ page }) => {
+    await open(page, "/train/bet-ramp/", "Bet Ramp");
+    await expect(page.getByText("Leave the table").first()).toBeVisible();
+    await choose(page.getByRole("radio", { name: "5" }));
+    await start(page, "Start 5 counts");
+    for (let question = 0; question < 5; question++) {
+      await expect(page.getByText("True count", { exact: true })).toBeVisible();
+      await expectFits(page, "Bet");
+      if (question % 2) await page.getByRole("button", { name: "Leave" }).click();
+      else { await press(page, "50"); await page.keyboard.press("Enter"); }
+      await expect(page.getByRole("status").filter({ hasText: /ramp|leave the table|sit this one out/ })).toBeVisible();
+      await page.waitForTimeout(300);
+      await page.getByRole("button", { name: question === 4 ? "See results" : "Next count" }).click();
+    }
+    await expect(page.getByText("Bets right", { exact: true })).toBeVisible();
+    const saved = await page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.endsWith("hilo:sessions")).map(([, value]) => JSON.parse(value)).flat());
+    expect(saved[0]).toMatchObject({ drill: "Bet Ramp", questions: 5 });
+  });
+
   test("deck estimation: an unfinished session resumes after a reload", async ({ page }) => {
     await open(page, "/train/deck-estimation/", "Deck Estimation");
     await start(page, /^Start \d+ photos$/);

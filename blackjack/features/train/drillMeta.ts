@@ -1,4 +1,4 @@
-import { Divide, Gauge, Inbox, Layers, LayoutGrid, Spade, Trophy, type LucideIcon } from "lucide-react";
+import { Coins, Divide, Gauge, Inbox, Layers, LayoutGrid, Spade, Trophy, type LucideIcon } from "lucide-react";
 import { DRILLS, type Drill } from "@/lib/routes";
 import type { DrillType, Session } from "@/lib/statistics/storage";
 
@@ -10,6 +10,7 @@ export const DRILL_TYPE: Record<string, DrillType> = {
   "basic-strategy": "Basic Strategy",
   deviations: "Deviations",
   "chart-recall": "H17 Chart",
+  "bet-ramp": "Bet Ramp",
   "full-shoe": "Full Shoe",
 };
 
@@ -20,6 +21,7 @@ export const DRILL_ICON: Record<string, LucideIcon> = {
   "basic-strategy": Spade,
   deviations: Gauge,
   "chart-recall": LayoutGrid,
+  "bet-ramp": Coins,
   "full-shoe": Trophy,
 };
 
@@ -31,6 +33,7 @@ export const READY_AT: Record<string, number> = {
   "basic-strategy": 98,
   deviations: 95,
   "chart-recall": 95,
+  "bet-ramp": 95,
   "full-shoe": 95,
 };
 

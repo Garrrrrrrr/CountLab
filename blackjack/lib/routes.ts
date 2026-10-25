@@ -21,6 +21,7 @@ export const DRILLS: readonly Drill[] = [
   { slug: "basic-strategy", href: "/train/basic-strategy", name: "Basic Strategy", short: "Basic strategy", blurb: "Every hard, soft, pair and surrender decision for your table rules until it is automatic.", skill: "play" },
   { slug: "deviations", href: "/train/deviations", name: "Index Plays", short: "Index plays", blurb: "Learn exactly when the true count changes the play, on both sides of every index.", skill: "play" },
   { slug: "chart-recall", href: "/train/chart-recall", name: "Chart Recall", short: "Chart recall", blurb: "Fill in the whole chart from memory, indices included, one cell at a time.", skill: "play" },
+  { slug: "bet-ramp", href: "/train/bet-ramp", name: "Bet Ramp", short: "Bet ramp", blurb: "From the true count to the bet on your own ramp, including when to leave the table.", skill: "count" },
   { slug: "full-shoe", href: "/train/full-shoe", name: "Full Shoe", short: "Full shoe", blurb: "Count, bet and play a whole shoe at a live table, with a coach or as a silent graded checkout.", skill: "combined", usesTrayPhotos: true },
 ];
 

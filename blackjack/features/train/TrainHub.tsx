@@ -13,7 +13,7 @@ import { reviewDueCounts } from "@/lib/strategy-drills/review";
 import { DRILL_ICON, DRILL_TYPE, READY_AT, drillStats, suggestNext, timeAgo, type DrillStats } from "./drillMeta";
 
 const GROUPS = [
-  { skill: "count", title: "Count", sub: "Keep the count, read the tray, convert to a true count." },
+  { skill: "count", title: "Count", sub: "Keep the count, read the tray, convert to a true count and size the bet." },
   { skill: "play", title: "Play", sub: "Basic strategy and the index plays that change it." },
 ] as const;
 

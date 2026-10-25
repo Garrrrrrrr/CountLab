@@ -14,6 +14,7 @@ export type DrillType =
   | "Full Shoe"
   | "Counting Benchmark"
   | "H17 Chart"
+  | "Bet Ramp"
   | "Chase the Flush"
   | "Test Out";
 export type CountingErrorCategory =

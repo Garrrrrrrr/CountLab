@@ -85,6 +85,7 @@ export const FEATURES: Record<FeatureId, FeatureDefinition> = {
   deviations: { category: "training", label: "Deviations", route: "/training/deviations" },
   h17_chart: { category: "training", label: "H17 Chart", route: "/training/h17-chart" },
   full_shoe: { category: "training", label: "Full Shoe", route: "/training/full-shoe" },
+  bet_ramp: { category: "training", label: "Bet Ramp", route: "/train/bet-ramp" },
   counting_benchmark: { category: "training", label: "Counting Benchmark", route: "/training/benchmark" },
   test_out: { category: "training", label: "Test Out", route: "/training/test-out" },
   practice_checklist: { category: "training", label: "Daily Checklist", route: "/training/checklist" },

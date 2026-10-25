@@ -19,6 +19,7 @@ export type DrillId =
   | "deviations"
   | "h17_chart"
   | "full_shoe"
+  | "bet_ramp"
   | "test_out";
 
 export type GameId = "blackjack" | "double_down_madness" | "ultimate_texas_holdem" | "chase_the_flush";
