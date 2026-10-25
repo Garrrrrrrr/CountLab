@@ -1,12 +1,13 @@
-import { DEFAULT_ADVANTAGE_RULES, zeroBetsBelow, type AdvantageRules, type RampPoint } from "./advantage";
-import { GAME_OPTIONS } from "./coefficients";
-import { analyzeCvcx, createOptimalRamp, goalByHorizonProbability, goalOrBust, resultPercentile, riskSizedUnit, type CvcxPerformance, type CvcxScenario } from "./cvcx";
+import { DEFAULT_ADVANTAGE_RULES, profileKey, zeroBetsBelow, type AdvantageRules, type CountShares, type RampPoint } from "./advantage";
+import { DECK_COUNTS, GAME_OPTIONS, type Decks } from "./coefficients";
+import { analyzeCvcx, bankrollForHorizon, createOptimalRamp, goalByHorizonProbability, goalOrBust, resultPercentile, riskSizedUnit, type CvcxPerformance, type CvcxScenario } from "./cvcx";
 import type { CvcxTemplate } from "./cvcxLibrary";
 import { AUDITED_RULES, normalizeConfig, OPTIMAL_RAMP_NAME, PRESET_NAMES, presetRamp, type LabConfig } from "./labConfig";
 import { sameRamp } from "./rampSteps";
 import { isEstimated, sumRuleAdjustment, type RuleAdjustmentFlags } from "./ruleAdjustments";
 import type { SessionSimulationConfig } from "./sessionSimulation";
 import type { SimulationTemplate } from "./simulationLibrary";
+import { WONG_OUT_SHARES } from "./wongOutShares";
 
 /** The rules the audited engine understands directly (everything but the hole-card and doubling rules). */
 export function labRules(config: LabConfig): AdvantageRules {
@@ -18,6 +19,7 @@ export function labRules(config: LabConfig): AdvantageRules {
     doubleAfterSplit: config.doubleAfterSplit,
     resplitAces: config.resplitAces,
     lateSurrender: config.lateSurrender,
+    earlySurrender: config.earlySurrender,
     blackjackPayout: config.blackjackPayout,
     useIndices: config.useIndices,
   };
@@ -28,7 +30,7 @@ export function labRuleFlags(config: LabConfig): RuleAdjustmentFlags {
     dealerStandsSoft17: !config.dealerHitsSoft17,
     noDoubleAfterSplit: !config.doubleAfterSplit,
     noResplitAces: !config.resplitAces,
-    noLateSurrender: !config.lateSurrender,
+    noLateSurrender: !config.lateSurrender && !config.earlySurrender,
     europeanNoHoleCard: config.europeanNoHoleCard,
     blackjackPays6to5: config.blackjackPayout === 1.2,
     doubleOnly9to11: config.doubleRule === "9to11",
@@ -43,13 +45,45 @@ export function labRuleFlags(config: LabConfig): RuleAdjustmentFlags {
 export const extraRuleAdjustment = (config: LabConfig) =>
   sumRuleAdjustment({ europeanNoHoleCard: config.europeanNoHoleCard, doubleOnly9to11: config.doubleRule === "9to11", doubleOnly10to11: config.doubleRule === "10to11" });
 
+/** The "enter:leave" key of the simulated back-counting rule for this setup, e.g. "1:-1" or "start:0". */
+export const wongOutRule = (wongInAt: number | null, wongOutAt: number) => `${wongInAt ?? "start"}:${wongOutAt}`;
+
+/** The leave points that have simulated shares for an entry point: below the entry, from −3 to +1. */
+export const wongOutChoices = (wongInAt: number | null) => [-3, -2, -1, 0, 1].filter((exit) => wongInAt === null || exit < wongInAt);
+
+/**
+ * Watched and played shares for leaving at a count, or undefined when the player stays (the
+ * simple sit-out ramp prices that) or the rule has no simulated shares.
+ */
+export function countSharesFor(config: Pick<LabConfig, "wongInAt" | "wongOutAt">, rules: AdvantageRules): CountShares | undefined {
+  if (config.wongOutAt === null) return undefined;
+  return WONG_OUT_SHARES[profileKey(rules)]?.[wongOutRule(config.wongInAt, config.wongOutAt)];
+}
+
+/** The most units one hand may bet at this unit under the table maximum. */
+export const tableMaxUnits = (config: Pick<LabConfig, "tableMax" | "baseBet">) =>
+  config.tableMax !== null && config.baseBet > 0 ? config.tableMax / config.baseBet : Infinity;
+
+/** The top bet an optimal ramp may use: the chosen spread, or less where the table maximum stops it. */
+export const effectiveSpread = (config: LabConfig) => Math.max(1, Math.min(config.maxSpread, tableMaxUnits(config)));
+
 /**
  * The ramp actually played. Sitting out low counts is a property of the game
  * being played, so skipped counts drop out of EV, variance, and "rounds
- * played"; the saved ramp keeps its units underneath.
+ * played"; the saved ramp keeps its units underneath. With a leave point the
+ * simulated shares decide what is played instead. No bet goes above the table maximum.
  */
-export const playedRamp = (config: LabConfig): RampPoint[] =>
-  config.wongInAt === null ? config.ramp : zeroBetsBelow(config.ramp, config.wongInAt);
+export function playedRamp(config: LabConfig): RampPoint[] {
+  const sitting = config.wongInAt === null || countSharesFor(config, labRules(config)) ? config.ramp : zeroBetsBelow(config.ramp, config.wongInAt);
+  const cap = tableMaxUnits(config);
+  return Number.isFinite(cap) ? sitting.map((point) => ({ ...point, units: Math.min(point.units, cap) })) : sitting;
+}
+
+/** The optimal ramp for a setup: its spread, sit-out or leave rule, table maximum and rules. */
+export function optimalRampFor(config: LabConfig, rules = labRules(config)) {
+  const shares = countSharesFor(config, rules);
+  return createOptimalRamp(rules, effectiveSpread(config), shares ? null : config.wongInAt, config.chipIncrement, extraRuleAdjustment(config), shares);
+}
 
 /** True when the played ramp bets nothing at any count. */
 export const bettingNothing = (ramp: readonly RampPoint[]) => ramp.every((point) => !(point.units > 0));
@@ -67,6 +101,7 @@ export function labScenario(config: LabConfig, rules = labRules(config)): CvcxSc
     wongInAt: config.wongInAt,
     rules,
     ruleAdjustment: extraRuleAdjustment(config),
+    countShares: countSharesFor(config, rules),
   };
 }
 
@@ -110,7 +145,7 @@ export function bankrollFit({ bankroll, unit, required, evPerRound, riskSizedUni
 export type CompareBasis = "yours" | "optimal";
 
 export interface GameComparison {
-  decks: 6 | 8;
+  decks: Decks;
   dealt: number;
   /** The ramp this row was priced with: the player's own, or that game's optimal ramp. */
   ramp: RampPoint[];
@@ -119,26 +154,71 @@ export interface GameComparison {
 }
 
 /**
- * Prices the player's setup in each of the nine audited games, either with the
+ * Prices the player's setup in every simulated game (each deck count and penetration), either with the
  * player's own ramp or with each game's own optimal ramp (capped at the
  * maximum spread), and ranks them by SCORE, which compares games regardless of
  * stakes. Expected win breaks ties, such as games with no edge at all.
  */
 export function compareGames(config: LabConfig, basis: CompareBasis): GameComparison[] {
   const scenario = labScenario(config);
-  const extra = extraRuleAdjustment(config);
-  const ownRamp = playedRamp(config);
-  const rows = ([6, 8] as const).flatMap((decks) => GAME_OPTIONS[decks].map((option) => {
+  const rows = DECK_COUNTS.flatMap((decks) => GAME_OPTIONS[decks].map((option) => {
+    const game = { ...config, decks, dealt: option.dealt };
     const rules = { ...scenario.rules, decks, penetration: option.dealt / decks };
-    const ramp = basis === "yours" ? ownRamp : createOptimalRamp(rules, config.maxSpread, config.wongInAt, config.chipIncrement, extra);
+    const ramp = basis === "yours" ? playedRamp(game) : optimalRampFor(game, rules);
     return {
       decks,
       dealt: option.dealt,
       ramp,
-      result: analyzeCvcx({ ...scenario, rules }, ramp, config.baseBet),
+      result: analyzeCvcx({ ...scenario, rules, countShares: countSharesFor(game, rules) }, ramp, config.baseBet),
       current: decks === config.decks && Math.abs(option.dealt - config.dealt) < 1e-6,
     };
   }));
+  return rows.sort((a, b) => b.result.cScore - a.result.cScore || b.result.hourlyEv - a.result.hourlyEv);
+}
+
+export interface RuleComparison {
+  key: string;
+  /** "Dealer stands on soft 17", or "Your game" for the current row. */
+  label: string;
+  patch: Partial<LabConfig>;
+  ramp: RampPoint[];
+  result: CvcxPerformance;
+  current: boolean;
+}
+
+/** Every one-rule change from the current game: what a table with that rule instead would be worth. */
+export function ruleVariants(config: LabConfig): { key: string; label: string; patch: Partial<LabConfig> }[] {
+  const surrender = config.earlySurrender ? "early" : config.lateSurrender ? "late" : "none";
+  return [
+    { key: "soft17", label: config.dealerHitsSoft17 ? "Dealer stands on soft 17" : "Dealer hits soft 17", patch: { dealerHitsSoft17: !config.dealerHitsSoft17 } },
+    ...(["none", "late", "early"] as const).filter((option) => option !== surrender).map((option) => ({
+      key: `surrender-${option}`,
+      label: option === "none" ? "No surrender" : option === "late" ? "Late surrender" : "Early surrender vs 10",
+      patch: { lateSurrender: option !== "none", earlySurrender: option === "early" },
+    })),
+    { key: "das", label: config.doubleAfterSplit ? "No double after split" : "Double after split", patch: { doubleAfterSplit: !config.doubleAfterSplit } },
+    { key: "rsa", label: config.resplitAces ? "No resplitting aces" : "Resplit aces", patch: { resplitAces: !config.resplitAces } },
+    { key: "payout", label: config.blackjackPayout === 1.5 ? "Blackjack pays 6:5" : "Blackjack pays 3:2", patch: { blackjackPayout: config.blackjackPayout === 1.5 ? 1.2 : 1.5 } },
+    { key: "holeCard", label: config.europeanNoHoleCard ? "Dealer peeks" : "No hole card (European)", patch: { europeanNoHoleCard: !config.europeanNoHoleCard } },
+    ...(["any2", "9to11", "10to11"] as const).filter((rule) => rule !== config.doubleRule).map((rule) => ({
+      key: `double-${rule}`,
+      label: rule === "any2" ? "Double any two cards" : rule === "9to11" ? "Double 9–11 only" : "Double 10–11 only",
+      patch: { doubleRule: rule },
+    })),
+  ];
+}
+
+/**
+ * The current game beside each one-rule change, priced with the player's ramp or each variant's
+ * own optimal ramp, and ranked by SCORE like compareGames.
+ */
+export function compareRules(config: LabConfig, basis: CompareBasis): RuleComparison[] {
+  const rows = [{ key: "current", label: "Your game", patch: {} }, ...ruleVariants(config)].map((variant) => {
+    const game = { ...config, ...variant.patch };
+    const scenario = labScenario(game);
+    const ramp = basis === "yours" ? playedRamp(game) : optimalRampFor(game, scenario.rules);
+    return { ...variant, ramp, result: analyzeCvcx(scenario, ramp, game.baseBet), current: variant.key === "current" };
+  });
   return rows.sort((a, b) => b.result.cScore - a.result.cScore || b.result.hourlyEv - a.result.hourlyEv);
 }
 
@@ -151,7 +231,7 @@ export type Destination = "simulation" | "compare" | "trip-planner" | "journal";
 export interface LabBlocker {
   reason: string;
   /** The one change that clears it. */
-  fix?: "rules" | "hands";
+  fix?: "rules" | "hands" | "leave";
 }
 
 const SIMULATED_RULES: (keyof typeof AUDITED_RULES)[] = ["dealerHitsSoft17", "doubleAfterSplit", "resplitAces", "lateSurrender", "blackjackPayout"];
@@ -165,8 +245,14 @@ export function labBlocker(config: LabConfig, destination: Destination): LabBloc
   if (config.europeanNoHoleCard || config.doubleRule !== "any2") {
     return { reason: simulator ? "The Session Simulator doesn't model the no-hole-card or restricted doubling rules." : "Doesn't model the no-hole-card or restricted doubling rules.", fix: "rules" };
   }
+  if (config.wongOutAt !== null) {
+    return { reason: simulator ? "The Session Simulator doesn't model leaving the table at a count." : "Doesn't model leaving the table at a count.", fix: "leave" };
+  }
   if (simulator && new Set(config.hands.map((point) => point.hands)).size > 1) {
     return { reason: "The Session Simulator needs the same number of hands at every count.", fix: "hands" };
+  }
+  if (simulator && config.earlySurrender) {
+    return { reason: "The Session Simulator models late surrender only, not early surrender against a ten.", fix: "rules" };
   }
   if (simulator && SIMULATED_RULES.some((key) => config[key] !== AUDITED_RULES[key])) {
     return { reason: "The Session Simulator models only the audited rules: H17 · DAS · RSA · LS · 3:2.", fix: "rules" };
@@ -219,7 +305,7 @@ export function priceLab(config: LabConfig) {
   const activeRamp = playedRamp(config);
   const scenario = labScenario(config, rules);
   const result = analyzeCvcx(scenario, activeRamp, config.baseBet);
-  const optimalRamp = createOptimalRamp(rules, config.maxSpread, config.wongInAt, config.chipIncrement, extraRuleAdjustment(config));
+  const optimalRamp = optimalRampFor(config, rules);
   const noBets = bettingNothing(activeRamp);
   const sizedUnit = riskSizedUnit(scenario, activeRamp);
   return {
@@ -306,6 +392,13 @@ export function tripOutlook(config: LabConfig, result: CvcxPerformance) {
     lossAtLeast: (loss: number) => resultPercentile(-Math.abs(loss), expected, sd),
     /** Chance the trip is up `goal` dollars at some point, not only at the end. */
     reachesGoal: (goal: number) => goalByHorizonProbability(goal, result.evPerRound, variance, rounds),
+    /** The bankroll that keeps `trips` trips like this one at the target risk of going broke. */
+    bankrollForTrips: (trips: number) => bankrollForHorizon(result.evPerRound, variance, rounds * Math.max(0, trips), config.targetRisk),
+    /** Average hours for the bankroll to double, and the chance it doubles before it is lost. */
+    doubling: {
+      hours: result.hourlyEv > 0 ? config.bankroll / result.hourlyEv : Infinity,
+      chance: goalOrBust(config.bankroll, config.bankroll, result.evPerRound, variance).goal,
+    },
     /** Chance of being up `goal` before losing the bankroll, and of going broke first: on this trip, and ever. */
     goalOrBust: (goal: number) => ({
       trip: goalOrBust(config.bankroll, goal, result.evPerRound, variance, rounds),
@@ -320,7 +413,7 @@ export type TripOutlook = ReturnType<typeof tripOutlook>;
 /* Suggest a ramp (the Bet Spread Recommender, on the Lab's own game)        */
 /* ------------------------------------------------------------------------ */
 
-export type SuggestionStatus = "met" | "risk-limited" | "minimum-too-high";
+export type SuggestionStatus = "met" | "risk-limited" | "minimum-too-high" | "over-table-max";
 
 export interface SpreadSuggestion {
   key: string;
@@ -356,10 +449,11 @@ export interface SpreadSuggestion {
 export function suggestSpreads(config: LabConfig, { tableMinimum, hourlyGoal }: { tableMinimum: number; hourlyGoal: number }) {
   const rules = labRules(config);
   const scenario = labScenario(config, rules);
-  const sitOut = (ramp: RampPoint[]) => (config.wongInAt === null ? ramp : zeroBetsBelow(ramp, config.wongInAt));
+  const sitOut = (ramp: RampPoint[]) => (config.wongInAt === null || scenario.countShares ? ramp : zeroBetsBelow(ramp, config.wongInAt));
   const candidates = [
     ...PRESET_NAMES.map((name) => ({ key: name, name: `${name.replace("-", "–")} spread`, kind: "preset" as const, ramp: presetRamp(name) })),
-    { key: "optimal", name: "Kelly-weighted ramp", kind: "optimal" as const, ramp: createOptimalRamp(rules, config.maxSpread, config.wongInAt, config.chipIncrement, extraRuleAdjustment(config)) },
+    // The table maximum depends on the unit chosen below, so the optimal shape here uses the spread alone.
+    { key: "optimal", name: "Kelly-weighted ramp", kind: "optimal" as const, ramp: optimalRampFor({ ...config, tableMax: null }, rules) },
     { key: "yours", name: "Your ramp", kind: "yours" as const, ramp: config.ramp },
   ].filter((candidate, index, all) => all.findIndex((other) => sameRamp(sitOut(other.ramp), sitOut(candidate.ramp))) === index);
 
@@ -370,12 +464,16 @@ export function suggestSpreads(config: LabConfig, { tableMinimum, hourlyGoal }: 
     const requiredRaw = perDollar.evPerRound > 0 ? Math.max(0, hourlyGoal) / (perDollar.evPerRound * config.handsPerHour) : Infinity;
     const allowedRaw = riskSizedUnit(scenario, played);
     const requiredWhole = Number.isFinite(requiredRaw) ? Math.max(minimumWhole, Math.ceil(requiredRaw - 1e-9)) : Infinity;
-    const allowedWhole = Number.isFinite(allowedRaw) ? Math.floor(allowedRaw + 1e-9) : Number.MAX_SAFE_INTEGER;
+    const units = played.map((point) => point.units).filter((value) => value > 0);
+    // The top bet has to fit under the table maximum, which caps the unit as risk does.
+    const tableCap = config.tableMax !== null && units.length ? Math.floor(config.tableMax / Math.max(...units) + 1e-9) : Number.MAX_SAFE_INTEGER;
+    const riskWhole = Number.isFinite(allowedRaw) ? Math.floor(allowedRaw + 1e-9) : Number.MAX_SAFE_INTEGER;
+    const allowedWhole = Math.min(riskWhole, tableCap);
     let baseBet: number, status: SuggestionStatus;
-    if (allowedWhole < minimumWhole) { baseBet = minimumWhole; status = "minimum-too-high"; }
+    if (tableCap < minimumWhole) { baseBet = minimumWhole; status = "over-table-max"; }
+    else if (allowedWhole < minimumWhole) { baseBet = minimumWhole; status = "minimum-too-high"; }
     else if (requiredWhole <= allowedWhole) { baseBet = requiredWhole; status = "met"; }
     else { baseBet = allowedWhole; status = "risk-limited"; }
-    const units = played.map((point) => point.units).filter((value) => value > 0);
     return {
       ...candidate,
       baseBet,
@@ -383,7 +481,7 @@ export function suggestSpreads(config: LabConfig, { tableMinimum, hourlyGoal }: 
       maxBet: units.length ? Math.max(...units) * baseBet : 0,
       status,
       feasible: status === "met",
-      withinRisk: status !== "minimum-too-high",
+      withinRisk: status !== "minimum-too-high" && status !== "over-table-max",
       result: analyzeCvcx(scenario, played, baseBet),
     };
   });

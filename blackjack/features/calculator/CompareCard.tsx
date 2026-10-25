@@ -1,28 +1,28 @@
 "use client";
 import { useMemo, useState, type ReactNode } from "react";
 import { Save } from "lucide-react";
-import { chance, count, dealtPercent, DASH, money, percent, signedMoney } from "@/lib/blackjack/labFormat";
-import { compareGames, playedSpread, priceTemplate, type CompareBasis, type GameComparison, type LabPricing, type TripOutlook } from "@/lib/blackjack/labModel";
+import { chance, count, dealtPercent, DASH, deckLabel, money, percent, signedMoney } from "@/lib/blackjack/labFormat";
+import { compareGames, compareRules, playedSpread, priceTemplate, type CompareBasis, type GameComparison, type LabPricing, type TripOutlook } from "@/lib/blackjack/labModel";
 import { unitLabel } from "@/lib/blackjack/rampSteps";
 import { Badge, Button, cx, EmptyState, Segmented } from "@/components/ui";
 import { InlineUndo, Note, Panel } from "./parts";
 import type { Calc } from "./useCalculator";
 
-type Mode = "games" | "scenarios";
-const gameName = (row: GameComparison) => `${row.decks} decks, ${row.dealt} dealt`;
+type Mode = "games" | "rules" | "scenarios";
+const gameName = (row: GameComparison) => `${deckLabel(row.decks)}, ${row.dealt} dealt`;
 const MAX_COMPARED = 3;
 
 /**
- * The nine simulated deck and penetration choices ranked by SCORE for this
+ * Every simulated deck and penetration choice ranked by SCORE for this
  * bankroll and unit, and saved scenarios side by side with the current setup.
  */
 export function CompareCard({ calc, trip, onSave, className }: { calc: Calc; trip: TripOutlook; onSave: () => void; className?: string }) {
   const [mode, setMode] = useState<Mode>("games");
   return (
-    <Panel id="compare" title="Compare" sub="Other penetrations and shoes for the same bankroll, or your saved scenarios side by side." className={className}>
-      <Segmented<Mode> label="Compare with" name="compare_mode" value={mode} onChange={setMode} options={[{ value: "games", label: "Other games" }, { value: "scenarios", label: "Saved scenarios" }]} />
+    <Panel id="compare" title="Compare" sub="Other penetrations and shoes, other table rules, or your saved scenarios side by side." className={className}>
+      <Segmented<Mode> label="Compare with" name="compare_mode" value={mode} onChange={setMode} options={[{ value: "games", label: "Other games" }, { value: "rules", label: "Rules" }, { value: "scenarios", label: "Saved" }]} />
       <div className="mt-4">
-        {mode === "games" ? <OtherGames calc={calc} /> : <SavedScenarios calc={calc} trip={trip} onSave={onSave} />}
+        {mode === "games" ? <OtherGames calc={calc} /> : mode === "rules" ? <OtherRules calc={calc} /> : <SavedScenarios calc={calc} trip={trip} onSave={onSave} />}
       </div>
     </Panel>
   );
@@ -48,8 +48,8 @@ function OtherGames({ calc }: { calc: Calc }) {
           <li key={`${row.decks}-${row.dealt}`} className={cx("flex min-w-0 items-center gap-3 rounded-xl border p-3", row.current ? "border-brand bg-brand/[0.06]" : "border-line")}>
             <div className="min-w-0 flex-1">
               <p className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="min-w-0 font-semibold"><span className="tnum text-ink-3">#{index + 1}</span> {row.decks} decks · <span className="tnum">{row.dealt}</span> dealt <span className="tnum font-normal text-ink-3">({dealtPercent(row.decks, row.dealt)}%)</span></span>
-                <span className="tnum shrink-0 font-semibold">{row.result.cScore > 0 ? money(row.result.cScore, 2) : DASH}</span>
+                <span className="min-w-0 font-semibold"><span className="tnum text-ink-3">#{index + 1}</span> {deckLabel(row.decks)} · <span className="tnum">{row.dealt}</span> dealt <span className="tnum font-normal text-ink-3">({dealtPercent(row.decks, row.dealt)}%)</span></span>
+                <span className="tnum shrink-0 font-semibold"><span className="mr-1 text-[0.6875rem] font-medium uppercase tracking-wide text-ink-3">SCORE</span>{row.result.cScore > 0 ? money(row.result.cScore, 2) : DASH}</span>
               </p>
               <p className="tnum mt-0.5 text-xs text-ink-3">{money(row.result.hourlyEv, 2)}/hr · ruin {percent(row.result.riskOfRuin)} · N₀ {count(row.result.nZeroRounds)}</p>
             </div>
@@ -63,7 +63,45 @@ function OtherGames({ calc }: { calc: Calc }) {
           </li>
         ))}
       </ol>
-      <Note className="mt-2">SCORE per 100 rounds is shown on the right. The Kelly-weighted ramp is the highest-SCORE ramp within your top bet.</Note>
+      <Note className="mt-2">SCORE is the win per 100 rounds with a $10,000 bankroll at 13.5% risk, so games compare whatever the stakes. The Kelly-weighted ramp is the highest-SCORE ramp within your top bet.</Note>
+    </div>
+  );
+}
+
+/** The current game beside each one-rule change, so "is the S17 table down the street better?" has an answer. */
+function OtherRules({ calc }: { calc: Calc }) {
+  const { config } = calc;
+  const [basis, setBasis] = useState<CompareBasis>("yours");
+  const rows = useMemo(() => compareRules(config, basis), [config, basis]);
+  return (
+    <div>
+      <p className="text-sm leading-6 text-ink-2">
+        Your game with one rule changed at a time, same shoe, bankroll and {money(config.baseBet)} unit, ranked by SCORE. Rules outside the simulations are estimates, as in the Game step.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-2">
+        <Segmented<CompareBasis> label="Price each with" name="compare_rules_basis" className="w-full max-w-xs" value={basis} onChange={setBasis} options={[{ value: "yours", label: "Your ramp" }, { value: "optimal", label: "Its Kelly ramp" }]} />
+        <InlineUndo calc={calc} source="compare" />
+      </div>
+      <ol className="mt-3 grid gap-2" aria-label="Rule changes ranked by SCORE">
+        {rows.map((row, index) => (
+          <li key={row.key} className={cx("flex min-w-0 items-center gap-3 rounded-xl border p-3", row.current ? "border-brand bg-brand/[0.06]" : "border-line")}>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 font-semibold"><span className="tnum text-ink-3">#{index + 1}</span> {row.label}</span>
+                <span className="tnum shrink-0 font-semibold"><span className="mr-1 text-[0.6875rem] font-medium uppercase tracking-wide text-ink-3">SCORE</span>{row.result.cScore > 0 ? money(row.result.cScore, 2) : DASH}</span>
+              </p>
+              <p className="tnum mt-0.5 text-xs text-ink-3">{money(row.result.hourlyEv, 2)}/hr · edge {percent(row.result.playerEdge, 2)} · ruin {percent(row.result.riskOfRuin)}</p>
+            </div>
+            <div className="shrink-0">
+              {row.current ? <Badge tone="brand">Yours</Badge> : (
+                <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-9" onClick={() => calc.switchRules(row, basis === "optimal")} aria-label={`Use ${row.label.toLowerCase()}`}>
+                  Use
+                </Button>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
   zeroBetsBelow,
   zeroNegativeCountBets,
 } from "./advantage";
-import { H17_PRO_COEFFICIENTS, H17_PRO_METADATA } from "./h17ProCoefficients";
+import { WONG_LS_COEFFICIENTS, WONG_LS_METADATA } from "./wongLsCoefficients";
 import { simulateProfileSessions } from "./sessionSimulation";
 import {
   analyzeCvcx,
@@ -193,11 +193,11 @@ describe("advantage model", () => {
     expect(profile).toHaveLength(17);
     expect(profile.reduce((sum, row) => sum + row.p, 0)).toBeCloseTo(1, 10);
     const neutral = profile.find((row) => row.tc === 0)!;
-    const measured = H17_PRO_COEFFICIENTS["8-6"][8];
+    const measured = WONG_LS_COEFFICIENTS["8-6"][8];
     expect(neutral.p).toBeCloseTo(measured[0], 12);
     expect(neutral.samples).toBe(measured[3]);
     expect(neutral.standardError).toBe(measured[4]);
-    expect(H17_PRO_METADATA.totalRounds).toBeGreaterThan(100_000_000_000);
+    expect(WONG_LS_METADATA.totalRounds).toBeGreaterThan(100_000_000_000);
   });
   it("applies ramp thresholds", () => {
     expect(unitsAt(0, RAMPS["1-8"])).toBe(1);

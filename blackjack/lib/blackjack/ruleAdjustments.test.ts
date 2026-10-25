@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, getCountProfile, RAMPS } from "./advantage";
-import { H17_PRO_COEFFICIENTS } from "./h17ProCoefficients";
-import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+import { BASIC_ES10_COEFFICIENTS } from "./basicEs10Coefficients";
+import { BASIC_LS_COEFFICIENTS } from "./basicLsCoefficients";
 import { RULE_DELTAS, sumRuleAdjustment, isEstimated, ruleAdjustmentFlagsFromRules } from "./ruleAdjustments";
+import { WONG_ES10_COEFFICIENTS } from "./wongEs10Coefficients";
+import { WONG_LS_COEFFICIENTS } from "./wongLsCoefficients";
 
 const baseInput = {
   bankroll: 10_000,
@@ -29,15 +31,22 @@ describe("rule-adjustment defaults", () => {
     }
   });
 
-  it("uses separately audited H17 Pro and basic-strategy curves", () => {
-    const measured = H17_PRO_COEFFICIENTS["6-4.5"];
+  it("uses the separately simulated Wong and basic-strategy curves, late or early surrender", () => {
+    const measured = WONG_LS_COEFFICIENTS["6-4.5"];
     calculateAdvantage(baseInput).rows.forEach((row, index) => {
       expect(row.advantage).toBeCloseTo(measured[index][1], 12);
       expect(row.frequency).toBeCloseTo(measured[index][0], 12);
       expect(row.sdUnits).toBeCloseTo(measured[index][2], 12);
     });
-    const basic = calculateAdvantage({ ...baseInput, rules: { ...DEFAULT_ADVANTAGE_RULES, useIndices: false } });
-    basic.rows.forEach((row, index) => expect(row.advantage).toBeCloseTo(NO_INDEX_COEFFICIENTS["6-4.5"][index][1], 12));
+    const curve = (rules: Partial<typeof DEFAULT_ADVANTAGE_RULES>) => calculateAdvantage({ ...baseInput, rules: { ...DEFAULT_ADVANTAGE_RULES, ...rules } }).rows.map((row) => row.advantage);
+    expect(curve({ useIndices: false })).toEqual(BASIC_LS_COEFFICIENTS["6-4.5"].map((row) => row[1]));
+    expect(curve({ earlySurrender: true })).toEqual(WONG_ES10_COEFFICIENTS["6-4.5"].map((row) => row[1]));
+    expect(curve({ earlySurrender: true, useIndices: false })).toEqual(BASIC_ES10_COEFFICIENTS["6-4.5"].map((row) => row[1]));
+    // Early surrender is its own simulation, never the no-surrender estimate.
+    expect(curve({ earlySurrender: true, lateSurrender: false })).toEqual(curve({ earlySurrender: true }));
+    // It is worth more than late surrender overall and at a ten-rich count.
+    expect(calculateAdvantage({ ...baseInput, rules: { ...DEFAULT_ADVANTAGE_RULES, earlySurrender: true } }).evPerRound).toBeGreaterThan(calculateAdvantage(baseInput).evPerRound);
+    expect(curve({ earlySurrender: true }).at(-1)!).toBeGreaterThan(curve({}).at(-1)!);
     expect(calculateAdvantage(baseInput).rows.at(-1)!.advantage).toBeGreaterThan(0.03);
   });
 

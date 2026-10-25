@@ -1,7 +1,10 @@
-import { GAME_OPTIONS } from "./coefficients";
-import { H17_PRO_COEFFICIENTS } from "./h17ProCoefficients";
-import { NO_INDEX_COEFFICIENTS } from "./noIndexCoefficients";
+import { BASIC_ES10_COEFFICIENTS } from "./basicEs10Coefficients";
+import { BASIC_LS_COEFFICIENTS } from "./basicLsCoefficients";
+import { GAME_OPTIONS, type Decks } from "./coefficients";
 import { ruleAdjustmentFlagsFromRules, sumRuleAdjustment } from "./ruleAdjustments";
+import { WONG_ES10_COEFFICIENTS } from "./wongEs10Coefficients";
+import { WONG_LS_COEFFICIENTS } from "./wongLsCoefficients";
+/** Stored with journal sessions; every saved value now prices with Wong's indices, which the charts teach. */
 export type IndexPolicy = "h17-pro";
 export interface AdvantageRules {
   decks: number;
@@ -9,11 +12,12 @@ export interface AdvantageRules {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  /** Early surrender against a ten (late against an ace): simulated, not estimated. Implies surrender. */
+  earlySurrender?: boolean;
   blackjackPayout: 1.5 | 1.2;
   penetration: number;
-  /** Enables an audited index policy curve. Set false for basic strategy. */
+  /** Wong's index plays and insurance, as the charts teach. Set false for basic strategy. */
   useIndices?: boolean;
-  /** Defaults to the supplied H17 Pro chart. */
   indexPolicy?: IndexPolicy;
 }
 export interface RampPoint {
@@ -40,6 +44,16 @@ export interface AdvantageInput {
    * them here as well.
    */
   ruleAdjustment?: number;
+  /**
+   * Back-counting with an exit point: per true count −8…+8, the share of all dealt rounds that are
+   * watched and that are played (../blackjack-simulator/wongout.py). Watched shares replace the
+   * count frequencies (time at the table), and only the played part of each count is bet.
+   */
+  countShares?: CountShares;
+}
+export interface CountShares {
+  watched: readonly number[];
+  played: readonly number[];
 }
 export interface CountRow {
   trueCount: number;
@@ -54,6 +68,8 @@ export interface CountRow {
   totalBet: number;
   playerHands: number;
   units: number;
+  /** The share of this count's rounds that are played: 1 unless back-counting with an exit point. */
+  playShare: number;
 }
 export interface AdvantageResult {
   averageBet: number;
@@ -102,28 +118,28 @@ const TC_LABELS = [
 ];
 const Z95 = 1.95996398454;
 /** The audited profile key whose deck count and penetration best match `rules`. */
-function profileKey(rules: AdvantageRules) {
-  const options = GAME_OPTIONS[rules.decks as 6 | 8] ?? GAME_OPTIONS[6],
+export function profileKey(rules: AdvantageRules) {
+  const options = GAME_OPTIONS[rules.decks as Decks] ?? GAME_OPTIONS[6],
     requested = rules.penetration * rules.decks,
     selected = [...options].sort(
       (a, b) => Math.abs(a.dealt - requested) - Math.abs(b.dealt - requested),
     )[0];
   const key = `${rules.decks}-${selected.dealt}`;
-  return key in NO_INDEX_COEFFICIENTS ? key : "6-4.5";
+  return key in BASIC_LS_COEFFICIENTS ? key : "6-4.5";
 }
 /**
  * Per-true-count edge, frequency, and variance for a game.
  *
- * Every selectable policy is independently audited; no curve is interpolated.
- *
- * The H17 Pro artifact applies late surrender before the chart's starred stand
- * indices, matching the policy used by the card-level simulator and trainers.
+ * Every curve is simulated with the site's own strategy engine (../blackjack-simulator/wong.py):
+ * basic strategy, or basic strategy plus Wong's count plays and insurance, each with late
+ * surrender or with early surrender against a ten. No curve is interpolated.
  */
 export function getCountProfile(rules: AdvantageRules) {
   const key = profileKey(rules);
+  const early = rules.earlySurrender === true;
   const coefficients = rules.useIndices === false
-    ? NO_INDEX_COEFFICIENTS[key]
-    : H17_PRO_COEFFICIENTS[key];
+    ? (early ? BASIC_ES10_COEFFICIENTS : BASIC_LS_COEFFICIENTS)[key]
+    : (early ? WONG_ES10_COEFFICIENTS : WONG_LS_COEFFICIENTS)[key];
   return coefficients.map((plain, position) => {
     const [p, adv, sd, samples, standardError] = plain;
     return {
@@ -234,17 +250,21 @@ export function fillRampFromTrueCount(
 export function calculateCountRows(input: AdvantageInput): CountRow[] {
   const unit = input.bettingUnit ?? 1;
   const ruleAdjustment = effectiveRuleAdjustment(input.rules, input.ruleAdjustment);
-  return getCountProfile(input.rules).map((row) => {
+  const shares = input.countShares;
+  const watchedTotal = shares ? shares.watched.reduce((sum, share) => sum + share, 0) : 1;
+  return getCountProfile(input.rules).map((row, position) => {
     const units = unitsAt(row.tc, input.ramp);
     const playerHands = handsAt(
       row.tc,
       input.handsByTrueCount,
       input.playerHands,
     );
+    const watched = shares ? shares.watched[position] : 0;
     return {
       trueCount: row.tc,
       label: row.label,
-      frequency: row.p,
+      frequency: shares ? watched / watchedTotal : row.p,
+      playShare: shares ? (watched > 0 ? shares.played[position] / watched : 0) : 1,
       advantage: row.adv + ruleAdjustment,
       sdUnits: row.sd,
       standardError: row.standardError,
@@ -263,10 +283,12 @@ export function calculateAdvantage(input: AdvantageInput): AdvantageResult {
     evPerRound = 0,
     secondMoment = 0;
   for (const row of rows) {
-    averageBet += row.frequency * row.totalBet;
-    evPerRound += row.frequency * row.advantage * row.totalBet;
+    // Only the played part of a count is bet; the rest is time spent watching.
+    const played = row.frequency * row.playShare;
+    averageBet += played * row.totalBet;
+    evPerRound += played * row.advantage * row.totalBet;
     secondMoment +=
-      row.frequency *
+      played *
       (simultaneousHandVarianceFactor(row.playerHands) *
         Math.pow(row.sdUnits * row.bet, 2) +
         Math.pow(row.advantage * row.totalBet, 2));
@@ -304,6 +326,7 @@ export function recommendUnit(
   playerHands = 1,
   handsByTrueCount?: HandCountPoint[],
   ruleAdjustment = 0,
+  countShares?: CountShares,
 ) {
   if (targetRisk >= 1) return Infinity;
   const result = calculateAdvantage({
@@ -316,6 +339,7 @@ export function recommendUnit(
     rules,
     ramp,
     ruleAdjustment,
+    countShares,
   });
   if (result.evPerRound <= 0) return 0;
   return Math.max(

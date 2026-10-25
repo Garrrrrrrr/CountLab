@@ -72,26 +72,36 @@ const parse = (raw: string) => {
   return Number(cleaned);
 };
 
-/** Keeps a typed draft while focused, so "1" on the way to "1500" never fights the field. */
+const limit = (bound: number) => bound.toLocaleString("en-US", { maximumFractionDigits: 4 });
+
+/** Why a typed draft is not being used, or undefined when it is. */
+export function draftError(raw: string, min: number, max: number) {
+  const parsed = parse(raw);
+  if (!Number.isFinite(parsed)) return "Enter a number. The results still use the last valid value.";
+  if (parsed < min) return `Must be at least ${limit(min)}. The results still use the last valid value.`;
+  if (parsed > max) return `Must be at most ${limit(max)}. The results still use the last valid value.`;
+  return undefined;
+}
+
+/**
+ * Keeps a typed draft while focused, so "1" on the way to "1500" never fights the field. A draft
+ * that is blank or out of range is never applied silently: `error` says why while it is typed,
+ * and leaving the field puts back the last valid value rather than clamping to a different one.
+ */
 export function useNumberDraft(value: number, onChange: (value: number) => void, min: number, max: number) {
   const [draft, setDraft] = useState(String(value));
   const [focused, setFocused] = useState(false);
   const shown = focused ? draft : String(value);
   return {
     value: shown,
+    error: focused ? draftError(draft, min, max) : undefined,
     onFocus: () => { setDraft(String(value)); setFocused(true); },
     onChange: (raw: string) => {
       setDraft(raw);
       const parsed = parse(raw);
       if (Number.isFinite(parsed) && parsed >= min && parsed <= max) onChange(parsed);
     },
-    onBlur: () => {
-      setFocused(false);
-      const parsed = parse(draft);
-      if (!Number.isFinite(parsed)) return;
-      const clamped = Math.min(max, Math.max(min, parsed));
-      if (clamped !== value) onChange(clamped);
-    },
+    onBlur: () => setFocused(false),
   };
 }
 
@@ -102,7 +112,7 @@ export function NumberField({ label, value, onChange, min = -Infinity, max = Inf
   const id = useId();
   const draft = useNumberDraft(value, onChange, min, max);
   return (
-    <Field label={label} hint={hint} htmlFor={id} className={className}>
+    <Field label={label} hint={hint} error={draft.error} htmlFor={id} className={className}>
       <div className="relative">
         {prefix && <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-ink-3">{prefix}</span>}
         <input
@@ -113,6 +123,7 @@ export function NumberField({ label, value, onChange, min = -Infinity, max = Inf
           min={Number.isFinite(min) ? min : undefined}
           max={Number.isFinite(max) ? max : undefined}
           data-analytics-field={field}
+          aria-invalid={draft.error ? true : undefined}
           value={draft.value}
           onFocus={draft.onFocus}
           onChange={(event) => draft.onChange(event.target.value)}
@@ -140,7 +151,7 @@ export function NumberStepper({ label, value, onChange, min = 0, max = 999, step
   const clamp = (next: number) => Math.min(max, Math.max(min, Number(next.toFixed(6))));
   const button = "grid h-11 w-11 shrink-0 place-items-center rounded-lg text-ink-2 transition hover:bg-surface-3 hover:text-ink disabled:opacity-30";
   return (
-    <div className={cx("flex items-center rounded-xl border border-line bg-surface-2 p-0.5", className)}>
+    <div className={cx("flex items-center rounded-xl border bg-surface-2 p-0.5", draft.error ? "border-neg" : "border-line", className)}>
       <button type="button" className={button} aria-label={`Decrease ${label}`} disabled={disabled || value <= min} onClick={() => onChange(clamp(value - step))}>
         <Minus size={18} aria-hidden />
       </button>
@@ -149,6 +160,8 @@ export function NumberStepper({ label, value, onChange, min = 0, max = 999, step
         inputMode="decimal"
         step="any"
         aria-label={label}
+        aria-invalid={draft.error ? true : undefined}
+        title={draft.error}
         disabled={disabled}
         data-analytics-field={field}
         value={draft.value}

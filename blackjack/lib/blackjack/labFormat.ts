@@ -48,3 +48,6 @@ export const riskLabel = (value: number) => `${Number((value * 100).toFixed(2))}
 
 /** Penetration as a whole percentage of the shoe. */
 export const dealtPercent = (decks: number, dealt: number) => Math.round((dealt / decks) * 100);
+
+/** "1 deck", "6 decks". */
+export const deckLabel = (decks: number) => (decks === 1 ? "1 deck" : `${decks} decks`);

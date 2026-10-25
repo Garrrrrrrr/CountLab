@@ -1,6 +1,6 @@
 import { RAMPS, type HandCountPoint, type RampPoint } from "./advantage";
-import { GAME_OPTIONS } from "./coefficients";
-import { templateHandSchedule, type CvcxTemplateConfig } from "./cvcxLibrary";
+import { GAME_OPTIONS, isDecks, type Decks } from "./coefficients";
+import { templateHandSchedule, validConfig, type CvcxTemplateConfig } from "./cvcxLibrary";
 import { expandHands, expandRamp, TRUE_COUNTS } from "./rampSteps";
 import type { VenuePreset } from "./venuePresets";
 
@@ -12,7 +12,7 @@ export type DoubleRule = "any2" | "9to11" | "10to11";
  * schedule expanded to one point per true count.
  */
 export interface LabConfig {
-  decks: 6 | 8;
+  decks: Decks;
   dealt: number;
   bankroll: number;
   baseBet: number;
@@ -21,6 +21,10 @@ export interface LabConfig {
   targetRisk: number;
   maxSpread: number;
   wongInAt: number | null;
+  /** Get up when the true count falls to this or lower (null: stay). Priced from simulated back-counting shares. */
+  wongOutAt: number | null;
+  /** The table's largest bet per hand, in dollars (null: no limit). */
+  tableMax: number | null;
   rampName: string;
   ramp: RampPoint[];
   chipIncrement: number;
@@ -29,6 +33,8 @@ export interface LabConfig {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  /** Early surrender against a ten, late against an ace. When set, `lateSurrender` is set too. */
+  earlySurrender: boolean;
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
   useIndices: boolean;
@@ -57,6 +63,7 @@ export const AUDITED_RULES = {
   doubleAfterSplit: true,
   resplitAces: true,
   lateSurrender: true,
+  earlySurrender: false,
   europeanNoHoleCard: false,
   blackjackPayout: 1.5,
   doubleRule: "any2",
@@ -73,6 +80,8 @@ export const DEFAULT_LAB_CONFIG: LabConfig = {
   targetRisk: 0.05,
   maxSpread: 12,
   wongInAt: null,
+  wongOutAt: null,
+  tableMax: null,
   rampName: "1-12",
   ramp: presetRamp("1-12"),
   chipIncrement: 0.5,
@@ -81,8 +90,26 @@ export const DEFAULT_LAB_CONFIG: LabConfig = {
   useIndices: true,
 };
 
+/** The penetration a deck count starts at when it is chosen: about three quarters dealt. */
+export const DEFAULT_DEALT: Record<Decks, number> = { 1: 0.625, 2: 1.5, 4: 3, 6: 4.5, 8: 6 };
+
+/**
+ * The table rules saved in Settings, as Calculator inputs, so a first visit prices the player's
+ * own game. A deck count the simulations don't cover keeps the Calculator's shoe.
+ */
+export function settingsRulesPatch(settings: { decks: number; dealerHitsSoft17: boolean; doubleAfterSplit: boolean; surrender: "none" | "late" | "early" }): Partial<LabConfig> {
+  const decks = isDecks(settings.decks) ? settings.decks : undefined;
+  return {
+    ...(decks ? { decks, dealt: DEFAULT_DEALT[decks] } : {}),
+    dealerHitsSoft17: settings.dealerHitsSoft17,
+    doubleAfterSplit: settings.doubleAfterSplit,
+    lateSurrender: settings.surrender !== "none",
+    earlySurrender: settings.surrender === "early",
+  };
+}
+
 /** Snaps a dealt figure to the audited penetration it came from, so float noise never unselects it. */
-export function snapDealt(decks: 6 | 8, dealt: number) {
+export function snapDealt(decks: Decks, dealt: number) {
   return GAME_OPTIONS[decks].find((option) => Math.abs(option.dealt - dealt) < 1e-6)?.dealt ?? dealt;
 }
 
@@ -103,6 +130,8 @@ export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
     targetRisk: config.targetRisk,
     maxSpread: config.maxSpread,
     wongInAt: config.wongInAt ?? null,
+    wongOutAt: config.wongOutAt ?? null,
+    tableMax: config.tableMax ?? null,
     rampName: config.rampName,
     ramp: expandRamp(config.ramp),
     chipIncrement: config.chipIncrement,
@@ -110,7 +139,8 @@ export function normalizeConfig(config: CvcxTemplateConfig): LabConfig {
     dealerHitsSoft17: config.dealerHitsSoft17,
     doubleAfterSplit: config.doubleAfterSplit,
     resplitAces: config.resplitAces,
-    lateSurrender: config.lateSurrender,
+    lateSurrender: config.lateSurrender || config.earlySurrender === true,
+    earlySurrender: config.earlySurrender === true,
     europeanNoHoleCard: config.europeanNoHoleCard,
     blackjackPayout: config.blackjackPayout,
     // Scenarios saved before the control existed were priced with indices on.
@@ -143,7 +173,30 @@ export function toTemplateConfig(config: LabConfig): CvcxTemplateConfig {
     blackjackPayout: config.blackjackPayout,
     useIndices: config.useIndices,
     doubleRule: config.doubleRule,
+    // Written only when set, so scenarios without them keep the fields they always had.
+    ...(config.earlySurrender ? { earlySurrender: true } : {}),
+    ...(config.wongOutAt !== null ? { wongOutAt: config.wongOutAt } : {}),
+    ...(config.tableMax !== null ? { tableMax: config.tableMax } : {}),
   };
+}
+
+/** The setup as a URL-safe string for a share link (`/calculator/?setup=…`): the saved-scenario record, base64url. */
+export function encodeShareConfig(config: LabConfig) {
+  const bytes = new TextEncoder().encode(JSON.stringify(toTemplateConfig(config)));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** A shared setup, validated like a saved scenario, or null when the link is damaged or not one of ours. */
+export function decodeShareConfig(text: string): LabConfig | null {
+  try {
+    const binary = atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
+    return validConfig(parsed) ? normalizeConfig(parsed) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** A canonical fingerprint of the inputs; equal fingerprints price identically. */
@@ -201,7 +254,9 @@ export function ruleStates(config: LabConfig): RuleState[] {
     { key: "double", label: DOUBLE_LABEL[config.doubleRule][0], short: DOUBLE_LABEL[config.doubleRule][1], differs: config.doubleRule !== "any2" },
     { key: "das", label: config.doubleAfterSplit ? "Double after split" : "No double after split", short: config.doubleAfterSplit ? "DAS" : "No DAS", differs: !config.doubleAfterSplit },
     { key: "rsa", label: config.resplitAces ? "Resplit aces" : "No resplitting aces", short: config.resplitAces ? "RSA" : "No RSA", differs: !config.resplitAces },
-    { key: "surrender", label: config.lateSurrender ? "Late surrender" : "No surrender", short: config.lateSurrender ? "LS" : "No LS", differs: !config.lateSurrender },
+    config.earlySurrender
+      ? { key: "surrender", label: "Early surrender vs 10", short: "ES10", differs: false }
+      : { key: "surrender", label: config.lateSurrender ? "Late surrender" : "No surrender", short: config.lateSurrender ? "LS" : "No LS", differs: !config.lateSurrender },
     { key: "holeCard", label: config.europeanNoHoleCard ? "No hole card (European)" : "Dealer peeks", short: config.europeanNoHoleCard ? "ENHC" : "Peek", differs: config.europeanNoHoleCard },
   ];
 }
@@ -219,20 +274,23 @@ export function venueGaps(config: LabConfig): string[] {
   if (config.europeanNoHoleCard) gaps.push("the no-hole-card rule");
   if (config.doubleRule !== "any2") gaps.push("the doubling rule");
   if (config.wongInAt !== null) gaps.push("When you play");
+  if (config.wongOutAt !== null) gaps.push("when you leave");
+  if (config.tableMax !== null) gaps.push("the table maximum");
   if (config.hands.some((point) => point.hands !== 1)) gaps.push("hands per count");
   return gaps;
 }
 
 /** The inputs a venue sets when loaded: its game, rules, play mode (when stored) and ramp. Bankroll and unit stay. */
 export function venuePatch(preset: VenuePreset): Partial<LabConfig> {
-  const decks = preset.rules.decks === 8 ? 8 : 6;
+  const decks = isDecks(preset.rules.decks) ? preset.rules.decks : 6;
   return {
     decks,
     dealt: snapDealt(decks, preset.rules.penetration * decks),
     dealerHitsSoft17: preset.rules.dealerHitsSoft17,
     doubleAfterSplit: preset.rules.doubleAfterSplit,
     resplitAces: preset.rules.resplitAces,
-    lateSurrender: preset.rules.lateSurrender,
+    lateSurrender: preset.rules.lateSurrender || preset.rules.earlySurrender === true,
+    earlySurrender: preset.rules.earlySurrender === true,
     blackjackPayout: preset.rules.blackjackPayout,
     ...(typeof preset.rules.useIndices === "boolean" ? { useIndices: preset.rules.useIndices } : {}),
     ramp: expandRamp(preset.ramp),
@@ -264,13 +322,17 @@ const seventeen = <T extends { trueCount: number }>(points: unknown, field: keyo
 export function isLabConfig(value: unknown): value is LabConfig {
   if (!value || typeof value !== "object") return false;
   const config = value as Record<string, unknown>;
-  return (config.decks === 6 || config.decks === 8)
+  return isDecks(config.decks)
     && [config.dealt, config.bankroll, config.baseBet, config.handsPerHour, config.hours, config.targetRisk, config.maxSpread, config.chipIncrement].every(finite)
     && (config.wongInAt === null || finite(config.wongInAt))
     && typeof config.rampName === "string"
     && seventeen<RampPoint>(config.ramp, "units")
     && seventeen<HandCountPoint>(config.hands, "hands")
     && [config.dealerHitsSoft17, config.doubleAfterSplit, config.resplitAces, config.lateSurrender, config.europeanNoHoleCard, config.useIndices].every(bool)
+    // Drafts from before these existed lack the fields.
+    && (config.earlySurrender === undefined || bool(config.earlySurrender))
+    && (config.wongOutAt === undefined || config.wongOutAt === null || finite(config.wongOutAt))
+    && (config.tableMax === undefined || config.tableMax === null || finite(config.tableMax))
     && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2)
     && (config.doubleRule === "any2" || config.doubleRule === "9to11" || config.doubleRule === "10to11");
 }
@@ -282,7 +344,7 @@ export function parseLabDraft(raw: string | null): LabDraft | null {
     const draft = JSON.parse(raw) as Partial<LabDraft>;
     if (draft.version !== 1 || !isLabConfig(draft.config)) return null;
     const active = draft.active && typeof draft.active.id === "string" && typeof draft.active.name === "string" && typeof draft.active.snapshot === "string" ? draft.active : null;
-    return { version: 1, config: draft.config, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
+    return { version: 1, config: { ...draft.config, earlySurrender: draft.config.earlySurrender === true, wongOutAt: draft.config.wongOutAt ?? null, tableMax: draft.config.tableMax ?? null }, active, draftName: typeof draft.draftName === "string" ? draft.draftName : "" };
   } catch {
     return null;
   }

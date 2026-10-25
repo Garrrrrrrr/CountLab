@@ -46,17 +46,17 @@ test("prices the example setup exactly as the Game & Bankroll Lab did", async ({
   await open(page);
   if (testInfo.project.name !== "desktop-chromium") {
     const bar = page.getByRole("region", { name: "Live results" });
-    await expect(bar).toContainText("$26.55");
-    await expect(bar).toContainText("±$577");
-    await expect(bar).toContainText("1.86%");
+    await expect(bar).toContainText("$30.95");
+    await expect(bar).toContainText("±$586");
+    await expect(bar).toContainText("1.10%");
   }
   await show(page, "Results");
   const results = page.getByRole("region", { name: "Results", exact: true });
-  await expect(page.getByTestId("calc-verdict")).toHaveText(/^\$26\.55/);
-  await expect(results).toContainText("$18,796");
-  await expect(results).toContainText("47,270");
-  await expect(results).toContainText("$21.16");
-  await expect(results).toContainText("4.60");
+  await expect(page.getByTestId("calc-verdict")).toHaveText(/^\$30\.95/);
+  await expect(results).toContainText("$16,598");
+  await expect(results).toContainText("35,807");
+  await expect(results).toContainText("$27.93");
+  await expect(results).toContainText("5.28");
 });
 
 test("the Kelly-weighted ramp changes only the ramp, shows its trade-off first, and can be undone", async ({ page }) => {
@@ -136,7 +136,7 @@ test("editing a step reprices the setup, and a new step takes focus", async ({ p
   await page.getByRole("button", { name: "Add a step" }).click();
   await expect(units(page, "+5 and up")).toBeFocused();
   await expect(units(page, "+5 and up")).toHaveValue("18");
-  if (testInfo.project.name === "desktop-chromium") await expect(page.getByTestId("calc-verdict")).not.toHaveText(/^\$26\.55/);
+  if (testInfo.project.name === "desktop-chromium") await expect(page.getByTestId("calc-verdict")).not.toHaveText(/^\$30\.95/);
 });
 
 test("moving a step's start from the keyboard keeps focus on it", async ({ page }) => {
@@ -248,25 +248,25 @@ test("saved scenarios compare side by side with the current setup", async ({ pag
   await open(page);
   await (await saveScenario(page, "Six deck")).getByRole("button", { name: "Done" }).click();
   await show(page, "Game");
-  await choose(page, "Decks", "8 decks");
+  await choose(page, "Decks", "8");
   await show(page, "Results");
-  await choose(page, "Compare with", "Saved scenarios");
+  await choose(page, "Compare with", "Saved");
   const table = page.getByRole("table", { name: "Scenarios side by side" });
   await expect(table).toContainText("Six deck (edited)");
   await expect(table).toContainText("8D · 75%");
   await expect(table).toContainText("6D · 75%");
-  await expect(table.getByRole("row", { name: /Win an hour/ })).toContainText("$26.55");
+  await expect(table.getByRole("row", { name: /Win an hour/ })).toContainText("$30.95");
 });
 
 test("other games rank by SCORE and one can be switched to, with Undo", async ({ page }) => {
   await prepare(page);
   await open(page);
   await show(page, "Results");
-  await expect(page.locator("#compare")).toContainText("Your game ranks #5 of 9.");
+  await expect(page.locator("#compare")).toContainText("Your game ranks #16 of 20.");
   await page.getByRole("button", { name: "Use 6 decks, 5.25 dealt" }).click();
-  await expect(page.locator("#compare")).toContainText("Your game ranks #1 of 9.");
+  await expect(page.locator("#compare")).toContainText("Your game ranks #9 of 20.");
   await page.getByRole("button", { name: "Undo: Switched to 6 decks, 5.25 dealt." }).click();
-  await expect(page.locator("#compare")).toContainText("Your game ranks #5 of 9.");
+  await expect(page.locator("#compare")).toContainText("Your game ranks #16 of 20.");
 });
 
 test("the trip outlook follows the trip length", async ({ page }) => {
@@ -274,9 +274,9 @@ test("the trip outlook follows the trip length", async ({ page }) => {
   await open(page);
   await show(page, "Results");
   const trip = page.locator("#trip");
-  await expect(trip).toContainText("+$2,655");
+  await expect(trip).toContainText("+$3,095");
   await trip.getByRole("button", { name: "8h" }).click();
-  await expect(trip).toContainText("+$212");
+  await expect(trip).toContainText("+$248");
   await expect(trip.getByRole("img", { name: /^Trip results: 2 in 3 trips between/ })).toBeVisible();
   await trip.getByLabel("Chance of losing at least", { exact: true }).fill("0");
   await expect(trip).toContainText(/Chance of a loss\s*\d/);
@@ -464,4 +464,52 @@ test("inputs keep their analytics names", async ({ page }, testInfo) => {
   ]));
   const sections = await page.locator("details").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-analytics-section")));
   expect(sections).toEqual(expect.arrayContaining(["table_rules", "scope_and_method"]));
+});
+
+test("a blank or out-of-range number says why and leaves the results alone", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await open(page);
+  await show(page, "Game");
+  const pace = page.getByLabel("Rounds per hour", { exact: true });
+  const before = await page.getByTestId("calc-verdict").textContent();
+  await pace.fill("0");
+  await expect(page.getByText("Must be at least 1. The results still use the last valid value.")).toBeVisible();
+  await expect(pace).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByTestId("calc-verdict")).toHaveText(before!);
+  await pace.blur();
+  await expect(pace).toHaveValue("100");
+});
+
+test("a share link opens the same setup", async ({ page, context }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await prepare(page);
+  await open(page);
+  await show(page, "Bankroll");
+  await page.getByLabel("Bankroll", { exact: true }).fill("41000");
+  await page.getByRole("button", { name: "Share a link to this setup" }).click();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  expect(link).toMatch(/\/calculator\/\?setup=[\w-]+$/);
+  await page.evaluate(() => sessionStorage.clear());
+  await page.goto(link);
+  await expect(page.getByText("Opened a shared setup.")).toBeVisible();
+  await show(page, "Bankroll");
+  await expect(page.getByLabel("Bankroll", { exact: true })).toHaveValue("41000");
+  await expect(page).not.toHaveURL(/setup=/);
+});
+
+test("Compare ranks one-rule changes to the current game", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepare(page);
+  await open(page);
+  await show(page, "Results");
+  await choose(page, "Compare with", "Rules");
+  const list = page.getByRole("list", { name: "Rule changes ranked by SCORE" });
+  await expect(list.getByRole("listitem").filter({ hasText: "Your game" })).toContainText("Yours");
+  await expect(list.getByRole("listitem").filter({ hasText: "Early surrender vs 10" })).toBeVisible();
+  await list.getByRole("button", { name: "Use early surrender vs 10" }).click();
+  await show(page, "Game");
+  await page.getByText("Change rules", { exact: true }).click();
+  await expect(page.getByRole("radio", { name: "Early vs 10" })).toBeChecked();
 });

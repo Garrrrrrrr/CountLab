@@ -1,6 +1,7 @@
 /**
- * CountLab's audited coefficients (see coefficients.ts) are simulated for exactly one ruleset
- * (H17, DAS, RSA, LS, American peek, 3:2), varying only by deck count and penetration. These
+ * CountLab's audited coefficients (see coefficients.ts) are simulated for H17, DAS, RSA, American
+ * peek and 3:2, with late surrender or early surrender against a ten, varying by deck count and
+ * penetration. These
  * deltas are well-established literature estimates of each rule's edge impact relative to that
  * baseline, used to approximate other rule combinations without re-simulating them. They are
  * flat, count-independent shifts -- a standard simplification for this kind of quick estimate.
@@ -33,13 +34,15 @@ export function ruleAdjustmentFlagsFromRules(rules: {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  earlySurrender?: boolean;
   blackjackPayout: 1.5 | 1.2;
 }): Pick<RuleAdjustmentFlags, "dealerStandsSoft17" | "noDoubleAfterSplit" | "noResplitAces" | "noLateSurrender" | "blackjackPays6to5"> {
   return {
     dealerStandsSoft17: !rules.dealerHitsSoft17,
     noDoubleAfterSplit: !rules.doubleAfterSplit,
     noResplitAces: !rules.resplitAces,
-    noLateSurrender: !rules.lateSurrender,
+    // Early surrender has its own simulated curves, so it needs no shift.
+    noLateSurrender: !rules.lateSurrender && !rules.earlySurrender,
     blackjackPays6to5: rules.blackjackPayout === 1.2,
   };
 }

@@ -9,7 +9,9 @@ import {
   changedFields,
   configKey,
   CUSTOM_RAMP_NAME,
+  decodeShareConfig,
   DEFAULT_LAB_CONFIG,
+  encodeShareConfig,
   isPresetName,
   labDraftKey,
   normalizeConfig,
@@ -17,6 +19,7 @@ import {
   parseLabDraft,
   presetRamp,
   rampSpread,
+  settingsRulesPatch,
   toTemplateConfig,
   uniqueName,
   venuePatch,
@@ -24,16 +27,18 @@ import {
   type LabConfig,
   type LabDraft,
 } from "@/lib/blackjack/labConfig";
-import { labBlocker, priceLab, type GameComparison, type SpreadSuggestion } from "@/lib/blackjack/labModel";
+import { deckLabel } from "@/lib/blackjack/labFormat";
+import { labBlocker, priceLab, type GameComparison, type RuleComparison, type SpreadSuggestion } from "@/lib/blackjack/labModel";
 import { applySteps, expandHands, type RampStep } from "@/lib/blackjack/rampSteps";
 import { venuePresetLibrary, type VenuePreset } from "@/lib/blackjack/venuePresets";
+import { useSettings } from "@/lib/hooks/useSettings";
 import { accountScope } from "@/lib/supabase/accountStorage";
 import { announce, toast } from "@/components/ui";
 
 /** Where the control that made a bulk change sits, so its Undo can appear right beside it. */
 export type UndoSource = "header" | "preset" | "suggest" | "ramp" | "rules" | "results" | "compare";
 export type PendingUndo = { source: UndoSource; message: string };
-export type Arrival = { status: "none" } | { status: "loaded"; name: string } | { status: "missing" };
+export type Arrival = { status: "none" } | { status: "loaded"; name: string } | { status: "shared" } | { status: "bad-link" } | { status: "missing" };
 
 const DEFAULT_KEY = configKey(DEFAULT_LAB_CONFIG);
 const RAMP_FIELDS: (keyof LabConfig)[] = ["ramp", "hands", "wongInAt"];
@@ -153,7 +158,21 @@ export function useCalculator() {
   // saved scenario opened by link (?scenario=<id>) replaces them instead.
   const draftWritable = useRef(false);
   const latestDraft = useRef<LabDraft | null>(null);
+  const startedFromDraft = useRef(false);
   useClientLayoutEffect(() => {
+    const shared = new URLSearchParams(location.search).get("setup");
+    if (shared !== null) {
+      dropSearchParam("setup");
+      const next = decodeShareConfig(shared);
+      if (next) {
+        setConfig(next);
+        setArrival({ status: "shared" });
+        track("cvcx_template_loaded", { name: "shared link" });
+        draftWritable.current = true;
+        return;
+      }
+      setArrival({ status: "bad-link" });
+    }
     const id = new URLSearchParams(location.search).get("scenario");
     if (id) {
       const template = cvcxLibrary.templates().find((item) => item.id === id);
@@ -175,12 +194,23 @@ export function useCalculator() {
         setConfig(draft.config);
         setActive(draft.active && cvcxLibrary.templates().some((template) => template.id === draft.active!.id) ? draft.active : null);
         setDraftName(draft.draftName);
+        startedFromDraft.current = true;
       }
     } catch {
       // Storage can be unavailable (private windows, blocked site data); start from the example.
     }
     draftWritable.current = true;
   }, []);
+  // A first visit (no link, scenario or draft) prices the rules saved in Settings, once they have loaded.
+  const { settings, ready: settingsReady } = useSettings();
+  const settingsApplied = useRef(false);
+  useEffect(() => {
+    if (!settingsReady || settingsApplied.current) return;
+    settingsApplied.current = true;
+    if (startedFromDraft.current || active !== null || configKey(config) !== DEFAULT_KEY) return;
+    setConfig((current) => ({ ...current, ...settingsRulesPatch(settings) }));
+  }, [settingsReady, settings, active, config]);
+
   useEffect(() => {
     if (!draftWritable.current && config === DEFAULT_LAB_CONFIG && active === null && !draftName) return;
     draftWritable.current = true;
@@ -270,9 +300,32 @@ export function useCalculator() {
     bulk({ ...AUDITED_RULES }, "Rules reset to the audited game.", source);
   };
 
+  /** A link that opens exactly this setup; the phone share sheet where there is one, else the clipboard. */
+  const shareLink = async () => {
+    const url = `${location.origin}/calculator/?setup=${encodeShareConfig(config)}`;
+    track("cvcx_input_changed", { input: "share_link" });
+    try {
+      if (matchMedia("(pointer: coarse)").matches && navigator.share) {
+        await navigator.share({ url, title: "CountLab calculator setup" });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast("Link copied. It opens this exact setup in the Calculator.", "pos");
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+      toast("Couldn’t copy the link. Save the setup as a scenario instead.");
+    }
+  };
+
+  const switchRules = (row: RuleComparison, withRamp: boolean) => {
+    track("cvcx_input_changed", { input: "rules_from_compare" });
+    if (withRamp) bulk({ ...row.patch, ramp: row.ramp, rampName: OPTIMAL_RAMP_NAME }, `Switched to ${row.label.toLowerCase()} with its Kelly-weighted ramp.`, "compare");
+    else bulk(row.patch, `Switched to ${row.label.toLowerCase()}.`, "compare");
+  };
+
   const switchGame = (row: GameComparison, withRamp: boolean) => {
     track("cvcx_input_changed", { input: "game_from_compare" });
-    const game = `${row.decks} decks, ${row.dealt} dealt`;
+    const game = `${deckLabel(row.decks)}, ${row.dealt} dealt`;
     if (withRamp) bulk({ decks: row.decks, dealt: row.dealt, ramp: row.ramp, rampName: OPTIMAL_RAMP_NAME }, `Switched to ${game} with its Kelly-weighted ramp.`, "compare");
     else bulk({ decks: row.decks, dealt: row.dealt }, `Switched to ${game}.`, "compare");
   };
@@ -364,6 +417,8 @@ export function useCalculator() {
     oneHandEverywhere,
     resetRules,
     switchGame,
+    switchRules,
+    shareLink,
     applyUnit,
     startOver,
     loadTemplate,

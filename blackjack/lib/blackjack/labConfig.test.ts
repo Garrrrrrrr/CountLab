@@ -136,6 +136,16 @@ describe("working draft", () => {
     expect(parseLabDraft(JSON.stringify(draft))).toEqual(draft);
   });
 
+  it("keeps early surrender through saves and loads drafts from before it", () => {
+    const early = { ...DEFAULT_LAB_CONFIG, earlySurrender: true };
+    expect(toTemplateConfig(early).earlySurrender).toBe(true);
+    expect(normalizeConfig(toTemplateConfig(early))).toEqual(early);
+    expect(normalizeConfig({ ...legacy, lateSurrender: false, earlySurrender: true }).lateSurrender).toBe(true);
+    expect(ruleStates(early).find((rule) => rule.key === "surrender")).toMatchObject({ short: "ES10", differs: false });
+    const before = Object.fromEntries(Object.entries(DEFAULT_LAB_CONFIG).filter(([key]) => !["earlySurrender", "wongOutAt", "tableMax"].includes(key)));
+    expect(parseLabDraft(JSON.stringify({ version: 1, config: before, active: null, draftName: "" }))?.config).toEqual(DEFAULT_LAB_CONFIG);
+  });
+
   it("rejects missing, damaged or foreign drafts", () => {
     expect(parseLabDraft(null)).toBeNull();
     expect(parseLabDraft("{")).toBeNull();

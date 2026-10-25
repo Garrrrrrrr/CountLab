@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_ADVANTAGE_RULES, RAMPS } from "./advantage";
 import {
   analyzeCvcx,
+  bankrollForHorizon,
   createOptimalRamp,
   exactOptimalRamp,
   finiteHorizonRisk,
@@ -88,6 +89,18 @@ describe("CVCX calculations", () => {
     const big = goalOrBust(20_000, 10_000, 1.2, 1600 ** 2, 50_000);
     expect(big.goal).toBeGreaterThan(0);
     expect(big.goal + big.ruin).toBeLessThanOrEqual(1 + 1e-12);
+  });
+
+  it("sizes a bankroll for a number of rounds at a target risk", () => {
+    const [mean, variance, rounds, target] = [0.02, 1.7, 50_000, 0.05];
+    const bankroll = bankrollForHorizon(mean, variance, rounds, target);
+    expect(finiteHorizonRisk(bankroll, mean, variance, rounds)).toBeCloseTo(target, 3);
+    expect(finiteHorizonRisk(bankroll * 0.95, mean, variance, rounds)).toBeGreaterThan(target);
+    // Never more than the play-forever bankroll, and it grows with the horizon towards it.
+    expect(bankroll).toBeLessThan(requiredBankroll(mean, variance, target));
+    expect(bankrollForHorizon(mean, variance, rounds * 10, target)).toBeGreaterThan(bankroll);
+    // A losing game still has a finite answer for a finite horizon.
+    expect(Number.isFinite(bankrollForHorizon(-0.005, 1.3, 10_000, 0.05))).toBe(true);
   });
 
   it("returns bounded finite-horizon outcomes for a complete scenario", () => {

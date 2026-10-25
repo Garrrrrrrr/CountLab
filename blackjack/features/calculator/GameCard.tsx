@@ -1,9 +1,9 @@
 "use client";
 import { RotateCcw } from "lucide-react";
 import { track } from "@/lib/analytics/track";
-import { GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { hasAuditedRules, ruleStates, type DoubleRule, type LabConfig } from "@/lib/blackjack/labConfig";
-import { dealtPercent } from "@/lib/blackjack/labFormat";
+import { DECK_COUNTS, GAME_OPTIONS, type Decks } from "@/lib/blackjack/coefficients";
+import { DEFAULT_DEALT, hasAuditedRules, ruleStates, type DoubleRule, type LabConfig } from "@/lib/blackjack/labConfig";
+import { dealtPercent, deckLabel } from "@/lib/blackjack/labFormat";
 import { RULE_DELTAS } from "@/lib/blackjack/ruleAdjustments";
 import { Badge, Button, Callout, Segmented, Toggle } from "@/components/ui";
 import { Disclosure, InlineUndo, Note, NumberField, Panel } from "./parts";
@@ -36,7 +36,7 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
   const rules = ruleStates(config);
   const audited = hasAuditedRules(config);
   const differing = rules.filter((rule) => rule.differs);
-  const toggle = (field: "doubleAfterSplit" | "resplitAces" | "lateSurrender", input: string) => (checked: boolean) => {
+  const toggle = (field: "doubleAfterSplit" | "resplitAces", input: string) => (checked: boolean) => {
     edit({ [field]: checked });
     track("cvcx_input_changed", { input });
   };
@@ -44,12 +44,12 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
   return (
     <Panel id="game" eyebrow="Step 1" title="The game" sub="The shoe, how deep it is dealt, how fast the table plays and how you play your hands." className={className}>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Segmented<6 | 8>
+        <Segmented<Decks>
           label="Decks"
           name="number_of_decks"
           value={config.decks}
-          onChange={(decks) => edit({ decks, dealt: decks === 6 ? 4.5 : 6 })}
-          options={[{ value: 6, label: "6 decks" }, { value: 8, label: "8 decks" }]}
+          onChange={(decks) => edit({ decks, dealt: DEFAULT_DEALT[decks] })}
+          options={DECK_COUNTS.map((decks) => ({ value: decks, label: String(decks), hint: deckLabel(decks) }))}
         />
         <div className="min-w-0">
           <Segmented
@@ -57,10 +57,10 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
             name="penetration"
             value={config.dealt}
             onChange={(dealt) => edit({ dealt })}
-            options={options.map((option) => ({ value: option.dealt, label: `${dealtPercent(config.decks, option.dealt)}%`, hint: `${option.dealt} of ${config.decks} decks dealt` }))}
+            options={options.map((option) => ({ value: option.dealt, label: `${dealtPercent(config.decks, option.dealt)}%`, hint: `${option.dealt} of ${deckLabel(config.decks)} dealt` }))}
           />
           <Note className="mt-1.5">
-            <span className="tnum font-medium text-ink-2">{config.dealt} of {config.decks} decks</span> dealt before the shuffle. Deeper is better for counters.
+            <span className="tnum font-medium text-ink-2">{config.dealt} of {deckLabel(config.decks)}</span> dealt before the shuffle. Deeper is better for counters.
           </Note>
         </div>
         <NumberField
@@ -81,7 +81,7 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
             onChange={(value) => edit({ useIndices: value === "indices" })}
             options={[{ value: "indices", label: "Hi-Lo + indices" }, { value: "basic", label: "Basic strategy" }]}
           />
-          <Note className="mt-1.5">Indices are the count-based changes to basic strategy from the H17 Pro chart. Both ways are simulated separately.</Note>
+          <Note className="mt-1.5">Indices are Wong&apos;s count-based changes to basic strategy, the ones on the charts. Both ways are simulated separately.</Note>
         </div>
       </div>
 
@@ -111,12 +111,14 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
             <Segmented<1.5 | 1.2> label="Blackjack pays" name="blackjack_payout" value={config.blackjackPayout} onChange={(blackjackPayout) => edit({ blackjackPayout })} options={[{ value: 1.5, label: "3:2" }, { value: 1.2, label: "6:5" }]} />
             <Segmented<DoubleRule> label="Doubling allowed on" name="double_rule" value={config.doubleRule} onChange={(doubleRule) => edit({ doubleRule })} options={[{ value: "any2", label: "Any two" }, { value: "9to11", label: "9–11" }, { value: "10to11", label: "10–11" }]} />
             <Segmented label="Dealer hole card" name="strategy" value={config.europeanNoHoleCard ? "enhc" : "peek"} onChange={(value) => edit({ europeanNoHoleCard: value === "enhc" })} options={[{ value: "peek", label: "Peeks" }, { value: "enhc", label: "No hole card" }]} />
+            <Segmented label="Surrender" name="surrender" value={config.earlySurrender ? "early" : config.lateSurrender ? "late" : "none"}
+              onChange={(value) => { edit({ lateSurrender: value !== "none", earlySurrender: value === "early" }); track("cvcx_input_changed", { input: "surrender" }); }}
+              options={[{ value: "none", label: "None" }, { value: "late", label: "Late" }, { value: "early", label: "Early vs 10" }]} />
           </div>
-          <Note className="mt-1.5">With no hole card (European), doubles and splits are lost to a dealer blackjack.</Note>
+          <Note className="mt-1.5">With no hole card (European), doubles and splits are lost to a dealer blackjack. Early surrender vs 10 is decided before the dealer checks for blackjack; against an ace it is late.</Note>
           <div className="mt-3 divide-y divide-line rounded-xl border border-line px-3">
             <Toggle className="min-h-12 py-1" label="Double after split" checked={config.doubleAfterSplit} onChange={toggle("doubleAfterSplit", "double_after_splitting")} />
             <Toggle className="min-h-12 py-1" label="Resplit aces" checked={config.resplitAces} onChange={toggle("resplitAces", "resplitting_aces")} />
-            <Toggle className="min-h-12 py-1" label="Late surrender" description="Early surrender is not modelled." checked={config.lateSurrender} onChange={toggle("lateSurrender", "late_surrender")} />
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-9" disabled={audited} onClick={() => calc.resetRules("rules")} icon={<RotateCcw size={15} aria-hidden />}>
@@ -128,7 +130,7 @@ export function GameCard({ calc, rulesOpen, onRulesOpenChange, className }: { ca
 
         {pricing.estimated && (
           <Callout tone="warn" title="Estimated results" className="mt-3">
-            The simulations behind these numbers use H17 · 3:2 · DAS · RSA · late surrender · dealer peeks. For the rules that differ, a published estimate shifts the edge by the same amount at every count:
+            The simulations behind these numbers use H17 · 3:2 · DAS · RSA · late or early surrender · dealer peeks. For the rules that differ, a published estimate shifts the edge by the same amount at every count:
             <ul className="tnum mt-1.5 space-y-0.5">
               {differing.map((rule) => <li key={rule.key}>{rule.label}: {points(ruleDelta(config, rule.key))} points</li>)}
             </ul>

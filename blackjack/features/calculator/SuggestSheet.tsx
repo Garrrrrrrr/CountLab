@@ -21,6 +21,7 @@ const STATUS: Record<SuggestionStatus, { label: string; tone: "pos" | "warn" | "
   met: { label: "Meets both targets", tone: "pos" },
   "risk-limited": { label: "Short of the goal at this risk", tone: "warn" },
   "minimum-too-high": { label: "Table minimum is too risky", tone: "neg" },
+  "over-table-max": { label: "Top bet is over the table maximum", tone: "neg" },
 };
 
 function SuggestionCard({ suggestion, recommended, current, onUse }: { suggestion: SpreadSuggestion; recommended: boolean; current: boolean; onUse: () => void }) {

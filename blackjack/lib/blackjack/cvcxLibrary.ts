@@ -1,8 +1,9 @@
 import { accountStorage } from "@/lib/supabase/accountStorage";
 import type { HandCountPoint, RampPoint } from "./advantage";
+import { isDecks, type Decks } from "./coefficients";
 
 export interface CvcxTemplateConfig {
-  decks: 6 | 8;
+  decks: Decks;
   dealt: number;
   bankroll: number;
   handsPerHour: number;
@@ -27,6 +28,12 @@ export interface CvcxTemplateConfig {
   doubleAfterSplit: boolean;
   resplitAces: boolean;
   lateSurrender: boolean;
+  /** Early surrender against a ten. Absent on saves that predate it, and when off. */
+  earlySurrender?: boolean;
+  /** Leave at this true count or lower; absent when the player stays. */
+  wongOutAt?: number | null;
+  /** The table's largest bet per hand; absent when there is no limit. */
+  tableMax?: number | null;
   europeanNoHoleCard: boolean;
   blackjackPayout: 1.5 | 1.2;
   /** Which audited curve to price against. Absent on saves that predate the control. */
@@ -64,10 +71,11 @@ const MAX_TEMPLATES = 20;
 
 const availableStorage = (): StorageLike | undefined => typeof window === "undefined" ? undefined : accountStorage;
 const finite = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
-const validConfig = (value: unknown): value is CvcxTemplateConfig => {
+/** Whether a stored or shared value is a usable saved-scenario config. */
+export const validConfig = (value: unknown): value is CvcxTemplateConfig => {
   if (!value || typeof value !== "object") return false;
   const config = value as Partial<CvcxTemplateConfig>;
-  return (config.decks === 6 || config.decks === 8)
+  return isDecks(config.decks)
     && finite(config.dealt)
     && finite(config.bankroll)
     && finite(config.baseBet)
@@ -84,6 +92,9 @@ const validConfig = (value: unknown): value is CvcxTemplateConfig => {
     && typeof config.resplitAces === "boolean"
     && typeof config.lateSurrender === "boolean"
     && typeof config.europeanNoHoleCard === "boolean"
+    && (config.earlySurrender === undefined || typeof config.earlySurrender === "boolean")
+    && (config.wongOutAt === undefined || config.wongOutAt === null || finite(config.wongOutAt))
+    && (config.tableMax === undefined || config.tableMax === null || finite(config.tableMax))
     && (config.blackjackPayout === 1.5 || config.blackjackPayout === 1.2);
 };
 const validTemplate = (value: unknown): value is CvcxTemplate => {

@@ -3,11 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 import { CUSTOM_RAMP_NAME, isPresetName, OPTIMAL_RAMP_NAME, PRESET_NAMES } from "@/lib/blackjack/labConfig";
 import { money, percent } from "@/lib/blackjack/labFormat";
-import { playedSpread } from "@/lib/blackjack/labModel";
+import { playedSpread, wongOutChoices } from "@/lib/blackjack/labModel";
 import { handsSummary, stepsSummary, tcLabel, toSteps, unitLabel } from "@/lib/blackjack/rampSteps";
 import { Badge, Button, Callout, Segmented, SelectField } from "@/components/ui";
 import { CountTable } from "./CountTable";
-import { InlineUndo, Note, Panel } from "./parts";
+import { InlineUndo, Note, NumberField, Panel } from "./parts";
 import { RampChart } from "./RampChart";
 import { focusStepUnits, RampSteps } from "./RampSteps";
 import { presetLabel, type Calc } from "./useCalculator";
@@ -30,6 +30,8 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
   };
 
   const start = config.wongInAt ?? -8;
+  // With a leave point, counts below the entry are played some of the time, so none are shown as sat out.
+  const sitOutBelow = config.wongOutAt === null ? config.wongInAt : null;
   const steps = useMemo(() => toSteps(config.ramp, config.hands, { start, boundaries: calc.stepBoundaries ?? [] }), [config.ramp, config.hands, start, calc.stepBoundaries]);
   const spread = playedSpread(pricing.activeRamp);
   const name = isPresetName(config.rampName) ? `${presetLabel(config.rampName)} spread`
@@ -51,7 +53,7 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
   return (
     <Panel id="ramp" eyebrow="Step 3" title="Bet ramp" sub="How many units you bet at each true count: the running count divided by the decks left. Betting more when it is high is where the edge comes from." className={className}>
       <p className="tnum -mt-2 mb-4 text-sm font-medium text-ink">{summary}</p>
-      <div className="grid gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
           <Segmented
             label="Start from a preset"
@@ -80,23 +82,50 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
           </Callout>
         )}
 
-        <div className="max-w-sm">
+        {/* The card is narrow beside the results above 1280px, so the columns follow its width, not the screen's. */}
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-4 [&>*]:min-w-0">
           <SelectField
             label="When you play"
             hint="Sitting out low counts (back-counting, or “wonging”) skips your worst bets. It assumes you may join mid-shoe."
             data-analytics-field="enter_the_game_at"
             value={config.wongInAt ?? "every"}
-            onChange={(event) => edit({ wongInAt: event.target.value === "every" ? null : Number(event.target.value) })}
+            onChange={(event) => {
+              const wongInAt = event.target.value === "every" ? null : Number(event.target.value);
+              edit({ wongInAt, wongOutAt: config.wongOutAt !== null && wongOutChoices(wongInAt).includes(config.wongOutAt) ? config.wongOutAt : null });
+            }}
           >
             <option value="every">Every round</option>
-            <option value={0}>True count 0 and up</option>
+            <option value={-1}>True count −1 and up</option>
+            <option value={0}>0 and up</option>
             <option value={1}>+1 and up</option>
             <option value={2}>+2 and up</option>
             <option value={3}>+3 and up</option>
           </SelectField>
+          <SelectField
+            label="When you leave"
+            hint={config.wongInAt === null ? "Leave the table when the count drops, and find a fresh shoe." : "Once seated, stay until the count drops this far, then watch again."}
+            data-analytics-field="leave_the_game_at"
+            value={config.wongOutAt ?? "stay"}
+            onChange={(event) => edit({ wongOutAt: event.target.value === "stay" ? null : Number(event.target.value) })}
+          >
+            <option value="stay">{config.wongInAt === null ? "Never: play the whole shoe" : "As soon as it is below your entry"}</option>
+            {wongOutChoices(config.wongInAt).map((exit) => <option key={exit} value={exit}>At {tcLabel(exit)} or lower</option>)}
+          </SelectField>
+          <NumberField
+            label="Table maximum"
+            value={config.tableMax ?? 0}
+            min={0}
+            prefix="$"
+            field="table_maximum"
+            hint={config.tableMax === null ? "0 means no limit. Bets above it are capped." : `Caps each hand at ${money(config.tableMax)}, ${unitLabel(config.tableMax / config.baseBet)} units.`}
+            onChange={(tableMax) => edit({ tableMax: tableMax > 0 ? tableMax : null })}
+          />
         </div>
+        {config.wongOutAt !== null && (
+          <Note>Leaving at a count is priced from simulated shoes: how often each count is watched and played under this rule. Rounds per hour count every round you watch.</Note>
+        )}
 
-        <RampChart rows={pricing.result.rows} unit={config.baseBet} sittingOutBelow={config.wongInAt} summary={stepsSummary(steps, config.wongInAt)} onSelect={selectCount} />
+        <RampChart rows={pricing.result.rows} unit={config.baseBet} sittingOutBelow={sitOutBelow} summary={stepsSummary(steps, config.wongInAt)} onSelect={selectCount} />
 
         <div className="flex flex-wrap items-end justify-between gap-3">
           <Segmented<RampView> label="Edit as" name="ramp_view" className="w-60" value={view} onChange={chooseView} options={[{ value: "steps", label: "Steps" }, { value: "table", label: "Every count" }]} />
@@ -110,11 +139,11 @@ export function RampCard({ calc, onSuggest, className }: { calc: Calc; onSuggest
 
         {view === "steps" ? (
           <>
-            <RampSteps steps={steps} unit={config.baseBet} sittingOutBelow={config.wongInAt} onChange={calc.setSteps} />
+            <RampSteps steps={steps} unit={config.baseBet} sittingOutBelow={sitOutBelow} onChange={calc.setSteps} />
             <Note>Hands per round: {handsSummary(config.hands, start)}. Two or three hands are priced as correlated, since they all play against one dealer hand.</Note>
           </>
         ) : (
-          <CountTable rows={pricing.result.rows} unit={config.baseBet} sittingOutBelow={config.wongInAt} onBetChange={calc.setBet} onHandsChange={calc.setHands} />
+          <CountTable rows={pricing.result.rows} unit={config.baseBet} sittingOutBelow={sitOutBelow} onBetChange={calc.setBet} onHandsChange={calc.setHands} />
         )}
       </div>
     </Panel>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DECK_COUNTS, GAME_OPTIONS } from "./coefficients";
 import { unsupportedScenario } from "./scenarios";
 import { calculateAdvantage, DEFAULT_ADVANTAGE_RULES, RAMPS, unitsAt } from "./advantage";
 import { analyzeCvcx, createOptimalRamp, riskSizedUnit } from "./cvcx";
@@ -54,8 +55,8 @@ describe("pricing", () => {
 
   it("prices the default setup as the Lab always has", () => {
     const result = analyzeCvcx(labScenario(DEFAULT_LAB_CONFIG), playedRamp(DEFAULT_LAB_CONFIG), 15);
-    expect(result.hourlyEv).toBeCloseTo(26.55, 1);
-    expect(result.riskOfRuin).toBeCloseTo(0.0186, 3);
+    expect(result.hourlyEv).toBeCloseTo(30.95, 1);
+    expect(result.riskOfRuin).toBeCloseTo(0.011, 3);
   });
 
   it("recognizes a ramp that bets nothing", () => {
@@ -96,9 +97,9 @@ describe("bankrollFit", () => {
 });
 
 describe("compareGames", () => {
-  it("ranks all nine games by SCORE and marks the current one", () => {
+  it("ranks every simulated game by SCORE and marks the current one", () => {
     const rows = compareGames(DEFAULT_LAB_CONFIG, "optimal");
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(DECK_COUNTS.reduce((sum, decks) => sum + GAME_OPTIONS[decks].length, 0));
     expect(rows.filter((row) => row.current)).toHaveLength(1);
     for (let index = 1; index < rows.length; index++) expect(rows[index - 1].result.cScore).toBeGreaterThanOrEqual(rows[index].result.cScore);
   });
@@ -243,9 +244,9 @@ describe("priceLab", () => {
 
   // Pinned figures: a units mix-up (dealt as a fraction, hours as rounds, the unit applied twice) moves every one of these.
   it.each([
-    ["default", { hourlyEv: 26.546, sdPerHour: 577.15, riskOfRuin: 0.018599, requiredBankroll: 18795.5, nZeroRounds: 47269.6, score: 21.1552, averageBet: 31.2717, chanceAhead: 0.67722 }],
-    ["eightDeckBasicWong", { hourlyEv: 30.458, sdPerHour: 583.06, riskOfRuin: 0.000771, requiredBankroll: 12850.2, nZeroRounds: 29316.5, score: 34.1105, averageBet: 25.7556, chanceAhead: 0.59236 }],
-    ["estimatedTwoHands", { hourlyEv: 54.385, sdPerHour: 667.81, riskOfRuin: 0.087252, requiredBankroll: 12282.9, nZeroRounds: 15078.1, score: 66.3213, averageBet: 33.4412, chanceAhead: 0.59109 }],
+    ["default", { hourlyEv: 30.947, sdPerHour: 585.61, riskOfRuin: 0.010975, requiredBankroll: 16598.3, nZeroRounds: 35806.8, score: 27.9276, averageBet: 31.3173, chanceAhead: 0.70141 }],
+    ["eightDeckBasicWong", { hourlyEv: 30.481, sdPerHour: 584.89, riskOfRuin: 0.000802, requiredBankroll: 12921.4, nZeroRounds: 29456.6, score: 33.9482, averageBet: 25.764, chanceAhead: 0.59214 }],
+    ["estimatedTwoHands", { hourlyEv: 61.994, sdPerHour: 679.56, riskOfRuin: 0.068229, requiredBankroll: 11157.8, nZeroRounds: 12015.9, score: 83.2228, averageBet: 33.5362, chanceAhead: 0.60181 }],
   ] as const)("prices the %s setup as the Lab did", (name, expected) => {
     const config = PARITY[name];
     const { result } = priceLab(config);

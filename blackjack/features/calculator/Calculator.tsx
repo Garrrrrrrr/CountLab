@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FolderOpen, Save } from "lucide-react";
+import { FolderOpen, Save, Share2 } from "lucide-react";
 import { useCalculatorAnalytics } from "@/lib/analytics";
 import { track } from "@/lib/analytics/track";
 import { money, percent } from "@/lib/blackjack/labFormat";
@@ -136,7 +136,7 @@ export function Calculator() {
   // A scenario opened by link is complete, so it lands on its results.
   const arrived = calc.arrival.status;
   useEffect(() => {
-    if (arrived === "loaded" && !ANCHORS[location.hash.slice(1)]) setTab("results");
+    if ((arrived === "loaded" || arrived === "shared") && !ANCHORS[location.hash.slice(1)]) setTab("results");
   }, [arrived]);
 
   const showRules = () => {
@@ -180,6 +180,7 @@ export function Calculator() {
               {calc.templates.length > 0 && <span className="tnum rounded-full bg-surface-3 px-1.5 text-xs text-ink-2"><span aria-hidden>{calc.templates.length}</span><span className="sr-only">, {calc.templates.length} saved</span></span>}
             </Button>
             <Button variant="secondary" onClick={() => setSaveOpen(true)} aria-haspopup="dialog" aria-label="Save scenario" icon={<Save size={17} aria-hidden />}>Save</Button>
+            <Button variant="secondary" onClick={calc.shareLink} aria-label="Share a link to this setup" icon={<Share2 size={17} aria-hidden />}><span className="hidden sm:inline">Share</span></Button>
           </div>
         }
       />
@@ -190,6 +191,14 @@ export function Calculator() {
           {arrival.status === "loaded" ? (
             <Callout tone="pos" title={`Loaded “${arrival.name}”.`} action={<Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9" onClick={calc.dismissArrival}>Dismiss</Button>}>
               Changes here do not alter the saved scenario until you save.
+            </Callout>
+          ) : arrival.status === "shared" ? (
+            <Callout tone="pos" title="Opened a shared setup." action={<Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9" onClick={calc.dismissArrival}>Dismiss</Button>}>
+              It is yours to change. Save it to keep it.
+            </Callout>
+          ) : arrival.status === "bad-link" ? (
+            <Callout tone="warn" title="That setup link is damaged or incomplete." action={<Button variant="ghost" size="sm" className="-ml-2 min-h-11 sm:min-h-9" onClick={calc.dismissArrival}>Dismiss</Button>}>
+              Showing your own setup instead. Ask for the link again.
             </Callout>
           ) : (
             <Callout tone="warn" title="That scenario is not saved on this account or device."
@@ -229,7 +238,7 @@ export function Calculator() {
           <RampCard calc={calc} onSuggest={() => setSuggestOpen(true)} className={on("ramp")} />
           <TripCard calc={calc} trip={trip} className={on("results")} />
           <CompareCard calc={calc} trip={trip} onSave={() => setSaveOpen(true)} className={on("results")} />
-          <MethodNotes useIndices={config.useIndices} className={on("results")} />
+          <MethodNotes useIndices={config.useIndices} earlySurrender={config.earlySurrender} className={on("results")} />
         </div>
         <div ref={resultsColumn} role="group" aria-label="Results column"
           className={cx("order-first min-w-0 xl:sticky xl:top-6 xl:order-none xl:max-h-[calc(100dvh-3rem)] xl:w-[23rem] xl:shrink-0 xl:overflow-y-auto xl:rounded-[var(--radius)]", on("results"))}>

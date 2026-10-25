@@ -1,6 +1,7 @@
 import {
   AdvantageResult,
   AdvantageRules,
+  CountShares,
   HandCountPoint,
   RampPoint,
   calculateAdvantage,
@@ -22,6 +23,8 @@ export interface CvcxScenario {
   rules: AdvantageRules;
   /** Extra shift for rules AdvantageRules cannot express; the rest come from `rules`. Default 0. */
   ruleAdjustment?: number;
+  /** Watched and played shares per count when back-counting with an exit point. */
+  countShares?: CountShares;
 }
 
 export interface CvcxPerformance extends AdvantageResult {
@@ -88,8 +91,8 @@ export function requiredBankroll(
 }
 
 /** SCORE of a ramp in betting units: EV² / variance per round, which is scale-free. */
-function rampScore(rules: AdvantageRules, ramp: RampPoint[], ruleAdjustment: number) {
-  const result = calculateAdvantage({ bankroll: 1, bettingUnit: 1, handsPerHour: 1, hours: 1, rules, ramp, ruleAdjustment });
+function rampScore(rules: AdvantageRules, ramp: RampPoint[], ruleAdjustment: number, countShares?: CountShares) {
+  const result = calculateAdvantage({ bankroll: 1, bettingUnit: 1, handsPerHour: 1, hours: 1, rules, ramp, ruleAdjustment, countShares });
   return result.evPerRound > 0 && result.sdPerRound > 0 ? result.evPerRound ** 2 / result.sdPerRound ** 2 : 0;
 }
 
@@ -103,6 +106,7 @@ export function exactOptimalRamp(
   maxSpread: number,
   wongInAt: number | null,
   ruleAdjustment = 0,
+  countShares?: CountShares,
 ): RampPoint[] {
   const shift = effectiveRuleAdjustment(rules, ruleAdjustment);
   const spread = Math.max(1, maxSpread);
@@ -116,7 +120,7 @@ export function exactOptimalRamp(
   if (!positive.length) return at(0);
   // Below `low` every bet is the minimum; above `high` every positive count is at the cap.
   const low = Math.log(1 / Math.max(...positive)), high = Math.log(spread / Math.min(...positive));
-  const score = (logScale: number) => rampScore(rules, at(Math.exp(logScale)), ruleAdjustment);
+  const score = (logScale: number) => rampScore(rules, at(Math.exp(logScale)), ruleAdjustment, countShares);
   const steps = 200;
   let best = low, bestScore = score(low);
   for (let step = 1; step <= steps; step++) {
@@ -136,14 +140,37 @@ export function exactOptimalRamp(
   return at(Math.exp(score(refined) >= bestScore ? refined : best));
 }
 
+/**
+ * The smallest bankroll whose chance of going broke within `rounds` is at most `targetRisk`.
+ * Finite-horizon ruin rises with the bankroll's shortfall and is never above the lifetime figure,
+ * so the lifetime bankroll bounds a bisection. With no edge it is the unbounded lifetime answer.
+ */
+export function bankrollForHorizon(meanPerRound: number, variancePerRound: number, rounds: number, targetRisk: number) {
+  if (targetRisk >= 1 || rounds <= 0) return 0;
+  if (variancePerRound <= 0) return meanPerRound >= 0 ? 0 : -meanPerRound * rounds;
+  let high = meanPerRound > 0 ? requiredBankroll(meanPerRound, variancePerRound, targetRisk) : Infinity;
+  if (!Number.isFinite(high)) {
+    high = Math.sqrt(variancePerRound * rounds);
+    while (finiteHorizonRisk(high, meanPerRound, variancePerRound, rounds) > targetRisk) high *= 2;
+  }
+  let low = 0;
+  for (let step = 0; step < 100 && high - low > 0.01; step++) {
+    const middle = (low + high) / 2;
+    if (finiteHorizonRisk(middle, meanPerRound, variancePerRound, rounds) > targetRisk) low = middle;
+    else high = middle;
+  }
+  return high;
+}
+
 export function createOptimalRamp(
   rules: AdvantageRules,
   maxSpread: number,
   wongInAt: number | null,
   chipIncrement = 0.5,
   ruleAdjustment = 0,
+  countShares?: CountShares,
 ): RampPoint[] {
-  return exactOptimalRamp(rules, maxSpread, wongInAt, ruleAdjustment).map((point) => ({
+  return exactOptimalRamp(rules, maxSpread, wongInAt, ruleAdjustment, countShares).map((point) => ({
     trueCount: point.trueCount,
     units: chipIncrement > 0 && point.units > 0 ? Math.max(1, Math.round(point.units / chipIncrement) * chipIncrement) : point.units,
   }));
@@ -164,10 +191,11 @@ export function analyzeCvcx(
     rules: scenario.rules,
     ramp,
     ruleAdjustment: scenario.ruleAdjustment,
+    countShares: scenario.countShares,
   });
   const variance = result.sdPerRound ** 2;
   const playedFrequency = result.rows.reduce(
-    (sum, row) => sum + (row.bet > 0 ? row.frequency : 0),
+    (sum, row) => sum + (row.bet > 0 ? row.frequency * row.playShare : 0),
     0,
   );
   const cScore =
@@ -209,6 +237,7 @@ export function riskSizedUnit(
     scenario.playerHands,
     scenario.handsByTrueCount,
     scenario.ruleAdjustment,
+    scenario.countShares,
   );
 }
 

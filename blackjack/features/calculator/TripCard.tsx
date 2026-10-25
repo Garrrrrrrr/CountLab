@@ -81,6 +81,7 @@ export function TripCard({ calc, trip, className }: { calc: Calc; trip: TripOutl
   const { config, edit, pricing } = calc;
   const [loss, setLoss] = useState(1000);
   const [goal, setGoal] = useState(1000);
+  const [trips, setTrips] = useState(4);
   const betting = !pricing.noBets;
   return (
     <Panel id="trip" eyebrow="Trip outlook" title="What happens on your trip" sub="One trip of this length with this game, bankroll and ramp. Ranges, not limits: luck dominates short trips." className={className}>
@@ -130,6 +131,18 @@ export function TripCard({ calc, trip, className }: { calc: Calc; trip: TripOutl
             </div>
           </div>
           <GoalOrBust trip={trip} goal={goal} bankroll={config.bankroll} />
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl border border-line p-3">
+              <NumberField label="Bankroll for this many trips" value={trips} min={1} max={1000} suffix="trips" field="trip_count" onChange={(next) => setTrips(Math.round(next))} />
+              <p className="tnum mt-2 text-2xl font-semibold">{Number.isFinite(trip.bankrollForTrips(trips)) ? money(trip.bankrollForTrips(trips)) : "—"}</p>
+              <Note>Keeps the chance of going broke over {trips === 1 ? "the trip" : `all ${trips} trips`} at your {percent(config.targetRisk, 0)} target.</Note>
+            </div>
+            <div className="rounded-xl border border-line p-3">
+              <p className="text-sm font-medium text-ink-2">Doubling the bankroll</p>
+              <p className="tnum mt-2 text-2xl font-semibold">{Number.isFinite(trip.doubling.hours) ? `${count(trip.doubling.hours)} hours` : "Never, on average"}</p>
+              <Note>On average, at this unit. {percent(trip.doubling.chance, 1)} chance of doubling to {money(config.bankroll * 2)} before going broke.</Note>
+            </div>
+          </div>
           <p className="mt-4 text-sm">Chance of going broke on this trip: <b className="tnum">{chance(trip.riskOfRuin)}</b> <span className="text-ink-3">(lifetime: {percent(pricing.result.riskOfRuin)})</span></p>
           <Note className="mt-1">A normal approximation, not a card-by-card simulation. It can understate the chance of busting when the bankroll is only a few top bets deep.</Note>
         </>

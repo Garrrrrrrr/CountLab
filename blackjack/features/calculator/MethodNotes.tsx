@@ -1,9 +1,12 @@
 "use client";
 import { SIMULTANEOUS_HAND_CORRELATION } from "@/lib/blackjack/advantage";
-import { COEFFICIENT_METADATA, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
-import { H17_PRO_METADATA } from "@/lib/blackjack/h17ProCoefficients";
-import { NO_INDEX_METADATA } from "@/lib/blackjack/noIndexCoefficients";
+import { BASIC_ES10_METADATA } from "@/lib/blackjack/basicEs10Coefficients";
+import { BASIC_LS_METADATA } from "@/lib/blackjack/basicLsCoefficients";
+import { COEFFICIENT_METADATA, DECK_COUNTS, GAME_OPTIONS } from "@/lib/blackjack/coefficients";
+import { deckLabel } from "@/lib/blackjack/labFormat";
 import { RULE_DELTAS } from "@/lib/blackjack/ruleAdjustments";
+import { WONG_ES10_METADATA } from "@/lib/blackjack/wongEs10Coefficients";
+import { WONG_LS_METADATA } from "@/lib/blackjack/wongLsCoefficients";
 import { cx } from "@/components/ui";
 import { points } from "./GameCard";
 import { Disclosure } from "./parts";
@@ -11,7 +14,8 @@ import { Disclosure } from "./parts";
 const billions = (rounds: number) => `${(rounds / 1e9).toFixed(1)} billion`;
 const millions = (shoes: number) => `${Math.round(shoes / 1e6)} million`;
 const exact = (value: number) => value.toLocaleString("en-US");
-const profiles = ([6, 8] as const).map((decks) => `${decks} decks: ${GAME_OPTIONS[decks].map((option) => `${option.dealt}`).join(", ")} dealt`).join("; ");
+const profiles = DECK_COUNTS.map((decks) => `${deckLabel(decks)}: ${GAME_OPTIONS[decks].map((option) => `${option.dealt}`).join(", ")} dealt`).join("; ");
+const profileCount = DECK_COUNTS.reduce((sum, decks) => sum + GAME_OPTIONS[decks].length, 0);
 
 const RULE_ROWS: { rule: string; delta: number }[] = [
   { rule: "Dealer stands on soft 17", delta: RULE_DELTAS.dealerStandsSoft17 },
@@ -34,7 +38,13 @@ function Block({ title, children, className }: { title: string; children: React.
 }
 
 /** Exactly what the figures rest on, and what they leave out. */
-export function MethodNotes({ useIndices, className }: { useIndices: boolean; className?: string }) {
+export function MethodNotes({ useIndices, earlySurrender, className }: { useIndices: boolean; earlySurrender: boolean; className?: string }) {
+  const runs = [
+    { key: "wong-ls", inUse: useIndices && !earlySurrender, title: "Hi-Lo with indices, late surrender", what: "Wong's index plays and insurance from Professional Blackjack, exactly as the charts show them.", metadata: WONG_LS_METADATA },
+    { key: "wong-es10", inUse: useIndices && earlySurrender, title: "Hi-Lo with indices, early surrender vs 10", what: "the same, with Wong's early-surrender numbers against a ten, decided before the dealer checks for blackjack.", metadata: WONG_ES10_METADATA },
+    { key: "basic-ls", inUse: !useIndices && !earlySurrender, title: "Basic strategy, late surrender", what: "no index plays and no insurance.", metadata: BASIC_LS_METADATA },
+    { key: "basic-es10", inUse: !useIndices && earlySurrender, title: "Basic strategy, early surrender vs 10", what: "no index plays and no insurance.", metadata: BASIC_ES10_METADATA },
+  ];
   return (
     <section aria-labelledby="method-title" className={cx("card p-4 sm:p-5", className)}>
       <h2 id="method-title" className="sr-only">How these numbers are calculated</h2>
@@ -44,17 +54,18 @@ export function MethodNotes({ useIndices, className }: { useIndices: boolean; cl
             Every figure is built from per-true-count profiles measured in card-by-card simulations: for each true count, how often it comes up, the player&apos;s edge there and the standard deviation of a hand. Nothing is interpolated between profiles.
           </p>
           <ul className="mt-2 list-disc space-y-1.5 pl-5 marker:text-ink-3">
-            <li className={cx(useIndices && "text-ink")}>
-              <b className="font-semibold">Hi-Lo with indices</b>{useIndices && " (in use)"}: the H17 Pro chart, 34 index plays and insurance at +3. {exact(H17_PRO_METADATA.totalRounds)} rounds ({billions(H17_PRO_METADATA.totalRounds)}), {millions(H17_PRO_METADATA.shoesPerProfile)} shoes per profile, seed {H17_PRO_METADATA.seed}.
-            </li>
-            <li className={cx(!useIndices && "text-ink")}>
-              <b className="font-semibold">Basic strategy</b>{!useIndices && " (in use)"}: no index plays and no insurance. {exact(NO_INDEX_METADATA.totalRounds)} rounds ({billions(NO_INDEX_METADATA.totalRounds)}), {millions(NO_INDEX_METADATA.shoesPerProfile)} shoes per profile, seed {NO_INDEX_METADATA.seed}.
-            </li>
-            <li>Nine profiles each: {profiles}.</li>
-            <li>One spot, splits to four hands, H17 · 3:2 · DAS · RSA · late surrender · dealer peeks. The true count is {COEFFICIENT_METADATA.trueCount}.</li>
+            {runs.map((run) => (
+              <li key={run.key} className={cx(run.inUse && "text-ink")}>
+                <b className="font-semibold">{run.title}</b>{run.inUse && " (in use)"}: {run.what} {exact(run.metadata.totalRounds)} rounds ({billions(run.metadata.totalRounds)}), {millions(run.metadata.shoesPerProfile)} shoes per profile, seed {run.metadata.seed}.
+              </li>
+            ))}
+            <li>{profileCount} profiles each: {profiles}. One- and two-deck games are modelled heads-up, one spot against the dealer.</li>
+            <li>One spot, splits to four hands, H17 · 3:2 · DAS · RSA · dealer peeks. Plays are decided on the true count truncated toward zero, as Wong&apos;s numbers assume; the profiles are grouped by the true count {COEFFICIENT_METADATA.trueCount}.</li>
+            <li>The simulator reads its plays from the same strategy engine as the charts, so the two can never disagree.</li>
+            <li>Leaving the table at a count is priced from separately simulated shoes: how often each count is watched and played under each enter-and-leave rule.</li>
           </ul>
           <p className="mt-2">
-            The first audited Hi-Lo run ({exact(COEFFICIENT_METADATA.totalRounds)} rounds, {millions(COEFFICIENT_METADATA.shoesPerProfile)} shoes per profile, seed {COEFFICIENT_METADATA.seed}) is published in full, with every profile&apos;s rounds, edges and confidence intervals: <a href={COEFFICIENT_METADATA.dataUrl} className="font-semibold text-brand-text underline-offset-2 hover:underline">blackjack-coefficients.json</a>. The two runs above use the same simulator with the H17 Pro chart and with indices switched off.
+            The first audited Hi-Lo run ({exact(COEFFICIENT_METADATA.totalRounds)} rounds, {millions(COEFFICIENT_METADATA.shoesPerProfile)} shoes per profile, seed {COEFFICIENT_METADATA.seed}) is published in full, with every profile&apos;s rounds, edges and confidence intervals: <a href={COEFFICIENT_METADATA.dataUrl} className="font-semibold text-brand-text underline-offset-2 hover:underline">blackjack-coefficients.json</a>.
           </p>
         </Block>
         <Block title="How the figures are worked out">
@@ -75,9 +86,9 @@ export function MethodNotes({ useIndices, className }: { useIndices: boolean; cl
         </Block>
         <Block title="Not modelled">
           <ul className="list-disc space-y-1.5 pl-5 marker:text-ink-3">
-            <li>Single-, double- and four-deck games, and penetrations other than the nine above; continuous shufflers.</li>
-            <li>Early surrender, split limits other than four hands, and other side rules; other counting systems or index sets.</li>
-            <li>Leaving the table at low counts (only joining at a count is modelled), table maximums, resizing bets as the bankroll changes, and playing errors.</li>
+            <li>Penetrations other than those above; five- and seven-deck shoes; continuous shufflers; several players at a pitch game.</li>
+            <li>Early surrender against an ace, split limits other than four hands, and other side rules; other counting systems or index sets.</li>
+            <li>Resizing bets as the bankroll changes, and playing errors.</li>
             <li>Comps, tips, travel costs, heat and back-offs. SCORE here is the plain figure for your ramp, with nothing netted out.</li>
           </ul>
         </Block>

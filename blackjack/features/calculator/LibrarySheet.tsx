@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Building2, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import type { CvcxTemplate } from "@/lib/blackjack/cvcxLibrary";
 import { normalizeConfig, rampSpread, venueGaps } from "@/lib/blackjack/labConfig";
-import { dealtPercent, money } from "@/lib/blackjack/labFormat";
+import { dealtPercent, deckLabel, money } from "@/lib/blackjack/labFormat";
 import { playedRamp, playedSpread } from "@/lib/blackjack/labModel";
 import { unitLabel } from "@/lib/blackjack/rampSteps";
 import type { VenuePreset } from "@/lib/blackjack/venuePresets";
@@ -47,7 +47,7 @@ function ScenarioItem({ template, open, onLoad, onRename, onDelete }: { template
           </div>
         )}
         <p className="tnum mt-0.5 text-xs leading-5 text-ink-3">
-          {config.decks} decks · {dealtPercent(config.decks, config.dealt)}% · {spread ? `${unitLabel(spread.min)}–${unitLabel(spread.max)}` : "no bets"} · {money(config.baseBet)} unit · {money(config.bankroll)}
+          {deckLabel(config.decks)} · {dealtPercent(config.decks, config.dealt)}% · {spread ? `${unitLabel(spread.min)}–${unitLabel(spread.max)}` : "no bets"} · {money(config.baseBet)} unit · {money(config.bankroll)}
           {savedDate(template.createdAt) && <> · saved {savedDate(template.createdAt)}</>}
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -69,7 +69,7 @@ function VenueItem({ preset, onLoad, onDelete }: { preset: VenuePreset; onLoad: 
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-semibold">{preset.name}</h3>
         <p className="tnum text-xs leading-5 text-ink-3">
-          {preset.rules.decks} decks · {Math.round(preset.rules.penetration * 100)}% · {preset.rules.dealerHitsSoft17 ? "H17" : "S17"} · {preset.rules.blackjackPayout === 1.5 ? "3:2" : "6:5"} · 1–{unitLabel(rampSpread(preset.ramp))}
+          {deckLabel(preset.rules.decks)} · {Math.round(preset.rules.penetration * 100)}% · {preset.rules.dealerHitsSoft17 ? "H17" : "S17"} · {preset.rules.blackjackPayout === 1.5 ? "3:2" : "6:5"} · 1–{unitLabel(rampSpread(preset.ramp))}
         </p>
       </div>
       <Button variant="secondary" size="sm" className="min-h-11 sm:min-h-9" onClick={onLoad} aria-label={`Load venue ${preset.name}`}>Load</Button>
