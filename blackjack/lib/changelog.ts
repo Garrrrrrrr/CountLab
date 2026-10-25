@@ -59,6 +59,44 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
     ],
   },
   {
+    id: "2026-10-25-calculator-journal",
+    date: "2026-10-25",
+    title: "Calculator rules, back-counting and a richer journal",
+    summary: "The Calculator now prices early surrender, one-, two- and four-deck games, table maximums and back-counting from fresh simulations, and setups can be shared as a link. The Journal records buy-in, cash-out, rounds and heat for each session.",
+    tags: ["new", "improved", "fixed"],
+    shots: [
+      { src: "/changelog-shots/calculator-ramp.jpg", alt: "The Calculator's bet ramp card with the when-you-play, when-you-leave and table maximum controls", caption: "The bet ramp now says when you sit down, when you leave and the table maximum." },
+      { src: "/changelog-shots/journal-log-phone.jpg", alt: "The Log session sheet on a phone with buy-in, cash-out, rounds played and heat fields", caption: "Logging a session with buy-in, cash-out and heat.", phone: true },
+    ],
+    groups: [
+      {
+        title: "Calculator",
+        items: [
+          "Surrender is now None, Late or Early vs 10, each priced from its own simulation of Wong's indices rather than adjusted from another game.",
+          "One-, two- and four-deck games join six and eight decks, with their own penetration defaults and insurance thresholds.",
+          "Back-counting: choose the count you sit down at (now down to −1) and the count you leave at. Hands per hour and the result use simulated shares of the shoe you actually play.",
+          "A table maximum caps every bet in the ramp, and Suggest a ramp says when the best spread would need more than the table allows.",
+          "Share sends the whole setup as a link; opening it loads the setup without touching your saved ones, and a broken link says so.",
+          "Compare now has a Rules mode: your game beside each one-rule change (soft 17, surrender, DAS, resplitting aces, 6:5, no hole card, doubling), ranked by SCORE.",
+          "The trip outlook adds the bankroll needed for several trips and how long, on average, it takes to double the bankroll, with the chance of doing so before going broke.",
+          "Number fields show what is wrong as you type and put the last good value back if you leave a bad one, instead of silently clamping it.",
+        ],
+      },
+      {
+        title: "Journal",
+        items: [
+          "Sessions can record buy-in and cash-out (the result is worked out for you), rounds played, top bet and how much heat you felt.",
+          "Expected results use the rounds you actually played when you enter them.",
+          "Venues show heat by casino, so a casino that is getting warm stands out.",
+          "The results chart can run by session or by hours played.",
+          "Set a starting bankroll from the Cash tab; phones get a Cash button beside Log session.",
+          "When your unit is too big for the bankroll, the overview names a unit a table will take or the deposit that makes it safe. Session badges only appear on unusual sessions.",
+          "Game settings take early surrender and every deck count, and the default game is $15 with a 1–12 spread.",
+        ],
+      },
+    ],
+  },
+  {
     id: "2026-10-24-drills",
     date: "2026-10-24",
     title: "New drills and a full UI audit",
