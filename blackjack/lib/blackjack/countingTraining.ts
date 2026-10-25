@@ -45,6 +45,13 @@ export function makeCountSequence(decks: number, amount: number, bias: CountBias
 export const roundDeckEstimate = (decks: number, resolution: DeckResolution) =>
   Math.max(resolution, Math.round(decks / resolution) * resolution);
 
+const STEP_WORDS: Record<DeckResolution, string> = { 1: "a deck", 0.5: "half a deck", 0.25: "a quarter deck" };
+/** Why an estimate under one step is graded as one step, or "" when plain rounding explains the answer. */
+export const minimumStepNote = (decks: number, resolution: DeckResolution) =>
+  Math.round(decks / resolution) * resolution < resolution
+    ? `Under ${STEP_WORDS[resolution]} counts as ${resolution}: an estimate never goes below one step, so a true count never divides by less.`
+    : "";
+
 export interface TrueCountScenario {
   runningCount: number;
   exactDecksRemaining: number;
@@ -107,14 +114,36 @@ export function makeTrueCountScenario({
   return fallback!;
 }
 
+/**
+ * The likeliest cause of a wrong running count, most specific first:
+ * `previous` is the count before the last group of `cards`. Off by one or two
+ * is a dropped or doubled card; three or more with no other sign is a lost count.
+ */
 export function classifyCountError({ expected, actual, previous = 0, cards = [], interrupted = false }: {
   expected: number; actual: number; previous?: number; cards?: Card[]; interrupted?: boolean;
 }): CountingErrorCategory {
+  const off = Math.abs(actual - expected);
   if (interrupted) return "interruption recovery";
+  if (expected !== 0 && actual === -expected) return "sign flip";
   if ((previous < 0 && expected >= 0) || (previous > 0 && expected <= 0)) return "zero crossing";
-  if (expected < 0 || actual < 0) return "negative arithmetic";
   if (cards.length > 1 && runningCount(cards) === 0) return "missed cancellation";
-  return "negative arithmetic";
+  if (off === 1) return "off by one";
+  if (off === 2) return "off by two";
+  if (expected < 0 || actual < 0) return "negative arithmetic";
+  return "lost the count";
+}
+
+/** One line on a missed running count for the review list: what went wrong, then the habit that fixes it. */
+export function countMissExplanation({ expected, actual, category }: { expected: number; actual: number | null; category: CountingErrorCategory }) {
+  const signed = (value: number) => (value > 0 ? `+${value}` : String(value));
+  const off = actual === null ? 0 : actual - expected;
+  const what = actual === null ? "You lost the count here."
+    : category === "sign flip" ? `Right size, wrong sign: ${signed(actual)} instead of ${signed(expected)}.`
+    : category === "off by one" ? `One too ${off > 0 ? "high" : "low"}: a card was ${off > 0 ? "counted twice or given the wrong sign" : "missed"}.`
+    : category === "off by two" ? `Two too ${off > 0 ? "high" : "low"}: likely one card counted the wrong way, or two missed.`
+    : `${Math.abs(off)} too ${off > 0 ? "high" : "low"}.`;
+  const tip = ERROR_CATEGORY_TIP[actual === null ? "lost the count" : category];
+  return tip ? `${what} ${tip}` : what;
 }
 
 export function classifyTrueCountError(rc: number, decks: number, expected: number, actual: number) {
@@ -303,6 +332,10 @@ export function lastDeckAccuracyFromCategories(categories: Record<string, { corr
 export const ERROR_CATEGORY_LABEL: Record<CountingErrorCategory, string> = {
   "missed cancellation": "Missed a cancellation",
   "negative arithmetic": "Adding negatives",
+  "sign flip": "Flipped the sign",
+  "off by one": "Off by one card",
+  "off by two": "Off by two",
+  "lost the count": "Lost the count",
   "zero crossing": "Crossing zero",
   "interruption recovery": "Lost the count after the interruption",
   "true-count rounding": "Rounding",
@@ -541,6 +574,10 @@ export function estimateBias(signedErrors: readonly number[]) {
 export const ERROR_CATEGORY_TIP: Partial<Record<CountingErrorCategory, string>> = {
   "missed cancellation": "Pair each +1 with a −1 and drop both; carry only what is left over.",
   "negative arithmetic": "Below zero a low card moves you toward zero: −3 and then a 5 is −2.",
+  "sign flip": "Hold the sign as part of the number: think “minus two”, never just “two”.",
+  "off by one": "Keep your eyes on each card until it is added; a 7, 8 or 9 adds nothing.",
+  "off by two": "Check the card values: 2–6 are +1, 7–9 are 0, tens and aces are −1.",
+  "lost the count": "Slow the cards down a step until the count holds, then speed up again.",
   "zero crossing": "Say the sign to yourself whenever the count passes zero.",
   "interruption recovery": "Repeat the count to yourself the moment you look away.",
   "true-count rounding": "Round only after dividing, and the same way every time.",

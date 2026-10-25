@@ -38,7 +38,7 @@ export function RulesBar({ settings, update, note }: { settings: Settings; updat
           <p className="text-xs font-medium text-ink-3">Table rules</p>
           <p className="tnum truncate font-semibold"><span aria-hidden>{rulesSummary(rules)}</span><span className="sr-only">{rulesInWords(rules)}</span></p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setOpen(true)} aria-label="Change table rules">Change</Button>
+        <Button variant="secondary" onClick={() => setOpen(true)} aria-label="Change table rules">Change</Button>
       </div>
       {note && <p className="mt-2.5 border-t border-line pt-2.5 text-sm leading-5 text-ink-2">{note}</p>}
       <Sheet open={open} onClose={() => setOpen(false)} title="Table rules" description="Saved to your settings. Every chart and drill uses them."

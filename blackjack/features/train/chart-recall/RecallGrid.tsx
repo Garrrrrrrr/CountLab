@@ -89,7 +89,7 @@ export const RecallGrid = memo(function RecallGrid({ table, entries, selected, o
                     disabled={given}
                     style={{ scrollMarginTop: "4.5rem", scrollMarginBottom: dockSpace + 12 }}
                     className={cx(
-                      "tnum relative flex h-7 w-full items-center justify-center rounded-[5px] text-[0.6875rem] font-bold outline-none min-[360px]:h-8 sm:h-10 sm:rounded-md sm:text-sm",
+                      "tnum relative flex h-11 w-full items-center justify-center rounded-[5px] text-[0.6875rem] font-bold outline-none sm:rounded-md sm:text-sm",
                       fillOf(shown),
                       grade && grade.ok && view === "mine" && "opacity-90",
                       given && "opacity-30",

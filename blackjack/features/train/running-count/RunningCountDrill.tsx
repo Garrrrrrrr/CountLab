@@ -8,6 +8,7 @@ import { cx } from "@/components/ui/cx";
 import { abandonActivePractice, track } from "@/lib/analytics/track";
 import {
   classifyCountError,
+  countMissExplanation,
   ERROR_CATEGORY_TIP,
   isPerfectDeck,
   makeCountSequence,
@@ -455,9 +456,8 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
     const nextChecks = checks + 1, nextCorrect = correct + Number(ok), nextStreak = ok ? streak + 1 : 0, nextBest = Math.max(best, nextStreak);
     const stepStart = tableMode ? starts[roundAt(Math.max(0, cursor - 1))] : Math.max(0, cursor - size);
     const lastCards = cards.slice(stepStart, cursor);
-    const category = ok ? undefined : classifyCountError({ expected, actual: value ?? 0, previous: countThrough(stepStart), cards: lastCards, interrupted: interrupted.current });
-    const explanation = category === "missed cancellation" ? "Cancel low and high cards in pairs before carrying the net value forward." : category === "interruption recovery" ? "Repeat the count to yourself the moment you look away." : "Recount from the previous check and watch the sign.";
-    const nextMistakes = ok ? mistakes : [...mistakes, { question: `Running count after ${cursor} cards`, userAnswer: value === null ? "lost the count" : signed(value), correctAnswer: signed(expected), explanation, category }];
+    const category = ok ? undefined : value === null && !interrupted.current ? "lost the count" : classifyCountError({ expected, actual: value ?? 0, previous: countThrough(stepStart), cards: lastCards, interrupted: interrupted.current });
+    const nextMistakes = ok || !category ? mistakes : [...mistakes, { question: `Running count after ${cursor} cards`, userAnswer: value === null ? "lost the count" : signed(value), correctAnswer: signed(expected), explanation: countMissExplanation({ expected, actual: value, category }), category }];
     const sign = expected < 0 ? "negative" : expected > 0 ? "positive" : "zero";
     const key = dealOf(setup) === "table" ? `table rounds, ${sign}` : `${setup.group}-card groups, ${sign}`;
     const previous = categories[key] ?? { correct: 0, total: 0 };

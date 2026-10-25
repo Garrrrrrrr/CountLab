@@ -306,7 +306,7 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
         onStart={start}
         bestAccuracy={bestAccuracy}
         notice={focusNote && (
-          <Callout tone="info" title="Focused practice" action={<Button size="sm" variant="secondary" onClick={() => { setSetup((current) => ({ ...current, focus: "adaptive" })); setFocusNote(undefined); }}>Use adaptive instead</Button>}>
+          <Callout tone="info" title="Focused practice" action={<Button variant="secondary" onClick={() => { setSetup((current) => ({ ...current, focus: "adaptive" })); setFocusNote(undefined); }}>Use adaptive instead</Button>}>
             Questions focus on {TRUE_COUNT_FOCUS_LABEL[focusNote].toLowerCase()}, picked from your results.
           </Callout>
         )}
@@ -329,7 +329,7 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
   const setPadValue = combined && field === "decks" ? setDeckAnswer : setTcAnswer;
 
   return (
-    <PlayFrame title="True Count" onExit={endDrill} progress={{ done: index - (phase === "feedback" ? 1 : 0), total: target }} clock={liveMs} streak={feedbackMode === "immediate" ? streak : undefined}>
+    <PlayFrame title="True Count" onExit={endDrill} progress={{ done: index - (phase === "feedback" ? 1 : 0), answered: index, total: target }} clock={liveMs} streak={feedbackMode === "immediate" ? streak : undefined}>
       <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch lg:gap-8">
         {/* Short phones put the count beside the photo, so the photo keeps the height. */}
         <section aria-label="Question" className={cx("flex min-h-0 flex-1 flex-col gap-3", combined && "[@media(max-height:700px)]:flex-row-reverse")}>
@@ -341,7 +341,7 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
             {combined ? (
               <div className="text-right text-sm leading-5 text-ink-2 [@media(max-height:700px)]:text-left [@media(max-height:700px)]:text-xs [@media(max-height:700px)]:leading-5">
                 <p className="font-semibold text-ink">{decks}-deck shoe</p>
-                <p>Decks to the {RESOLUTION_WORD[resolution]}</p>
+                <p>Round decks left to the nearest {RESOLUTION_WORD[resolution]} deck</p>
                 <p>{ROUNDING_LABEL[rounding]} rounding</p>
               </div>
             ) : (
@@ -386,7 +386,7 @@ function TrueCountSession({ settings, focus: arrivalFocus, resume, restart }: { 
                   onChange={setPadValue}
                   onSubmit={onEnter}
                   allowNegative={!combined || field === "tc"}
-                  allowDecimal={combined && field === "decks"}
+                  allowDecimal={combined && field === "decks" && resolution !== 1}
                   maxLength={combined && field === "decks" ? 4 : 3}
                   submitLabel={combined && field === "decks" && tcAnswer === "" ? "Next" : "Check"}
                   className={COMPACT_PAD}

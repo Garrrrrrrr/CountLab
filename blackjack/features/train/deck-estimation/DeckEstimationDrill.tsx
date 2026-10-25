@@ -5,7 +5,7 @@ import { NumberPad, TrayPhoto } from "@/components/blackjack";
 import { DrillSummary, Feedback, PlayDock, PlayFrame, ResumeBanner } from "@/components/drill/DrillKit";
 import { announce, Button, Callout, Card } from "@/components/ui";
 import { abandonActivePractice, track } from "@/lib/analytics/track";
-import { estimateBias, gradeDeckEstimate, lastDeckAccuracyFromCategories, type DeckResolution } from "@/lib/blackjack/countingTraining";
+import { estimateBias, gradeDeckEstimate, lastDeckAccuracyFromCategories, minimumStepNote, type DeckResolution } from "@/lib/blackjack/countingTraining";
 import { fitQuestionTarget, fitShoeSize, parseDeckResolutionFocus, RESOLUTION_LABEL, RESOLUTION_WORD, type FeedbackMode } from "@/lib/blackjack/countingSetup";
 import { decksLeftFor, drawTrayPhoto, trayPhotoSrc, type TrayPhoto as TrayPhotoData } from "@/lib/blackjack/deckPhotos";
 import { parseAnswer } from "@/lib/blackjack/numericAnswer";
@@ -184,7 +184,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
       question: `Decks left in a ${decks}-deck shoe`,
       userAnswer: parsed.text,
       correctAnswer: String(graded.expected),
-      explanation: `The tray holds ${photo.discarded.toFixed(2)} decks, leaving ${remaining.toFixed(2)}, which rounds to ${graded.expected} at ${RESOLUTION_WORD[resolution]}-deck precision.`,
+      explanation: `The tray holds ${photo.discarded.toFixed(2)} decks, leaving ${remaining.toFixed(2)}, which rounds to ${graded.expected} at ${RESOLUTION_WORD[resolution]}-deck precision. ${minimumStepNote(remaining, resolution)}`.trim(),
       category: "deck estimate" as const,
       context: { file: photo.file, remaining, decks },
     }];
@@ -250,7 +250,7 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
   const graded = phase === "feedback" ? gradeDeckEstimate({ remaining, resolution, value: parseAnswer(answer, "decimal").ok ? Number(answer) : null, decks }) : undefined;
 
   return (
-    <PlayFrame title="Deck Estimation" onExit={endDrill} progress={{ done: answered - (phase === "feedback" ? 1 : 0), total: target }} clock={liveMs} streak={feedbackMode === "immediate" ? streak : undefined}>
+    <PlayFrame title="Deck Estimation" onExit={endDrill} progress={{ done: answered - (phase === "feedback" ? 1 : 0), answered, total: target }} clock={liveMs} streak={feedbackMode === "immediate" ? streak : undefined}>
       <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-stretch lg:gap-8">
         <section aria-label="Question" className="flex min-h-0 flex-1 flex-col">
           <h2 className="text-center text-lg font-semibold leading-snug sm:text-xl [@media(max-height:700px)]:text-base">
@@ -274,13 +274,14 @@ function DeckEstimationSession({ settings, focus, resume, restart }: { settings:
             {phase === "question" ? (
               <>
                 <PadField label="Decks left" hint={`nearest ${RESOLUTION_WORD[resolution]}`} value={answer} />
-                <NumberPad value={answer} onChange={setAnswer} onSubmit={submit} allowNegative={false} allowDecimal maxLength={4} submitLabel="Check" className={COMPACT_PAD} />
+                <NumberPad value={answer} onChange={setAnswer} onSubmit={submit} allowNegative={false} allowDecimal={resolution !== 1} maxLength={4} submitLabel="Check" className={COMPACT_PAD} />
               </>
             ) : graded && (
               <Feedback ok={graded.ok} title={graded.ok ? `Correct: ${decksText(graded.expected)} left` : `${decksText(graded.expected)} left`} onContinue={continueAfterFeedback} continueLabel={isLast ? "See results" : "Next photo"}>
                 Exactly {remaining.toFixed(2)} left, with {photo.discarded.toFixed(2)} in the tray.
                 {graded.signedError !== null && graded.signedError !== 0 && ` You said ${answer}: ${Math.abs(graded.signedError).toFixed(2)} decks too ${graded.signedError > 0 ? "many" : "few"}.`}
                 {graded.signedError === 0 && " Spot on."}
+                {minimumStepNote(remaining, resolution) && <span className="block">{minimumStepNote(remaining, resolution)}</span>}
               </Feedback>
             )}
           </div>

@@ -58,9 +58,10 @@ export function NumberPad({ value, onChange, onSubmit, allowNegative = true, all
         {digits.map((digit) => (
           <button key={digit} type="button" className={key} disabled={disabled} onClick={() => press(digit)}>{digit}</button>
         ))}
-        <button type="button" className={cx(key, "text-lg")} disabled={disabled || !allowNegative} onClick={() => press("sign")} aria-label="Toggle minus sign">±</button>
+        {/* A key the answer cannot use is left out rather than greyed, so the pad never looks broken. */}
+        {allowNegative ? <button type="button" className={cx(key, "text-lg")} disabled={disabled} onClick={() => press("sign")} aria-label="Toggle minus sign">±</button> : <span aria-hidden />}
         <button type="button" className={key} disabled={disabled} onClick={() => press("0")}>0</button>
-        <button type="button" className={key} disabled={disabled || !allowDecimal} onClick={() => press(".")} aria-label="Decimal point">.</button>
+        {allowDecimal ? <button type="button" className={key} disabled={disabled} onClick={() => press(".")} aria-label="Decimal point">.</button> : <span aria-hidden />}
       </div>
       <div className="grid grid-rows-4 gap-1.5">
         <button type="button" className={key} disabled={disabled} onClick={() => press("back")} aria-label="Delete">

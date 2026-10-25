@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   BENCHMARK_MIN_QUESTIONS,
   classifyCountError,
+  countMissExplanation,
+  minimumStepNote,
   countingBenchmarkDetails,
   countingCategoryLabel,
   countingMastery,
@@ -71,6 +73,31 @@ describe("counting training scenarios", () => {
     const high = cancellingPair.find((card) => runningCount([card]) === -1)!;
     expect(classifyCountError({ expected: 0, actual: 1, cards: [low, high] })).toBe("missed cancellation");
     expect(classifyCountError({ expected: 2, actual: 1, interrupted: true })).toBe("interruption recovery");
+  });
+
+  it("names a flipped sign, an off-by-one or two, and a lost count", () => {
+    expect(classifyCountError({ expected: -2, actual: 2 })).toBe("sign flip");
+    expect(classifyCountError({ expected: 3, actual: -3, previous: 1 })).toBe("sign flip");
+    expect(classifyCountError({ expected: 4, actual: 5, previous: 3 })).toBe("off by one");
+    expect(classifyCountError({ expected: -4, actual: -6, previous: -3 })).toBe("off by two");
+    expect(classifyCountError({ expected: -4, actual: -9, previous: -3 })).toBe("negative arithmetic");
+    expect(classifyCountError({ expected: 6, actual: 1, previous: 4 })).toBe("lost the count");
+    // A sign that crossed zero in the last group stays a zero crossing.
+    expect(classifyCountError({ expected: 1, actual: 0, previous: -1 })).toBe("zero crossing");
+  });
+
+  it("says why an estimate under one step is graded as one step", () => {
+    expect(minimumStepNote(0.4, 1)).toMatch(/^Under a deck counts as 1/);
+    expect(minimumStepNote(0.6, 1)).toBe("");
+    expect(minimumStepNote(0.2, 0.5)).toMatch(/^Under half a deck counts as 0.5/);
+  });
+
+  it("explains each miss in its own words", () => {
+    expect(countMissExplanation({ expected: -2, actual: 2, category: "sign flip" })).toMatch(/^Right size, wrong sign: \+2 instead of -2\./);
+    expect(countMissExplanation({ expected: 4, actual: 5, category: "off by one" })).toMatch(/^One too high/);
+    expect(countMissExplanation({ expected: 4, actual: 3, category: "off by one" })).toMatch(/^One too low: a card was missed/);
+    expect(countMissExplanation({ expected: 4, actual: null, category: "lost the count" })).toMatch(/^You lost the count here\. Slow the cards/);
+    expect(countMissExplanation({ expected: 6, actual: 1, category: "lost the count" })).toMatch(/^5 too low\./);
   });
 
   it("turns stored performance into actionable mastery checks", () => {

@@ -29,8 +29,11 @@ export function describeLadder(bands: readonly LadderBand[]): string {
  */
 export function CountLadder({ bands, min, max, tc, className }: { bands: readonly LadderBand[]; min: number; max: number; tc: number; className?: string }) {
   const span = max - min + 1;
-  const left = (value: number) => ((value - min) / span) * 100;
-  const marker = left(Math.max(min, Math.min(max, tc))) + 50 / span;
+  /** The centre of a count's cell, where its marker and its label sit. */
+  const centre = (value: number) => ((value - min) / span) * 100 + 50 / span;
+  const marker = centre(Math.max(min, Math.min(max, tc)));
+  // Narrow bands show a code ("R", "S"); the key under the bar spells each one out.
+  const coded = bands.filter((band) => band.to - band.from < 2);
   const sentence = `${describeLadder(bands)}. The count here is ${signedCount(tc)}.`;
   return (
     <div role="img" aria-label={sentence} className={cx("min-w-0 select-none", className)}>
@@ -53,13 +56,22 @@ export function CountLadder({ bands, min, max, tc, className }: { bands: readonl
         <span aria-hidden className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-ink shadow-[0_0_0_1.5px_rgb(var(--surface))]" style={{ left: `${marker}%` }} />
       </div>
       <div className="tnum relative mt-1 h-4 text-[0.625rem] font-medium text-ink-3">
-        {/* The open ends are labelled only where a switch point is not right next to them. */}
-        {(bands[1]?.from ?? Infinity) - min >= 2 && <span className="absolute left-0">{signedCount(min)}</span>}
+        {/* Each number sits under its own count, like the marker. The open ends are labelled only where a switch point is not right next to them. */}
+        {(bands[1]?.from ?? Infinity) - min >= 2 && <span className="absolute -translate-x-1/2" style={{ left: `${centre(min)}%` }}>{signedCount(min)}</span>}
         {bands.slice(1).map((band) => (
-          <span key={band.from} className="absolute -translate-x-1/2 font-semibold text-ink-2" style={{ left: `${left(band.from)}%` }}>{signedCount(band.from)}</span>
+          <span key={band.from} className="absolute -translate-x-1/2 font-semibold text-ink-2" style={{ left: `${centre(band.from)}%` }}>{signedCount(band.from)}</span>
         ))}
-        {max - (bands.length > 1 ? bands[bands.length - 1].from : -Infinity) >= 2 && <span className="absolute right-0">{signedCount(max)}</span>}
+        {max - (bands.length > 1 ? bands[bands.length - 1].from : -Infinity) >= 2 && <span className="absolute -translate-x-1/2" style={{ left: `${centre(max)}%` }}>{signedCount(max)}</span>}
       </div>
+      {coded.length > 0 && (
+        <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] text-ink-2">
+          {coded.map((band) => (
+            <span key={band.from} className="inline-flex items-center gap-1">
+              <span className={cx("rounded px-1 font-bold", band.fill)}>{band.short}</span>{band.label}
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   );
 }

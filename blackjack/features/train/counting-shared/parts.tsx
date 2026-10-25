@@ -51,7 +51,7 @@ export function CustomNote({ onReset, resetLabel }: { onReset: () => void; reset
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-dashed border-line-strong px-3 py-2 text-sm text-ink-2">
       <span className="inline-flex items-center gap-1.5"><SlidersHorizontal size={15} aria-hidden /> Custom session</span>
-      <Button size="sm" variant="ghost" onClick={onReset}>{resetLabel}</Button>
+      <Button variant="ghost" onClick={onReset}>{resetLabel}</Button>
     </div>
   );
 }

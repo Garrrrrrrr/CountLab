@@ -83,7 +83,7 @@ export function RoundSummary({ title, session, breakdownTitle, slow, onAgain, on
               <h2 className="text-base font-semibold">Right but slow ({slow.length})</h2>
               <p className="mt-0.5 text-sm text-ink-2">Answered right, but in more than {SLOW_MS / 1000} seconds. Speed comes from seeing these often.</p>
             </div>
-            {onRetrySlow && <Button variant="secondary" size="sm" onClick={onRetrySlow}>Practise these</Button>}
+            {onRetrySlow && <Button variant="secondary" onClick={onRetrySlow}>Practise these</Button>}
           </div>
           <ul className="flex flex-wrap gap-2">
             {slow.map((hand) => (

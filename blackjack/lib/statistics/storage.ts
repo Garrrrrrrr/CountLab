@@ -19,6 +19,10 @@ export type DrillType =
 export type CountingErrorCategory =
   | "missed cancellation"
   | "negative arithmetic"
+  | "sign flip"
+  | "off by one"
+  | "off by two"
+  | "lost the count"
   | "zero crossing"
   | "deck estimate"
   | "true-count division"

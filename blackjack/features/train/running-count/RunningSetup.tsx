@@ -125,7 +125,8 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
               hint={setup.speed === 0 ? "The next card waits for a tap, Space or Enter." : undefined}>
               {RUNNING_INTERVALS.map((ms) => <option key={ms} value={ms}>{formatInterval(ms)}</option>)}
             </SelectField>
-            <SelectField label="Cards in the session" value={setup.amount} onChange={(event) => onChange({ amount: Number(event.target.value) })}>
+            <SelectField label="Cards in the session" value={setup.amount} onChange={(event) => onChange({ amount: Number(event.target.value) })}
+              hint={deal === "table" ? "Every round is played out, so the session runs a few cards past this." : undefined}>
               {amountOptions(setup.decks, setup.amount).map((amount) => (
                 <option key={amount} value={amount}>{effectiveCardCount(setup.decks, amount) >= maxCards ? `${maxCards} (the whole shoe)` : amount}</option>
               ))}

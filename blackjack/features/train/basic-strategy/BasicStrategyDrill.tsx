@@ -163,12 +163,12 @@ function BasicPlay({ round, hand, rules }: { round: StrategyRound<BasicQuestion,
   const note = !two ? `${hand.cards.length} cards: you can only hit or stand.` : surrenderOffered(rules) ? "First two cards: surrender is allowed." : "First two cards. No surrender at this table.";
   const last = round.last;
   return (
-    <PlayFrame title="Basic Strategy" onExit={round.requestEnd} progress={{ done: paused ? round.tally.answered - 1 : round.tally.answered, total: plan.length }} streak={round.tally.streak}>
+    <PlayFrame title="Basic Strategy" onExit={round.requestEnd} progress={{ done: paused ? round.tally.answered - 1 : round.tally.answered, answered: round.tally.answered, total: plan.length }} streak={round.tally.streak}>
       <div className="flex flex-1 flex-col gap-3">
         {last && !paused && plan.explain === "never" && (
           <LastAnswer ok={last.ok} text={`${ranksText(last.hand.cards)} v ${last.hand.upcard.rank}: ${last.ok ? name(last.hand.correct) : `${name(last.hand.correct)}, not ${name(last.chosen as Action)}`}`} />
         )}
-        <HandStage ref={stage} upcard={hand.upcard} cards={hand.cards} total={totalLabel(hand.cards)} dealKey={round.handSerial} compact={Boolean(paused)} className="max-h-[32rem] flex-1" />
+        <HandStage ref={stage} upcard={hand.upcard} cards={hand.cards} total={totalLabel(hand.cards)} dealKey={round.handSerial} hold={Boolean(paused)} className="max-h-[32rem] flex-1" />
         {!paused && (
           <div className="pb-1 text-center">
             <h2 className="text-lg font-semibold">What&apos;s the play?</h2>

@@ -88,9 +88,9 @@ describe("running count setup", () => {
 
   it("describes table rounds and their duration", () => {
     const table = RUNNING_SESSION_CARDS.find((card) => card.id === "table")!.values;
-    expect(runningCardMeta(table)).toMatch(/^156 cards · 6 decks · 3 spots · 0\.65 s per card · about \d+ min$/);
+    expect(runningCardMeta(table)).toMatch(/^about 156 cards · 6 decks · 3 spots · 0\.65 s per card · about \d+ min$/);
     expect(describeRunningSession({ ...table, bias: "positive", feedbackMode: "immediate" })).toEqual([
-      "156 cards from a 6-deck shoe", "full rounds at a 3-spot table", "0.65 s per card", "a check every 3 rounds", "results after each check",
+      "about 156 cards from a 6-deck shoe", "full rounds at a 3-spot table", "0.65 s per card", "a check every 3 rounds", "results after each check",
     ]);
     expect(dealOf({})).toBe("cards");
     expect(spotsOf({ spots: 9 })).toBe(3);

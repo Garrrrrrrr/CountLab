@@ -18,6 +18,7 @@ import { cx } from "@/components/ui/cx";
 import { useFocusMode } from "@/components/shell/FocusMode";
 import { BottomDock } from "@/components/shell/BottomDock";
 import type { Mistake } from "@/lib/statistics/storage";
+import { useMediaQuery } from "@/lib/useMediaQuery";
 
 /* ------------------------------------------------------------------ */
 /* Setup                                                               */
@@ -35,9 +36,11 @@ export function DrillSetup({ title, intro, children, onStart, startLabel = "Star
   resume?: ReactNode;
   eyebrow?: string;
 }) {
+  // Phones: the app's top bar and tab bar give way to the setup itself; the link back to Train is the way out.
+  useFocusMode(useMediaQuery("(max-width: 1023.98px)"));
   return (
-    <div className="pb-24 lg:pb-0">
-      <Link href="/train" className="-ml-1 mb-3 inline-flex h-8 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
+    <div className="pb-24 pt-[calc(var(--safe-t)+0.25rem)] lg:pb-0 lg:pt-0">
+      <Link href="/train" className="-ml-1 mb-1.5 inline-flex h-11 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink lg:-mt-1.5">
         <ChevronRight size={16} className="rotate-180" aria-hidden /> {eyebrow}
       </Link>
       <h1 className="text-[1.625rem] leading-tight sm:text-3xl">{title}</h1>
@@ -112,8 +115,12 @@ export const formatClock = (ms: number) => {
 export function PlayFrame({ title, onExit, progress, clock, streak, children, className }: {
   title: string;
   onExit: () => void;
-  /** e.g. { done: 3, total: 20 }; `unit` names what is counted for screen readers ("Question", "Card"). */
-  progress?: { done: number; total: number; unit?: string };
+  /**
+   * e.g. { done: 3, total: 20 }: `done` questions come before the one on screen, so the counter reads 4/20.
+   * `answered` (default `done`) fills the bar, so it moves as soon as an answer is graded.
+   * `unit` names what is counted for screen readers ("Question", "Card").
+   */
+  progress?: { done: number; total: number; answered?: number; unit?: string };
   clock?: number;
   streak?: number;
   children: ReactNode;
@@ -122,7 +129,7 @@ export function PlayFrame({ title, onExit, progress, clock, streak, children, cl
   useFocusMode(true);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); window.scrollTo(0, 0); }, []);
-  const pct = progress && progress.total ? Math.min(100, (progress.done / progress.total) * 100) : 0;
+  const pct = progress && progress.total ? Math.min(100, ((progress.answered ?? progress.done) / progress.total) * 100) : 0;
   return (
     <div className={cx("mx-auto flex min-h-dvh max-w-3xl flex-col", className)}>
       <header className="sticky top-0 z-30 -mx-4 bg-bg/90 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{ paddingTop: "var(--safe-t)" }}>
@@ -222,7 +229,7 @@ export function DrillSummary({ title, score, scoreLabel = "Accuracy", scoreSub, 
   return (
     <div className="space-y-5">
       <div>
-        <Link href="/train" className="-ml-1 mb-3 inline-flex h-8 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
+        <Link href="/train" className="-ml-1 -mt-1.5 mb-1.5 inline-flex h-11 items-center gap-1 rounded-lg pr-2 text-sm font-medium text-ink-2 hover:text-ink">
           <ChevronRight size={16} className="rotate-180" aria-hidden /> Train
         </Link>
         <h1 ref={heading} tabIndex={-1} className="text-[1.625rem] leading-tight outline-none sm:text-3xl">{title}</h1>
@@ -275,8 +282,8 @@ export function ResumeBanner({ detail, onResume, onDiscard }: { detail: ReactNod
     <div className="flex flex-col gap-3 rounded-2xl border border-brand/30 bg-brand/10 p-4 sm:flex-row sm:items-center">
       <p className="min-w-0 flex-1 text-sm leading-6"><span className="font-semibold">Unfinished session.</span> {detail}</p>
       <div className="flex gap-2">
-        <Button size="sm" onClick={onResume}>Continue</Button>
-        <Button size="sm" variant="secondary" onClick={onDiscard}>Start over</Button>
+        <Button onClick={onResume}>Continue</Button>
+        <Button variant="secondary" onClick={onDiscard}>Start over</Button>
       </div>
     </div>
   );

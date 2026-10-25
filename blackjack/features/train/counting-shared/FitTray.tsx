@@ -33,7 +33,8 @@ export function FitTray({ photo, label, freeze = false, overlay, className, maxW
   const width = freeze && frozen.current ? Math.min(frozen.current, fitted || frozen.current) : fitted;
   return (
     <div ref={slot} className={cx("relative min-h-[10.5rem] flex-1", className)}>
-      <div className="absolute inset-0 flex items-center justify-center">
+      {/* Top-aligned: the verdict is shorter than the keypad, and a centred photo would drop as its slot grows. */}
+      <div className="absolute inset-0 flex items-start justify-center">
         {width > 40 && (
           <div className="relative">
             <TrayPhoto photo={photo} width={width} label={label} priority />

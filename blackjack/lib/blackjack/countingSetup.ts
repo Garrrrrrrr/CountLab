@@ -217,14 +217,15 @@ export function runningCardMeta(values: RunningValues) {
   const spots = spotsOf(values);
   const pace = values.speed === SELF_PACED ? "self-paced" : `${formatInterval(values.speed)} ${values.group === "1" || table ? "per card" : "per group"}`;
   const seconds = estimateRunningSeconds(values);
-  return [`${effectiveCardCount(values.decks, values.amount)} cards`, deckWord(values.decks), table ? `${spots} ${spots === 1 ? "spot" : "spots"}` : null, pace, seconds === null ? null : formatApproxDuration(seconds)].filter(Boolean).join(" · ");
+  // Table rounds are always played out, so the session runs a few cards past the target: "about".
+  return [`${table ? "about " : ""}${effectiveCardCount(values.decks, values.amount)} cards`, deckWord(values.decks), table ? `${spots} ${spots === 1 ? "spot" : "spots"}` : null, pace, seconds === null ? null : formatApproxDuration(seconds)].filter(Boolean).join(" · ");
 }
 
 /** The plain-language sentence above Start, in parts so numbers can be styled. */
 export function describeRunningSession(values: RunningValues & { bias: CountBias; feedbackMode: FeedbackMode }) {
   const table = dealOf(values) === "table";
   return [
-    `${effectiveCardCount(values.decks, values.amount)} cards from a ${values.decks}-deck shoe`,
+    `${table ? "about " : ""}${effectiveCardCount(values.decks, values.amount)} cards from a ${values.decks}-deck shoe`,
     table ? `full rounds at a ${spotsOf(values)}-spot table` : GROUP_PHRASE[values.group],
     values.speed === SELF_PACED ? "at your own pace" : `${formatInterval(values.speed)} ${table ? "per card" : "each"}`,
     CHECKPOINT_PHRASE[values.checkpoint],
@@ -324,9 +325,9 @@ export function describeTrueCountSession(values: TrueCountValues & { decks: numb
 /* ----------------------------- Deck Estimation ---------------------------- */
 
 export const DECK_ESTIMATION_SESSION_CARDS: ReadonlyArray<{ value: DeckResolution; title: string; description: string }> = [
-  { value: 1, title: "Full deck", description: "Round to whole decks. A good place to start." },
-  { value: 0.5, title: "Half deck", description: "Round to the nearest half deck, like most counters." },
-  { value: 0.25, title: "Quarter deck", description: "Round to the nearest quarter deck for late-shoe precision." },
+  { value: 1, title: "Full deck", description: "Round to whole decks. A good place to start. Under a deck left still counts as 1: you never divide by less than one step." },
+  { value: 0.5, title: "Half deck", description: "Round to the nearest half deck, like most counters. Never below half a deck." },
+  { value: 0.25, title: "Quarter deck", description: "Round to the nearest quarter deck for late-shoe precision. Never below a quarter." },
 ];
 
 /** "0.5-deck", "0.25-deck resolution" (Test Out) or "1-deck, last deck" (a weak spot) to a resolution. */

@@ -221,12 +221,12 @@ function IndexPlay({ round, hand, rules }: { round: StrategyRound<IndexQuestion,
   const last = round.last;
   const ladder = paused ? ladderFor(hand, rules) : undefined;
   return (
-    <PlayFrame title="Index Plays" onExit={round.requestEnd} progress={{ done: paused ? round.tally.answered - 1 : round.tally.answered, total: plan.length }} streak={round.tally.streak}>
+    <PlayFrame title="Index Plays" onExit={round.requestEnd} progress={{ done: paused ? round.tally.answered - 1 : round.tally.answered, answered: round.tally.answered, total: plan.length }} streak={round.tally.streak}>
       <div className="flex flex-1 flex-col gap-3">
         {last && !paused && plan.explain === "never" && (
           <LastAnswer ok={last.ok} text={`${handText(last.hand)}: ${last.ok ? lower(last.hand.correct) : `${lower(last.hand.correct)}, not ${lower(last.chosen as IndexAnswer)}`}`} />
         )}
-        <HandStage ref={stage} upcard={hand.upcard} cards={hand.cards} total={totalLabel(hand.cards)} dealKey={round.handSerial} compact={Boolean(paused)} badge={<TrueCountBadge tc={hand.tc} />} className="max-h-[32rem] flex-1" />
+        <HandStage ref={stage} upcard={hand.upcard} cards={hand.cards} total={totalLabel(hand.cards)} dealKey={round.handSerial} hold={Boolean(paused)} badge={<TrueCountBadge tc={hand.tc} />} className="max-h-[32rem] flex-1" />
         {!paused && (
           <div className="pb-1 text-center">
             <h2 className="text-lg font-semibold">{insurance ? `Take insurance at ${signedCount(hand.tc)}?` : `What's the play at ${signedCount(hand.tc)}?`}</h2>

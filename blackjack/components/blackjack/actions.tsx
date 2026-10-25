@@ -77,9 +77,8 @@ export function ActionPad({ onAnswer, available = ["H", "S", "D", "P", "R"], dis
               disabled && available.includes(action) && highlight !== action && "opacity-50",
             )}
           >
-            <span className="text-[0.8125rem] leading-none xs:text-[0.9375rem]">
-              {action === "R" ? <><span className="min-[360px]:hidden">Surr.</span><span className="hidden min-[360px]:inline">Surrender</span></> : ACTION_NAME[action]}
-            </span>
+            {/* Five buttons share 288px on a 320px phone: the label scales with the screen so "Surrender" always fits. */}
+            <span className="text-[clamp(0.5625rem,3vw,0.9375rem)] leading-none tracking-tight">{ACTION_NAME[action]}</span>
             <span className="mt-1 hidden font-mono text-[0.625rem] font-medium uppercase opacity-60 [@media(hover:hover)]:block">{ACTION_KEY[action]}</span>
           </button>
         );

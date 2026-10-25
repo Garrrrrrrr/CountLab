@@ -283,9 +283,9 @@ export function ChartRecallDrill() {
             <h2 className="mt-0.5 text-xl font-semibold">{table.title}{game.only && <span className="ml-2 align-middle"><Badge tone="info">Retry</Badge></span>}</h2>
           </div>
           {phase === "fill" ? (
-            <Button size="sm" variant="secondary" onClick={requestGrade} disabled={filled === 0}>Grade</Button>
+            <Button variant="secondary" onClick={requestGrade} disabled={filled === 0}>Grade</Button>
           ) : (
-            <Segmented label="Show" hideLabel size="sm" className="w-36 shrink-0" value={view} onChange={setView} options={[{ value: "chart", label: "Chart" }, { value: "mine", label: "Mine" }]} />
+            <Segmented label="Show" hideLabel className="w-36 shrink-0" value={view} onChange={setView} options={[{ value: "chart", label: "Chart" }, { value: "mine", label: "Mine" }]} />
           )}
         </div>
         {phase === "fill" && tables.length > 1 && (
@@ -397,8 +397,8 @@ export function ChartRecallDrill() {
         <PresetPicker label="Difficulty" value={pref.level} onChange={(value) => remember({ level: value })} options={LEVELS} />
       </SetupGroup>
       <SetupGroup title="What to fill in" hint="The whole chart goes table by table: surrender first (it is decided first at the table), then hard, soft and pairs.">
-        <Segmented label="What to fill in" hideLabel value={scope} onChange={(value) => remember({ scope: value })}
-          options={[{ value: "all" as Scope, label: "Whole" }, ...allowed.map((id) => ({ value: id as Scope, label: id === "surrender" ? "Surr." : id === "hard" ? "Hard" : id === "soft" ? "Soft" : "Pairs" }))]} />
+        <Segmented label="What to fill in" hideLabel className="max-sm:[&>div]:flex-wrap max-sm:[&_label]:basis-1/3" value={scope} onChange={(value) => remember({ scope: value })}
+          options={[{ value: "all" as Scope, label: "All tables" }, ...allowed.map((id) => ({ value: id as Scope, label: id === "surrender" ? "Surrender" : id === "hard" ? "Hard" : id === "soft" ? "Soft" : "Pairs" }))]} />
       </SetupGroup>
       <Card className="text-sm leading-6 text-ink-2">
         <h2 className="mb-1 text-sm font-semibold text-ink">How it works</h2>
@@ -450,7 +450,7 @@ function GradedTableCard({ table, grade, entries, rules }: { table: RecallTable;
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold">{table.title} <span className="tnum font-normal text-ink-2">· {grade.correct} of {grade.total}</span></h2>
-        <Segmented label={`${table.title}: show`} hideLabel size="sm" className="w-36 shrink-0" value={view} onChange={setView} options={[{ value: "chart", label: "Chart" }, { value: "mine", label: "Mine" }]} />
+        <Segmented label={`${table.title}: show`} hideLabel className="w-36 shrink-0" value={view} onChange={setView} options={[{ value: "chart", label: "Chart" }, { value: "mine", label: "Mine" }]} />
       </div>
       <RecallGrid table={table} entries={entries} grades={map} view={view} selected={picked} onSelect={setPicked} />
       <p className="mt-3 text-sm leading-5 text-ink-2" aria-live="polite">
