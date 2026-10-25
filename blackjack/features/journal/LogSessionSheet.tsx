@@ -50,6 +50,9 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
   const [amountLeft, setAmountLeft] = useState(false);
   const [showExpenses, setShowExpenses] = useState(initial.expenses > 0);
   const form = useRef<HTMLFormElement>(null);
+  const detailsBox = useRef<HTMLDivElement>(null);
+  // Remounts the details after "Save and log another" so their typed text resets with the draft.
+  const [entry, setEntry] = useState(0);
   // Guards against a double tap on Save writing the same session twice.
   const lastSave = useRef(0);
   const formId = useId();
@@ -99,6 +102,13 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
       focusField(errors[0]);
       return;
     }
+    // A details field still showing a typo would otherwise be saved as blank.
+    const detailsTypo = detailsBox.current?.querySelector<HTMLInputElement>("input[aria-invalid=true]");
+    if (detailsTypo) {
+      sessionForm.validationFailed("details", "not_a_number");
+      detailsTypo.focus();
+      return;
+    }
     lastSave.current = Date.now();
     const payload = sessionPayload(draft);
     const record = mode === "edit" && sessionId ? journalLibrary.updateSession(sessionId, payload) : journalLibrary.addSession(payload);
@@ -117,6 +127,7 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
       setSnapshot(next);
       setAttempted(false);
       setShowExpenses(false);
+      setEntry((current) => current + 1);
       document.getElementById(dateId)?.focus();
     }
   };
@@ -215,12 +226,15 @@ export function LogSessionSheet({ mode, sessionId, initial, sessions, bankrolls,
           onChange={(event) => update({ notes: event.target.value })}
           onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); form.current?.requestSubmit(); } }} />
 
-        <SessionDetailsFields
-          details={draft.details}
-          onChange={(details) => update({ details })}
-          planTopBet={planTopBet}
-          onUseResult={(value) => update({ amount: Math.abs(value), direction: value < 0 ? "lost" : value > 0 ? "won" : draft.direction })}
-        />
+        <div ref={detailsBox}>
+          <SessionDetailsFields
+            key={entry}
+            details={draft.details}
+            onChange={(details) => update({ details })}
+            planTopBet={planTopBet}
+            onUseResult={(value) => update({ amount: Math.abs(value), direction: value < 0 ? "lost" : value > 0 ? "won" : draft.direction })}
+          />
+        </div>
 
         {showExpenses ? (
           <NumberField label="Expenses (comps, travel)" prefix="$" min={0} value={draft.expenses} hint="Tracked separately. It doesn't change your bankroll or the EV comparison." onValueChange={(expenses) => update({ expenses })} />

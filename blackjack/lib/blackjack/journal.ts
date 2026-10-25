@@ -407,7 +407,7 @@ function deleteRemoteBankroll(id: string, deletedAt: string) {
   return sendDeletion("bankroll", id, deletedAt);
 }
 
-function pushJournalSession(session: JournalSession) {
+function pushJournalSession(session: JournalSession, clearDetails = false) {
   const user = getCurrentUser();
   // Legacy clients could save the date input's temporary empty value locally.
   // Keep that row repairable on-device, but never hammer Postgres with a value
@@ -432,8 +432,8 @@ function pushJournalSession(session: JournalSession) {
       net_result: session.netResult,
       expenses: session.expenses,
       notes: session.notes ?? null,
-      // Sent only when there are details, so sessions without them sync before the column exists.
-      ...(session.details ? { details: session.details } : {}),
+      // Sent only when there are details (or an edit just cleared them), so sessions without them sync before the column exists.
+      ...(session.details ? { details: session.details } : clearDetails ? { details: null } : {}),
     });
 }
 
@@ -558,7 +558,7 @@ export const journalLibrary = {
     const { details, ...fields } = updates;
     const record: JournalSession = { ...fields, ...withDetails(details), id: existing.id, createdAt: existing.createdAt, updatedAt: now.toISOString(), bankrollId: updates.bankrollId ?? existing.bankrollId };
     write(SESSIONS_KEY, this.sessions(store).map((session) => session.id === id ? record : session), store);
-    pushJournalSession(record);
+    pushJournalSession(record, Boolean(existing.details && !record.details));
     track("journal_session_updated", { netResult: record.netResult, hours: record.hours });
     return record;
   },

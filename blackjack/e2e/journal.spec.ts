@@ -617,3 +617,22 @@ test("buy-in and cash-out fill the result, and heat builds each casino's history
   await expect(heat).toContainText("Aria");
   await expect(heat).toContainText("Backed off");
 });
+
+test("a details typo blocks saving, and logging another starts the details blank", async ({ page }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  await prepareGuest(page);
+  await page.goto("/journal/");
+  await logButton(page).click();
+  const sheet = page.getByRole("dialog", { name: "Log session" });
+  await sheet.getByLabel("Amount won or lost").fill("0");
+  await sheet.getByRole("button", { name: /More details/ }).click();
+  await sheet.getByLabel("Rounds played").fill("350.5");
+  await sheet.getByRole("button", { name: "Save and log another" }).click();
+  await expect(sheet.getByLabel("Rounds played")).toBeFocused();
+  await expect(sheet.getByLabel("Amount won or lost")).toHaveValue("0"); // not saved, so not reset
+  await sheet.getByLabel("Rounds played").fill("350");
+  await sheet.getByRole("button", { name: "Save and log another" }).click();
+  await expect(sheet.getByLabel("Amount won or lost")).toHaveValue("");
+  await sheet.getByRole("button", { name: /More details/ }).click();
+  await expect(sheet.getByLabel("Rounds played")).toHaveValue("");
+});

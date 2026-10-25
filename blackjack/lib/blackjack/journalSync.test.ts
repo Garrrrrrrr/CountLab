@@ -49,6 +49,17 @@ it("persists a deleted revision when deletion precedes the first upload", async 
   expect(journalLibrary.sessions()).toEqual([]);
 });
 
+it("clears details on the server when an edit removes the last one", async () => {
+  const plain = journalLibrary.addSession(input);
+  const session = journalLibrary.addSession({ ...input, details: { buyIn: 500 } });
+  journalLibrary.updateSession(plain.id, input);
+  journalLibrary.updateSession(session.id, input);
+  await vi.runAllTimersAsync();
+  const last = (id: string) => remote.upsert.mock.calls.map(([row]) => row).filter((row) => row.id === id).at(-1);
+  expect(last(session.id).details).toBeNull();
+  expect("details" in last(plain.id)).toBe(false);
+});
+
 it("retries a failed deletion until the server acknowledges it", async () => {
   const session = journalLibrary.addSession(input);
   await vi.runAllTimersAsync();

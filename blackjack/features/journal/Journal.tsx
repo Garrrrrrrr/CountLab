@@ -404,7 +404,7 @@ export function Journal() {
           <BottomDock>
             <div role="group" aria-label="Journal actions" className="mx-auto flex max-w-xl gap-2">
               <Button block icon={<Plus size={18} aria-hidden />} onClick={() => openLog()}>Log session</Button>
-              <Button variant="secondary" className="shrink-0" aria-label="Deposit or withdrawal" icon={<ArrowLeftRight size={18} aria-hidden />} onClick={() => openCash()}>Cash</Button>
+              <Button variant="secondary" className="shrink-0" aria-label="Cash: deposit or withdrawal" icon={<ArrowLeftRight size={18} aria-hidden />} onClick={() => openCash()}>Cash</Button>
             </div>
           </BottomDock>
         </>
