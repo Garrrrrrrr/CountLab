@@ -370,6 +370,8 @@ const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export function countingCategoryLabel(key: string) {
   const running = /^(1|2|3|4|random)-card groups, (negative|positive|zero)$/.exec(key);
   if (running) return `${GROUP_LABEL[running[1]]} · ${SIGN_LABEL[running[2]]}`;
+  const flash = /^flash, (\d) cards$/.exec(key);
+  if (flash) return `Flash · ${flash[1]} cards`;
   const table = /^table rounds, (negative|positive|zero)$/.exec(key);
   if (table) return `Table rounds · ${SIGN_LABEL[table[1]]}`;
   const conversion = /^(negative|positive|zero), (1|0\.5|0\.25)-deck divisor$/.exec(key);

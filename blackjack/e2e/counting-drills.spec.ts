@@ -75,6 +75,45 @@ test.describe("counting drills", () => {
     await expect(page.getByRole("status").filter({ hasText: /played, leaving/ })).toBeVisible();
   });
 
+  test("running count flash: cards for a moment, their net count, a saved session", async ({ page }) => {
+    await open(page, "/train/running-count/", "Running Count");
+    await choose(page.getByRole("radio", { name: "Flash" }));
+    await choose(page.getByRole("group", { name: "Flashes" }).getByRole("radio", { name: "5" }));
+    await start(page, "Start flashing");
+    for (let flash = 0; flash < 5; flash++) {
+      await expect(page.getByRole("button", { name: "Check" })).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole("list", { name: "Cards on the table" })).toHaveCount(0);
+      await expectFits(page, "Check");
+      await press(page, "0");
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(300);
+      await page.getByRole("button", { name: flash === 4 ? "See results" : "Next flash" }).click();
+    }
+    await expect(page.getByText("Flashes right", { exact: true })).toBeVisible();
+    const saved = await page.evaluate(() => Object.entries(localStorage).filter(([key]) => key.endsWith("hilo:sessions")).map(([, value]) => JSON.parse(value)).flat());
+    expect(saved[0]).toMatchObject({ drill: "Running Count", questions: 5, tags: ["flash"] });
+  });
+
+  test("running count distractions: a sum stops the cards until it is answered", async ({ page }) => {
+    await open(page, "/train/running-count/", "Running Count");
+    await page.getByRole("radio", { name: /One-deck speed/ }).click();
+    await page.getByLabel("Time per card").selectOption("300");
+    await page.getByText("Checks and extras").click();
+    await page.getByRole("switch", { name: /Distract me/ }).check({ force: true });
+    await start(page, "Start counting");
+    const prompt = page.getByRole("heading", { name: /Quick: what's|asks:/ });
+    await expect(prompt).toBeVisible({ timeout: 20000 });
+    const text = (await prompt.textContent())!;
+    const sum = /(\d+) \+ (\d+)/.exec(text);
+    if (sum) {
+      await press(page, String(Number(sum[1]) + Number(sum[2])));
+      await page.keyboard.press("Enter");
+    } else {
+      await page.getByRole("button", { name: /Sure|Not today|Just the weekend|Leaving tonight|Water|fine|Up and down|Not really|Not far|Out of state/ }).first().click();
+    }
+    await expect(page.getByRole("list", { name: "Cards on the table" })).toBeVisible({ timeout: 5000 });
+  });
+
   test("deck estimation: an unfinished session resumes after a reload", async ({ page }) => {
     await open(page, "/train/deck-estimation/", "Deck Estimation");
     await start(page, /^Start \d+ photos$/);

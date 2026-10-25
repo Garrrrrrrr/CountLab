@@ -289,6 +289,39 @@ export function normalizeRunningFocus(raw?: string | null): RunningCardId | unde
   return value.includes("running count") ? "six-deck-casino" : undefined;
 }
 
+/* ------------------------------ Flash counting ----------------------------- */
+
+/**
+ * Flash mode: a few cards shown for a moment, then hidden, and the question is
+ * their net count, the way a glance at a table works. `size` is the cards per
+ * flash, or "mixed" for 2 to 6 at random.
+ */
+export type FlashSize = 2 | 3 | 4 | 5 | 6 | "mixed";
+export type FlashSetup = { size: FlashSize; ms: number; target: number };
+export const FLASH_SIZES: readonly FlashSize[] = [2, 3, 4, 5, 6, "mixed"];
+export const FLASH_TIMES = [300, 500, 800] as const;
+export const DEFAULT_FLASH: FlashSetup = { size: "mixed", ms: 500, target: 10 };
+
+/** A remembered flash setup, with anything unknown put back to the default. */
+export function cleanFlash(raw: Partial<FlashSetup> | undefined): FlashSetup {
+  return {
+    size: FLASH_SIZES.includes(raw?.size as FlashSize) ? (raw!.size as FlashSize) : DEFAULT_FLASH.size,
+    ms: (FLASH_TIMES as readonly number[]).includes(raw?.ms as number) ? (raw!.ms as number) : DEFAULT_FLASH.ms,
+    target: fitQuestionTarget(raw?.target ?? DEFAULT_FLASH.target),
+  };
+}
+
+export const flashCardCount = (size: FlashSize, rng: () => number = Math.random) => (size === "mixed" ? 2 + Math.floor(rng() * 5) : size);
+
+export function describeFlashSession(flash: FlashSetup) {
+  return [
+    `${flash.target} flashes`,
+    flash.size === "mixed" ? "2 to 6 cards each" : `${flash.size} cards each`,
+    `shown for ${formatInterval(flash.ms)}`,
+    "you give their net count",
+  ];
+}
+
 /* ------------------------------- True Count ------------------------------- */
 
 export type TrueCountFocus = "adaptive" | "all" | "positive" | "negative" | "zero" | "index" | "last-deck";

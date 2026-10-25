@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   checkpointsFor,
   dealOf,
+  cleanFlash,
+  DEFAULT_FLASH,
+  describeFlashSession,
   describeRunningSession,
+  flashCardCount,
   distractionGap,
   makeDistraction,
   describeTrueCountSession,
@@ -56,6 +60,15 @@ describe("running count setup", () => {
     for (let roll = 0; roll < 1; roll += 0.05) expect(distractionGap(() => roll)).toBeGreaterThanOrEqual(15);
     expect(distractionGap(() => 0.999)).toBe(35);
     expect(describeRunningSession({ ...RUNNING_STARTER, distractions: true, bias: "none", feedbackMode: "end" })).toContain("quick questions now and then");
+  });
+
+  it("sets up flash rounds: 2 to 6 cards for a known time", () => {
+    expect(cleanFlash({ size: 4, ms: 300, target: 20 })).toEqual({ size: 4, ms: 300, target: 20 });
+    expect(cleanFlash({ size: 9 as never, ms: 1234, target: 7 })).toEqual(DEFAULT_FLASH);
+    expect(flashCardCount(3)).toBe(3);
+    for (let roll = 0; roll < 1; roll += 0.1) expect(flashCardCount("mixed", () => roll)).toBeGreaterThanOrEqual(2);
+    expect(flashCardCount("mixed", () => 0.999)).toBe(6);
+    expect(describeFlashSession(DEFAULT_FLASH)).toEqual(["10 flashes", "2 to 6 cards each", "shown for 0.5 s", "you give their net count"]);
   });
 
   it("recognises a count-down of any shoe of two decks or more", () => {

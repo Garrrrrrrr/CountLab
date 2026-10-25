@@ -24,6 +24,8 @@ import {
   dealOf,
   effectiveCardCount,
   isCheckDue,
+  cleanFlash,
+  type FlashSetup,
   distractionGap,
   makeDistraction,
   type Distraction,
@@ -60,6 +62,7 @@ import { CardChips, COMPACT_DISPLAY, COMPACT_PAD, signedText, spokenCard, StageN
 import { CardGroupView, CardRecap, ReadyCountdown, TableView } from "./RunningStage";
 import { RunningSetup, type RunningSetupState } from "./RunningSetup";
 import { RunningSummary } from "./RunningSummary";
+import { FlashRound } from "./FlashRound";
 
 const DRILL = "Running Count" as const;
 const MEMORY_KEY = "countlab:drill-setup:running-count";
@@ -88,7 +91,7 @@ type RunningSaved = {
 };
 
 /** The last setup started here, so a counter's own session comes back. */
-type Memory = { last?: RunningCardId | "custom"; values?: RunningSetupState; basis?: CountingPreset };
+type Memory = { last?: RunningCardId | "custom"; values?: RunningSetupState; basis?: CountingPreset; flash?: Partial<FlashSetup>; flashOn?: boolean };
 
 type FeedbackInfo = { ok: boolean; expected: number; answer: string | null; category?: CountingErrorCategory; recapFrom?: number; to: number; last: boolean };
 
@@ -195,6 +198,15 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
   const [revealCount, setRevealCount] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [steps, setSteps] = useState(saved?.steps ?? 0);
+  // Flash mode has its own setup and round; the count's state above is left as it is.
+  const [flashOn, setFlashOn] = useState(() => !saved && !init.focusCard && readSetupMemory<Memory>(MEMORY_KEY)?.flashOn === true);
+  const [flashSetup, setFlashSetup] = useState(() => cleanFlash(readSetupMemory<Memory>(MEMORY_KEY)?.flash));
+  const [flashRun, setFlashRun] = useState(false);
+  const startFlash = () => {
+    writeSetupMemory<Memory>(MEMORY_KEY, { ...readSetupMemory<Memory>(MEMORY_KEY), flash: flashSetup, flashOn: true });
+    track("drill_started", { drill: DRILL, mode: "flash", questionTarget: flashSetup.target, speed: flashSetup.ms });
+    setFlashRun(true);
+  };
 
   const startRef = useRef(Date.now() - (saved?.elapsed ?? 0));
   const answerStart = useRef(Date.now());
@@ -283,7 +295,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
     // A hand-off sets up this session only; the reader's own pick becomes their Settings default.
     const ownChoice = chose.current || card !== init.focusCard;
     if (ownChoice && isSettingsPreset(card) && card !== settings.countingPreset) update({ countingPreset: card });
-    if (ownChoice || !init.focusCard) writeSetupMemory<Memory>(MEMORY_KEY, card ? { last: card, basis: isSettingsPreset(card) ? card : settings.countingPreset } : { last: "custom", values: setup, basis: settings.countingPreset });
+    if (ownChoice || !init.focusCard) writeSetupMemory<Memory>(MEMORY_KEY, card ? { last: card, basis: isSettingsPreset(card) ? card : settings.countingPreset, flash: flashSetup } : { last: "custom", values: setup, basis: settings.countingPreset, flash: flashSetup });
     setPreset(tag);
     const table = dealOf(setup) === "table";
     const amount = effectiveCardCount(setup.decks, setup.amount);
@@ -560,6 +572,8 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
 
   const unfinished = useSavedProgress<RunningSaved>(DRILL, phase === "setup" && !dismissed, usable);
 
+  if (flashRun) return <FlashRound setup={flashSetup} onSetup={() => setFlashRun(false)} />;
+
   if (phase === "done" && result) {
     return <RunningSummary session={result} totalCards={cards.length} interruptionUsed={interruptionUsed.current} onAgain={start} onChangeSetup={() => { setResult(undefined); setPhase("setup"); }} />;
   }
@@ -580,6 +594,7 @@ function RunningCountSession({ settings, arrival, resume, restart }: { settings:
         onStart={start}
         firstTime={history.length === 0}
         fastestPerfect={fastestPerfect}
+        flash={{ on: flashOn, setup: flashSetup, onMode: setFlashOn, onChange: (next) => setFlashSetup((current) => ({ ...current, ...next })), onStart: startFlash }}
         resume={unfinished && (
           <ResumeBanner
             detail={`Card ${unfinished.state.cursor} of ${unfinished.state.cards.length}${unfinished.state.checks ? `, ${unfinished.state.correct} of ${unfinished.state.checks} checks right` : ""} · ${relativeTime(unfinished.updatedAt)}`}

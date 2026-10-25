@@ -17,6 +17,8 @@ const GROUP_WIDTH: Record<number, string> = {
   2: "min(150px, calc((100vw - 4.5rem) / 2))",
   3: "min(124px, calc((100vw - 5rem) / 3))",
   4: "min(104px, calc((100vw - 5.5rem) / 4))",
+  5: "min(88px, calc((100vw - 6rem) / 5))",
+  6: "min(76px, calc((100vw - 6.5rem) / 6))",
 };
 
 function ValueBadge({ card }: { card: Card }) {
@@ -30,7 +32,7 @@ function ValueBadge({ card }: { card: Card }) {
 
 /** The group of cards on the felt, placed a little differently each time like a real deal. */
 export function CardGroupView({ cards, seed, animate, hints }: { cards: Card[]; seed: number; animate: boolean; hints: boolean }) {
-  const width = GROUP_WIDTH[Math.min(4, Math.max(1, cards.length))];
+  const width = GROUP_WIDTH[Math.min(6, Math.max(1, cards.length))];
   return (
     <ul aria-label="Cards on the table" className="flex flex-nowrap items-center justify-center gap-2.5">
       {cards.map((card, index) => (

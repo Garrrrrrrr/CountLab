@@ -7,7 +7,11 @@ import {
   checkpointsFor,
   CHECKPOINT_LABEL,
   dealOf,
+  describeFlashSession,
   describeRunningSession,
+  FLASH_SIZES,
+  FLASH_TIMES,
+  QUESTION_TARGETS,
   effectiveCardCount,
   fitCheckpoint,
   formatInterval,
@@ -17,6 +21,8 @@ import {
   spotsOf,
   TABLE_SPOTS,
   type FeedbackMode,
+  type FlashSetup,
+  type FlashSize,
   type RunningCardId,
   type RunningCheckpoint,
   type RunningGroup,
@@ -55,7 +61,7 @@ function amountOptions(decks: number, current: number) {
 }
 const dealChoice = (setup: RunningSetupState): Deal => (dealOf(setup) === "table" ? "table" : setup.group === "1" ? "single" : "groups");
 
-export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset, resetLabel, onStart, resume, firstTime, fastestPerfect }: {
+export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset, resetLabel, onStart, resume, firstTime, fastestPerfect, flash }: {
   setup: RunningSetupState;
   cards: ReadonlyArray<{ id: RunningCardId; values: RunningValues }>;
   matched: RunningCardId | null;
@@ -67,6 +73,8 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
   resume?: ReactNode;
   firstTime: boolean;
   fastestPerfect?: number;
+  /** Flash mode's own setup, shown instead of the counting one while `flash.on`. */
+  flash: { on: boolean; setup: FlashSetup; onMode: (on: boolean) => void; onChange: (next: Partial<FlashSetup>) => void; onStart: () => void };
 }) {
   const deal = dealChoice(setup);
   const maxCards = setup.decks * 52 - 1;
@@ -78,8 +86,8 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
     <DrillSetup
       title="Running Count"
       intro="Keep the Hi-Lo count in your head while the cards go by. Now and then we stop and ask for it."
-      onStart={onStart}
-      startLabel="Start counting"
+      onStart={flash.on ? flash.onStart : onStart}
+      startLabel={flash.on ? "Start flashing" : "Start counting"}
       resume={resume}
       aside={
         <>
@@ -91,6 +99,9 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
         </>
       }
     >
+      <Segmented<"count" | "flash"> label="Drill" hideLabel value={flash.on ? "flash" : "count"} onChange={(mode) => flash.onMode(mode === "flash")}
+        options={[{ value: "count", label: "Keep the count", hint: "A running count through a stream of cards" }, { value: "flash", label: "Flash", hint: "A few cards for a moment: give their net count" }]} />
+      {flash.on ? <FlashOptions flash={flash.setup} onChange={flash.onChange} /> : <>
       <SetupGroup title="Session">
         <PresetPicker
           label="Session"
@@ -161,6 +172,26 @@ export function RunningSetup({ setup, cards, matched, onChange, onPick, onReset,
       </Disclosure>
 
       <SessionLine parts={describeRunningSession(setup)} />
+      </>}
     </DrillSetup>
+  );
+}
+
+/** Flash mode: how many cards, for how long, and how many flashes. */
+function FlashOptions({ flash, onChange }: { flash: FlashSetup; onChange: (next: Partial<FlashSetup>) => void }) {
+  return (
+    <>
+      <SetupGroup title="Cards per flash" hint="They show for a moment, then go. Give their net Hi-Lo count.">
+        <Segmented<FlashSize> label="Cards per flash" hideLabel value={flash.size} onChange={(size) => onChange({ size })}
+          options={FLASH_SIZES.map((size) => ({ value: size, label: size === "mixed" ? "2–6" : String(size), hint: size === "mixed" ? "A random 2 to 6 each time" : undefined }))} />
+      </SetupGroup>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Segmented<number> label="Shown for" value={flash.ms} onChange={(ms) => onChange({ ms })}
+          options={FLASH_TIMES.map((ms) => ({ value: ms, label: formatInterval(ms) }))} />
+        <Segmented<number> label="Flashes" value={flash.target} onChange={(target) => onChange({ target })}
+          options={QUESTION_TARGETS.map((target) => ({ value: target, label: String(target) }))} />
+      </div>
+      <SessionLine parts={describeFlashSession(flash)} />
+    </>
   );
 }

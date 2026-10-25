@@ -148,6 +148,7 @@ describe("counting training scenarios", () => {
     expect(countingCategoryLabel("0.5-deck, last deck")).toBe("Half-deck precision · last deck");
     expect(countingCategoryLabel("0.25-deck")).toBe("Quarter-deck precision");
     expect(countingCategoryLabel("1-deck, played, last deck")).toBe("Full-deck precision · decks played · last deck");
+    expect(countingCategoryLabel("flash, 4 cards")).toBe("Flash · 4 cards");
     expect(countingCategoryLabel("positive")).toBe("Positive counts");
     expect(countingCategoryLabel("Hard totals")).toBe("Hard totals");
   });
