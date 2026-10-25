@@ -133,7 +133,7 @@ function Grid({ title, caption, x, y, height, rows, view, palette }: {
   );
 }
 
-/** One card holding every table, sized for a 6×4 index card when printed. */
+/** One card holding every table, in two columns: tall like a phone screen, and a 4×6 index card held upright when printed. */
 export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef, className }: {
   rules: TableRules; strips?: PocketStrips; theme?: PocketTheme; svgRef?: React.Ref<SVGSVGElement>; className?: string;
 }) {
@@ -154,25 +154,37 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
     ...footnotes.map((note) => `* ${note}`),
   ].flatMap((note) => wrap(note, PANEL_W - 2 * INSET, 7.2));
 
-  // Three columns, each a table with at most one panel under it, arranged to even out their heights.
-  const columns = [PAD, PAD + PANEL_W + COL_GAP, PAD + 2 * (PANEL_W + COL_GAP)];
-  const top = HEADER;
-  const tableH = [panelHeight(hard.rows.length), panelHeight(soft.rows.length), panelHeight(pairs.rows.length)];
-  const below = (column: number) => top + tableH[column] + COL_GAP;
-  const place = surrender ? { notes: 0, surrender: 1, key: 2 } : { notes: 2, surrender: -1, key: 1 };
-  const minimum = { notes: 30 + notes.length * 10.5, surrender: surrender ? panelHeight(surrender.rows.length) : 0, key: surrender ? 184 : 122 };
-  const bottom = Math.max(...tableH.map((height) => top + height), ...(["notes", "surrender", "key"] as const).filter((panel) => place[panel] >= 0).map((panel) => below(place[panel]) + minimum[panel]));
-  const lowerAt = (column: number) => Object.values(place).includes(column);
-  const keyX = columns[place.key], keyY = below(place.key), notesX = columns[place.notes], notesY = below(place.notes);
-  const width = columns[2] + PANEL_W + PAD;
-  const height = bottom + FOOTER;
+  const width = PAD + 2 * PANEL_W + COL_GAP + PAD;
+  const subtitle = `Basic strategy with Hi-Lo, ${strips === "core" ? "Illustrious 18 + Fab 4" : "Wong’s indices"}`;
 
-  // Rule pills, right-aligned with the insurance count last.
+  // Rule pills, right-aligned with the insurance count last; a second row when they would reach the title.
   const insurance = `Insure at +${chart.insuranceAt}`;
   let pillX = width - PAD;
   const pillAt = (text: string) => { const w = textWidth(text, 8, true) + 14; pillX -= w; const at = pillX; pillX -= 5; return { text, at, w }; };
   const insurancePill = pillAt(insurance);
   const rulePills = rulesSummary(rules).split(" · ").filter(Boolean).reverse().map(pillAt);
+  const pillY = pillX + 5 < PAD + 34 + textWidth(subtitle, 8) + 12 ? PAD + 31 : PAD + 3;
+
+  // Two columns, a table heading each with panels stacked under it. The key goes on whichever side
+  // evens out the heights, and the last panel in a column runs to the bottom.
+  type Slot = "hard" | "soft" | "pairs" | "surrender" | "key" | "notes";
+  const right: Slot[] = surrender ? ["pairs", "surrender"] : ["pairs"];
+  const options: Slot[][][] = [[["hard", "soft", "notes"], [...right, "key"]], [["hard", "soft", "key"], [...right, "notes"]]];
+  const minimum: Record<Slot, number> = {
+    hard: panelHeight(hard.rows.length), soft: panelHeight(soft.rows.length), pairs: panelHeight(pairs.rows.length),
+    surrender: surrender ? panelHeight(surrender.rows.length) : 0, key: surrender ? 184 : 122, notes: 30 + notes.length * 10.5,
+  };
+  const top = HEADER + pillY - PAD - 3;
+  const stack = (columns: Slot[][]) => columns.flatMap((slots, column) => {
+    let y = top;
+    return slots.map((slot, index) => { const at = y; y += minimum[slot] + COL_GAP; return { slot, x: PAD + column * (PANEL_W + COL_GAP), y: at, last: index === slots.length - 1 }; });
+  });
+  const lowest = (panels: ReturnType<typeof stack>) => Math.max(...panels.filter((panel) => panel.last).map((panel) => panel.y + minimum[panel.slot]));
+  const placed = options.map(stack).reduce((best, next) => (lowest(next) < lowest(best) ? next : best));
+  const bottom = lowest(placed);
+  const at = Object.fromEntries(placed.map(({ slot, x, y, last }) => [slot, { x, y, height: last ? bottom - y : minimum[slot] }])) as Record<Slot, { x: number; y: number; height: number }>;
+  const { x: keyX, y: keyY } = at.key, { x: notesX, y: notesY } = at.notes;
+  const height = bottom + FOOTER;
 
   const keyItems: [Action, string, string?][] = [["H", "Hit"], ["S", "Stand"], ["D", "Double"], ["D", "Double, else stand", "s"], ["P", "Split"], ...(surrender ? [["R", "Surrender"] as [Action, string]] : [])];
   const example = (x: number, y: number, view: View, text: string) => (
@@ -189,7 +201,7 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
 
   return (
     <svg ref={svgRef} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} width={width} height={height} fontFamily={FONT}
-      role="img" aria-label={`Pocket strategy chart for ${rulesSummary(rules)}`} className={className ?? "h-auto w-full print:h-auto print:w-[5.85in]"}>
+      role="img" aria-label={`Pocket strategy chart for ${rulesSummary(rules)}`} className={className ?? "h-auto w-full print:h-auto print:w-[3.9in]"}>
       <rect width={width} height={height} fill={palette.bg} />
 
       <g transform={`translate(${PAD} ${PAD}) scale(${26 / 64})`}>
@@ -198,25 +210,25 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
         <path d="M32 21.5c-2.9 4.6-9.2 7.6-9.2 12.6 0 3.3 2.6 5.7 5.7 5.7 1.3 0 2.5-.4 3.3-1.2-.4 2.3-1.6 4.1-3.3 5.3h7c-1.7-1.2-2.9-3-3.3-5.3.8.8 2 1.2 3.3 1.2 3.1 0 5.7-2.4 5.7-5.7 0-5-6.3-8-9.2-12.6Z" fill={palette.mark} transform="rotate(-9 32 32)" />
       </g>
       <text x={PAD + 34} y={PAD + 11} fontSize={13} fontWeight={800} fill={palette.ink}>Count<tspan fill={palette.brandText}>Lab</tspan></text>
-      <text x={PAD + 34} y={PAD + 23} fontSize={8} fill={palette.ink2}>Basic strategy with Hi-Lo, {strips === "core" ? "Illustrious 18 + Fab 4" : "Wong’s indices"}</text>
+      <text x={PAD + 34} y={PAD + 23} fontSize={8} fill={palette.ink2}>{subtitle}</text>
       {rulePills.map(({ text, at, w }) => (
         <g key={text}>
-          <rect x={at} y={PAD + 3} width={w} height={17} rx={8.5} fill={palette.panel} stroke={palette.line} strokeWidth={0.8} />
-          <text x={at + w / 2} y={PAD + 14.5} textAnchor="middle" fontSize={8} fontWeight={700} fill={palette.ink}>{text}</text>
+          <rect x={at} y={pillY} width={w} height={17} rx={8.5} fill={palette.panel} stroke={palette.line} strokeWidth={0.8} />
+          <text x={at + w / 2} y={pillY + 11.5} textAnchor="middle" fontSize={8} fontWeight={700} fill={palette.ink}>{text}</text>
         </g>
       ))}
-      <rect x={insurancePill.at} y={PAD + 3} width={insurancePill.w} height={17} rx={8.5} fill={palette.brand} />
-      <text x={insurancePill.at + insurancePill.w / 2} y={PAD + 14.5} textAnchor="middle" fontSize={8} fontWeight={800} fill="#211804">{insurance}</text>
+      <rect x={insurancePill.at} y={pillY} width={insurancePill.w} height={17} rx={8.5} fill={palette.brand} />
+      <text x={insurancePill.at + insurancePill.w / 2} y={pillY + 11.5} textAnchor="middle" fontSize={8} fontWeight={800} fill="#211804">{insurance}</text>
 
-      <Grid title="Hard totals" x={columns[0]} y={top} height={lowerAt(0) ? tableH[0] : bottom - top} rows={playRows(hard)} view={playView(hard)} palette={palette} />
+      <Grid title="Hard totals" {...at.hard} rows={playRows(hard)} view={playView(hard)} palette={palette} />
       {surrender && (
-        <Grid title="Surrender first" caption={rules.surrender === "early" ? "early v 10, late otherwise" : "late surrender"} x={columns[place.surrender]} y={below(place.surrender)} height={bottom - below(place.surrender)} palette={palette}
+        <Grid title="Surrender first" caption={rules.surrender === "early" ? "early v 10, late otherwise" : "late surrender"} {...at.surrender} palette={palette}
           rows={surrender.rows.map(({ row, section }) => ({ label: rowLabel(section, row), key: `${section}:${row}` }))}
           view={(index, dealer) => { const ref = { ...surrender.rows[index], dealer }; return only(surrenderCellView(rules, surrender, ref, "indices", 0), `R:${cellKey(ref)}`, keep); }} />
       )}
 
-      <Grid title="Soft totals" x={columns[1]} y={top} height={lowerAt(1) ? tableH[1] : bottom - top} rows={playRows(soft)} view={playView(soft)} palette={palette} />
-      <Panel x={keyX} y={keyY} height={bottom - keyY} title="How to read it" palette={palette}>
+      <Grid title="Soft totals" {...at.soft} rows={playRows(soft)} view={playView(soft)} palette={palette} />
+      <Panel {...at.key} title="How to read it" palette={palette}>
         {keyItems.map(([action, text, suffix], index) => {
           const x = keyX + INSET + (index % 3) * 100, y = keyY + INSET + 16 + Math.floor(index / 3) * 19;
           return (
@@ -232,8 +244,8 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
         {surrender && example(keyX + INSET, keyY + INSET + 122, { action: null, strip: { action: "R", label: "+3↑" } }, "In the surrender panel, a dash means play the hand: surrender only from a true count of +3 up.")}
       </Panel>
 
-      <Grid title="Pairs" x={columns[2]} y={top} height={lowerAt(2) ? tableH[2] : bottom - top} rows={playRows(pairs)} view={playView(pairs)} palette={palette} />
-      <Panel x={notesX} y={notesY} height={bottom - notesY} title="Notes" palette={palette}>
+      <Grid title="Pairs" {...at.pairs} rows={playRows(pairs)} view={playView(pairs)} palette={palette} />
+      <Panel {...at.notes} title="Notes" palette={palette}>
         {notes.map((line, index) => <text key={index} x={notesX + INSET} y={notesY + INSET + 22 + index * 10.5} fontSize={7.2} fill={palette.ink2}>{line}</text>)}
       </Panel>
 
@@ -251,15 +263,16 @@ export const pocketFileName = (rules: TableRules, strips: PocketStrips = "all", 
  * which a plain download does not; elsewhere it downloads.
  */
 export async function savePng(svg: SVGSVGElement, name: string) {
-  const scale = 4;
+  // As many pixels as iOS Safari will draw (16.7M), so the image stays sharp when zoomed in.
+  const scale = Math.sqrt(16_000_000 / (svg.viewBox.baseVal.width * svg.viewBox.baseVal.height));
   const source = new Blob([new XMLSerializer().serializeToString(svg)], { type: "image/svg+xml" });
   const url = URL.createObjectURL(source);
   try {
     const image = new Image();
     await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("image")); image.src = url; });
     const canvas = document.createElement("canvas");
-    canvas.width = svg.viewBox.baseVal.width * scale;
-    canvas.height = svg.viewBox.baseVal.height * scale;
+    canvas.width = Math.floor(svg.viewBox.baseVal.width * scale);
+    canvas.height = Math.floor(svg.viewBox.baseVal.height * scale);
     const context = canvas.getContext("2d")!;
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
@@ -296,7 +309,7 @@ export function PocketChartPage() {
         className="print:hidden"
         back={{ href: "/charts", label: "Charts" }}
         title="Pocket chart"
-        sub="Every table on one card for your rules: basic strategy with Wong's index numbers. Print it on a 6×4 index card, or save it as an image for your phone."
+        sub="Every table on one card for your rules: basic strategy with Wong's index numbers. Print it on a 4×6 index card, or save it as an image for your phone."
       />
       <div className="no-print space-y-3">
         <RulesControl rules={rules} onChange={setRules} differsFromSaved={differsFromSaved} onSave={saveAsMine} onReset={resetToSaved} />

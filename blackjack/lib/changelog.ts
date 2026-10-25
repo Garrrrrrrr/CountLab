@@ -39,7 +39,8 @@ export const CHANGELOG: readonly ChangelogEntry[] = [
       {
         title: "Pocket chart",
         items: [
-          "A new layout: a header with your rules and the insurance count, a rounded panel for each table with a shaded dealer row, and three columns sized to print across a 6×4 card.",
+          "A new layout: a header with your rules and the insurance count, a rounded panel for each table with a shaded dealer row, and two tall columns that fill a phone screen and print on a 4×6 card held upright.",
+          "Saved images are about 16 megapixels, the most a phone will draw, so the numbers stay sharp when you zoom in.",
           "Light or dark colours. Your choice is remembered on this device and Download chart on the charts page uses it too. Dark images get “-dark” in the file name, and printing always uses light.",
           "A How to read it panel explains the colours, the index strips, the purple surrender corner, and the dash a surrender cell shows when you surrender only at a high enough count.",
           "A Notes panel gives the insurance count, the always-hit and always-stand totals, that indices assume a truncated true count, and any footnotes for your rules.",
