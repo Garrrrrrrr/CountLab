@@ -169,9 +169,9 @@ export function PlayActions({ game, busy, status, ev, onAct, onEv }: {
           </Button>
         )}
       </div>
-      {/* Five buttons share 288px on a 320px phone: smaller labels keep "Surrender" inside its button. */}
+      {/* The pad scales its labels with the screen width; only a short landscape phone needs them smaller still. */}
       <ActionPad onAnswer={onAct} available={legal} disabled={busy || !playing || waitForEv}
-        className="!gap-1 [&_button>span:first-child]:text-[0.6875rem] min-[360px]:[&_button>span:first-child]:text-[0.8125rem] sm:[&_button>span:first-child]:text-[0.9375rem] [@media(orientation:landscape)_and_(max-height:520px)]:[&_button>span:first-child]:!text-[0.75rem]" />
+        className="!gap-1 [@media(orientation:landscape)_and_(max-height:520px)]:[&_button>span:first-child]:!text-[0.75rem]" />
       {waitForEv && <p className="text-center text-xs text-ink-3">Working out the EV for this hole card…</p>}
     </div>
   );
