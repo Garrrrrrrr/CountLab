@@ -66,6 +66,8 @@ function save(game: FullShoeGame): ReportData {
         rounding: setup.rounding,
         unit: setup.unit,
         startingBankroll: setup.bankroll,
+        pace: game.pace(),
+        wong: setup.wong,
       },
       report,
       rounds: game.history,
@@ -154,6 +156,8 @@ export function FullShoe() {
       date: shoe.savedAt,
       startingBankroll: shoe.table.startingBankroll,
       unit: shoe.table.unit,
+      pace: shoe.table.pace,
+      wong: shoe.table.wong,
     };
     return <SavedShoeReport data={data} title={savedTitle(shoe)} onBack={() => setScreen({ name: "setup" })} />;
   }

@@ -45,7 +45,8 @@ const visible = (locator: ReturnType<Page["locator"]>) => locator.isVisible().ca
 async function finishRound(page: Page) {
   const between = page.getByRole("button", { name: /^(Deal|Watch a round)/ });
   for (let i = 0; i < 200 && !(await visible(between)); i++) {
-    const decline = page.locator("button:not([disabled])", { hasText: /^(No insurance|No, play it)/ });
+    // `(?! )` skips the coach note ("No insurance is right"), which is a button too.
+    const decline = page.locator("button:not([disabled])", { hasText: /^(No insurance|No, play it)(?! )/ });
     if (await visible(decline)) await decline.click();
     else if (await visible(ready(page, "Stand"))) await ready(page, "Stand").click();
     else await page.waitForTimeout(60);
@@ -85,7 +86,7 @@ test("a checkout stays silent, finishes the shoe, and files its report", async (
   for (let step = 0; step < 400; step++) {
     if (await page.getByRole("heading", { name: /Checkout report|Shoe ended early/ }).isVisible().catch(() => false)) break;
     const dealButton = page.getByRole("button", { name: /^Deal/ });
-    const decline = page.locator("button:not([disabled])", { hasText: /^(No insurance|No, play it)/ });
+    const decline = page.locator("button:not([disabled])", { hasText: /^(No insurance|No, play it)(?! )/ });
     const countCheck = page.getByTestId("count-check");
     if (await visible(countCheck)) {
       const prompt = (await countCheck.getByRole("heading").textContent()) ?? "";
@@ -226,12 +227,17 @@ test("casino pace counts a decision the clock ran out on as a mistake", async ({
   await endShoe(page);
   await expect(page.getByTestId("pace")).toContainText("3 s limit, 1 timed out");
   await expect(page.getByText("No decision (time ran out)").first()).toBeVisible();
+  // The saved shoe keeps its pace.
+  await page.getByRole("button", { name: "Change the setup" }).click();
+  await page.getByTestId("review-saved-shoe").click();
+  await expect(page.getByTestId("pace")).toContainText("3 s limit, 1 timed out");
 });
 
 test("back-counting watches the other seats, then grades sitting in", async ({ page }) => {
   await prepareGuest(page);
   await open(page);
   await page.getByRole("switch", { name: /Watch before you bet/ }).evaluate((input: HTMLInputElement) => input.click());
+  await seed(page, 1); // a shoe still below +2 after the watched round
   await start(page);
   await expect(page.getByTestId("watch-dock")).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a $5 chip" })).toHaveCount(0);
@@ -251,6 +257,10 @@ test("back-counting watches the other seats, then grades sitting in", async ({ p
   await expect(card).toContainText("You watched 1 of 2 rounds");
   await expect(card).toContainText("Keep watching, not sit in");
   await expect(page.getByTestId("cover")).toBeVisible();
+  // The saved shoe keeps its entry and exit plan.
+  await page.getByRole("button", { name: "Change the setup" }).click();
+  await page.getByTestId("review-saved-shoe").click();
+  await expect(page.getByTestId("back-counting")).toContainText("Sit in at +2 or higher");
 });
 
 test("report buttons are thumb-sized on a phone", async ({ page }, testInfo) => {

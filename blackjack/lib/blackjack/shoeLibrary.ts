@@ -26,6 +26,9 @@ export interface SavedShoeHeader {
     rounding?: "floor" | "truncate" | "nearest";
     unit?: number;
     startingBankroll?: number;
+    /** Added with the Full Shoe save fix; absent on older shoes. */
+    pace?: { secondsPerDecision?: number; handsPerHour?: number; timedOut: number; limit: number };
+    wong?: { enter: number; leave: number };
   };
   report: FullShoeReport;
 }

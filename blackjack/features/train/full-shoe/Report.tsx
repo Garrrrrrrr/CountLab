@@ -5,9 +5,10 @@ import { PlayingCard } from "@/components/blackjack";
 import { Badge, Button, Card, ProgressBar, cx, toast } from "@/components/ui";
 import { DrillSummary, ScoreDial } from "@/components/drill/DrillKit";
 import { GRADING_CATEGORIES, type FullShoeGradingCategory, type FullShoeLiveRound, type FullShoeMode, type FullShoeReport } from "@/lib/blackjack/fullShoeSession";
+import type { SavedShoeHeader } from "@/lib/blackjack/shoeLibrary";
 import { betJumps } from "@/lib/full-shoe/cover";
 import type { WongPlan } from "@/lib/full-shoe/grading";
-import { WONG_QUESTION, type FullShoeGame } from "@/lib/full-shoe/session";
+import { WONG_QUESTION } from "@/lib/full-shoe/session";
 import { GraderStrip, HistoryTable, RoundReplay } from "./HandReplay";
 import { durationLabel, money, signed } from "./format";
 
@@ -24,7 +25,7 @@ export interface ReportData {
   /** The table minimum, for the cover note. */
   unit?: number;
   /** Live shoes only: saved shoes keep neither. */
-  pace?: ReturnType<FullShoeGame["pace"]>;
+  pace?: SavedShoeHeader["table"]["pace"];
   wong?: WongPlan;
 }
 
