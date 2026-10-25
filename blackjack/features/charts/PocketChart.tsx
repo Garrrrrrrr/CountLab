@@ -1,9 +1,9 @@
 "use client";
-import { useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Download, Printer } from "lucide-react";
 import type { Action } from "@/lib/blackjack/types";
-import { Button, PageHeader, toast } from "@/components/ui";
-import { DEALERS, buildChart, cellKey, rowLabel, rulesSummary, type PlayTable, type SurrenderTable, type TableRules } from "@/lib/strategy";
+import { Button, PageHeader, Segmented, toast } from "@/components/ui";
+import { CORE_INDEX_COUNT, DEALERS, basicNeverWithCount, buildChart, cellKey, cellShortName, conflictNotes, indexList, rowLabel, rulesSummary, type PlayTable, type SurrenderTable, type TableRules } from "@/lib/strategy";
 import { RulesControl } from "./RulesControl";
 import { playCellView, surrenderCellView } from "./StrategyTable";
 import { useChartRules } from "./useChartRules";
@@ -18,6 +18,26 @@ const TABLE_W = LABEL + DEALERS.length * (CW + GAP);
 const tableHeight = (rows: number) => 22 + rows * (CH + GAP);
 
 interface View { action: Action | null; suffix?: string; strip?: { action: Action; label: string }; surrenderFlag?: boolean; note?: boolean }
+
+/** Which index strips the card prints: all of Wong's numbers, or only the learn-first Illustrious 18 and Fab 4. */
+export type PocketStrips = "all" | "core";
+const STRIPS_KEY = "countlab:pocket-strips";
+
+/** The remembered strip choice, a per-device convenience read after mount. */
+export function usePocketStrips(): [PocketStrips, (next: PocketStrips) => void] {
+  const [strips, setStrips] = useState<PocketStrips>("all");
+  useEffect(() => {
+    try { if (localStorage.getItem(STRIPS_KEY) === "core") setStrips("core"); } catch { /* storage unavailable */ }
+  }, []);
+  const choose = (next: PocketStrips) => {
+    setStrips(next);
+    try { localStorage.setItem(STRIPS_KEY, next); } catch { /* storage unavailable */ }
+  };
+  return [strips, choose];
+}
+
+/** Drops a cell's strip unless its index is in `keep` (keyed as `indexList` ids). */
+const only = (view: View, id: string, keep: Set<string> | null): View => (keep && view.strip && !keep.has(id) ? { ...view, strip: undefined } : view);
 
 function CellShape({ view, x, y }: { view: View; x: number; y: number }) {
   const ink = INK(view.action);
@@ -61,19 +81,26 @@ function Grid({ title, x, y, rows, view }: { title: string; x: number; y: number
   );
 }
 
-function playGrid(rules: TableRules, table: PlayTable, title: string, x: number, y: number) {
+function playGrid(rules: TableRules, table: PlayTable, title: string, x: number, y: number, keep: Set<string> | null) {
   const rows = table.rows.map((row) => ({ label: rowLabel(table.id, row), key: row }));
-  return <Grid title={title} x={x} y={y} rows={rows} view={(index, dealer) => playCellView(rules, table.cells.get(cellKey({ section: table.id, row: table.rows[index], dealer }))!, "indices", 0)} />;
+  return <Grid title={title} x={x} y={y} rows={rows} view={(index, dealer) => {
+    const key = cellKey({ section: table.id, row: table.rows[index], dealer });
+    return only(playCellView(rules, table.cells.get(key)!, "indices", 0), key, keep);
+  }} />;
 }
 
-function surrenderGrid(rules: TableRules, table: SurrenderTable, title: string, x: number, y: number) {
+function surrenderGrid(rules: TableRules, table: SurrenderTable, title: string, x: number, y: number, keep: Set<string> | null) {
   const rows = table.rows.map(({ row, section }) => ({ label: rowLabel(section, row), key: `${section}:${row}` }));
-  return <Grid title={title} x={x} y={y} rows={rows} view={(index, dealer) => surrenderCellView(rules, table, { ...table.rows[index], dealer }, "indices", 0)} />;
+  return <Grid title={title} x={x} y={y} rows={rows} view={(index, dealer) => {
+    const ref = { ...table.rows[index], dealer };
+    return only(surrenderCellView(rules, table, ref, "indices", 0), `R:${cellKey(ref)}`, keep);
+  }} />;
 }
 
 /** One card holding every table, sized for a 6×4 index card when printed. */
-export function PocketChartSvg({ rules, svgRef }: { rules: TableRules; svgRef?: React.Ref<SVGSVGElement> }) {
+export function PocketChartSvg({ rules, strips = "all", svgRef }: { rules: TableRules; strips?: PocketStrips; svgRef?: React.Ref<SVGSVGElement> }) {
   const chart = useMemo(() => buildChart(rules), [rules]);
+  const keep = useMemo(() => (strips === "core" ? new Set(indexList(rules).filter((entry) => entry.priority < CORE_INDEX_COUNT).map((entry) => entry.id)) : null), [rules, strips]);
   const { hard, soft, pairs } = chart.tables;
   const right = PAD + TABLE_W + COL_GAP;
   const top = 24;
@@ -82,9 +109,13 @@ export function PocketChartSvg({ rules, svgRef }: { rules: TableRules; svgRef?: 
   const leftEnd = softY + tableHeight(soft.rows.length);
   const rightEnd = chart.surrender ? surrenderY + tableHeight(chart.surrender.rows.length) : surrenderY - 6;
   const notesY = Math.max(leftEnd, rightEnd) + 12;
-  const never = chart.surrender ? [...chart.surrender.cells.entries()].filter(([, rule]) => rule.basic && rule.at === Infinity).map(([key]) => key.split(":")[1].replace("v", " v ")) : [];
+  const never = chart.surrender ? [...chart.surrender.cells.entries()].filter(([, rule]) => rule.basic && rule.at === Infinity).map(([key]) => cellShortName(key)) : [];
+  const footnotes = [
+    ...(never.length ? [`${never.join(", ")}: basic strategy surrenders; with a count, Wong never does.`] : []),
+    ...conflictNotes(rules, [hard, soft, pairs].flatMap((table) => [...table.cells.values()].filter(basicNeverWithCount))),
+  ];
   const width = right + TABLE_W + PAD;
-  const height = notesY + 22 + (never.length ? 9 : 0);
+  const height = notesY + 22 + footnotes.length * 9;
   const keyItems: [Action, string][] = [["H", "Hit"], ["S", "Stand"], ["D", "Double (Ds: else stand)"], ["P", "Split"], ...(chart.surrender ? [["R", "Surrender"] as [Action, string]] : [])];
   let keyX = PAD;
   const key: ReactNode[] = keyItems.map(([action, text]) => {
@@ -102,24 +133,22 @@ export function PocketChartSvg({ rules, svgRef }: { rules: TableRules; svgRef?: 
       role="img" aria-label={`Pocket strategy chart for ${rulesSummary(rules)}`} className="h-auto w-full print:h-[3.85in] print:w-auto">
       <rect width={width} height={height} fill="#ffffff" />
       <text x={PAD} y={14} fontSize={10} fontWeight={800} fill="#1f2430">
-        CountLab <tspan fontWeight={600} fill="#3a4050">· {rulesSummary(rules)} · Hi-Lo, Wong&apos;s indices · Insurance at +{chart.insuranceAt}</tspan>
+        CountLab <tspan fontWeight={600} fill="#3a4050">· {rulesSummary(rules)} · Hi-Lo, {strips === "core" ? "Illustrious 18 + Fab 4" : "Wong\u2019s indices"} · Insurance at +{chart.insuranceAt}</tspan>
       </text>
-      {playGrid(rules, hard, "Hard", PAD, top)}
-      {playGrid(rules, soft, "Soft", PAD, softY)}
-      {playGrid(rules, pairs, "Pairs", right, top)}
-      {chart.surrender && surrenderGrid(rules, chart.surrender, rules.surrender === "early" ? "Surrender first (early v 10, late otherwise)" : "Surrender first", right, surrenderY)}
+      {playGrid(rules, hard, "Hard", PAD, top, keep)}
+      {playGrid(rules, soft, "Soft", PAD, softY, keep)}
+      {playGrid(rules, pairs, "Pairs", right, top, keep)}
+      {chart.surrender && surrenderGrid(rules, chart.surrender, rules.surrender === "early" ? "Surrender first (early v 10, late otherwise)" : "Surrender first", right, surrenderY, keep)}
       {key}
       <text x={PAD} y={notesY + 12} fontSize={6.8} fill="#3a4050">
         Strip: the play from that true count (↑ or higher, ↓ or lower). Purple corner: surrender first if allowed. 18+ stands, 5–7 hits.
       </text>
-      {never.length > 0 && (
-        <text x={PAD} y={notesY + 21} fontSize={6.8} fill="#3a4050">* {never.join(", ")}: basic strategy surrenders; with a count, Wong never does.</text>
-      )}
+      {footnotes.map((note, line) => <text key={note} x={PAD} y={notesY + 21 + line * 9} fontSize={6.8} fill="#3a4050">* {note}</text>)}
     </svg>
   );
 }
 
-export const pocketFileName = (rules: TableRules) => `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}.png`;
+export const pocketFileName = (rules: TableRules, strips: PocketStrips = "all") => `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}${strips === "core" ? "-i18-fab4" : ""}.png`;
 
 /**
  * Saves the card as a PNG. On a phone the share sheet offers "Save Image" to the photo library,
@@ -161,8 +190,9 @@ export async function savePng(svg: SVGSVGElement, name: string) {
 
 export function PocketChartPage() {
   const { rules, setRules, differsFromSaved, saveAsMine, resetToSaved } = useChartRules();
+  const [strips, setStrips] = usePocketStrips();
   const svg = useRef<SVGSVGElement>(null);
-  const save = () => svg.current && savePng(svg.current, pocketFileName(rules)).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
+  const save = () => svg.current && savePng(svg.current, pocketFileName(rules, strips)).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
   return (
     <div>
       <PageHeader
@@ -173,13 +203,15 @@ export function PocketChartPage() {
       />
       <div className="no-print space-y-3">
         <RulesControl rules={rules} onChange={setRules} differsFromSaved={differsFromSaved} onSave={saveAsMine} onReset={resetToSaved} />
+        <Segmented label="Index strips" value={strips} onChange={setStrips} className="sm:w-96"
+          options={[{ value: "all", label: "All of Wong’s", hint: "Every index Wong prints for these rules" }, { value: "core", label: "I18 + Fab 4", hint: "Only the Illustrious 18 and Fab 4, the indices to learn first" }]} />
         <div className="flex flex-wrap gap-2">
           <Button icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
           <Button variant="secondary" icon={<Download size={16} aria-hidden />} onClick={save}>Save image</Button>
         </div>
       </div>
       <div className="card mt-4 overflow-hidden p-1 print:mt-0 print:border-0 print:p-0">
-        <PocketChartSvg rules={rules} svgRef={svg} />
+        <PocketChartSvg rules={rules} strips={strips} svgRef={svg} />
       </div>
     </div>
   );

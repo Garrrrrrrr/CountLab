@@ -5,7 +5,7 @@ import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { Sheet } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
-import { SOURCE_NAME, basicPlay, countLadder, handLabel, playIndex, rulesSummary, signedCount, surrenderRule, thresholdPhrase, wongSource, type CellRef, type LadderSegment, type TableRules } from "@/lib/strategy";
+import { SOURCE_NAME, basicNeverWithCount, basicPlay, conflictNotes, countLadder, handLabel, playIndex, rulesSummary, signedCount, surrenderRule, thresholdPhrase, wongSource, type CellRef, type LadderSegment, type TableRules } from "@/lib/strategy";
 
 const LADDER_MIN = -6;
 const LADDER_MAX = 10;
@@ -116,9 +116,16 @@ export function CellSheet({ rules, cell, open, onClose, tc }: {
           </p>
         )}
 
+        {basicNeverWithCount({ index }) && (
+          <p className="rounded-xl bg-surface-2 p-3 text-sm leading-6 text-ink-2">
+            {conflictNotes(rules, [{ ref: cell, basic, index, surrenderFirst: false }])[0]} With a count, follow Wong.
+          </p>
+        )}
+
         <p className="text-xs leading-5 text-ink-3">
           Numbers: {[SOURCE_NAME[wongSource(rules)], surrender?.source && SOURCE_NAME[surrender.source]].filter(Boolean).filter((value, position, all) => all.indexOf(value) === position).join(" · ")}.
           {rules.decks > 1 && rules.decks !== 4 && ` Wong's four-deck numbers, which he gives for every multiple-deck game.`}
+          {" "}They assume the true count truncated toward zero: +2.7 counts as +2, −2.7 as −2.
           {" "}Basic strategy, the play with no count, is checked against an exact calculation for these rules.
         </p>
 

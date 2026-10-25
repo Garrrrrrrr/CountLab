@@ -68,6 +68,33 @@ export function buildChart(rules: TableRules): StrategyChart {
   };
 }
 
+/**
+ * Basic strategy makes a play that Wong's numbers make at no count: exact two-deck DAS basic
+ * strategy splits 6,6 v 7, but his multiple-deck numbers hit it at every count. The chart keeps
+ * both and footnotes the cell.
+ */
+export const basicNeverWithCount = (cell: Pick<ChartCell, "index">) => cell.index?.at === -Infinity;
+
+const ACTION_VERB: Record<Action, string> = { H: "hit", S: "stand", D: "double", P: "split", R: "surrender" };
+const CELL_PLURAL: Record<Action, string> = { H: "hits", S: "stands", D: "doubles", P: "splits", R: "surrenders" };
+
+/** "6,6 v 7", the short name a footnote gives a cell. */
+export const cellShortName = (key: string) => key.split(":")[1].replace("v", " v ");
+
+/** One footnote per kind of conflict among `cells` (those `basicNeverWithCount` flags). */
+export function conflictNotes(rules: TableRules, cells: readonly ChartCell[]): string[] {
+  const groups = new Map<string, string[]>();
+  for (const cell of cells) {
+    const kind = `${cell.basic.action}${cell.index!.play}`;
+    groups.set(kind, [...(groups.get(kind) ?? []), cellShortName(cellKey(cell.ref))]);
+  }
+  // The exact-EV audit covers peek games only (audit.test.ts).
+  const exact = rules.noHoleCard ? "" : `, exact for ${rules.decks === 1 ? "one deck" : `${rules.decks} decks`},`;
+  const multi = rules.decks > 1 ? " (CountLab uses his four-deck numbers for every multiple-deck game)" : "";
+  return [...groups].map(([kind, names]) =>
+    `${names.join(", ")}: basic strategy${exact} ${CELL_PLURAL[kind[0] as Action]}; Wong's numbers ${ACTION_VERB[kind[1] as Action]} at every count${multi}.`);
+}
+
 function buildSurrenderTable(rules: TableRules): SurrenderTable | null {
   if (effectiveSurrender(rules) === "none") return null;
   const rows: { row: string; section: Section }[] = [];

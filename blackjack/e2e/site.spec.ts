@@ -44,6 +44,8 @@ test.describe("pages", () => {
   test("unknown addresses get the not-found page", async ({ page }) => {
     await page.goto("/no-such-page/");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(page).toHaveTitle(/^Page not found/);
+    await expect(page.locator("main")).not.toContainText("redesign");
   });
 });
 
@@ -84,6 +86,18 @@ test.describe("strategy charts", () => {
     await expect(cell(page, "Surrender Hard 14 versus dealer 10")).toHaveAccessibleName(/surrender, unless the true count is −1 or lower/);
   });
 
+  test("footnote a cell where basic strategy and Wong never agree", async ({ page }) => {
+    // Exact two-deck DAS basic strategy splits 6,6 v 7; Wong's multiple-deck numbers hit it at every count.
+    await page.goto("/charts/?decks=2&soft17=h17&das=1&surrender=late");
+    await expect(cell(page, "Pair of 6s versus dealer 7")).toHaveAccessibleName(/Split.*Wong's numbers hit at every count \(see the note under the table\)/);
+    await expect(page.locator("#pairs")).toContainText("* 6,6 v 7: basic strategy, exact for 2 decks, splits; Wong's numbers hit at every count");
+    await cell(page, "Pair of 6s versus dealer 7").click();
+    await expect(page.getByRole("dialog")).toContainText("With a count, follow Wong.");
+    await expect(page.getByRole("dialog")).toContainText("truncated toward zero");
+    await page.goto("/charts/pocket/?decks=2&soft17=h17&das=1&surrender=late");
+    await expect(page.getByRole("img", { name: /Pocket strategy chart/ })).toContainText("* 6,6 v 7: basic strategy, exact for 2 decks, splits");
+  });
+
   test("show every play at a chosen count and explain a cell", async ({ page }) => {
     await page.goto("/charts/");
     await choose(page.getByRole("radio", { name: "At a count" }));
@@ -116,6 +130,24 @@ test.describe("strategy charts", () => {
     await expect(card).toBeVisible();
     await expect(card).not.toContainText("Surrender first");
     await expect(page.getByRole("button", { name: "Save image" })).toBeVisible();
+  });
+
+  test("pocket chart can print only the Illustrious 18 and Fab 4, and remembers it", async ({ page, hasTouch }) => {
+    await page.goto("/charts/pocket/?decks=6&soft17=h17&das=1&surrender=late");
+    const card = page.getByRole("img", { name: /Pocket strategy chart/ });
+    await expect(card).toContainText("Wong’s indices");
+    await choose(page.getByRole("radio", { name: "I18 + Fab 4" }));
+    await expect(card).toContainText("Illustrious 18 + Fab 4");
+    await page.reload();
+    await expect(page.getByRole("radio", { name: "I18 + Fab 4" })).toBeChecked();
+    // The charts page's download uses the same choice.
+    await page.goto("/charts/?decks=6&soft17=h17&das=1&surrender=late");
+    if (!hasTouch) {
+      const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download chart" }).filter({ visible: true }).click()]);
+      expect(download.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-i18-fab4.png");
+    }
+    // Phones open the pocket card from a button that says so.
+    await expect(page.getByRole("link", { name: "Pocket chart" }).filter({ visible: true }).first()).toBeVisible();
   });
 
   test("download the chart from the charts page on any screen size", async ({ page, hasTouch }) => {

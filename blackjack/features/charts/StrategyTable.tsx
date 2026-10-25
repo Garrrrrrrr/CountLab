@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { cx } from "@/components/ui/cx";
-import { DEALERS, cellDecision, cellKey, handLabel, signedCount, thresholdPhrase, type CellRef, type ChartCell, type Dealer, type PlayTable, type StrategyChart, type SurrenderTable, type TableRules } from "@/lib/strategy";
+import { DEALERS, basicNeverWithCount, cellDecision, cellKey, handLabel, signedCount, thresholdPhrase, type CellRef, type ChartCell, type Dealer, type PlayTable, type StrategyChart, type SurrenderTable, type TableRules } from "@/lib/strategy";
 
 export type ChartMode = "basic" | "indices" | "count";
 
@@ -98,12 +98,16 @@ export function playCellView(rules: TableRules, cell: ChartCell, mode: ChartMode
     };
   }
   const index = mode === "indices" ? cell.index : undefined;
+  const conflict = basicNeverWithCount(cell);
+  const countText = !index ? "" : conflict ? `. With a count, Wong's numbers ${ACTION_NAME[index.play].toLowerCase()} at every count (see the note under the table)` : `. ${ACTION_NAME[index.play]} ${thresholdPhrase(index)}`;
   return {
     action: cell.basic.action,
     suffix: suffixFor(cell.basic.action, cell.basic.fallback),
     strip: index ? { action: index.play, label: stripLabel(index.at, index.dir) } : undefined,
     surrenderFlag: cell.surrenderFirst,
-    label: `${name}: ${basicText}${index ? `. ${ACTION_NAME[index.play]} ${thresholdPhrase(index)}` : ""}${surrenderNote}`,
+    // Basic strategy's play is one Wong's numbers never make: footnoted under the table.
+    note: conflict,
+    label: `${name}: ${basicText}${countText}${surrenderNote}`,
   };
 }
 
@@ -158,7 +162,7 @@ function DealerHeader() {
 
 export function TableFrame({ id, title, sub, children, aside }: { id: string; title: string; sub?: ReactNode; children: ReactNode; aside?: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-28 break-inside-avoid lg:scroll-mt-6">
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-32 break-inside-avoid lg:scroll-mt-6">
       <div className="mb-2 flex items-end justify-between gap-3 print:mb-1">
         <div>
           <h2 id={`${id}-title`} className="text-lg font-semibold">{title}</h2>

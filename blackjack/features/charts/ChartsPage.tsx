@@ -6,10 +6,10 @@ import type { Action } from "@/lib/blackjack/types";
 import { ACTION_FILL, ACTION_NAME } from "@/components/blackjack/actions";
 import { Button, ButtonLink, Card, PageHeader, Segmented, Stepper, toast } from "@/components/ui";
 import { cx } from "@/components/ui/cx";
-import { buildChart, cellKey, effectiveSurrender, rulesSummary, signedCount, type CellRef } from "@/lib/strategy";
+import { basicNeverWithCount, buildChart, cellKey, cellShortName, conflictNotes, effectiveSurrender, rulesSummary, signedCount, type CellRef, type PlayTable } from "@/lib/strategy";
 import { RulesControl } from "./RulesControl";
 import { CellSheet } from "./CellSheet";
-import { PocketChartSvg, pocketFileName, savePng } from "./PocketChart";
+import { PocketChartSvg, pocketFileName, savePng, usePocketStrips } from "./PocketChart";
 import { PlayTableView, SurrenderTableView, TableFrame, type ChartMode } from "./StrategyTable";
 import { useChartRules } from "./useChartRules";
 
@@ -28,6 +28,10 @@ export function ChartsPage() {
   const surrender = effectiveSurrender(rules);
   // Hands basic strategy surrenders but Wong never does with a count: footnoted.
   const neverWithCount = chart.surrender ? [...chart.surrender.cells.entries()].filter(([, rule]) => rule.basic && rule.at === Infinity) : [];
+  const footnote = (table: PlayTable) => {
+    const notes = conflictNotes(rules, [...table.cells.values()].filter(basicNeverWithCount));
+    return notes.length > 0 && <p className="mt-2 text-xs leading-5 text-ink-3">{notes.map((note) => `* ${note}`).join(" ")}</p>;
+  };
   const select = (ref: CellRef, surrenderTable = false) => setSelected({ ref, key: surrenderTable ? `R:${cellKey(ref)}` : cellKey(ref) });
   const sections = [
     { id: "hard", label: "Hard" },
@@ -37,8 +41,10 @@ export function ChartsPage() {
     { id: "insurance", label: "Insurance" },
   ];
   const tableProps = { rules, mode, tc, selected: selected?.key };
+  // The download saves the pocket card with the strips chosen on the pocket chart page.
+  const [strips] = usePocketStrips();
   const pocket = useRef<SVGSVGElement>(null);
-  const download = () => pocket.current && savePng(pocket.current, pocketFileName(rules)).catch(() => toast("Couldn’t make the image. Try Print instead."));
+  const download = () => pocket.current && savePng(pocket.current, pocketFileName(rules, strips)).catch(() => toast("Couldn’t make the image. Try Print instead."));
   const downloadButton = (className?: string) => <Button size="sm" className={className} icon={<Download size={16} aria-hidden />} onClick={download}>Download chart</Button>;
 
   return (
@@ -62,7 +68,7 @@ export function ChartsPage() {
         <RulesControl rules={rules} onChange={setRules} differsFromSaved={differsFromSaved} onSave={saveAsMine} onReset={resetToSaved} />
         <div className="flex gap-2 sm:hidden">
           {downloadButton("flex-1")}
-          <ButtonLink href="/charts/pocket" variant="secondary" size="sm" icon={<WalletCards size={16} aria-hidden />}>Preview</ButtonLink>
+          <ButtonLink href="/charts/pocket" variant="secondary" size="sm" icon={<WalletCards size={16} aria-hidden />}>Pocket chart</ButtonLink>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <Segmented label="Show" hideLabel value={mode} onChange={setMode} options={MODES} className="sm:w-96" />
@@ -77,11 +83,11 @@ export function ChartsPage() {
         </p>
       </div>
 
-      <nav aria-label="Chart sections" className="no-print sticky top-[calc(3.5rem+var(--safe-t))] z-20 -mx-4 mt-4 border-b border-line bg-bg/90 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
-        <ul className="scrollbar-none flex gap-1.5 overflow-x-auto">
+      <nav aria-label="Chart sections" className="no-print sticky top-[calc(3.5rem+var(--safe-t))] z-20 -mx-4 mt-4 border-b border-line bg-bg/90 px-4 py-1.5 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:hidden">
+        <ul className="scrollbar-none scroll-fade-x flex gap-1.5 overflow-x-auto">
           {sections.map((section) => (
             <li key={section.id}>
-              <a href={`#${section.id}`} className="inline-flex h-9 items-center rounded-full border border-line bg-surface px-3.5 text-sm font-semibold text-ink-2 hover:text-ink">{section.label}</a>
+              <a href={`#${section.id}`} className="inline-flex h-11 items-center rounded-full border border-line bg-surface px-3.5 text-sm font-semibold text-ink-2 hover:text-ink">{section.label}</a>
             </li>
           ))}
         </ul>
@@ -92,12 +98,15 @@ export function ChartsPage() {
       <div className="mt-5 grid gap-6 lg:grid-cols-2 print:mt-2 print:grid-cols-2 print:gap-x-4 print:gap-y-2">
         <TableFrame id="hard" title="Hard totals" sub="No ace, or every ace counted as 1. 18+ always stands; 5–7 always hits.">
           <PlayTableView table={chart.tables.hard} onSelect={(ref) => select(ref)} {...tableProps} />
+          {footnote(chart.tables.hard)}
         </TableFrame>
         <TableFrame id="soft" title="Soft totals" sub="An ace still counted as 11. Soft 21 stands; a soft 12 (A,A unsplit) hits.">
           <PlayTableView table={chart.tables.soft} onSelect={(ref) => select(ref)} {...tableProps} />
+          {footnote(chart.tables.soft)}
         </TableFrame>
         <TableFrame id="pairs" title="Pairs" sub={rules.das ? "Double after split allowed." : "No double after split."}>
           <PlayTableView table={chart.tables.pairs} onSelect={(ref) => select(ref)} {...tableProps} />
+          {footnote(chart.tables.pairs)}
         </TableFrame>
         <div className="space-y-6">
           {chart.surrender ? (
@@ -105,14 +114,14 @@ export function ChartsPage() {
               <SurrenderTableView table={chart.surrender} onSelect={(ref) => select(ref, true)} {...tableProps} />
               {neverWithCount.length > 0 && (
                 <p className="mt-2 text-xs leading-5 text-ink-3">
-                  * {neverWithCount.map(([key]) => key.split(":")[1].replace("v", " v ")).join(", ")}: basic strategy surrenders, but Wong prints no surrender number, so with a count {neverWithCount.length > 1 ? "these hands are" : "this hand is"} played out at every count.
+                  * {neverWithCount.map(([key]) => cellShortName(key)).join(", ")}: basic strategy surrenders, but Wong prints no surrender number, so with a count {neverWithCount.length > 1 ? "these hands are" : "this hand is"} played out at every count.
                 </p>
               )}
             </TableFrame>
           ) : (
             <Card className="text-sm text-ink-2"><span className="font-semibold text-ink">No surrender</span> at this table, so the hard and pair tables are the whole story.</Card>
           )}
-          <section id="insurance" className="scroll-mt-28 lg:scroll-mt-6">
+          <section id="insurance" className="scroll-mt-32 lg:scroll-mt-6">
             <Card className="flex items-center gap-4 print:p-2">
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand/15 font-mono text-lg font-bold text-brand-text">+{chart.insuranceAt}</div>
               <div className="min-w-0">
@@ -136,7 +145,7 @@ export function ChartsPage() {
       </div>
 
       {/* The one-card chart the download button saves. */}
-      <div hidden><PocketChartSvg rules={rules} svgRef={pocket} /></div>
+      <div hidden><PocketChartSvg rules={rules} strips={strips} svgRef={pocket} /></div>
       <CellSheet rules={rules} cell={selected?.ref ?? null} open={Boolean(selected)} onClose={() => setSelected(null)} tc={mode === "count" ? tc : undefined} />
     </div>
   );
@@ -183,7 +192,7 @@ function Legend({ mode, hasSurrender }: { mode: ChartMode; hasSurrender: boolean
 
 function RuleNotes({ rules }: { rules: ReturnType<typeof useChartRules>["rules"] }) {
   const notes: ReactNode[] = [];
-  if (rules.decks <= 2) notes.push("The index numbers come from shoe games (4–8 decks). Single- and double-deck values can sit a count away; basic strategy here is the exact grid for your deck count.");
+  if (rules.decks === 2) notes.push("The index numbers are Wong's four-deck ones, which he gives for every multiple-deck game; a double-deck value can sit a count away. Basic strategy here is the exact grid for two decks.");
   if (effectiveSurrender(rules) === "early") {
     notes.push("Early surrender against a 10 is decided before the dealer checks for blackjack, so more hands are worth giving up. Against an ace the late-surrender plays apply.");
     if (rules.decks === 1) notes.push("Single deck: play hard 14 against a 10 on (10-4 and 9-5 are worth keeping; only 8-6 should be surrendered).");
@@ -192,14 +201,14 @@ function RuleNotes({ rules }: { rules: ReturnType<typeof useChartRules>["rules"]
   }
   if (rules.noHoleCard) notes.push("No hole card: against a 10 or ace, do not double, and split only aces against a 10 — a dealer blackjack would take the extra money.");
   if (rules.doubling !== "any") notes.push(`Doubling on hard ${rules.doubling.replace("-", "–")} only, so other doubles become hits (soft doubles stand or hit).`);
-  notes.push("A true count is the running count divided by the decks left. Indices are whole numbers: +4 means a true count of +4 or more.");
+  notes.push("A true count is the running count divided by the decks left. Wong's indices assume it truncated toward zero: +2.7 counts as +2, −2.7 as −2. +4 means a true count of +4 or more.");
   return (
     <Card>
       <h2 className="mb-2 text-base font-semibold">Notes for these rules</h2>
       <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6 text-ink-2">
         {notes.map((note, index) => <li key={index}>{note}</li>)}
       </ul>
-      <p className="mt-3 text-sm"><Link href="/charts/indices" className="font-semibold text-brand-text underline underline-offset-2">See every index ranked</Link></p>
+      <p className="mt-1 text-sm"><Link href="/charts/indices" className="inline-flex min-h-11 items-center font-semibold text-brand-text underline underline-offset-2">See every index ranked</Link></p>
     </Card>
   );
 }
