@@ -4,7 +4,7 @@ import { ArrowLeft, LoaderCircle, Pencil, Share2, Shuffle, Trash } from "lucide-
 import { Button, Callout, cx } from "@/components/ui";
 import { track } from "@/lib/analytics/track";
 import { HEAT_LABEL, isJournalDate, type JournalSession } from "@/lib/blackjack/journal";
-import { classifySessionAssessment, sessionZScore, type TheoreticalOutcome } from "@/lib/blackjack/journalAnalysis";
+import { classifySessionAssessment, sessionRounds, sessionZScore, type TheoreticalOutcome } from "@/lib/blackjack/journalAnalysis";
 import { gameFromSession, handsSummary, rulesSummary, spreadLabel } from "@/lib/blackjack/journalForm";
 import { hoursLabel, longDate, money, percent, plural, signedMoney } from "@/lib/blackjack/journalFormat";
 import { ShoeSimulationCancelled, simulateShoeSession, type ShoeSimulationResult } from "@/lib/blackjack/shoeSimulation";
@@ -53,7 +53,7 @@ export function SessionDetailsSheet({ session, outcome, bankrollName, onEdit, on
   const assessment = classifySessionAssessment(sessionZScore(session, outcome));
   const created = new Date(session.createdAt);
   const hands = simulationHands(session);
-  const totalHands = Math.round(session.handsPerHour * session.hours);
+  const totalHands = Math.round(sessionRounds(session));
 
   const simulate = async () => {
     const token = { cancelled: false };

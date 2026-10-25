@@ -6,6 +6,7 @@
 import { isJournalDate, journalLibrary, sessionsInRange, type BankrollTransaction, type JournalSession } from "@/lib/blackjack/journal";
 import { money, shortDate } from "@/lib/blackjack/journalFormat";
 import { newestFirst } from "@/lib/blackjack/journalView";
+import { sessionRounds } from "@/lib/blackjack/journalAnalysis";
 
 interface StorageLike {
   getItem(key: string): string | null;
@@ -179,9 +180,9 @@ export const cashLabel = (transaction: Pick<BankrollTransaction, "type" | "amoun
 /** The most hands the details sheet simulates: enough to show several shoes, quick enough to run in the page. */
 export const SIMULATION_HAND_CAP = 2000;
 
-/** Hands a session's game would deal, capped for the in-page simulation; 0 when there is nothing to simulate. */
-export function simulationHands(session: Pick<JournalSession, "handsPerHour" | "hours" | "ramp">): number {
-  const hands = Math.round(session.handsPerHour * session.hours);
+/** Hands a session dealt (its recorded rounds, else hours × pace), capped for the in-page simulation; 0 when there is nothing to simulate. */
+export function simulationHands(session: Pick<JournalSession, "handsPerHour" | "hours" | "ramp" | "details">): number {
+  const hands = Math.round(sessionRounds(session));
   if (!(hands >= 1) || !session.ramp.some((point) => point.units > 0)) return 0;
   return Math.min(hands, SIMULATION_HAND_CAP);
 }

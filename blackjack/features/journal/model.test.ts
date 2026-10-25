@@ -137,6 +137,7 @@ describe("labels", () => {
 
   it("caps the simulated hands and skips a game that bets nothing", () => {
     expect(simulationHands({ handsPerHour: 100, hours: 1.5, ramp: RAMPS["1-8"] })).toBe(150);
+    expect(simulationHands({ handsPerHour: 100, hours: 1.5, ramp: RAMPS["1-8"], details: { roundsPlayed: 310 } })).toBe(310);
     expect(simulationHands({ handsPerHour: 100, hours: 80, ramp: RAMPS["1-8"] })).toBe(SIMULATION_HAND_CAP);
     expect(simulationHands({ handsPerHour: 100, hours: 0, ramp: RAMPS["1-8"] })).toBe(0);
     expect(simulationHands({ handsPerHour: 100, hours: 2, ramp: [{ trueCount: -8, units: 0 }] })).toBe(0);
