@@ -60,9 +60,14 @@ function useDevicePref<T extends string>(key: string, allowed: readonly T[], ini
   return [value, choose];
 }
 
+/** The card's shape: one long column to scroll on a phone, or two columns for a screen or a printed card. */
+export type PocketLayout = "phone" | "card";
+
 const STRIP_CHOICES = ["all", "core"] as const;
 const THEME_CHOICES = ["light", "dark"] as const;
+const LAYOUT_CHOICES = ["phone", "card"] as const;
 export const usePocketStrips = () => useDevicePref<PocketStrips>("countlab:pocket-strips", STRIP_CHOICES, "all");
+export const usePocketLayout = () => useDevicePref<PocketLayout>("countlab:pocket-layout", LAYOUT_CHOICES, "card", () => (window.matchMedia("(max-width: 639.98px)").matches ? "phone" : "card"));
 
 /** The card's colours: the reader's last choice, else whatever the site is showing now. */
 export const usePocketTheme = () => useDevicePref<PocketTheme>("countlab:pocket-theme", THEME_CHOICES, "light", () => {
@@ -133,9 +138,9 @@ function Grid({ title, caption, x, y, height, rows, view, palette }: {
   );
 }
 
-/** One card holding every table, in two columns: tall like a phone screen, and a 4×6 index card held upright when printed. */
-export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef, className }: {
-  rules: TableRules; strips?: PocketStrips; theme?: PocketTheme; svgRef?: React.Ref<SVGSVGElement>; className?: string;
+/** One card holding every table: two columns, a 4×6 index card held upright when printed, or one long column for a phone. */
+export function PocketChartSvg({ rules, strips = "all", theme = "light", layout = "card", svgRef, className }: {
+  rules: TableRules; strips?: PocketStrips; theme?: PocketTheme; layout?: PocketLayout; svgRef?: React.Ref<SVGSVGElement>; className?: string;
 }) {
   const chart = useMemo(() => buildChart(rules), [rules]);
   const keep = useMemo(() => (strips === "core" ? new Set(indexList(rules).filter((entry) => entry.priority < CORE_INDEX_COUNT).map((entry) => entry.id)) : null), [rules, strips]);
@@ -154,7 +159,7 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
     ...footnotes.map((note) => `* ${note}`),
   ].flatMap((note) => wrap(note, PANEL_W - 2 * INSET, 7.2));
 
-  const width = PAD + 2 * PANEL_W + COL_GAP + PAD;
+  const width = PAD + (layout === "phone" ? PANEL_W : 2 * PANEL_W + COL_GAP) + PAD;
   const subtitle = `Basic strategy with Hi-Lo, ${strips === "core" ? "Illustrious 18 + Fab 4" : "Wong’s indices"}`;
 
   // Rule pills, right-aligned with the insurance count last; a second row when they would reach the title.
@@ -165,11 +170,13 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
   const rulePills = rulesSummary(rules).split(" · ").filter(Boolean).reverse().map(pillAt);
   const pillY = pillX + 5 < PAD + 34 + textWidth(subtitle, 8) + 12 ? PAD + 31 : PAD + 3;
 
-  // Two columns, a table heading each with panels stacked under it. The key goes on whichever side
-  // evens out the heights, and the last panel in a column runs to the bottom.
+  // Panels stacked in columns: one for a phone, else two with the key on whichever side evens out
+  // the heights. The last panel in a column runs to the bottom.
   type Slot = "hard" | "soft" | "pairs" | "surrender" | "key" | "notes";
   const right: Slot[] = surrender ? ["pairs", "surrender"] : ["pairs"];
-  const options: Slot[][][] = [[["hard", "soft", "notes"], [...right, "key"]], [["hard", "soft", "key"], [...right, "notes"]]];
+  const options: Slot[][][] = layout === "phone"
+    ? [[["hard", "soft", ...right, "key", "notes"]]]
+    : [[["hard", "soft", "notes"], [...right, "key"]], [["hard", "soft", "key"], [...right, "notes"]]];
   const minimum: Record<Slot, number> = {
     hard: panelHeight(hard.rows.length), soft: panelHeight(soft.rows.length), pairs: panelHeight(pairs.rows.length),
     surrender: surrender ? panelHeight(surrender.rows.length) : 0, key: surrender ? 184 : 122, notes: 30 + notes.length * 10.5,
@@ -255,8 +262,8 @@ export function PocketChartSvg({ rules, strips = "all", theme = "light", svgRef,
   );
 }
 
-export const pocketFileName = (rules: TableRules, strips: PocketStrips = "all", theme: PocketTheme = "light") =>
-  `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}${strips === "core" ? "-i18-fab4" : ""}${theme === "dark" ? "-dark" : ""}.png`;
+export const pocketFileName = (rules: TableRules, strips: PocketStrips = "all", theme: PocketTheme = "light", layout: PocketLayout = "card") =>
+  `countlab-chart-${rulesSummary(rules).replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}${strips === "core" ? "-i18-fab4" : ""}${theme === "dark" ? "-dark" : ""}${layout === "phone" ? "-phone" : ""}.png`;
 
 /**
  * Saves the card as a PNG. On a phone the share sheet offers "Save Image" to the photo library,
@@ -301,8 +308,10 @@ export function PocketChartPage() {
   const { rules, setRules, differsFromSaved, saveAsMine, resetToSaved } = useChartRules();
   const [strips, setStrips] = usePocketStrips();
   const [theme, setTheme] = usePocketTheme();
+  const [layout, setLayout] = usePocketLayout();
   const svg = useRef<SVGSVGElement>(null);
-  const save = () => svg.current && savePng(svg.current, pocketFileName(rules, strips, theme)).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
+  const save = () => svg.current && savePng(svg.current, pocketFileName(rules, strips, theme, layout)).catch(() => toast("Couldn’t make the image. Try Print and save as PDF instead."));
+  const printCopy = theme === "dark" || layout === "phone";
   return (
     <div>
       <PageHeader
@@ -318,17 +327,19 @@ export function PocketChartPage() {
             options={[{ value: "all", label: "All of Wong’s", hint: "Every index Wong prints for these rules" }, { value: "core", label: "I18 + Fab 4", hint: "Only the Illustrious 18 and Fab 4, the indices to learn first" }]} />
           <Segmented label="Card colours" value={theme} onChange={setTheme} className="w-full sm:w-56"
             options={[{ value: "light", label: "Light", hint: "Prints and saves light" }, { value: "dark", label: "Dark", hint: "Saves dark; printing stays light" }]} />
+          <Segmented label="Shape" value={layout} onChange={setLayout} className="w-full sm:w-56"
+            options={[{ value: "phone", label: "Phone", hint: "One long column to scroll through" }, { value: "card", label: "Card", hint: "Two columns; printing always uses this" }]} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button icon={<Printer size={16} aria-hidden />} onClick={() => window.print()}>Print</Button>
           <Button variant="secondary" icon={<Download size={16} aria-hidden />} onClick={save}>Save image</Button>
         </div>
       </div>
-      <div className={`mt-4 overflow-hidden rounded-2xl border border-line print:mt-0 print:rounded-none print:border-0 ${theme === "dark" ? "print:hidden" : ""}`}>
-        <PocketChartSvg rules={rules} strips={strips} theme={theme} svgRef={svg} />
+      <div className={`mt-4 overflow-hidden rounded-2xl border border-line print:mt-0 print:rounded-none print:border-0 ${layout === "phone" ? "mx-auto max-w-md" : ""} ${printCopy ? "print:hidden" : ""}`}>
+        <PocketChartSvg rules={rules} strips={strips} theme={theme} layout={layout} svgRef={svg} />
       </div>
-      {/* Paper always gets the light card. */}
-      {theme === "dark" && <div className="hidden print:block"><PocketChartSvg rules={rules} strips={strips} /></div>}
+      {/* Paper always gets the light two-column card. */}
+      {printCopy && <div className="hidden print:block"><PocketChartSvg rules={rules} strips={strips} /></div>}
     </div>
   );
 }

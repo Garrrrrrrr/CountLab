@@ -162,15 +162,18 @@ test.describe("strategy charts", () => {
     await expect(page.getByRole("link", { name: "Pocket chart" }).filter({ visible: true }).first()).toBeVisible();
   });
 
-  test("pocket chart colours are remembered and name the download", async ({ page, hasTouch }) => {
+  test("pocket chart colours and shape are remembered and name the download", async ({ page, hasTouch }) => {
     test.skip(hasTouch, "Phones save through the share sheet, covered below.");
     await page.goto("/charts/pocket/?decks=6&soft17=h17&das=1&surrender=late");
     await choose(page.getByRole("radio", { name: "Dark" }));
     const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save image" }).click()]);
     expect(download.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark.png");
+    await choose(page.getByRole("radio", { name: "Phone" }));
+    const [long] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Save image" }).click()]);
+    expect(long.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark-phone.png");
     await page.goto("/charts/?decks=6&soft17=h17&das=1&surrender=late");
     const [fromCharts] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download chart" }).filter({ visible: true }).click()]);
-    expect(fromCharts.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark.png");
+    expect(fromCharts.suggestedFilename()).toBe("countlab-chart-6d-h17-das-ls-dark-phone.png");
   });
 
   test("download the chart from the charts page on any screen size", async ({ page, hasTouch }) => {
@@ -183,7 +186,8 @@ test.describe("strategy charts", () => {
     await page.goto("/charts/?decks=6&soft17=h17&das=1&surrender=early");
     const button = page.getByRole("button", { name: "Download chart" }).filter({ visible: true });
     await expect(button).toHaveCount(1);
-    const name = "countlab-chart-6d-h17-das-es10.png";
+    // Phone-width screens save the one-column shape unless the reader picked another.
+    const name = `countlab-chart-6d-h17-das-es10${page.viewportSize()!.width < 640 ? "-phone" : ""}.png`;
     if (hasTouch) {
       await button.click();
       await expect.poll(() => page.evaluate(() => (window as unknown as { shared: string[] }).shared)).toEqual([`${name} image/png`]);
