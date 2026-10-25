@@ -87,6 +87,55 @@ export function requiredBankroll(
   return (-variancePerRound * Math.log(targetRisk)) / (2 * meanPerRound);
 }
 
+/** SCORE of a ramp in betting units: EV² / variance per round, which is scale-free. */
+function rampScore(rules: AdvantageRules, ramp: RampPoint[], ruleAdjustment: number) {
+  const result = calculateAdvantage({ bankroll: 1, bettingUnit: 1, handsPerHour: 1, hours: 1, rules, ramp, ruleAdjustment });
+  return result.evPerRound > 0 && result.sdPerRound > 0 ? result.evPerRound ** 2 / result.sdPerRound ** 2 : 0;
+}
+
+/**
+ * Harris's spread-limited optimal bets, as CVCX makes them: each count's bet is proportional
+ * to its Kelly weight (edge ÷ variance), clamped to [1, spread] units, with the proportion chosen
+ * to maximise SCORE. Wonged-out counts bet 0. Unrounded; `createOptimalRamp` rounds to chips.
+ */
+export function exactOptimalRamp(
+  rules: AdvantageRules,
+  maxSpread: number,
+  wongInAt: number | null,
+  ruleAdjustment = 0,
+): RampPoint[] {
+  const shift = effectiveRuleAdjustment(rules, ruleAdjustment);
+  const spread = Math.max(1, maxSpread);
+  const weights = getCountProfile(rules).map((row) => ({
+    trueCount: row.tc,
+    out: wongInAt !== null && row.tc < wongInAt,
+    weight: Math.max(0, (row.adv + shift) / row.sd ** 2),
+  }));
+  const at = (scale: number) => weights.map(({ trueCount, out, weight }) => ({ trueCount, units: out ? 0 : Math.min(spread, Math.max(1, scale * weight)) }));
+  const positive = weights.filter((row) => !row.out && row.weight > 0).map((row) => row.weight);
+  if (!positive.length) return at(0);
+  // Below `low` every bet is the minimum; above `high` every positive count is at the cap.
+  const low = Math.log(1 / Math.max(...positive)), high = Math.log(spread / Math.min(...positive));
+  const score = (logScale: number) => rampScore(rules, at(Math.exp(logScale)), ruleAdjustment);
+  const steps = 200;
+  let best = low, bestScore = score(low);
+  for (let step = 1; step <= steps; step++) {
+    const point = low + ((high - low) * step) / steps;
+    const value = score(point);
+    if (value > bestScore) [best, bestScore] = [point, value];
+  }
+  // Golden-section refinement inside the best grid cell's neighbours.
+  let a = Math.max(low, best - (high - low) / steps), b = Math.min(high, best + (high - low) / steps);
+  const ratio = (Math.sqrt(5) - 1) / 2;
+  for (let round = 0; round < 40; round++) {
+    const c = b - ratio * (b - a), d = a + ratio * (b - a);
+    if (score(c) >= score(d)) b = d;
+    else a = c;
+  }
+  const refined = (a + b) / 2;
+  return at(Math.exp(score(refined) >= bestScore ? refined : best));
+}
+
 export function createOptimalRamp(
   rules: AdvantageRules,
   maxSpread: number,
@@ -94,35 +143,10 @@ export function createOptimalRamp(
   chipIncrement = 0.5,
   ruleAdjustment = 0,
 ): RampPoint[] {
-  const shift = effectiveRuleAdjustment(rules, ruleAdjustment);
-  const rows = getCountProfile(rules).map((row) => ({
-    tc: row.tc,
-    adv: row.adv + shift,
-    sd: row.sd,
+  return exactOptimalRamp(rules, maxSpread, wongInAt, ruleAdjustment).map((point) => ({
+    trueCount: point.trueCount,
+    units: chipIncrement > 0 && point.units > 0 ? Math.max(1, Math.round(point.units / chipIncrement) * chipIncrement) : point.units,
   }));
-  const eligible = rows.filter(
-    (row) => wongInAt === null || row.tc >= wongInAt,
-  );
-  const positive = eligible
-    .map((row) => ({
-      tc: row.tc,
-      kellyWeight: Math.max(0, row.adv / row.sd ** 2),
-    }))
-    .filter((row) => row.kellyWeight > 0);
-  const baseline = positive[0]?.kellyWeight ?? 1;
-  return rows.map((row) => {
-    if (wongInAt !== null && row.tc < wongInAt)
-      return { trueCount: row.tc, units: 0 };
-    const weight = Math.max(1, Math.max(0, row.adv / row.sd ** 2) / baseline);
-    const bounded = Math.min(Math.max(1, maxSpread), weight);
-    return {
-      trueCount: row.tc,
-      units:
-        chipIncrement > 0
-          ? Math.round(bounded / chipIncrement) * chipIncrement
-          : bounded,
-    };
-  });
 }
 
 export function analyzeCvcx(
@@ -212,6 +236,49 @@ export function goalByHorizonProbability(
   return clamp(terminalTail + reflectedTail);
 }
 
+
+/**
+ * Goal or bust: starting with `bankroll`, the chance of first being up `goal` (reaching the goal)
+ * or first losing the whole bankroll (ruin), within `rounds` rounds or, when `rounds` is
+ * Infinity, ever. The two need not add to 1 with a time limit: the trip can end between them.
+ * Brownian motion with drift between two absorbing barriers, the model Blackjack Attack's
+ * double-barrier risk formulas use. The time-limited case is the eventual probability less the
+ * part still to come after `rounds`, from the eigenfunction series of the killed density.
+ */
+export function goalOrBust(bankroll: number, goal: number, meanPerRound: number, variancePerRound: number, rounds = Infinity) {
+  if (bankroll <= 0) return { goal: 0, ruin: 1 };
+  if (goal <= 0) return { goal: 1, ruin: 0 };
+  if (rounds <= 0) return { goal: 0, ruin: 0 };
+  if (variancePerRound <= 0) {
+    const steps = meanPerRound > 0 ? goal / meanPerRound : meanPerRound < 0 ? bankroll / -meanPerRound : Infinity;
+    return steps > rounds ? { goal: 0, ruin: 0 } : meanPerRound > 0 ? { goal: 1, ruin: 0 } : { goal: 0, ruin: 1 };
+  }
+  const span = bankroll + goal;
+  // Eventually: the gambler's-ruin formula for a drifted walk, written to stay finite.
+  const a = (2 * meanPerRound) / variancePerRound;
+  let reachEver: number;
+  if (Math.abs(a * span) < 1e-12) reachEver = bankroll / span;
+  else if (-a * span > 700) reachEver = Math.exp(Math.min(0, a * goal));
+  else reachEver = Math.expm1(-a * bankroll) / Math.expm1(-a * span);
+  reachEver = clamp(reachEver);
+  if (!Number.isFinite(rounds)) return { goal: reachEver, ruin: 1 - reachEver };
+  // Still to come after `rounds`: Σ (kπ/L) sin(kπB/L) e^{−λk·n} / λk, scaled per barrier.
+  const drift = (meanPerRound * meanPerRound) / (2 * variancePerRound);
+  const tailRuin = { sum: 0 }, tailGoal = { sum: 0 };
+  for (let k = 1; k <= 200_000; k++) {
+    const wave = (k * Math.PI) / span;
+    const lambda = drift + (wave * wave * variancePerRound) / 2;
+    const decay = Math.exp(-lambda * rounds);
+    if (decay < 1e-18 && k > 2) break;
+    const term = (wave * Math.sin(wave * bankroll) * decay) / lambda;
+    tailRuin.sum += term;
+    tailGoal.sum += k % 2 ? term : -term;
+  }
+  const scale = variancePerRound / span;
+  const ruinTail = scale * Math.exp(clamp((-meanPerRound * bankroll) / variancePerRound, -745, 709)) * tailRuin.sum;
+  const goalTail = scale * Math.exp(clamp((meanPerRound * goal) / variancePerRound, -745, 709)) * tailGoal.sum;
+  return { goal: clamp(reachEver - goalTail), ruin: clamp(1 - reachEver - ruinTail) };
+}
 
 export function resultPercentile(
   actualResult: number,

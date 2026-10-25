@@ -63,7 +63,7 @@ function OtherGames({ calc }: { calc: Calc }) {
           </li>
         ))}
       </ol>
-      <Note className="mt-2">SCORE per 100 rounds is shown on the right. The Kelly-weighted ramp is smooth, so it can score below a steeper preset.</Note>
+      <Note className="mt-2">SCORE per 100 rounds is shown on the right. The Kelly-weighted ramp is the highest-SCORE ramp within your top bet.</Note>
     </div>
   );
 }

@@ -50,6 +50,32 @@ function OutcomeRange({ trip }: { trip: TripOutlook }) {
   );
 }
 
+/** CVCX's double-barrier risk: which comes first, the win goal or losing the bankroll. */
+function GoalOrBust({ trip, goal, bankroll }: { trip: TripOutlook; goal: number; bankroll: number }) {
+  const { trip: onTrip, ever } = trip.goalOrBust(goal);
+  const rows = [
+    { label: "On this trip", goal: onTrip.goal, ruin: onTrip.ruin, rest: Math.max(0, 1 - onTrip.goal - onTrip.ruin) },
+    { label: "No time limit", goal: ever.goal, ruin: ever.ruin, rest: 0 },
+  ];
+  return (
+    <div className="mt-4 rounded-xl border border-line p-3">
+      <h3 className="text-sm font-semibold">Up {money(goal)} before losing {money(bankroll)}?</h3>
+      <dl className="mt-2 grid gap-2">
+        {rows.map((row) => (
+          <div key={row.label} className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-baseline gap-x-3 text-sm">
+            <dt className="text-ink-3">{row.label}</dt>
+            <dd className="tnum">
+              <b className="text-pos">{percent(row.goal, 1)}</b> goal first · <b className="text-neg">{chance(row.ruin)}</b> broke first
+              {row.rest > 0.0005 && <span className="text-ink-3"> · {percent(row.rest, 1)} neither</span>}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <Note className="mt-1.5">Uses the goal above, and assumes you quit once you reach it.</Note>
+    </div>
+  );
+}
+
 /** What one trip of a chosen length is likely to look like: ranges, percentiles, losses, goals and ruin. */
 export function TripCard({ calc, trip, className }: { calc: Calc; trip: TripOutlook; className?: string }) {
   const { config, edit, pricing } = calc;
@@ -103,6 +129,7 @@ export function TripCard({ calc, trip, className }: { calc: Calc; trip: TripOutl
               <Note>At some point during the trip, not only at the end.</Note>
             </div>
           </div>
+          <GoalOrBust trip={trip} goal={goal} bankroll={config.bankroll} />
           <p className="mt-4 text-sm">Chance of going broke on this trip: <b className="tnum">{chance(trip.riskOfRuin)}</b> <span className="text-ink-3">(lifetime: {percent(pricing.result.riskOfRuin)})</span></p>
           <Note className="mt-1">A normal approximation, not a card-by-card simulation. It can understate the chance of busting when the bankroll is only a few top bets deep.</Note>
         </>

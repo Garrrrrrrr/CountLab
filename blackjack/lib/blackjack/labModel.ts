@@ -1,6 +1,6 @@
 import { DEFAULT_ADVANTAGE_RULES, zeroBetsBelow, type AdvantageRules, type RampPoint } from "./advantage";
 import { GAME_OPTIONS } from "./coefficients";
-import { analyzeCvcx, createOptimalRamp, goalByHorizonProbability, resultPercentile, riskSizedUnit, type CvcxPerformance, type CvcxScenario } from "./cvcx";
+import { analyzeCvcx, createOptimalRamp, goalByHorizonProbability, goalOrBust, resultPercentile, riskSizedUnit, type CvcxPerformance, type CvcxScenario } from "./cvcx";
 import type { CvcxTemplate } from "./cvcxLibrary";
 import { AUDITED_RULES, normalizeConfig, OPTIMAL_RAMP_NAME, PRESET_NAMES, presetRamp, type LabConfig } from "./labConfig";
 import { sameRamp } from "./rampSteps";
@@ -306,6 +306,11 @@ export function tripOutlook(config: LabConfig, result: CvcxPerformance) {
     lossAtLeast: (loss: number) => resultPercentile(-Math.abs(loss), expected, sd),
     /** Chance the trip is up `goal` dollars at some point, not only at the end. */
     reachesGoal: (goal: number) => goalByHorizonProbability(goal, result.evPerRound, variance, rounds),
+    /** Chance of being up `goal` before losing the bankroll, and of going broke first: on this trip, and ever. */
+    goalOrBust: (goal: number) => ({
+      trip: goalOrBust(config.bankroll, goal, result.evPerRound, variance, rounds),
+      ever: goalOrBust(config.bankroll, goal, result.evPerRound, variance),
+    }),
   };
 }
 

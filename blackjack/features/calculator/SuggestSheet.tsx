@@ -112,7 +112,7 @@ export function SuggestSheet({ calc, open, onClose }: { calc: Calc; open: boolea
       <div className="mt-5 rounded-2xl border border-line p-3.5">
         <h3 className="flex items-center gap-2 text-base font-semibold"><Sparkles size={17} aria-hidden className="text-brand-text" />Kelly-weighted ramp</h3>
         <p className="mt-1 text-sm leading-6 text-ink-2">
-          Each count&apos;s bet grows with your edge there divided by how much that count swings, from 1 unit at the first count with an edge, capped at {unitLabel(config.maxSpread)}× and rounded to {rounding?.phrase ?? `${config.chipIncrement} units`}. Smooth, but not always the top earner: a steeper ramp can earn more at the same risk.
+          Each count&apos;s bet is in proportion to your edge there divided by how much that count swings, kept between 1 unit and {unitLabel(config.maxSpread)}×, and scaled so the ramp earns the most it can at any given risk (the highest SCORE). This is Brett Harris&apos;s optimal betting, the method CVCX uses. Bets are rounded to {rounding?.phrase ?? `${config.chipIncrement} units`}.
         </p>
         {!pricing.usingOptimal && pricing.optimalScore > 0 && (
           <p className="mt-1.5 text-sm leading-6 text-ink-2" data-testid="optimal-trade-off">

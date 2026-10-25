@@ -65,7 +65,7 @@ test("the Kelly-weighted ramp changes only the ramp, shows its trade-off first, 
   await show(page, "Ramp");
   await page.getByRole("button", { name: "Suggest a ramp", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "Suggest a ramp" });
-  await expect(sheet.getByTestId("optimal-trade-off")).toContainText(/Its SCORE is \$[\d.]+ against \$[\d.]+ for your ramp, so it earns less than your ramp at the same risk\./);
+  await expect(sheet.getByTestId("optimal-trade-off")).toContainText(/Its SCORE is \$[\d.]+ against \$[\d.]+ for your ramp, so it earns more than your ramp at the same risk\./);
   await sheet.getByRole("button", { name: "Use it with my $15 unit" }).click();
   await expect(sheet).toHaveCount(0);
   await expect(page.getByRole("radio", { name: "1–12", exact: true })).not.toBeChecked();
